@@ -123,8 +123,8 @@
 
 <aside class="panel" id="panel">
   <button class="collapse" id="collapse">收合</button>
-  <a class="back" href="index.html">‹ 課程總覽</a>
-  <div class="title">3D 自然科直觀模擬器</div>
+  <a class="back" id="backLink" href="index.html">‹ 課程總覽</a>
+  <div class="title" id="pageTitle">3D 自然科直觀模擬器</div>
 
   <div class="body">
     <div class="seg" role="tablist">
@@ -712,7 +712,20 @@ function animate() {
 window.claySim = { Cell, Typhoon, setMode };   // 除錯 / 驗證用
 
 resize();
-setMode(location.hash.slice(1) || 'cell');
+/* 從課程卡片進來（#cell 或 #typhoon）時只顯示該主題：
+   生物「生殖」只看細胞分裂、地科「天氣」只看颱風，不混在一起 */
+const LOCK = {
+  cell:    { title: '細胞分裂（直觀版）', back: 'index.html#g7' },
+  typhoon: { title: '颱風風向與風量',     back: 'index.html#g9' }
+};
+const locked = LOCK[location.hash.slice(1)] ? location.hash.slice(1) : null;
+if (locked) {
+  document.querySelector('.seg').style.display = 'none';
+  $('pageTitle').textContent = LOCK[locked].title;
+  $('backLink').href = LOCK[locked].back;
+  document.title = LOCK[locked].title;
+}
+setMode(locked || 'cell');
 animate();
 </script>
 
