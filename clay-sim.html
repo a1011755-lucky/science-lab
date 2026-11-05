@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D 自然科直觀模擬器</title>
+<style>
+  :root {
+    --bg: #f4f7f6;
+    --ink: #1d1d1f;
+    --ink-soft: #6e6e73;
+    --line: rgba(0,0,0,.07);
+    --card: rgba(255,255,255,.62);
+    --accent: #5b8def;
+    --pink: #f28bb0;
+    --blue: #6aa0f5;
+    --track: #e4e7eb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+
+  /* ===== Apple 風毛玻璃面板 ===== */
+  .panel {
+    position: absolute; top: 18px; left: 18px; width: 320px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10;
+    background: var(--card); backdrop-filter: blur(22px) saturate(180%); -webkit-backdrop-filter: blur(22px) saturate(180%);
+    border: 1px solid rgba(255,255,255,.8); border-radius: 26px; padding: 18px;
+    box-shadow: 0 20px 50px rgba(40,60,80,.12), 0 2px 6px rgba(40,60,80,.05);
+  }
+  .panel.collapsed { width: auto; min-width: 250px; }
+  .panel.collapsed .body { display: none; }
+  .collapse {
+    position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none;
+    font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent);
+    background: rgba(91,141,239,.1); border-radius: 999px; padding: 4px 12px;
+  }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.2rem; font-weight: 700; letter-spacing: -.01em; margin-top: 6px; padding-right: 62px; }
+
+  /* 分段式 Tab */
+  .seg { display: grid; grid-template-columns: 1fr 1fr; background: rgba(118,118,128,.12); border-radius: 12px; padding: 3px; margin: 14px 0; }
+  .seg button {
+    border: none; background: transparent; font: inherit; font-size: .86rem; font-weight: 600; color: var(--ink);
+    padding: 8px 4px; border-radius: 10px; cursor: pointer; transition: background .25s, box-shadow .25s;
+  }
+  .seg button.on { background: #fff; box-shadow: 0 3px 10px rgba(0,0,0,.1); }
+
+  .section[hidden] { display: none; }
+  .steps { display: flex; gap: 6px; margin-bottom: 12px; }
+  .steps i { flex: 1; height: 6px; border-radius: 999px; background: var(--track); transition: background .3s; }
+  .steps i.on { background: var(--accent); }
+  .stepname { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
+  .box { background: rgba(255,255,255,.75); border-radius: 16px; padding: 10px 12px; margin-bottom: 8px; font-size: .82rem; line-height: 1.6; }
+  .box b { font-weight: 700; }
+  .box .h { font-size: .72rem; font-weight: 700; color: var(--ink-soft); letter-spacing: .04em; margin-bottom: 2px; }
+  .btns { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; margin-top: 10px; }
+  .btn {
+    border: none; border-radius: 14px; padding: 12px; cursor: pointer;
+    font: inherit; font-size: .9rem; font-weight: 700; color: var(--accent); background: rgba(91,141,239,.12);
+    transition: transform .12s, background .2s;
+  }
+  .btn:hover { background: rgba(91,141,239,.2); }
+  .btn:active { transform: scale(.97); }
+  .btn.primary { color: #fff; background: var(--accent); box-shadow: 0 6px 16px rgba(91,141,239,.35); }
+  .btn.primary:hover { background: #4a7de6; }
+  .btn.wide { grid-column: 1 / -1; }
+  .legend { display: flex; gap: 14px; font-size: .76rem; color: var(--ink-soft); margin-top: 10px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; vertical-align: -1px; margin-right: 4px; }
+
+  /* 大圓角滑桿 */
+  .slider-row { background: rgba(255,255,255,.75); border-radius: 18px; padding: 12px 14px; margin-bottom: 8px; }
+  .slider-row .top { display: flex; justify-content: space-between; align-items: baseline; font-size: .86rem; margin-bottom: 10px; }
+  .slider-row .val { font-weight: 800; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 12px; border-radius: 999px; cursor: pointer; outline: none;
+    background: linear-gradient(90deg, #a9d3ff 0%, #ffb0c4 55%, #ff3b3b 100%); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 30px; border-radius: 50%; background: #fff;
+    box-shadow: 0 4px 12px rgba(0,0,0,.2), 0 0 0 .5px rgba(0,0,0,.06); }
+  input[type=range]::-moz-range-thumb { width: 28px; height: 28px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+  input[type=range]:focus-visible { box-shadow: 0 0 0 4px rgba(91,141,239,.3); }
+  .scale { display: flex; justify-content: space-between; font-size: .7rem; color: var(--ink-soft); margin-top: 6px; }
+
+  .readout { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .readout .box { margin: 0; }
+  .readout .v { font-size: 1.25rem; font-weight: 800; line-height: 1.3; }
+  .readout .v small { display: block; font-size: .72rem; font-weight: 500; color: var(--ink-soft); }
+  .wind { color: var(--accent); }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .78rem; font-weight: 600; padding: 5px 12px; border-radius: 14px; white-space: nowrap; text-align: center; line-height: 1.4;
+    background: rgba(255,255,255,.82); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    color: var(--ink); box-shadow: 0 4px 14px rgba(0,0,0,.08);
+  }
+  .tag small { display: block; font-weight: 500; color: var(--ink-soft); font-size: .7rem; }
+  .tag.dir { background: none; box-shadow: none; backdrop-filter: none; font-size: .9rem; font-weight: 800; color: #4b5563; }
+  .hint { position: absolute; right: 18px; bottom: 16px; z-index: 5; font-size: .74rem; color: rgba(29,29,31,.5); }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 760px) {
+    .panel { top: auto; bottom: 10px; left: 10px; right: 10px; width: auto; max-height: 50vh; }
+    .hint { display: none; }
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="scene"></div>
+
+<aside class="panel" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html">‹ 課程總覽</a>
+  <div class="title">3D 自然科直觀模擬器</div>
+
+  <div class="body">
+    <div class="seg" role="tablist">
+      <button class="on" data-mode="cell">細胞分裂</button>
+      <button data-mode="typhoon">颱風風向</button>
+    </div>
+
+    <!-- 模組一：細胞分裂 -->
+    <section class="section" data-mode="cell">
+      <div class="steps" id="steps"></div>
+      <div class="stepname" id="stepName"></div>
+      <div class="box"><div class="h">左：一般細胞分裂</div><div id="leftText"></div></div>
+      <div class="box"><div class="h">右：減數分裂</div><div id="rightText"></div></div>
+      <div class="btns">
+        <button class="btn" id="prevBtn">‹ 上一步</button>
+        <button class="btn primary" id="nextBtn">下一步 ›</button>
+      </div>
+      <div class="legend"><span><i style="background:#6aa0f5"></i>爸爸給的</span><span><i style="background:#f28bb0"></i>媽媽給的</span></div>
+    </section>
+
+    <!-- 模組二：颱風 -->
+    <section class="section" data-mode="typhoon" hidden>
+      <div class="box" style="margin-bottom:10px">用滑鼠<b>拖曳空中的颱風漩渦</b>，看地面巨大風向標怎麼轉。北半球颱風<b>逆時針旋轉、向中心輻合</b>，所以風不是直直吹向颱風中心，而是向右偏。</div>
+      <div class="slider-row">
+        <div class="top"><span>風量 / 風速</span><span class="val" id="powerVal">中颱</span></div>
+        <input type="range" id="power" min="0" max="1" step="0.01" value="0.45" aria-label="風量">
+        <div class="scale"><span>輕颱</span><span>中颱</span><span>強颱</span></div>
+      </div>
+      <div class="readout">
+        <div class="box"><div class="h">颱風在觀測站的</div><div class="v" id="posVal">—</div></div>
+        <div class="box"><div class="h">觀測站吹的風</div><div class="v wind" id="windVal">—</div></div>
+      </div>
+      <div class="legend"><span>🔴 風向標箭頭 = 風吹來的方向</span></div>
+    </section>
+
+    <button class="btn wide" id="viewBtn" style="width:100%;margin-top:12px">重設視角</button>
+  </div>
+</aside>
+
+<div class="hint" id="hint">拖曳旋轉 · 滾輪縮放</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__claySimReady = true;
+
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = THREE.MathUtils.clamp;
+const lerp = THREE.MathUtils.lerp;
+
+/* =========================================================
+   Soft 3D 黏土風：材質、燈光、柔和陰影
+   ========================================================= */
+const clay = (color, extra = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0.1, clearcoat: 0.3, ...extra });
+const C = { blue: 0x6aa0f5, pink: 0xf28bb0, mint: 0xcdeee2, lavender: 0xe4dcf7, land: 0x9fd9a0, pole: 0xd9dee5, red: 0xff6b6b };
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf4f7f6);
+scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 2.4);
+sun.position.set(-7, 16, 12);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -14, near: 1, far: 60 });
+sun.shadow.radius = 4;
+sun.shadow.bias = -0.0004;
+scene.add(sun);
+// 只接收陰影的地板
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), new THREE.ShadowMaterial({ opacity: 0.12 }));
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.minDistance = 8;
+controls.maxDistance = 60;
+
+/* ----- HTML 標籤 ----- */
+const labels = [];
+function addLabel(mode, html, cls = '') {
+  const el = document.createElement('div');
+  el.className = 'tag ' + cls;
+  el.innerHTML = html;
+  document.body.appendChild(el);
+  const L = { el, mode, pos: V3(0, 0, 0), visible: true };
+  labels.push(L);
+  return L;
+}
+const tmpV = V3(0, 0, 0);
+function placeLabels() {
+  for (const L of labels) {
+    if (L.mode !== mode || !L.visible) { L.el.style.display = 'none'; continue; }
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * window.innerWidth) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * window.innerHeight) + 'px';
+  }
+}
+
+/** 胖胖的立體箭頭（膠囊箭身 + 圓頭錐），指向 +x */
+function fatArrow(color, len = 2.2, r = 0.22) {
+  const g = new THREE.Group();
+  const mat = clay(color);
+  const shaft = new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 8, 20), mat);
+  shaft.rotation.z = -Math.PI / 2;
+  shaft.position.x = len / 2;
+  const head = new THREE.Mesh(new THREE.ConeGeometry(r * 2.4, r * 3.4, 32), mat);
+  head.rotation.z = -Math.PI / 2;
+  head.position.x = len + r * 1.5;
+  g.add(shaft, head);
+  g.traverse(o => { o.castShadow = true; });
+  return g;
+}
+
+/* =========================================================
+   模組一：細胞分裂（國中直觀版）
+   ---------------------------------------------------------
+   2n = 4：大的一對（藍、粉）、小的一對（藍、粉）
+   步驟 0 複製前（I 字）→ 1 複製後（X 字）→ 2 排列差異
+        → 3 拉開分裂（左：X 撕成 I；右：同源 X 分開）→ 4 右側第二次分裂
+   ========================================================= */
+const Cell = (() => {
+  const group = new THREE.Group();
+  const Y0 = 4.0;                         // 染色體群的中心高度（站在地板上方）
+  const LX = -6.5, RX = 6.5;               // 左右兩區中心
+  const COLUMN = [2.75, 0.6, -1.3, -2.85]; // 單排時 4 條的高度（彼此留空隙，不會疊成一根）
+  const CHROMS = [
+    { L: 1.45, r: 0.31, color: C.blue }, { L: 1.45, r: 0.31, color: C.pink },
+    { L: 0.85, r: 0.27, color: C.blue }, { L: 0.85, r: 0.27, color: C.pink }
+  ];
+  const FLOAT = [[-1.3, 1.4, 0.35], [1.2, 1.1, -0.4], [-1.0, -1.4, -0.3], [1.3, -1.2, 0.5]];   // 複製前漂浮位置與傾角
+  const TILT = 0.34;                       // X 字兩臂的夾角
+
+  /* 每條染色體 = 兩根膠囊（a：原本、b：複製出來的） */
+  function makeSide(cx) {
+    return CHROMS.map((c, i) => {
+      const mat = clay(c.color);
+      const mk = () => { const m = new THREE.Mesh(new THREE.CapsuleGeometry(c.r, c.L, 10, 24), mat); m.castShadow = true; group.add(m); return m; };
+      const a = mk(), b = mk();
+      const knot = new THREE.Mesh(new THREE.SphereGeometry(c.r * 0.9, 24, 16), clay(0xffffff));
+      knot.castShadow = true;
+      group.add(knot);
+      return { ...c, i, cx, a, b, knot, cur: null };
+    });
+  }
+  const left = makeSide(LX), right = makeSide(RX);
+
+  // 地面上的細胞「軟墊」：分裂時一分為二／為四
+  const padMats = { left: clay(C.mint), right: clay(C.lavender) };
+  const mkPad = mat => { const m = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.3, 64), mat); m.receiveShadow = true; m.castShadow = true; group.add(m); return m; };
+  const padsL = [mkPad(padMats.left), mkPad(padMats.left)];
+  const padsR = [0, 1, 2, 3].map(() => mkPad(padMats.right));
+
+  // 運動方向的粗箭頭
+  const arrows = [];
+  function addArrowPair(x, y, gap) {
+    [-1, 1].forEach(s => {
+      const a = fatArrow(0xffb44d, 1.0, 0.16);
+      a.position.set(x + s * gap, y, 0.9);
+      a.rotation.y = s > 0 ? 0 : Math.PI;
+      a.visible = false;
+      group.add(a);
+      arrows.push({ a, step: null });
+    });
+    return arrows.slice(-2);
+  }
+  const arrowsL = addArrowPair(LX, Y0, 1.2);
+  const arrowsR1 = addArrowPair(RX, Y0, 1.3);
+  const arrowsR2 = [...addArrowPair(RX - 2.6, Y0, 0.7), ...addArrowPair(RX + 2.6, Y0, 0.7)];
+
+  const lLeft = addLabel('cell', '一般細胞分裂（有絲分裂）');
+  const lRight = addLabel('cell', '減數分裂');
+  lLeft.pos.set(LX, Y0 + 4.2, 0); lRight.pos.set(RX, Y0 + 4.2, 0);
+  const lLeftRes = addLabel('cell', ''), lRightRes = addLabel('cell', '');
+  lLeftRes.pos.set(LX, 0.15, 3.4); lRightRes.pos.set(RX, 0.15, 3.4);
+
+  const STEPS = [
+    { name: '① 複製前：4 根 I 字棒',
+      L: '2 大 2 小，各 1 藍 1 粉。每一根都是「一條」染色體。', R: '和左邊一樣：4 根 I 字棒。' },
+    { name: '② 複製後：變成 X',
+      L: '每根棒子<b>長出一模一樣的另一半</b>，變成 X 字型（仍算 1 條染色體）。', R: '同樣複製成 4 個 X。' },
+    { name: '③ 排隊方式不同（最關鍵！）',
+      L: '4 個 X 排成<b>直直的一列（單排）</b>。', R: '藍 X 和粉 X <b>兩兩手牽手</b>，排成<b>兩排（雙排）</b>。' },
+    { name: '④ 拉開分裂',
+      L: '每個 X <b>從中間撕開</b>變成 8 根 I，往兩邊拉 → 2 個細胞，<b>各有 4 根</b>（和原本一樣）。', R: '第一次分裂：藍 X 和粉 X <b>整顆分開</b>，各去一邊（X 還沒撕開）。' },
+    { name: '⑤ 減數分裂的第二次分裂',
+      L: '已完成：2 個細胞，每個 4 根 I（染色體數不變）。', R: '第二次分裂：X 再<b>撕開成 I</b> → 4 個細胞，<b>每個只剩 2 根</b>（減半）。' }
+  ];
+  let step = 0;
+
+  /* 每一步每根膠囊的目標狀態：位置、z 軸傾角、大小 */
+  function targetsFor(side, ch, s, t) {
+    const isL = side === 'L';
+    const cx = isL ? LX : RX;
+    const bob = s <= 1 ? Math.sin(t * 1.4 + ch.i) * 0.12 : 0;
+    const [fx, fy, rot] = FLOAT[ch.i];
+    let A, B, knot = 0;
+    if (s === 0) {
+      A = { p: V3(cx + fx, Y0 + fy + bob), r: rot, s: 1 };
+      B = { p: A.p.clone(), r: rot, s: 0.001 };
+    } else if (s === 1) {
+      A = { p: V3(cx + fx, Y0 + fy + bob), r: rot + TILT, s: 1 };
+      B = { p: A.p.clone(), r: rot - TILT, s: 1 }; knot = 1;
+    } else if (isL) {
+      // 左：單排
+      const y = Y0 + COLUMN[ch.i];
+      if (s === 2) { A = { p: V3(cx, y), r: TILT, s: 1 }; B = { p: V3(cx, y), r: -TILT, s: 1 }; knot = 1; }
+      else { A = { p: V3(cx - 2.6, y), r: 0, s: 1 }; B = { p: V3(cx + 2.6, y), r: 0, s: 1 }; }
+    } else {
+      // 右：兩兩配對成雙排（兩對的藍粉左右方向不同：獨立分配）
+      const pair = ch.i < 2 ? 0 : 1;
+      const isBlue = ch.color === C.blue;
+      const sideSign = pair === 0 ? (isBlue ? -1 : 1) : (isBlue ? 1 : -1);
+      const y = Y0 + (pair === 0 ? 1.25 : -1.25);
+      if (s === 2) { const x = cx + sideSign * 0.72; A = { p: V3(x, y), r: TILT, s: 1 }; B = { p: V3(x, y), r: -TILT, s: 1 }; knot = 1; }
+      else if (s === 3) { const x = cx + sideSign * 2.6; A = { p: V3(x, y), r: TILT, s: 1 }; B = { p: V3(x, y), r: -TILT, s: 1 }; knot = 1; }
+      else { const x = cx + sideSign * 2.6; A = { p: V3(x - 1.05, y), r: 0, s: 1 }; B = { p: V3(x + 1.05, y), r: 0, s: 1 }; }
+    }
+    return { A, B, knot };
+  }
+
+  function padTargets(s) {
+    const L = s >= 3 ? [[LX - 2.6, 2.0], [LX + 2.6, 2.0]] : [[LX, 3.4], [LX, 3.4]];
+    const R = s >= 4 ? [[RX - 3.65, 1.1], [RX - 1.55, 1.1], [RX + 1.55, 1.1], [RX + 3.65, 1.1]]
+            : s === 3 ? [[RX - 2.6, 2.1], [RX - 2.6, 2.1], [RX + 2.6, 2.1], [RX + 2.6, 2.1]]
+            : [[RX, 3.4], [RX, 3.4], [RX, 3.4], [RX, 3.4]];
+    return { L, R };
+  }
+
+  const ease = (cur, tgt, k) => cur + (tgt - cur) * k;
+  function tick(t, dt) {
+    const k = Math.min(1, dt * 4);
+    [['L', left], ['R', right]].forEach(([side, chs]) => chs.forEach(ch => {
+      const tg = targetsFor(side, ch, step, t);
+      [[ch.a, tg.A], [ch.b, tg.B]].forEach(([m, T]) => {
+        m.position.lerp(T.p, k);
+        m.rotation.z = ease(m.rotation.z, T.r, k);
+        m.scale.setScalar(ease(m.scale.x, T.s, k));
+      });
+      ch.knot.position.copy(ch.a.position).lerp(ch.b.position, 0.5).setZ(ch.r * 0.5);
+      ch.knot.scale.setScalar(ease(ch.knot.scale.x, tg.knot ? 1 : 0.001, k));
+    }));
+    const P = padTargets(step);
+    padsL.forEach((m, i) => { m.position.x = ease(m.position.x, P.L[i][0], k); m.position.y = 0.15; const s = ease(m.scale.x, P.L[i][1], k); m.scale.set(s, 1, s); });
+    padsR.forEach((m, i) => { m.position.x = ease(m.position.x, P.R[i][0], k); m.position.y = 0.15; const s = ease(m.scale.x, P.R[i][1], k); m.scale.set(s, 1, s); });
+    // 箭頭：只在「拉開」那一步出現，並朝外脈動
+    const pulse = Math.sin(t * 5) * 0.15;
+    const show = (list, on, base) => list.forEach(({ a }) => {
+      a.visible = on;
+      if (on) { const s = a.rotation.y === 0 ? 1 : -1; a.position.x = a.userData.bx + s * pulse; }
+    });
+    show(arrowsL, step === 3);
+    show(arrowsR1, step === 3);
+    show(arrowsR2, step === 4);
+  }
+  // 記住箭頭的基準位置
+  arrows.forEach(({ a }) => { a.userData.bx = a.position.x; });
+
+  function render() {
+    $('steps').innerHTML = STEPS.map((_, i) => `<i class="${i <= step ? 'on' : ''}"></i>`).join('');
+    $('stepName').textContent = STEPS[step].name;
+    $('leftText').innerHTML = STEPS[step].L;
+    $('rightText').innerHTML = STEPS[step].R;
+    $('nextBtn').textContent = step === STEPS.length - 1 ? '↺ 重來' : '下一步 ›';
+    $('prevBtn').disabled = step === 0;
+    lLeftRes.visible = step >= 3;
+    lLeftRes.el.innerHTML = '2 個細胞 × 4 根<small>染色體數不變</small>';
+    lRightRes.visible = step >= 3;
+    lRightRes.el.innerHTML = step >= 4 ? '4 個細胞 × 2 根<small>染色體數減半</small>' : '2 個細胞 × 2 個 X<small>還要再分裂一次</small>';
+  }
+  $('nextBtn').addEventListener('click', () => { step = step === STEPS.length - 1 ? 0 : step + 1; render(); });
+  $('prevBtn').addEventListener('click', () => { step = Math.max(0, step - 1); render(); });
+
+  // 初始狀態直接就位（不從原點飛過來）
+  [['L', left], ['R', right]].forEach(([side, chs]) => chs.forEach(ch => {
+    const tg = targetsFor(side, ch, 0, 0);
+    ch.a.position.copy(tg.A.p); ch.a.rotation.z = tg.A.r;
+    ch.b.position.copy(tg.B.p); ch.b.rotation.z = tg.B.r; ch.b.scale.setScalar(0.001);
+    ch.knot.scale.setScalar(0.001);
+  }));
+  const P0 = padTargets(0);
+  padsL.forEach((m, i) => { m.position.set(P0.L[i][0], 0.15, 0); m.scale.set(P0.L[i][1], 1, P0.L[i][1]); });
+  padsR.forEach((m, i) => { m.position.set(P0.R[i][0], 0.15, 0); m.scale.set(P0.R[i][1], 1, P0.R[i][1]); });
+
+  return { group, tick, enter: render, camera: { pos: [0, 9, 33], target: [0, 3.2, 0] }, get step() { return step; } };
+})();
+
+/* =========================================================
+   模組二：颱風風向與風量
+   ---------------------------------------------------------
+   地圖：東 = +x、北 = −z。北半球氣旋：逆時針旋轉 + 向內輻合
+   風吹去的方向 v = cosα·(逆時針切線) + sinα·(指向中心)，α = 30°
+   ========================================================= */
+const Typhoon = (() => {
+  const group = new THREE.Group();
+  const ALT = 5.2;                  // 漩渦高度
+  const ALPHA = 30;                 // 內吹角
+  const DIR8 = ['北', '東北', '東', '東南', '南', '西南', '西', '西北'];
+  const nameOf = deg => DIR8[Math.round(((deg % 360) + 360) % 360 / 45) % 8];
+
+  // 台灣陸地：巨大的圓角綠色方塊
+  const land = new THREE.Mesh(new RoundedBoxGeometry(22, 1.2, 16, 6, 0.55), clay(C.land));
+  land.position.y = 0.6;
+  land.receiveShadow = true; land.castShadow = true;
+  group.add(land);
+  const TOP = 1.2;
+  // 方位文字
+  const dirLabels = [['北 N', 0, -8.8], ['南 S', 0, 8.8], ['東 E', 11.8, 0], ['西 W', -11.8, 0]].map(([t, x, z]) => {
+    const L = addLabel('typhoon', t, 'dir'); L.pos.set(x, TOP, z); return L;
+  });
+
+  // 巨大風向標（觀測站）
+  const station = new THREE.Group();
+  station.position.set(0, TOP, 0);
+  group.add(station);
+  {
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.3, 0.4, 48), clay(0xffffff));
+    base.position.y = 0.2; base.castShadow = base.receiveShadow = true;
+    const pole = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 3.6, 8, 20), clay(C.pole));
+    pole.position.y = 2.2; pole.castShadow = true;
+    station.add(base, pole);
+    // 十字方位臂
+    [[1.8, 0.12, 0.12], [0.12, 0.12, 1.8]].forEach(([w, h, d]) => {
+      const arm = new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 3, 0.05), clay(0xb8c0cc));
+      arm.position.y = 2.9; arm.castShadow = true;
+      station.add(arm);
+    });
+  }
+  const vane = new THREE.Group();
+  vane.position.y = 4.2;
+  station.add(vane);
+  {
+    const red = clay(0xff5a5a);
+    const shaft = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 3.2, 8, 24), red);
+    shaft.rotation.z = -Math.PI / 2;
+    const head = new THREE.Mesh(new THREE.ConeGeometry(0.62, 1.1, 40), red);
+    head.rotation.z = -Math.PI / 2; head.position.x = 2.2;
+    const fin = new THREE.Mesh(new RoundedBoxGeometry(1.2, 1.15, 0.16, 4, 0.07), red);
+    fin.position.x = -1.85;
+    const hub = new THREE.Mesh(new THREE.SphereGeometry(0.32, 24, 16), clay(0xffffff));
+    [shaft, head, fin, hub].forEach(m => { m.castShadow = true; vane.add(m); });
+  }
+  const lStation = addLabel('typhoon', '觀測站');
+  lStation.pos.set(0, TOP + 6.0, 0);
+
+  /* ----- 立體螺旋氣流（粗風管） ----- */
+  const vortex = new THREE.Group();
+  vortex.position.set(7, ALT, -2);
+  group.add(vortex);
+  const N_TUBES = 7, R_OUT = 6.2, R_IN = 1.0;
+  const tubeMat = new THREE.MeshPhysicalMaterial({
+    color: 0xdff0ff, roughness: 0.6, metalness: 0.1, clearcoat: 0.3,
+    transmission: 0.8, thickness: 0.5, transparent: true, opacity: 0.95,
+    emissive: 0xff3b3b, emissiveIntensity: 0
+  });
+  const tubes = [];
+  function spiralCurve(k) {
+    // 對數螺線：由外往內時角度增加 → 逆時針輻合（由上往下看）
+    const pts = [];
+    const n = 40, c = 1.35;
+    for (let i = 0; i <= n; i++) {
+      const u = i / n;
+      const r = R_OUT * Math.pow(R_IN / R_OUT, u);
+      const phi = (k / N_TUBES) * Math.PI * 2 + c * Math.log(R_OUT / r);
+      pts.push(V3(r * Math.cos(phi), -0.6 + 1.6 * u * u, -r * Math.sin(phi)));
+    }
+    return new THREE.CatmullRomCurve3(pts);
+  }
+  const curves = Array.from({ length: N_TUBES }, (_, k) => spiralCurve(k));
+  function rebuildTubes(radius) {
+    tubes.forEach(m => { vortex.remove(m); m.geometry.dispose(); });
+    tubes.length = 0;
+    curves.forEach(cv => {
+      const m = new THREE.Mesh(new THREE.TubeGeometry(cv, 160, radius, 20, false), tubeMat);
+      m.castShadow = true;
+      vortex.add(m);
+      tubes.push(m);
+    });
+  }
+  // 颱風眼（中央平靜的小圓）與流動的氣團珠
+  const eye = new THREE.Mesh(new THREE.TorusGeometry(0.85, 0.16, 16, 48), clay(0xffffff));
+  eye.rotation.x = Math.PI / 2; eye.position.y = 1.0;
+  vortex.add(eye);
+  const BEADS = 4;
+  const beadMat = clay(0xffffff, { transmission: 0.5, thickness: 0.4 });
+  const beads = [];
+  curves.forEach((cv, k) => {
+    for (let j = 0; j < BEADS; j++) {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), beadMat);
+      m.castShadow = true;
+      vortex.add(m);
+      beads.push({ m, cv, u: j / BEADS });
+    }
+  });
+  const pick = new THREE.Mesh(new THREE.CylinderGeometry(R_OUT * 0.8, R_OUT * 0.8, 3, 24), new THREE.MeshBasicMaterial({ visible: false }));
+  vortex.add(pick);
+  const lEye = addLabel('typhoon', '🌀 拖曳我！');
+  // 地面投影
+  const shadowRing = new THREE.Mesh(new THREE.TorusGeometry(0.6, 0.12, 12, 40), clay(0xff8a8a));
+  shadowRing.rotation.x = Math.PI / 2;
+  group.add(shadowRing);
+
+  /* ----- 風量 ----- */
+  let power = Number($('power').value), builtRadius = -1;
+  const cCalm = new THREE.Color(0xd6ecff), cMid = new THREE.Color(0xffb0c4), cStrong = new THREE.Color(0xff3b3b);
+  function applyPower() {
+    const r = 0.22 + 0.42 * power;
+    if (Math.abs(r - builtRadius) > 0.01) { rebuildTubes(r); builtRadius = r; }
+    const col = power < 0.5 ? cCalm.clone().lerp(cMid, power / 0.5) : cMid.clone().lerp(cStrong, (power - 0.5) / 0.5);
+    tubeMat.color.copy(col);
+    tubeMat.transmission = 0.8 - 0.45 * power;          // 強颱：顏色更飽和、不那麼透明
+    tubeMat.emissive.copy(col);
+    tubeMat.emissiveIntensity = power > 0.6 ? (power - 0.6) * 1.6 : 0;   // 強颱帶發光感
+    $('powerVal').textContent = power < 0.34 ? '輕颱' : power < 0.67 ? '中颱' : '強颱';
+    $('powerVal').style.color = `#${col.getHexString()}`;
+  }
+  $('power').addEventListener('input', e => { power = Number(e.target.value); applyPower(); refresh(); });
+
+  /* ----- 風向計算 ----- */
+  let vaneTarget = 0, current = null;
+  function windAt(cx, cz) {
+    const rE = 0 - cx, rN = -(0 - cz);                      // 測站 − 中心（東、北）
+    const d = Math.hypot(rE, rN);
+    if (d < 0.8) return { calm: true, d };
+    const a = ALPHA * Math.PI / 180;
+    const tE = -rN / d, tN = rE / d;                        // 逆時針切線
+    const iE = -rE / d, iN = -rN / d;                       // 指向中心
+    const vE = Math.cos(a) * tE + Math.sin(a) * iE, vN = Math.cos(a) * tN + Math.sin(a) * iN;
+    return { d, vE, vN, fromDeg: (Math.atan2(-vE, -vN) * 180 / Math.PI + 360) % 360 };
+  }
+  function refresh() {
+    const c = vortex.position;
+    shadowRing.position.set(c.x, TOP + 0.05, c.z);
+    lEye.pos.set(c.x, ALT + 2.4, c.z);
+    const w = windAt(c.x, c.z);
+    current = w;
+    const dE = c.x, dN = -c.z;
+    const posDeg = (Math.atan2(dE, dN) * 180 / Math.PI + 360) % 360;
+    if (w.calm) {
+      $('posVal').innerHTML = '正上方<small>颱風眼</small>';
+      $('windVal').innerHTML = '幾乎無風<small>颱風眼內</small>';
+      return;
+    }
+    // 風速：越靠近中心、颱風越強 → 越大（示意）
+    const speed = Math.round((10 + 45 * power) * Math.min(1, 2.2 / Math.max(w.d, 1.5)) ** 0.5);
+    $('posVal').innerHTML = `${nameOf(posDeg)}方<small>距離約 ${Math.round(w.d * 25)} 公里</small>`;
+    $('windVal').innerHTML = `${nameOf(w.fromDeg)}風<small>約 ${speed} m/s</small>`;
+    // 箭頭（+x）指向風的來向：世界座標 (−vE, +vN)
+    vaneTarget = Math.atan2(-w.vN, -w.vE);
+  }
+
+  /* ----- 拖曳漩渦 ----- */
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -ALT);
+  const hit = V3(0, 0, 0), off = V3(0, 0, 0);
+  let dragging = false;
+  const setRay = e => {
+    const r = renderer.domElement.getBoundingClientRect();
+    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+  };
+  renderer.domElement.addEventListener('pointerdown', e => {
+    if (mode !== 'typhoon') return;
+    setRay(e);
+    if (!ray.intersectObject(pick).length) return;
+    e.stopImmediatePropagation();           // 不讓 OrbitControls 同時旋轉視角
+    dragging = true;
+    controls.enabled = false;
+    ray.ray.intersectPlane(plane, hit);
+    off.copy(vortex.position).sub(hit);
+    renderer.domElement.setPointerCapture(e.pointerId);
+    renderer.domElement.style.cursor = 'grabbing';
+    lEye.visible = false;
+  }, { capture: true });
+  renderer.domElement.addEventListener('pointermove', e => {
+    if (mode !== 'typhoon') return;
+    setRay(e);
+    if (dragging) {
+      if (ray.ray.intersectPlane(plane, hit)) {
+        vortex.position.set(clamp(hit.x + off.x, -14, 14), ALT, clamp(hit.z + off.z, -12, 12));
+        refresh();
+      }
+    } else renderer.domElement.style.cursor = ray.intersectObject(pick).length ? 'grab' : '';
+  });
+  const end = () => { if (!dragging) return; dragging = false; controls.enabled = true; renderer.domElement.style.cursor = ''; };
+  renderer.domElement.addEventListener('pointerup', end);
+  renderer.domElement.addEventListener('pointercancel', end);
+
+  let vaneAngle = 0;
+  function tick(t, dt) {
+    const omega = 0.25 + 3.2 * power * power;               // 強颱：旋轉速度暴增
+    vortex.rotation.y += omega * dt;                         // 正值 = 由上往下看逆時針
+    beads.forEach(b => {
+      b.u = (b.u + dt * (0.05 + 0.25 * power)) % 1;          // 氣團沿風管向中心輻合
+      b.m.position.copy(b.cv.getPointAt(b.u));
+      b.m.scale.setScalar((0.18 + 0.32 * power) * (1 - 0.5 * b.u));
+    });
+    if (current && !current.calm) {
+      const target = vaneAngle + Math.atan2(Math.sin(vaneTarget - vaneAngle), Math.cos(vaneTarget - vaneAngle));
+      vaneAngle += (target - vaneAngle) * Math.min(1, dt * 5);
+      vane.rotation.y = vaneAngle + Math.sin(t * (8 + 20 * power)) * 0.02 * (0.3 + power);
+    }
+  }
+
+  applyPower();
+  refresh();
+  return { group, tick, enter: refresh, camera: { pos: [2, 30, 31], target: [1, 1.5, 0] }, windAt, nameOf, vortex, refresh, get vaneTarget() { return vaneTarget; } };
+})();
+
+/* =========================================================
+   模式切換與主迴圈
+   ========================================================= */
+const MODES = { cell: Cell, typhoon: Typhoon };
+Object.values(MODES).forEach(m => scene.add(m.group));
+let mode = 'cell';
+/** 重設視角：自動把場景移到「沒被面板擋住」的區域正中央 */
+function resetView() {
+  const c = MODES[mode].camera;
+  const dist = V3(...c.pos).distanceTo(V3(...c.target));
+  const visW = 2 * dist * Math.tan(camera.fov * Math.PI / 360) * camera.aspect;   // 目標處的可視寬度
+  const panel = $('panel');
+  const covered = window.innerWidth > 760 && !panel.classList.contains('collapsed') ? panel.getBoundingClientRect().right : 0;
+  const shift = -(covered / 2) / window.innerWidth * visW;
+  camera.position.set(c.pos[0] + shift, c.pos[1], c.pos[2]);
+  controls.target.set(c.target[0] + shift, c.target[1], c.target[2]);
+  controls.update();
+}
+function setMode(m) {
+  if (!MODES[m]) m = 'cell';
+  mode = m;
+  Object.entries(MODES).forEach(([k, v]) => { v.group.visible = k === m; });
+  document.querySelectorAll('.seg button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+  document.querySelectorAll('.section').forEach(s => { s.hidden = s.dataset.mode !== m; });
+  $('hint').textContent = m === 'typhoon' ? '拖曳颱風移動 · 拖曳空白處旋轉 · 滾輪縮放' : '拖曳旋轉 · 滾輪縮放';
+  try { history.replaceState(null, '', '#' + m); } catch (e) { /* file:// 下可能不允許 */ }
+  MODES[m].enter();
+  resetView();
+}
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+$('viewBtn').addEventListener('click', resetView);
+$('collapse').addEventListener('click', () => {
+  const c = $('panel').classList.toggle('collapsed');
+  $('collapse').textContent = c ? '展開' : '收合';
+});
+
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.fov = w < h ? 68 : 40;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+const clock = new THREE.Clock();
+function animate() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  MODES[mode].tick(clock.elapsedTime, dt);
+  controls.update();
+  placeLabels();
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+
+window.claySim = { Cell, Typhoon, setMode };   // 除錯 / 驗證用
+
+resize();
+setMode(location.hash.slice(1) || 'cell');
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__claySimReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>
