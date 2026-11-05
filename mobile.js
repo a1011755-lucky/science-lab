@@ -84,18 +84,27 @@
     /** 每一幀：讓畫面中心落在「抽屜上方」的可見區域，並限制直式 FOV 以免變形 */
     offset(camera) {
       if (!camera) return;
-      const w = window.innerWidth, h = window.innerHeight;
+      // 用版面尺寸（與 getBoundingClientRect 同單位），避免縮放模擬時 innerHeight 與版面不一致
+      const de = document.documentElement;
+      const w = de.clientWidth || window.innerWidth, h = de.clientHeight || window.innerHeight;
       let oy = 0;
       if (isMobile()) {
+        // 下方：底部抽屜；上方：資料面板／狀態監測儀／提示板（若有且展開）
         const p = document.querySelector('.panel');
-        if (p) oy = Math.round(Math.max(0, h - p.getBoundingClientRect().top) * 0.5);
+        const bottom = p ? Math.max(0, h - p.getBoundingClientRect().top) : 0;
+        let top = 0;
+        document.querySelectorAll('.data, .monitor, .concept').forEach(el => {
+          const r = el.getBoundingClientRect();
+          if (r.height && r.top < h * 0.3) top = Math.max(top, r.bottom);
+        });
+        oy = Math.round((bottom - top) * 0.5);
       }
       let fovChanged = false;
       if (w / h < 1 && camera.fov > 50) { camera.fov = 50; fovChanged = true; }
       const key = `${w}x${h}:${oy}:${camera.fov}`;
       if (camera.userData.__mobileKey === key && !fovChanged) return;
       camera.userData.__mobileKey = key;
-      if (oy > 1) camera.setViewOffset(w, h, 0, oy, w, h);
+      if (Math.abs(oy) > 1) camera.setViewOffset(w, h, 0, oy, w, h);
       else camera.clearViewOffset();
       camera.updateProjectionMatrix();
     }

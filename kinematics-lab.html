@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>運動學綜合實驗室</title>
+<style>
+  :root {
+    --bg: #e4ece6;
+    --ink: #1d1d1f;
+    --ink-soft: #6e6e73;
+    --card: rgba(255,255,255,.62);
+    --accent: #3b8f6e;
+    --blue: #3f7be8;
+    --red: #e5484d;
+    --green: #22a35a;
+    --gold: #e9a800;
+    --track: #dfe5e1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+
+  .glass {
+    background: var(--card); backdrop-filter: blur(22px) saturate(180%); -webkit-backdrop-filter: blur(22px) saturate(180%);
+    border: 1px solid rgba(255,255,255,.8); box-shadow: 0 20px 50px rgba(40,70,55,.12), 0 2px 6px rgba(40,70,55,.05);
+  }
+  .collapse {
+    position: absolute; top: 16px; right: 14px; z-index: 2; cursor: pointer; border: none;
+    font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent);
+    background: rgba(59,143,110,.12); border-radius: 999px; padding: 4px 12px;
+  }
+  .collapsed .body { display: none; }
+
+  /* 左：控制面板 */
+  .panel { position: absolute; top: 18px; left: 18px; width: 300px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.15rem; font-weight: 700; margin-top: 6px; padding-right: 62px; }
+
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 14px 0 12px; }
+  .tab {
+    font: inherit; font-size: .8rem; font-weight: 700; padding: 9px 6px; cursor: pointer; line-height: 1.3;
+    border: none; border-radius: 12px; background: rgba(118,118,128,.12); color: var(--ink);
+    transition: background .2s, color .2s, box-shadow .2s;
+  }
+  .tab.on { background: #fff; color: var(--accent); box-shadow: 0 3px 10px rgba(0,0,0,.1); }
+  .section[hidden] { display: none; }
+  .desc { font-size: .8rem; color: var(--ink-soft); line-height: 1.65; margin-bottom: 10px; }
+  .desc b { color: var(--ink); }
+
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 11px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .88rem; font-weight: 700; color: var(--accent); background: rgba(59,143,110,.12);
+    transition: background .2s, transform .1s;
+  }
+  .btn:hover { background: rgba(59,143,110,.2); }
+  .btn:active { transform: scale(.98); }
+  .btn.primary { color: #fff; background: var(--accent); box-shadow: 0 6px 16px rgba(59,143,110,.3); }
+  .btn.on { color: #fff; background: var(--accent); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  select {
+    width: 100%; font: inherit; font-size: .88rem; color: var(--ink); background: rgba(255,255,255,.85);
+    border: 1px solid rgba(0,0,0,.08); border-radius: 12px; padding: 10px 12px; margin: 4px 0; cursor: pointer;
+  }
+  .slider { background: rgba(255,255,255,.78); border-radius: 16px; padding: 10px 12px; margin-top: 8px; font-size: .8rem; }
+  .slider .top { display: flex; justify-content: space-between; margin-bottom: 8px; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 10px; border-radius: 999px; cursor: pointer; outline: none;
+    background: linear-gradient(90deg, #cfe3d8, #3b8f6e); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+  input[type=range]::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+
+  /* 右：數據面板 */
+  .data { position: absolute; top: 18px; right: 18px; width: 340px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 16px 16px 14px; }
+  .data.collapsed { width: auto; min-width: 200px; }
+  .data .dt { font-size: .74rem; font-weight: 800; letter-spacing: .12em; color: var(--accent); padding-right: 60px; }
+  .card { background: rgba(255,255,255,.82); border-radius: 16px; padding: 10px 12px; margin-top: 8px; font-size: .8rem; line-height: 1.55; }
+  .card .h { font-size: .7rem; font-weight: 700; color: var(--ink-soft); margin-bottom: 4px; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-variant-numeric: tabular-nums; }
+  .kv b { text-align: right; font-weight: 800; }
+  .big { font-size: 1.2rem; }
+  .conclude { background: #fff8e6; border: 1.5px solid #f2c75c; color: #6b4b00; font-weight: 600; }
+  canvas.chart { width: 100%; height: 150px; display: block; border-radius: 12px; background: #fff; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .72rem; font-weight: 700; color: #fff; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 700; padding: 3px 10px; border-radius: 12px; white-space: nowrap;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(0,0,0,.08);
+  }
+  .banner {
+    position: absolute; top: 18px; left: 50%; transform: translateX(-50%); z-index: 9; pointer-events: none;
+    padding: 10px 18px; border-radius: 18px; font-size: .95rem; font-weight: 800; opacity: 0; transition: opacity .3s;
+    background: rgba(255,248,225,.95); border: 1.5px solid #f2c75c; color: #6b4b00; text-align: center;
+  }
+  .banner.show { opacity: 1; }
+  .hint { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 5; font-size: .74rem; color: rgba(29,29,31,.5); }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 760px), (max-width: 1100px) and (orientation: portrait) {
+    .data { top: 8px; left: 8px; right: 8px; width: auto; max-height: 30vh; padding: 10px 12px; }
+    .data.collapsed { left: auto; }
+    .data .card { margin-top: 6px; padding: 8px 10px; font-size: .74rem; }
+    canvas.chart { height: 88px; }
+    .banner { top: auto; bottom: 47vh; font-size: .8rem; max-width: calc(100vw - 20px); white-space: normal; }
+    .hint { display: none; }
+  }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="scene"></div>
+<div class="banner" id="banner"></div>
+
+<!-- 左：控制面板 -->
+<aside class="panel glass" id="panel">
+  <button class="collapse" data-target="panel">收合</button>
+  <a class="back" href="index.html#g9">‹ 課程總覽</a>
+  <div class="title">運動學綜合實驗室</div>
+
+  <div class="body">
+    <div class="tabs" role="tablist">
+      <button class="tab on" data-mode="m1">① 位移 vs 路徑長</button>
+      <button class="tab" data-mode="m2">② x-t 圖 · v-t 圖</button>
+      <button class="tab" data-mode="m3">③ 自由落體 · 上拋</button>
+      <button class="tab" data-mode="m4">④ 打點計時器</button>
+    </div>
+
+    <section class="section" data-mode="m1">
+      <p class="desc">兩台車<b>同時</b>從 A 出發、<b>同時</b>抵達 B。藍車走直線，紅車走 S 型彎路。誰的平均速度大？誰的平均速率大？</p>
+      <button class="btn primary" id="m1Go">▶ 出發</button>
+      <button class="btn" id="m1Reset">↺ 回到起點</button>
+    </section>
+
+    <section class="section" data-mode="m2" hidden>
+      <p class="desc">選一種運動，小車會開 4 秒、走完 12 m。看右邊的 <b>x-t 圖</b>、<b>v-t 圖</b>即時畫出來。</p>
+      <button class="btn" data-motion="uniform">→ 等速前進</button>
+      <button class="btn" data-motion="accel">⇉ 等加速度（越來越快）</button>
+      <button class="btn" data-motion="brake">⇢ 負加速度（煞車）</button>
+    </section>
+
+    <section class="section" data-mode="m3" hidden>
+      <p class="desc">盯著兩個箭頭：<b style="color:#22a35a">綠色 = 速度 v</b>（會變）、<b style="color:#c99300">黃色 = 重力加速度 g</b>（永遠向下、不變）。</p>
+      <div class="row2">
+        <button class="btn primary" id="m3Drop">⬇ 自由落體</button>
+        <button class="btn primary" id="m3Throw">⬆ 鉛直上拋</button>
+      </div>
+      <div class="slider">
+        <div class="top"><span>慢動作</span><b id="slowVal">0.35×</b></div>
+        <input type="range" id="slow" min="0.1" max="1" step="0.05" value="0.35" aria-label="慢動作倍率">
+      </div>
+    </section>
+
+    <section class="section" data-mode="m4" hidden>
+      <p class="desc">打點計時器<b>每 0.2 秒</b>在紙帶上打一個點。點和點的間距 = 0.2 秒內走的距離。暫停後可以<b>在紙帶上拖曳</b>測量距離。</p>
+      <select id="tapeMode" aria-label="運動方式">
+        <option value="uniform">等速運動</option>
+        <option value="accel">加速度運動</option>
+      </select>
+      <div class="row2">
+        <button class="btn primary" id="m4Go">▶ 開動</button>
+        <button class="btn" id="m4Pause">⏸ 暫停</button>
+      </div>
+      <button class="btn" id="m4Reset">↺ 重來</button>
+    </section>
+
+    <button class="btn" id="viewBtn" style="margin-top:12px">重設視角</button>
+  </div>
+</aside>
+
+<!-- 右：數據面板 -->
+<aside class="data glass" id="data" aria-live="polite">
+  <button class="collapse" data-target="data">收合</button>
+  <div class="dt">DATA · 即時數據</div>
+  <div class="body" id="dataBody"></div>
+</aside>
+
+<div class="hint">拖曳旋轉 · 滾輪縮放</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__kinReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const UP = V3(0, 1, 0);
+const G = 9.8;
+
+/* =========================================================
+   Soft 3D 黏土場景
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xe4ece6);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xc9d6cd, 1.25));
+const sun = new THREE.DirectionalLight(0xffffff, 2.0);
+sun.position.set(-6, 14, 9);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 12, bottom: -12, near: 1, far: 50 });
+sun.shadow.radius = 4;
+scene.add(sun);
+
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 150);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.minDistance = 4;
+controls.maxDistance = 45;
+
+const clay = (color, extra = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.5, metalness: 0.05, clearcoat: 0.2, ...extra });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+
+// 共用地板（莫蘭迪綠的圓角大板）
+const board = new THREE.Mesh(new RoundedBoxGeometry(30, 0.5, 18, 6, 0.24), clay(0xd2ded5));
+board.position.y = -0.25;
+board.receiveShadow = true;
+scene.add(board);
+
+/** 圓潤小車（車頭朝 +x） */
+function makeCar(color) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new RoundedBoxGeometry(1.3, 0.45, 0.75, 5, 0.18), clay(color));
+  body.position.y = 0.42;
+  const cabin = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.42, 8, 16), clay(0xffffff));
+  cabin.rotation.z = Math.PI / 2;
+  cabin.position.set(-0.08, 0.72, 0);
+  g.add(body, cabin);
+  for (const [x, z] of [[0.42, 0.38], [-0.42, 0.38], [0.42, -0.38], [-0.42, -0.38]]) {
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.14, 24), clay(0x3a3f44));
+    w.rotation.x = Math.PI / 2;
+    w.position.set(x, 0.18, z);
+    g.add(w);
+  }
+  return shadowed(g);
+}
+
+/** 圓潤向量箭頭：預設指向 +y，用 setArrow 指定起點、方向、長度 */
+function makeArrow(color, r = 0.07) {
+  const g = new THREE.Group();
+  const mat = clay(color, { emissive: color, emissiveIntensity: 0.25 });
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, 16), mat);
+  const head = new THREE.Mesh(new THREE.ConeGeometry(r * 2.6, r * 4.5, 24), mat);
+  const base = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), mat);
+  g.add(shaft, head, base);
+  g.userData = { shaft, head, hl: r * 4.5 };
+  return shadowed(g);
+}
+function setArrow(A, origin, dir, len) {
+  if (len < 0.03) { A.visible = false; return; }
+  A.visible = true;
+  const { shaft, head, hl } = A.userData;
+  const h = Math.min(hl, len * 0.5), sl = Math.max(0.001, len - h);
+  shaft.scale.y = sl; shaft.position.y = sl / 2;
+  head.scale.setScalar(h / hl); head.position.y = sl + h / 2;
+  A.position.copy(origin);
+  A.quaternion.setFromUnitVectors(UP, dir.clone().normalize());
+}
+
+/* ----- 標籤 ----- */
+const labels = [];
+function addLabel(mode, html = '', style = '') {
+  const el = document.createElement('div');
+  el.className = 'tag';
+  el.innerHTML = html;
+  if (style) el.style.cssText += style;
+  document.body.appendChild(el);
+  const L = { el, mode, pos: V3(0, 0, 0), visible: true };
+  labels.push(L);
+  return L;
+}
+const tmpV = V3(0, 0, 0);
+function placeLabels() {
+  for (const L of labels) {
+    if (L.mode !== mode || !L.visible) { L.el.style.display = 'none'; continue; }
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * window.innerWidth) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * window.innerHeight) + 'px';
+  }
+}
+function banner(text, ms = 2500) {
+  $('banner').innerHTML = text;
+  $('banner').classList.add('show');
+  clearTimeout(banner.t);
+  if (ms) banner.t = setTimeout(() => $('banner').classList.remove('show'), ms);
+}
+const hideBanner = () => $('banner').classList.remove('show');
+
+/* ----- 手刻圖表 ----- */
+function drawChart(canvas, pts, o) {
+  const dpr = Math.min(window.devicePixelRatio, 2);
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  if (!W) return;
+  if (canvas.width !== W * dpr) { canvas.width = W * dpr; canvas.height = H * dpr; }
+  const g = canvas.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+  const L = 36, R = 10, T = 12, B = 24;
+  const X = t => L + (W - L - R) * t / o.xmax;
+  const Y = v => T + (H - T - B) * (1 - (v - o.ymin) / (o.ymax - o.ymin));
+  g.font = '10px -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif';
+  g.strokeStyle = '#eef1ef'; g.fillStyle = '#8a8f8c'; g.lineWidth = 1;
+  for (let k = 0; k * o.xstep <= o.xmax + 1e-9; k++) {
+    const i = Math.round(k * o.xstep * 100) / 100;           // 避免 0.4×3 = 1.2000000002 這類浮點誤差
+    g.beginPath(); g.moveTo(X(i), T); g.lineTo(X(i), H - B); g.stroke(); g.fillText(i, X(i) - 3, H - B + 13);
+  }
+  for (let v = o.ymin; v <= o.ymax + 1e-9; v += o.ystep) { g.beginPath(); g.moveTo(L, Y(v)); g.lineTo(W - R, Y(v)); g.stroke(); g.fillText(Math.round(v * 10) / 10, 4, Y(v) + 3); }
+  g.strokeStyle = '#9aa29d'; g.lineWidth = 1.4;
+  g.beginPath(); g.moveTo(L, T); g.lineTo(L, H - B); g.lineTo(W - R, H - B); g.stroke();
+  if (o.ymin < 0) { g.strokeStyle = '#c8cec9'; g.beginPath(); g.moveTo(L, Y(0)); g.lineTo(W - R, Y(0)); g.stroke(); }
+  g.fillStyle = '#4a4f4c'; g.font = '700 11px -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif';
+  g.fillText(o.ylabel, L + 4, T + 10);
+  g.fillText(o.xlabel, W - R - 34, H - B - 4);
+  if (pts.length > 1) {
+    g.strokeStyle = o.color; g.lineWidth = 3; g.lineJoin = 'round'; g.lineCap = 'round';
+    g.beginPath();
+    pts.forEach((p, i) => (i ? g.lineTo : g.moveTo).call(g, X(p[0]), Y(p[1])));
+    g.stroke();
+    const last = pts[pts.length - 1];
+    g.fillStyle = o.color; g.beginPath(); g.arc(X(last[0]), Y(last[1]), 4.5, 0, Math.PI * 2); g.fill();
+  }
+}
+const fmt = (v, d = 2) => (Math.abs(v) < 1e-9 ? 0 : v).toFixed(d);
+
+/* =========================================================
+   模組一：位移 vs 路徑長（雙車競速）
+   ========================================================= */
+const M1 = (() => {
+  const group = new THREE.Group();
+  const A = V3(-6, 0, 0), B = V3(6, 0, 0);
+  const T = 4;                                           // 兩車都花 4 秒
+  const straight = new THREE.LineCurve3(A.clone().setY(0.06), B.clone().setY(0.06));
+  const sPts = [];
+  for (let i = 0; i <= 48; i++) { const x = -6 + 12 * i / 48; sPts.push(V3(x, 0.06, -3.0 * Math.sin(2 * Math.PI * (x + 6) / 12))); }
+  const sCurve = new THREE.CatmullRomCurve3(sPts);
+  const DISP = A.distanceTo(B), PATH_S = sCurve.getLength();
+
+  // 軌道（淡）與尾跡（亮，逐步顯示）
+  const track = (cv, color) => {
+    const m = new THREE.Mesh(new THREE.TubeGeometry(cv, 200, 0.22, 12, false), clay(color, { transparent: true, opacity: 0.35 }));
+    m.receiveShadow = true; group.add(m);
+  };
+  track(straight, 0x9fbdf5); track(sCurve, 0xf5a3a6);
+  const trail = (cv, color) => {
+    const m = new THREE.Mesh(new THREE.TubeGeometry(cv, 300, 0.09, 10, false), clay(color, { emissive: color, emissiveIntensity: 0.35 }));
+    m.position.y = 0.08; group.add(m);
+    m.geometry.setDrawRange(0, 0);
+    return m;
+  };
+  const trailB = trail(straight, 0x3f7be8), trailR = trail(sCurve, 0xe5484d);
+  // 起點、終點旗桿
+  [['A', A], ['B', B]].forEach(([n, p]) => {
+    const pole = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 1.6, 6, 12), clay(0xffffff));
+    pole.position.copy(p).add(V3(0, 0.9, 0));
+    const flag = new THREE.Mesh(new RoundedBoxGeometry(0.7, 0.45, 0.06, 3, 0.03), clay(n === 'A' ? 0x3b8f6e : 0xf2b84b));
+    flag.position.copy(p).add(V3(0.38, 1.45, 0));
+    group.add(shadowed(pole), shadowed(flag));
+    const L = addLabel('m1', n, 'font-size:.95rem'); L.pos.copy(p).add(V3(0, 2.15, 0));
+  });
+  const carB = makeCar(0x3f7be8), carR = makeCar(0xe5484d);
+  group.add(carB, carR);
+  // 位移向量（終點後出現）：兩車的位移都是 A → B
+  const dispArrow = makeArrow(0x8b5cf6, 0.1);
+  group.add(dispArrow);
+  dispArrow.visible = false;
+  const lDisp = addLabel('m1', '位移 = 12 m（兩車相同！）', 'color:#7c3aed'); lDisp.pos.set(0, 1.9, 0.6); lDisp.visible = false;
+  const lB = addLabel('m1', '藍車：直線', 'color:#3f7be8'); lB.pos.set(-1.5, 0.6, 0.9);
+  const lR = addLabel('m1', '紅車：S 型彎路', 'color:#e5484d'); lR.pos.set(-3.0, 0.6, -3.6);
+
+  let t = 0, running = false;
+  function place(car, cv, u) {
+    const p = cv.getPointAt(Math.min(u, 1)), tg = cv.getTangentAt(Math.min(u, 0.999));
+    car.position.set(p.x, 0, p.z);
+    car.rotation.y = Math.atan2(-tg.z, tg.x);
+  }
+  function reset() { t = 0; running = false; update(0); dispArrow.visible = lDisp.visible = false; hideBanner(); render(); }
+  function update(dt) {
+    if (running) { t = Math.min(T, t + dt); if (t >= T) { running = false; finish(); } }
+    const u = t / T;                                       // 兩車都以「固定速率」前進
+    place(carB, straight, u); place(carR, sCurve, u);
+    trailB.geometry.setDrawRange(0, Math.floor(trailB.geometry.index.count * u / 6) * 6);
+    trailR.geometry.setDrawRange(0, Math.floor(trailR.geometry.index.count * u / 6) * 6);
+  }
+  function finish() {
+    setArrow(dispArrow, A.clone().add(V3(0, 1.2, 0.6)), V3(1, 0, 0), DISP);
+    lDisp.visible = true;
+    banner('同時出發、同時到達：<span style="color:#7c3aed">位移相同 → 平均速度相同</span>；<span style="color:#e5484d">紅車路徑較長 → 平均速率較大</span>', 0);
+  }
+  function render() {
+    const u = t / T;
+    const pB = DISP * u, pR = PATH_S * u;
+    const dB = carB.position.distanceTo(A), dR = V3(carR.position.x, 0, carR.position.z).distanceTo(A);
+    const tt = Math.max(t, 1e-9);
+    const done = t >= T;
+    $('dataBody').innerHTML = `
+      <div class="card"><div class="h">時間</div><div class="big"><b>t = ${fmt(t)} s</b> / ${T} s</div></div>
+      <div class="card"><div class="h"><span class="pill" style="background:#3f7be8">藍車（直線）</span></div>
+        <div class="kv"><span>路徑長</span><b>${fmt(pB)} m</b><span>位移</span><b>${fmt(dB)} m</b>
+        <span>平均速率 = 路徑長 ÷ 時間</span><b>${t ? fmt(pB / tt) : '—'} m/s</b><span>平均速度 = 位移 ÷ 時間</span><b>${t ? fmt(dB / tt) : '—'} m/s</b></div></div>
+      <div class="card"><div class="h"><span class="pill" style="background:#e5484d">紅車（S 型）</span></div>
+        <div class="kv"><span>路徑長</span><b>${fmt(pR)} m</b><span>位移</span><b>${fmt(dR)} m</b>
+        <span>平均速率 = 路徑長 ÷ 時間</span><b>${t ? fmt(pR / tt) : '—'} m/s</b><span>平均速度 = 位移 ÷ 時間</span><b>${t ? fmt(dR / tt) : '—'} m/s</b></div></div>
+      ${done ? `<div class="card conclude">因為花費時間相同（${T} s）：<br>
+        ・紅車的<b>路徑長 ${fmt(PATH_S, 1)} m</b> 大於藍車的<b>位移 12 m</b>，所以紅車的<b>平均速率（${fmt(PATH_S / T)} m/s）</b>大於藍車的<b>平均速度（3.00 m/s）</b>。<br>
+        ・但兩車<b>位移都是 12 m</b>，所以<b>平均速度一樣（3.00 m/s）</b>！走直線時，路徑長 = 位移，平均速率 = 平均速度。</div>` : ''}`;
+  }
+  $('m1Go').addEventListener('click', () => { reset(); running = true; });
+  $('m1Reset').addEventListener('click', reset);
+  return { group, update: dt => { const was = running; update(dt); if (was || running || dt === 0) render(); }, enter: reset, camera: { pos: [0, 10, 13.5], target: [0, 0, -0.3] }, get state() { return { t, PATH_S, DISP }; } };
+})();
+
+/* =========================================================
+   模組二：x-t 圖、v-t 圖與加速度
+   ========================================================= */
+const M2 = (() => {
+  const group = new THREE.Group();
+  const X0 = -6, T = 4;
+  const MOTIONS = {
+    uniform: { name: '等速前進', v0: 3, a: 0 },
+    accel:   { name: '等加速度（越來越快）', v0: 0, a: 1.5 },
+    brake:   { name: '負加速度（煞車）', v0: 6, a: -1.5 }
+  };
+  // 直線軌道 + 刻度
+  const rail = new THREE.Mesh(new RoundedBoxGeometry(14, 0.12, 1.6, 4, 0.05), clay(0xf4f1ea));
+  rail.position.set(0, 0.06, 0); rail.receiveShadow = true; group.add(rail);
+  for (let m = 0; m <= 12; m++) {
+    const tick = new THREE.Mesh(new RoundedBoxGeometry(0.05, 0.02, m % 4 ? 0.3 : 0.6, 2, 0.01), clay(0x6b7280));
+    tick.position.set(X0 + m, 0.13, 0.62); group.add(tick);
+    if (m % 2 === 0) { const L = addLabel('m2', `${m} m`, 'font-size:.66rem;padding:1px 6px'); L.pos.set(X0 + m, 0.1, 1.15); }
+  }
+  const car = makeCar(0x3b8f6e);
+  group.add(car);
+  const vArrow = makeArrow(0x22a35a, 0.08), aArrow = makeArrow(0xf59e0b, 0.06);
+  group.add(vArrow, aArrow);
+  const lv = addLabel('m2', '', 'color:#22a35a'), la = addLabel('m2', '', 'color:#c27c00');
+  // 每 0.5 秒留下一個「頻閃」記號，看出位置間隔的變化
+  const strobeMat = clay(0x3b8f6e, { transparent: true, opacity: 0.35 });
+  const strobes = [];
+
+  let motion = 'accel', t = 0, running = false, samples = [], nextStrobe = 0;
+  const state = tt => { const M = MOTIONS[motion]; return { x: M.v0 * tt + 0.5 * M.a * tt * tt, v: M.v0 + M.a * tt, a: M.a }; };   // S = v0t + ½at²、v = v0 + at
+
+  function clearStrobes() { strobes.forEach(s => { group.remove(s); s.geometry.dispose(); }); strobes.length = 0; }
+  function start(m) {
+    motion = m; t = 0; running = true; samples = [[0, state(0).x, state(0).v]]; nextStrobe = 0; clearStrobes();
+    document.querySelectorAll('[data-motion]').forEach(b => b.classList.toggle('on', b.dataset.motion === m));
+  }
+  function update(dt) {
+    if (running) {
+      t = Math.min(T, t + dt);
+      const s = state(t);
+      samples.push([t, s.x, s.v]);
+      while (t >= nextStrobe - 1e-9) {
+        const g = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.04, 24), strobeMat);
+        g.position.set(X0 + state(nextStrobe).x, 0.15, -0.4);
+        group.add(g); strobes.push(g);
+        nextStrobe += 0.5;
+      }
+      if (t >= T) running = false;
+    }
+    const s = state(t);
+    car.position.set(X0 + s.x - 0.0, 0.12, -0.2);
+    setArrow(vArrow, V3(car.position.x, 1.35, -0.2), V3(1, 0, 0), Math.abs(s.v) * 0.42);
+    setArrow(aArrow, V3(car.position.x + (s.a >= 0 ? 0.7 : -0.7), 0.42, 0.45), V3(Math.sign(s.a) || 1, 0, 0), Math.abs(s.a) * 0.55);
+    lv.pos.set(car.position.x + Math.abs(s.v) * 0.21, 1.75, -0.2); lv.el.textContent = `v = ${fmt(s.v, 1)} m/s`;
+    la.pos.set(car.position.x + (s.a >= 0 ? 1.2 : -1.2), 0.9, 0.45); la.el.textContent = s.a ? `a = ${fmt(s.a, 1)} m/s²` : 'a = 0';
+    la.visible = true;
+    render();
+  }
+  function render() {
+    const M = MOTIONS[motion], s = state(t);
+    if (!$('xt')) {
+      $('dataBody').innerHTML = `
+        <div class="card"><div class="h" id="m2Name"></div><div class="kv" id="m2kv"></div></div>
+        <div class="card"><div class="h">x-t 圖（位置 − 時間）</div><canvas class="chart" id="xt"></canvas></div>
+        <div class="card"><div class="h">v-t 圖（速度 − 時間）</div><canvas class="chart" id="vt"></canvas></div>
+        <div class="card" id="m2tip"></div>`;
+    }
+    $('m2Name').textContent = M.name + `：v₀ = ${M.v0} m/s，a = ${M.a} m/s²`;
+    $('m2kv').innerHTML = `<span>時間 t</span><b>${fmt(t)} s</b><span>位置 x = v₀t + ½at²</span><b>${fmt(s.x)} m</b><span>速度 v = v₀ + at</span><b>${fmt(s.v)} m/s</b>`;
+    drawChart($('xt'), samples.map(p => [p[0], p[1]]), { xmax: 4, xstep: 1, ymin: 0, ymax: 12, ystep: 3, color: '#3b8f6e', ylabel: 'x (m)', xlabel: 't (s)' });
+    drawChart($('vt'), samples.map(p => [p[0], p[2]]), { xmax: 4, xstep: 1, ymin: 0, ymax: 6, ystep: 2, color: '#22a35a', ylabel: 'v (m/s)', xlabel: 't (s)' });
+    $('m2tip').innerHTML = {
+      uniform: '<b>等速</b>：v-t 圖是<b>水平線</b>（速度不變）；x-t 圖是<b>斜直線</b>，斜率 = 速度。',
+      accel: '<b>等加速度</b>：v-t 圖是<b>斜直線</b>（斜率 = 加速度）；x-t 圖是<b>拋物線</b>（越來越陡）。綠色速度箭頭越變越長。',
+      brake: '<b>負加速度</b>：v-t 圖是<b>往下的斜直線</b>，最後 v = 0；x-t 圖越來越平。加速度箭頭（橘）和速度方向<b>相反</b>。'
+    }[motion];
+  }
+  document.querySelectorAll('[data-motion]').forEach(b => b.addEventListener('click', () => start(b.dataset.motion)));
+  return { group, update, enter: () => { $('dataBody').innerHTML = ''; samples = [[0, 0, MOTIONS[motion].v0]]; t = 0; running = false; clearStrobes(); render(); }, camera: { pos: [0, 5, 12], target: [0, 0.6, 0] }, state, get t() { return t; }, start };
+})();
+
+/* =========================================================
+   模組三：自由落體與鉛直上拋
+   ========================================================= */
+const M3 = (() => {
+  const group = new THREE.Group();
+  const R = 0.32, V0 = 10, DROP_H = 6.5;
+  // 發球機
+  const launcher = new THREE.Group();
+  const base = new THREE.Mesh(new RoundedBoxGeometry(1.4, 0.6, 1.4, 5, 0.2), clay(0x6b8f80));
+  base.position.y = 0.3;
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.42, 0.5, 32), clay(0xf4f1ea));
+  tube.position.y = 0.85;
+  launcher.add(base, tube);
+  launcher.position.x = 0;
+  group.add(shadowed(launcher));
+  // 高度尺
+  const pole = new THREE.Mesh(new RoundedBoxGeometry(0.16, 7.4, 0.16, 3, 0.06), clay(0xffffff));
+  pole.position.set(-1.6, 3.7, 0); group.add(shadowed(pole));
+  for (let h = 0; h <= 7; h++) {
+    const tick = new THREE.Mesh(new RoundedBoxGeometry(0.4, 0.04, 0.08, 2, 0.015), clay(0x6b7280));
+    tick.position.set(-1.6, h, 0.05); group.add(tick);
+    const L = addLabel('m3', `${h} m`, 'font-size:.64rem;padding:1px 6px'); L.pos.set(-2.15, h, 0);
+  }
+  // 自由落體的夾臂
+  const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 1.4, 6, 12), clay(0x9aa29d));
+  arm.rotation.z = Math.PI / 2; arm.position.set(-0.75, DROP_H + R + 0.05, 0);
+  group.add(shadowed(arm));
+
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(R, 40, 28), clay(0xff8a5b, { emissive: 0xff6a2a, emissiveIntensity: 0.35 }));
+  ball.castShadow = true;
+  group.add(ball);
+  const gArrow = makeArrow(0xf2c230, 0.07), vArrow = makeArrow(0x22a35a, 0.08);
+  group.add(gArrow, vArrow);
+  const lg = addLabel('m3', 'g = 9.8 m/s²（向下，永遠不變）', 'color:#a07800');
+  const lv = addLabel('m3', '', 'color:#22a35a');
+  const ghostMat = clay(0xff8a5b, { transparent: true, opacity: 0.22 });
+  const ghosts = [];
+
+  let kind = null, t = 0, y0 = 0, v0 = 0, running = false, peakHold = 0, peaked = false, slow = 0.35, samples = [], nextGhost = 0;
+  const yAt = tt => y0 + v0 * tt - 0.5 * G * tt * tt;   // S = v0t + ½at²（a = −g）
+  const vAt = tt => v0 - G * tt;                        // v = v0 + at
+
+  function clearGhosts() { ghosts.forEach(g => group.remove(g)); ghosts.length = 0; }
+  function start(k) {
+    kind = k; t = 0; peaked = false; peakHold = 0; running = true; nextGhost = 0; clearGhosts(); hideBanner();
+    if (k === 'drop') { y0 = DROP_H; v0 = 0; } else { y0 = 1.1 + R; v0 = V0; }
+    arm.visible = k === 'drop';
+    samples = [[0, v0]];
+  }
+  function update(dt) {
+    if (running) {
+      if (peakHold > 0) { peakHold -= dt; }               // 在最高點停一下
+      else {
+        let nt = t + dt * slow;
+        // 上拋：剛好跨過最高點時，停在 t = v0/g（v = 0）
+        if (kind === 'throw' && !peaked && vAt(nt) <= 0) { nt = v0 / G; peaked = true; peakHold = 2.2;
+          banner('最高點：<span style="color:#22a35a">v = 0</span>，但 <span style="color:#a07800">a = g = 9.8 m/s²（仍然向下）</span>！', 2600); }
+        t = nt;
+        if (yAt(t) <= R) {                                 // 落地
+          t = (v0 + Math.sqrt(v0 * v0 + 2 * G * (y0 - R))) / G;
+          running = false;
+        }
+        while (t >= nextGhost - 1e-9 && nextGhost <= t) {  // 每 0.2 秒的頻閃殘影
+          const g = new THREE.Mesh(ball.geometry, ghostMat);
+          g.position.set(0.9, yAt(nextGhost), 0); group.add(g); ghosts.push(g);
+          nextGhost += 0.2;
+        }
+        samples.push([t, vAt(t)]);
+      }
+    }
+    const y = kind ? yAt(t) : DROP_H, v = kind ? vAt(t) : 0;
+    ball.position.set(0, kind ? y : 1.1 + R, 0);
+    // 黃色重力加速度：永遠向下、長度不變
+    setArrow(gArrow, V3(0.55, ball.position.y + 0.1, 0), V3(0, -1, 0), 1.4);
+    lg.pos.set(1.9, ball.position.y - 0.6, 0);
+    // 綠色速度：方向隨 v 正負，長度 ∝ |v|；v = 0 時消失
+    const vlen = Math.abs(v) * 0.16;
+    setArrow(vArrow, V3(-0.5, ball.position.y, 0), V3(0, Math.sign(v) || 1, 0), vlen);
+    lv.pos.set(-0.5, ball.position.y + Math.sign(v || 1) * (vlen + 0.35), 0);
+    lv.el.textContent = Math.abs(v) < 0.05 ? 'v = 0（綠色箭頭消失）' : `v = ${fmt(Math.abs(v), 1)} m/s ${v > 0 ? '↑' : '↓'}`;
+    render(y, v);
+  }
+  function render(y, v) {
+    if (!$('vt3')) {
+      $('dataBody').innerHTML = `
+        <div class="card"><div class="h" id="m3Name">選擇自由落體或鉛直上拋</div><div class="kv" id="m3kv"></div></div>
+        <div class="card"><div class="h">v-t 圖（向上為正）</div><canvas class="chart" id="vt3"></canvas></div>
+        <div class="card conclude">不論上升、最高點或下降，加速度都是 <b>g = 9.8 m/s²、向下</b>。最高點只是「速度為 0」，<b>加速度不是 0</b>！</div>`;
+    }
+    $('m3Name').textContent = kind === 'drop' ? `自由落體：從 ${DROP_H} m 靜止釋放（v₀ = 0）` : kind === 'throw' ? `鉛直上拋：v₀ = ${V0} m/s 向上` : '選擇自由落體或鉛直上拋';
+    $('m3kv').innerHTML = `<span>時間 t</span><b>${fmt(t)} s</b><span>高度 y</span><b>${fmt(Math.max(0, y - R))} m</b>
+      <span>速度 v = v₀ − gt</span><b>${fmt(v)} m/s</b><span>加速度 a</span><b>−9.8 m/s²（向下）</b>`;
+    drawChart($('vt3'), samples, { xmax: 2.4, xstep: 0.4, ymin: -12, ymax: 12, ystep: 6, color: '#22a35a', ylabel: 'v (m/s)', xlabel: 't (s)' });
+  }
+  $('m3Drop').addEventListener('click', () => start('drop'));
+  $('m3Throw').addEventListener('click', () => start('throw'));
+  $('slow').addEventListener('input', e => { slow = Number(e.target.value); $('slowVal').textContent = slow.toFixed(2) + '×'; });
+  return { group, update, enter: () => { $('dataBody').innerHTML = ''; kind = null; running = false; samples = []; clearGhosts(); arm.visible = false; update(0); }, camera: { pos: [6, 4.5, 13], target: [0, 3.2, 0] }, yAt, vAt, start, get t() { return t; }, get peaked() { return peaked; } };
+})();
+
+/* =========================================================
+   模組四：打點計時器（紙帶工廠）
+   ---------------------------------------------------------
+   比例：1 單位 = 10 cm；每 0.2 秒打一點
+   ========================================================= */
+const M4 = (() => {
+  const group = new THREE.Group();
+  const TICK = 0.2, TIMER_X = -2.2, TAPE_Y = 0.42, TAPE_LEN = 16, CM = 10;
+  const MOTIONS = { uniform: { v0: 1.5, a: 0 }, accel: { v0: 0.3, a: 0.9 } };
+  // 桌面
+  const table = new THREE.Mesh(new RoundedBoxGeometry(22, 0.2, 3, 4, 0.08), clay(0xf4f1ea));
+  table.position.set(0, 0.1, 0.4); table.receiveShadow = true; group.add(table);
+  // 打點計時器
+  const timer = new THREE.Group();
+  const tBody = new THREE.Mesh(new RoundedBoxGeometry(1.0, 1.0, 1.3, 5, 0.18), clay(0x6b8f80));
+  tBody.position.y = 1.05;
+  const slot = new THREE.Mesh(new RoundedBoxGeometry(1.1, 0.12, 0.9, 3, 0.05), clay(0x4c6a5e));
+  slot.position.y = 0.3;
+  const striker = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.4, 6, 12), clay(0x30363b));
+  striker.position.y = 0.75;
+  timer.add(tBody, slot, striker);
+  timer.position.set(TIMER_X, 0, 0.4);
+  group.add(shadowed(timer));
+  const lTimer = addLabel('m4', '打點計時器（每 0.2 秒打一點）'); lTimer.pos.set(TIMER_X, 2.0, 0.4);
+
+  const car = makeCar(0x3f7be8);
+  group.add(car);
+  // 紙帶（跟著小車移動），點就打在紙帶上
+  const tape = new THREE.Group();
+  const paper = new THREE.Mesh(new RoundedBoxGeometry(TAPE_LEN, 0.02, 0.5, 2, 0.008), clay(0xffffff, { transparent: true, opacity: 0.8 }));
+  paper.position.x = -TAPE_LEN / 2;
+  paper.receiveShadow = true;
+  tape.add(paper);
+  group.add(tape);
+  const dotGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.03, 16), dotMat = clay(0x111111);
+  const dots = [];
+  // 測量尺
+  const measure = new THREE.Group();
+  const mLine = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1, 10), clay(0xf97316, { emissive: 0xf97316, emissiveIntensity: 0.4 }));
+  mLine.rotation.z = Math.PI / 2;
+  const mEnds = [0, 1].map(() => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.07, 14, 10), clay(0xf97316)); measure.add(e); return e; });
+  measure.add(mLine);
+  measure.visible = false;
+  tape.add(measure);
+  const lMeasure = addLabel('m4', '', 'color:#c2410c;border:1.5px solid #f97316');
+  lMeasure.visible = false;
+
+  let motion = 'uniform', t = 0, running = false, paused = false, nextTick = 0, strikeT = 0, startX = TIMER_X + 1.1;
+  const xAt = tt => { const M = MOTIONS[motion]; return startX + M.v0 * tt + 0.5 * M.a * tt * tt; };   // S = v0t + ½at²
+  function clearDots() { dots.forEach(d => tape.remove(d)); dots.length = 0; }
+  function reset() {
+    motion = $('tapeMode').value; t = 0; running = false; paused = false; nextTick = 0; clearDots();
+    measure.visible = false; lMeasure.visible = false;
+    $('m4Pause').textContent = '⏸ 暫停';
+    update(0);
+  }
+  function update(dt) {
+    if (running && !paused) {
+      t += dt * 0.6;                                       // 稍微放慢，看得清楚打點
+      while (t >= nextTick - 1e-9) {                       // 每 0.2 秒打一點：點留在紙帶當時經過打點器的位置
+        const d = new THREE.Mesh(dotGeo, dotMat);
+        d.position.set(TIMER_X - xAt(nextTick) + 0.0, 0.025, 0);   // 紙帶座標：打點器位置 − 小車位置
+        d.userData.tick = Math.round(nextTick / TICK);
+        tape.add(d); dots.push(d);
+        nextTick += TICK; strikeT = 0.12;
+      }
+      if (xAt(t) > 8.2) { running = false; banner('小車到底了！按「暫停」後可以在紙帶上拖曳測量', 3000); }
+    }
+    strikeT = Math.max(0, strikeT - dt);
+    striker.position.y = 0.75 - (strikeT > 0 ? 0.28 : 0);
+    const x = xAt(t);
+    car.position.set(x + 0.65, TAPE_Y - 0.25, 0.4);
+    tape.position.set(x, TAPE_Y, 0.4);
+    render();
+  }
+  function spacings() {
+    const xs = dots.map(d => d.position.x).sort((a, b) => b - a);   // 由最早的點（最靠近小車）開始
+    const s = [];
+    for (let i = 1; i < xs.length; i++) s.push((xs[i - 1] - xs[i]) * CM);
+    return s;
+  }
+  function render() {
+    const sp = spacings();
+    if (!$('bars')) {
+      $('dataBody').innerHTML = `
+        <div class="card"><div class="kv" id="m4kv"></div></div>
+        <div class="card"><div class="h">相鄰兩點的間距（每格 0.2 秒）</div><canvas class="chart" id="bars"></canvas></div>
+        <div class="card" id="m4tip"></div>`;
+    }
+    const M = MOTIONS[motion];
+    $('m4kv').innerHTML = `<span>運動方式</span><b>${motion === 'uniform' ? '等速' : '加速度'}</b><span>時間 t</span><b>${fmt(t)} s</b>
+      <span>已打點數</span><b>${dots.length} 點</b><span>小車速度</span><b>${fmt((M.v0 + M.a * t) * CM, 1)} cm/s</b>`;
+    // 長條圖
+    const c = $('bars'), dpr = Math.min(window.devicePixelRatio, 2), W = c.clientWidth, H = c.clientHeight;
+    if (W) {
+      if (c.width !== W * dpr) { c.width = W * dpr; c.height = H * dpr; }
+      const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+      const max = Math.max(3.5, ...sp), n = Math.max(12, sp.length), bw = (W - 16) / n;
+      g.fillStyle = '#8a8f8c'; g.font = '10px -apple-system, "PingFang TC", sans-serif';
+      sp.forEach((v, i) => {
+        const h = (H - 26) * v / max;
+        g.fillStyle = motion === 'uniform' ? '#3f7be8' : '#e5484d';
+        g.beginPath(); g.roundRect(8 + i * bw + 1, H - 14 - h, bw - 2, h, 3); g.fill();
+      });
+      g.fillStyle = '#4a4f4c'; g.fillText(sp.length ? `最後一段：${fmt(sp[sp.length - 1], 1)} cm` : '尚未打點', 8, 12);
+    }
+    $('m4tip').innerHTML = motion === 'uniform'
+      ? '<b>等速</b>：每 0.2 秒走的距離都一樣 → 點的間距<b>完全相等</b>。'
+      : '<b>加速度</b>：速度越來越快 → 每 0.2 秒走得越來越遠 → 點的間距<b>越來越大</b>（而且每次增加的量相同）。';
+  }
+
+  /* ----- 暫停後：在紙帶上拖曳測量 ----- */
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  let measuring = false, mStart = 0;
+  const tapeLocalX = e => {
+    const r = renderer.domElement.getBoundingClientRect();
+    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const hit = ray.intersectObject(paper)[0];
+    if (!hit) return null;
+    let lx = tape.worldToLocal(hit.point.clone()).x;
+    // 靠近黑點時自動吸附
+    let best = null;
+    dots.forEach(d => { if (Math.abs(d.position.x - lx) < 0.12 && (!best || Math.abs(d.position.x - lx) < Math.abs(best.position.x - lx))) best = d; });
+    return best ? best.position.x : lx;
+  };
+  const showMeasure = (a, b) => {
+    const len = Math.abs(b - a);
+    measure.visible = len > 0.01;
+    mLine.scale.y = len; mLine.position.set((a + b) / 2, 0.12, 0);
+    mEnds[0].position.set(a, 0.12, 0); mEnds[1].position.set(b, 0.12, 0);
+    const between = dots.filter(d => d.position.x > Math.min(a, b) - 1e-6 && d.position.x < Math.max(a, b) + 1e-6).length;
+    const intervals = Math.max(0, between - 1);
+    lMeasure.visible = len > 0.01;
+    lMeasure.pos.copy(tape.localToWorld(V3((a + b) / 2, 0.6, 0)));
+    lMeasure.el.innerHTML = `${fmt(len * CM, 1)} cm${intervals ? `｜${intervals} 個間隔 = ${fmt(intervals * TICK, 1)} 秒` : ''}`;
+  };
+  renderer.domElement.addEventListener('pointerdown', e => {
+    if (mode !== 'm4' || (running && !paused)) return;
+    const x = tapeLocalX(e);
+    if (x === null) return;
+    e.stopImmediatePropagation();
+    measuring = true; mStart = x; controls.enabled = false;
+    renderer.domElement.setPointerCapture(e.pointerId);
+    showMeasure(x, x);
+  }, { capture: true });
+  renderer.domElement.addEventListener('pointermove', e => {
+    if (!measuring) return;
+    const x = tapeLocalX(e);
+    if (x !== null) showMeasure(mStart, x);
+  });
+  const endMeasure = () => { measuring = false; controls.enabled = true; };
+  renderer.domElement.addEventListener('pointerup', endMeasure);
+  renderer.domElement.addEventListener('pointercancel', endMeasure);
+
+  $('m4Go').addEventListener('click', () => { if (!running) { reset(); running = true; } else if (paused) { paused = false; $('m4Pause').textContent = '⏸ 暫停'; } });
+  $('m4Pause').addEventListener('click', () => {
+    if (!running && !dots.length) return;
+    paused = !paused;
+    $('m4Pause').textContent = paused ? '▶ 繼續' : '⏸ 暫停';
+    if (paused) banner('已暫停：用滑鼠在紙帶上拖曳，測量兩點的距離', 3000);
+  });
+  $('m4Reset').addEventListener('click', reset);
+  $('tapeMode').addEventListener('change', reset);
+  return { group, update, enter: () => { $('dataBody').innerHTML = ''; reset(); }, camera: { pos: [2.6, 8.5, 13], target: [2.6, 0.2, 0.4] }, spacings, start: m => { $('tapeMode').value = m; reset(); running = true; }, get dots() { return dots; } };
+})();
+
+/* =========================================================
+   模式切換與主迴圈
+   ========================================================= */
+const MODES = { m1: M1, m2: M2, m3: M3, m4: M4 };
+Object.values(MODES).forEach(m => { m.group.visible = false; scene.add(m.group); });
+let mode = 'm1';
+
+function resetView() {
+  const c = MODES[mode].camera;
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.MobileView?.isMobile()) {
+    // 桌機：讓場景置中在左右兩個面板之間
+    const visW = 2 * pos.distanceTo(tgt) * Math.tan(camera.fov * Math.PI / 360) * camera.aspect;
+    const lp = $('panel'), rp = $('data');
+    const left = lp.classList.contains('collapsed') ? 0 : lp.getBoundingClientRect().right;
+    const right = rp.classList.contains('collapsed') ? 0 : window.innerWidth - rp.getBoundingClientRect().left;
+    const shift = (right - left) / 2 / window.innerWidth * visW;
+    pos.x += shift; tgt.x += shift;
+  }
+  camera.position.copy(pos);
+  controls.target.copy(tgt);
+  controls.update();
+  // 直式手機：①②④ 是很長的水平軌道，要退更遠；③ 是直立的，退一點就夠
+  window.MobileView?.frame(camera, controls, mode === 'm3' ? 1.9 : 1.65);
+}
+function setMode(m) {
+  mode = m;
+  Object.entries(MODES).forEach(([k, v]) => { v.group.visible = k === m; });
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+  document.querySelectorAll('.section').forEach(s => { s.hidden = s.dataset.mode !== m; });
+  hideBanner();
+  MODES[m].enter();
+  resetView();
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+$('viewBtn').addEventListener('click', resetView);
+document.querySelectorAll('.collapse').forEach(b => b.addEventListener('click', () => {
+  const p = $(b.dataset.target);
+  const c = p.classList.toggle('collapsed');
+  b.textContent = c ? '展開' : '收合';
+}));
+
+function resize() {
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.fov = 40;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  MODES[mode].update(dt);
+  controls.update();
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.kin = { M1, M2, M3, M4, setMode, frame, camera, controls, scene };   // 除錯 / 驗證用
+
+resize();
+setMode('m1');
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__kinReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>
