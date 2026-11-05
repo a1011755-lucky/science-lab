@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>酵素鎖鑰假說</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+<style>
+  :root {
+    --bg: #f5f5f0;
+    --surface: #fbfaf6;
+    --ink: #3b3833;
+    --ink-soft: #6f6a62;
+    --line: #e3ded2;
+    --sage: #8c9a7e;
+    --clay: #b08d76;
+    --mist: #7f90a3;
+    --ok: #7f9873;
+    --warn: #c2a061;
+    --bad: #b77e72;
+    --radius: 16px;
+    --ease: cubic-bezier(.22,.61,.36,1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+    line-height: 1.7; letter-spacing: .02em;
+  }
+  h1, h2 { font-family: "Noto Serif TC", "Noto Sans TC", serif; letter-spacing: .04em; }
+  a { color: inherit; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 28px 24px 56px; }
+
+  /* ===== 標題 ===== */
+  .top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .back { font-size: .85rem; color: var(--ink-soft); text-decoration: none; display: inline-block; margin-bottom: 8px; }
+  .back:hover { color: var(--ink); }
+  .top h1 { font-size: clamp(1.5rem, 3.4vw, 2rem); line-height: 1.3; }
+  .top p { color: var(--ink-soft); font-size: .92rem; }
+  .tag { font-size: .75rem; padding: 3px 12px; border: 1px solid var(--sage); color: var(--sage); border-radius: 999px; white-space: nowrap; }
+
+  /* ===== 控制面板 ===== */
+  .panel {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 20px 24px; margin-bottom: 18px;
+    display: grid; grid-template-columns: 1fr 1fr 1.1fr; gap: 22px 28px; align-items: start;
+  }
+  .ctrl label { display: flex; justify-content: space-between; align-items: baseline; font-size: .9rem; font-weight: 500; margin-bottom: 10px; }
+  .ctrl output { font-family: "Noto Serif TC", serif; font-size: 1.25rem; font-weight: 600; }
+  .ctrl small { display: block; margin-top: 8px; font-size: .78rem; color: var(--ink-soft); }
+
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 999px; outline: none; cursor: pointer; }
+  #tempRange { background: linear-gradient(90deg, #a9b8c6, #c9d3b8 40%, #d9b99a 65%, #c48f7f); }
+  #phRange   { background: linear-gradient(90deg, #d4a39a, #dcc59c 30%, #b8c7a8 50%, #a9bcc9 70%, #9ea2c4); }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--surface); border: 2px solid var(--ink); box-shadow: 0 2px 6px rgba(59,56,51,.18);
+    transition: transform .2s var(--ease);
+  }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.12); }
+  input[type=range]::-moz-range-thumb {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--surface); border: 2px solid var(--ink);
+  }
+  input[type=range]:focus-visible { outline: 2px solid var(--ink); outline-offset: 6px; }
+  .scale { display: flex; justify-content: space-between; font-size: .7rem; color: var(--ink-soft); margin-top: 6px; }
+
+  .status { border-left: 1px solid var(--line); padding-left: 24px; display: grid; gap: 10px; font-size: .85rem; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .chip { font-size: .78rem; padding: 3px 12px; border-radius: 999px; color: #fff; background: var(--ok); transition: background .3s var(--ease); white-space: nowrap; }
+  .chip.warn { background: var(--warn); }
+  .chip.bad { background: var(--bad); }
+  .bar { flex: 1; height: 8px; background: #ebe6db; border-radius: 999px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 100%; background: var(--sage); border-radius: 999px; transition: width .3s var(--ease), background .3s var(--ease); }
+  .num { font-family: "Noto Serif TC", serif; font-weight: 600; min-width: 3.2em; text-align: right; }
+  .btn {
+    margin-top: 2px; border: 1px solid var(--ink); background: transparent; color: var(--ink);
+    padding: 7px 14px; border-radius: 999px; cursor: pointer; font: inherit; font-size: .82rem;
+    transition: background .25s var(--ease), color .25s var(--ease);
+  }
+  .btn:hover { background: var(--ink); color: var(--bg); }
+
+  /* ===== 畫布 ===== */
+  .stage-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  #stage { width: 100%; line-height: 0; }
+  #stage canvas { display: block; touch-action: none; }
+
+  /* ===== 說明 ===== */
+  .notes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 18px; }
+  .note { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font-size: .85rem; color: var(--ink-soft); }
+  .note b { display: block; color: var(--ink); font-size: .92rem; margin-bottom: 4px; }
+
+  .fallback { padding: 40px 20px; text-align: center; color: var(--ink-soft); font-size: .9rem; line-height: 1.8; }
+
+  @media (max-width: 820px) {
+    .panel { grid-template-columns: 1fr 1fr; }
+    .status { grid-column: 1 / -1; border-left: none; padding-left: 0; border-top: 1px solid var(--line); padding-top: 16px; }
+    .notes { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 560px) {
+    .wrap { padding: 20px 16px 40px; }
+    .panel { grid-template-columns: 1fr; padding: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <a class="back" href="index.html#g7">← 回課程總覽</a>
+      <h1>酵素的鎖鑰假說</h1>
+      <p>把受質拖到酵素上方的凹槽（活化位），再調整溫度與 pH，看看酵素的表現。</p>
+    </div>
+    <span class="tag">國一生物 · 養分</span>
+  </header>
+
+  <!-- 控制面板 -->
+  <section class="panel" aria-label="控制面板">
+    <div class="ctrl">
+      <label for="tempRange">溫度 <output id="tempVal">37 °C</output></label>
+      <input type="range" id="tempRange" min="0" max="80" step="1" value="37">
+      <div class="scale"><span>0</span><span>37（最適）</span><span>80</span></div>
+      <small>高溫造成的變性<b>無法恢復</b>；低溫只會讓反應變慢。</small>
+    </div>
+    <div class="ctrl">
+      <label for="phRange">酸鹼值 pH <output id="phVal">7.0</output></label>
+      <input type="range" id="phRange" min="1" max="14" step="0.1" value="7">
+      <div class="scale"><span>1 酸</span><span>7（最適）</span><span>14 鹼</span></div>
+      <small>本例以人體唾液澱粉酶為模型，最適 pH 約為 7。</small>
+    </div>
+    <div class="status" aria-live="polite">
+      <div class="row"><span>酵素狀態</span><span class="chip" id="stateChip">活性良好</span></div>
+      <div class="row"><span>活性</span><div class="bar"><i id="actBar"></i></div><span class="num" id="actVal">100%</span></div>
+      <div class="row"><span>已完成反應</span><span class="num" id="countVal">0 次</span></div>
+      <div class="row"><span style="color:var(--ink-soft)">換一個全新的酵素</span><button class="btn" id="resetBtn">重新開始</button></div>
+    </div>
+  </section>
+
+  <!-- p5.js 畫布 -->
+  <section class="stage-card">
+    <div id="stage">
+      <noscript><div class="fallback">此頁需要啟用 JavaScript。</div></noscript>
+    </div>
+  </section>
+
+  <section class="notes">
+    <div class="note"><b>專一性</b>酵素的活化位有固定形狀，只有形狀互補的受質能嵌入，就像一把鑰匙只開一把鎖。</div>
+    <div class="note"><b>溫度</b>溫度低時分子運動慢、反應變慢；溫度過高會破壞酵素結構（變性），冷卻後也回不去。</div>
+    <div class="note"><b>酸鹼值</b>每種酵素都有最適 pH。過酸或過鹼會改變酵素形狀，使活化位無法和受質結合。</div>
+  </section>
+</div>
+
+<script>
+/* =========================================================
+   可調整參數（教學數值集中管理）
+   ========================================================= */
+const CFG = {
+  enzyme: { w: 300, h: 170, r: 56, notchHalf: 40, notchDepth: 46 },
+  optimumT: 37,        // 最適溫度
+  denatureT: 45,       // 開始變性的溫度
+  denatureTSpan: 15,   // 從開始變性到完全變性的溫度跨度
+  optimumPH: 7,
+  phTolerance: 2.5,    // |pH - 7| 超過此值開始變性
+  phSpan: 2,           // 再超過多少完全變性
+  bindThreshold: 0.3,  // 變性程度超過此值即無法結合
+  baseReactSec: 0.8,   // 最適條件下的反應時間
+  maxReactSec: 8,
+  dockRadius: 60,      // 放開時距離活化位多近算「放入」
+  respawnSec: 2.2
+};
+
+/* 受質形狀：原點 (0,0) 為底部「嵌入點」，y 向上為負 */
+function roundBottom() {
+  const pts = [];
+  for (let i = 0; i <= 12; i++) {
+    const a = (i / 12) * Math.PI;
+    pts.push([40 * Math.cos(a), -40 + 40 * Math.sin(a)]);
+  }
+  return pts.concat([[-40, -88], [40, -88]]);
+}
+const SHAPES = {
+  key:    { fits: true,  color: '#c9a49c', pts: [[0, 0], [40, -46], [40, -88], [-40, -88], [-40, -46]] },
+  round:  { fits: false, color: '#a9b8c6', pts: roundBottom() },
+  square: { fits: false, color: '#d4c39a', pts: [[-44, 0], [44, 0], [44, -88], [-44, -88]] }
+};
+/* 正確受質分裂後的兩個產物 */
+const PRODUCT_HALVES = [
+  { pts: [[0, 0], [0, -88], [-40, -88], [-40, -46]], vx: -1.7, vr: -0.025 },
+  { pts: [[0, 0], [40, -46], [40, -88], [0, -88]],   vx:  1.7, vr:  0.025 }
+];
+const PRODUCT_COLOR = '#e3bfa6';
+const SPARK_COLORS = ['#e8c9a0', '#c9a49c', '#f3e3c3', '#b8c7a8', '#ffffff'];
+
+/* =========================================================
+   狀態
+   ========================================================= */
+let LW = 900, LH = 540, S = 1;      // 邏輯尺寸與縮放
+let E = { x: 450, y: 380 };         // 酵素中心
+let substrates = [], products = [], particles = [], rings = [];
+let damage = 0;                     // 高溫造成的不可逆變性
+let dVis = 0;                       // 畫面上顯示的變性程度（平滑）
+let shakeT = 0, reactions = 0;
+let dragging = null, grabOff = { x: 0, y: 0 };
+let message = null;
+let env = { T: 37, pH: 7, d: 0, canBind: true, activity: 1, cause: '' };
+
+const $ = id => document.getElementById(id);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* =========================================================
+   環境 → 酵素活性 / 變性
+   ========================================================= */
+function computeEnv() {
+  const T = Number($('tempRange').value);
+  const pH = Number($('phRange').value);
+  damage = Math.max(damage, clamp((T - CFG.denatureT) / CFG.denatureTSpan, 0, 1));
+  const dPH = clamp((Math.abs(pH - CFG.optimumPH) - CFG.phTolerance) / CFG.phSpan, 0, 1);
+  const d = Math.max(damage, dPH);
+
+  const tA = T <= CFG.optimumT
+    ? 0.08 + 0.92 * Math.pow(T / CFG.optimumT, 1.5)
+    : clamp(1 - (T - CFG.optimumT) / 18, 0, 1);
+  const pA = clamp(1 - Math.pow((pH - CFG.optimumPH) / 3.5, 2), 0, 1);
+  const canBind = d < CFG.bindThreshold;
+  const activity = canBind ? tA * pA * (1 - d / CFG.bindThreshold * 0.6) : 0;
+  const cause = damage >= CFG.bindThreshold ? 'heat' : dPH >= CFG.bindThreshold ? 'ph' : '';
+  env = { T, pH, d, canBind, activity, cause };
+}
+
+function reactionSeconds() {
+  return clamp(CFG.baseReactSec / Math.max(env.activity, 0.05), CFG.baseReactSec, CFG.maxReactSec);
+}
+
+/* =========================================================
+   版面
+   ========================================================= */
+function layout() {
+  const cw = $('stage').clientWidth;
+  LW = Math.max(640, cw);
+  S = cw / LW;
+  LH = 540;
+  resizeCanvas(cw, Math.round(LH * S));
+  E = { x: LW / 2, y: LH * 0.70 };
+  const homes = [
+    { x: LW * 0.17, y: LH * 0.40 },
+    { x: LW * 0.50, y: LH * 0.33 },
+    { x: LW * 0.83, y: LH * 0.40 }
+  ];
+  substrates.forEach((s, i) => { s.home = homes[i]; if (s.state !== 'drag') s.pos = { ...homes[i] }; });
+}
+
+function makeSubstrates() {
+  const types = shuffle(['key', 'round', 'square']);
+  const names = ['受質 A', '受質 B', '受質 C'];
+  substrates = types.map((type, i) => ({
+    type, name: names[i], home: { x: 0, y: 0 }, pos: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
+    rot: 0, phase: Math.random() * 10, state: 'idle', alpha: 1, timer: 0, need: 0
+  }));
+}
+
+/* =========================================================
+   酵素外形（含變性扭曲）
+   ========================================================= */
+function notchParams(d) {
+  const { notchHalf, notchDepth } = CFG.enzyme;
+  return { a: notchHalf * (1 + 0.7 * d), dep: notchDepth * (1 - 0.75 * d), tip: 28 * d };
+}
+
+function enzymeOutline(d, t) {
+  const { w, h, r } = CFG.enzyme;
+  const hw = w / 2, hh = h / 2;
+  const { a, dep, tip } = notchParams(d);
+  let pts = [];
+  const seg = (x1, y1, x2, y2) => {
+    const n = Math.max(1, Math.ceil(Math.hypot(x2 - x1, y2 - y1) / 10));
+    for (let i = 0; i < n; i++) pts.push([lerp(x1, x2, i / n), lerp(y1, y2, i / n)]);
+  };
+  const arcPts = (cx, cy, a0, a1) => {
+    for (let i = 0; i < 10; i++) {
+      const k = a0 + (a1 - a0) * i / 10;
+      pts.push([cx + r * Math.cos(k), cy + r * Math.sin(k)]);
+    }
+  };
+  seg(-hw + r, -hh, -a, -hh);
+  seg(-a, -hh, tip, -hh + dep);          // 活化位左壁
+  seg(tip, -hh + dep, a, -hh);           // 活化位右壁
+  seg(a, -hh, hw - r, -hh);
+  arcPts(hw - r, -hh + r, -HALF_PI, 0);
+  seg(hw, -hh + r, hw, hh - r);
+  arcPts(hw - r, hh - r, 0, HALF_PI);
+  seg(hw - r, hh, -hw + r, hh);
+  arcPts(-hw + r, hh - r, HALF_PI, PI);
+  seg(-hw, hh - r, -hw, -hh + r);
+  arcPts(-hw + r, -hh + r, PI, PI + HALF_PI);
+
+  if (d > 0.002) {
+    pts = pts.map(([x, y], i) => {
+      const len = Math.hypot(x, y) || 1;
+      const n = (noise(i * 0.09, t * 0.35) - 0.5) * 2;
+      const off = n * 44 * d;
+      return [x + (x / len) * off, y + (y / len) * off * 1.15];
+    });
+  }
+  return pts;
+}
+
+function dockPoint() {
+  const { dep, tip } = notchParams(dVis);
+  return { x: E.x + tip, y: E.y - CFG.enzyme.h / 2 + dep };
+}
+
+/* =========================================================
+   p5 主程式
+   ========================================================= */
+function setup() {
+  const c = createCanvas(10, 10);
+  c.parent('stage');
+  textFont('"Noto Sans TC", "Microsoft JhengHei", "PingFang TC", sans-serif');
+  makeSubstrates();
+  layout();
+  bindInput(c.elt);
+  bindUI();
+}
+
+function windowResized() { layout(); }
+
+function draw() {
+  const dt = Math.min(deltaTime / 1000, 0.05);
+  const f = dt * 60;
+  const t = millis() / 1000;
+  computeEnv();
+  dVis = lerp(dVis, env.d, 0.06 * f);
+  shakeT = Math.max(0, shakeT - dt);
+
+  scale(S);
+  drawBackground();
+  updateSubstrates(dt, f, t);
+  drawEnzyme(t);
+
+  // 先畫結合中的受質，再畫其他，最後畫正在拖曳的
+  substrates.filter(s => s.state === 'snap' || s.state === 'docked').forEach(drawSubstrate);
+  substrates.filter(s => ['idle'].includes(s.state)).forEach(drawSubstrate);
+  updateDrawProducts(dt, f);
+  updateDrawParticles(dt, f);
+  if (dragging) drawSubstrate(dragging);
+  drawMessage(dt);
+  drawHint();
+
+  if (frameCount % 5 === 0) updateStatusUI();
+}
+
+/* ----- 背景 ----- */
+function drawBackground() {
+  background('#faf8f3');
+  noStroke(); fill('#ece7dc');
+  for (let x = 20; x < LW; x += 32) for (let y = 20; y < LH; y += 32) circle(x, y, 2.4);
+}
+
+/* ----- 酵素 ----- */
+function drawEnzyme(t) {
+  const sx = shakeT > 0 ? Math.sin(shakeT * 70) * 5 * (shakeT / 0.35) : 0;
+  const pts = enzymeOutline(dVis, t);
+  const k = clamp(dVis / 0.6, 0, 1);
+  const body = lerpColor(color('#9fb091'), color('#bba898'), k);
+  const edge = lerpColor(color('#7d8f70'), color('#9a8576'), k);
+
+  push();
+  translate(E.x + sx, E.y);
+  // 影子
+  noStroke(); fill(59, 56, 51, 18);
+  ellipse(0, CFG.enzyme.h / 2 + 12, CFG.enzyme.w * 0.9, 22);
+  // 本體
+  fill(body); stroke(edge); strokeWeight(3); strokeJoin(ROUND);
+  beginShape(); pts.forEach(([x, y]) => vertex(x, y)); endShape(CLOSE);
+
+  // 拖曳靠近時，活化位發光提示
+  if (dragging) {
+    const dp = dockPoint();
+    const near = dist(dragging.pos.x, dragging.pos.y, dp.x, dp.y) < CFG.dockRadius * 1.6;
+    if (near) {
+      const { a, dep, tip } = notchParams(dVis);
+      const hh = CFG.enzyme.h / 2;
+      noFill(); stroke(255, 245, 220, 200); strokeWeight(7);
+      beginShape(); vertex(-a, -hh); vertex(tip, -hh + dep); vertex(a, -hh); endShape();
+    }
+  }
+
+  // 文字
+  noStroke(); fill(255, 255, 255, 230); textAlign(CENTER, CENTER);
+  textSize(22); textStyle(BOLD); text('酵素', 0, 18);
+  textSize(12); textStyle(NORMAL); fill(255, 255, 255, 190);
+  text(dVis >= CFG.bindThreshold ? '已變性' : 'Enzyme', 0, 44);
+
+  // 活化位標註
+  const { a } = notchParams(dVis);
+  const hh = CFG.enzyme.h / 2;
+  stroke(111, 106, 98, 150); strokeWeight(1.2);
+  line(a + 6, -hh - 4, a + 46, -hh - 30);
+  noStroke(); fill('#6f6a62'); textAlign(LEFT, CENTER); textSize(13);
+  text(dVis >= CFG.bindThreshold ? '活化位（已變形）' : '活化位', a + 50, -hh - 32);
+  pop();
+}
+
+/* ----- 受質 ----- */
+function drawSubstrate(s) {
+  const sh = SHAPES[s.type];
+  push();
+  translate(s.pos.x, s.pos.y);
+  rotate(s.rot);
+  const c = color(sh.color); c.setAlpha(255 * s.alpha);
+  const e = lerpColor(color(sh.color), color('#3b3833'), 0.35); e.setAlpha(255 * s.alpha);
+  if (s === dragging) { noStroke(); fill(59, 56, 51, 25); beginShape(); sh.pts.forEach(([x, y]) => vertex(x + 4, y + 7)); endShape(CLOSE); }
+  fill(c); stroke(e); strokeWeight(2.5); strokeJoin(ROUND);
+  beginShape(); sh.pts.forEach(([x, y]) => vertex(x, y)); endShape(CLOSE);
+  noStroke(); fill(255, 255, 255, 235 * s.alpha); textAlign(CENTER, CENTER); textSize(13); textStyle(BOLD);
+  text(s.name, 0, -64);
+  // 反應進度
+  if (s.state === 'docked') {
+    const p = s.timer / s.need;
+    noFill(); stroke(255, 250, 235, 220); strokeWeight(4);
+    arc(0, -44, 34, 34, -HALF_PI, -HALF_PI + TWO_PI * p);
+    if (Math.floor(millis() / 120) % 2 === 0) { noStroke(); fill(255, 250, 230, 70); beginShape(); sh.pts.forEach(([x, y]) => vertex(x, y)); endShape(CLOSE); }
+  }
+  pop();
+}
+
+function updateSubstrates(dt, f, t) {
+  const dp = dockPoint();
+  substrates.forEach(s => {
+    switch (s.state) {
+      case 'idle': {
+        const tx = s.home.x + (noise(s.phase, t * 0.25) - 0.5) * 22;
+        const ty = s.home.y + (noise(s.phase + 50, t * 0.25) - 0.5) * 22;
+        s.vel.x = (s.vel.x + (tx - s.pos.x) * 0.012 * f) * Math.pow(0.9, f);
+        s.vel.y = (s.vel.y + (ty - s.pos.y) * 0.012 * f) * Math.pow(0.9, f);
+        s.pos.x += s.vel.x * f; s.pos.y += s.vel.y * f;
+        s.rot = Math.sin(t * 0.8 + s.phase) * 0.07;
+        s.alpha = Math.min(1, s.alpha + dt * 1.5);
+        break;
+      }
+      case 'drag':
+        s.rot = lerp(s.rot, 0, 0.3);
+        break;
+      case 'snap':
+        s.pos.x = lerp(s.pos.x, dp.x, 0.25 * f);
+        s.pos.y = lerp(s.pos.y, dp.y, 0.25 * f);
+        s.rot = lerp(s.rot, 0, 0.3);
+        if (dist(s.pos.x, s.pos.y, dp.x, dp.y) < 1) { s.state = 'docked'; s.timer = 0; s.need = reactionSeconds(); }
+        break;
+      case 'docked':
+        if (!env.canBind) {        // 反應中變性 → 被推出
+          eject(s, '酵素變性了！受質從活化位脫落');
+          break;
+        }
+        s.pos.x = dp.x; s.pos.y = dp.y;
+        s.need = reactionSeconds();  // 反應中調整條件，速度即時改變
+        s.timer += dt;
+        if (s.timer >= s.need) react(s);
+        break;
+      case 'gone':
+        s.timer += dt;
+        if (s.timer >= CFG.respawnSec) {
+          s.state = 'idle'; s.alpha = 0; s.pos = { x: s.home.x, y: s.home.y - 30 }; s.vel = { x: 0, y: 0 };
+        }
+        break;
+    }
+  });
+}
+
+/* ----- 結合 / 彈開 / 反應 ----- */
+function eject(s, text) {
+  const dx = s.pos.x - E.x, dy = s.pos.y - E.y;
+  const len = Math.hypot(dx, dy) || 1;
+  s.state = 'idle';
+  s.vel = { x: (dx / len) * 14 + (Math.random() - 0.5) * 4, y: (dy / len) * 14 - 6 };
+  shakeT = 0.35;
+  showMessage(text, 'bad');
+}
+
+function release(s) {
+  const dp = dockPoint();
+  const near = dist(s.pos.x, s.pos.y, dp.x, dp.y) < CFG.dockRadius;
+  const occupied = substrates.some(o => o !== s && (o.state === 'docked' || o.state === 'snap'));
+  const hw = CFG.enzyme.w / 2, hh = CFG.enzyme.h / 2;
+  const overBody = Math.abs(s.pos.x - E.x) < hw + 30 && s.pos.y > E.y - hh - 10 && s.pos.y < E.y + hh + 90;
+
+  if (near) {
+    if (occupied) return eject(s, '活化位正在使用中，請稍候');
+    if (!env.canBind) {
+      return eject(s, env.cause === 'heat'
+        ? '酵素因高溫變性，活化位形狀改變，受質無法嵌入'
+        : '酵素因 pH 過於極端而變性，受質無法嵌入');
+    }
+    if (!SHAPES[s.type].fits) return eject(s, '形狀不符，無法嵌入活化位（酵素具專一性）');
+    s.state = 'snap';
+    showMessage(env.activity < 0.35 ? '契合！但目前活性低，反應較慢…' : '完美契合！酵素與受質結合', 'ok');
+    return;
+  }
+  s.state = 'idle';
+  if (overBody) { s.vel = { x: (s.pos.x - E.x) * 0.05, y: -10 }; }
+}
+
+function react(s) {
+  const dp = dockPoint();
+  reactions++;
+  rings.push({ x: dp.x, y: dp.y - 44, r: 10, life: 1 });
+  for (let i = 0; i < 34; i++) {
+    const a = Math.random() * TWO_PI, sp = 1.5 + Math.random() * 4.5;
+    particles.push({ x: dp.x, y: dp.y - 44, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 1,
+      life: 1, size: 3 + Math.random() * 5, col: random(SPARK_COLORS) });
+  }
+  PRODUCT_HALVES.forEach(h => products.push({
+    pts: h.pts, x: dp.x, y: dp.y, vx: h.vx, vy: -2.4, rot: 0, vr: h.vr, life: 1, seed: Math.random() * 10
+  }));
+  s.state = 'gone'; s.timer = 0; s.alpha = 0;
+  showMessage('反應完成：受質分解成兩個產物，酵素本身不變、可重複使用', 'ok');
+}
+
+/* ----- 產物與粒子 ----- */
+function updateDrawProducts(dt, f) {
+  products = products.filter(p => p.life > 0);
+  products.forEach(p => {
+    p.life -= dt / 3.2;
+    p.vy += 0.015 * f;                         // 微微減速上升
+    p.x += (p.vx + (noise(p.seed, millis() / 900) - 0.5) * 1.2) * f;
+    p.y += Math.min(p.vy, -0.4) * f;
+    p.rot += p.vr * f;
+    const a = clamp(p.life * 1.6, 0, 1);
+    push(); translate(p.x, p.y); rotate(p.rot);
+    const c = color(PRODUCT_COLOR); c.setAlpha(255 * a);
+    fill(c); stroke(150, 115, 95, 200 * a); strokeWeight(2.2); strokeJoin(ROUND);
+    beginShape(); p.pts.forEach(([x, y]) => vertex(x, y)); endShape(CLOSE);
+    noStroke(); fill(90, 80, 70, 220 * a); textAlign(CENTER, CENTER); textSize(12); textStyle(BOLD);
+    text('產物', p.pts[2][0] / 2, -50);
+    pop();
+  });
+}
+
+function updateDrawParticles(dt, f) {
+  rings = rings.filter(r => r.life > 0);
+  rings.forEach(r => {
+    r.life -= dt * 1.8; r.r += 4 * f;
+    noFill(); stroke(255, 236, 200, 255 * r.life); strokeWeight(4 * r.life + 1);
+    circle(r.x, r.y, r.r * 2);
+  });
+  particles = particles.filter(p => p.life > 0);
+  noStroke();
+  particles.forEach(p => {
+    p.life -= dt * 1.3;
+    p.x += p.vx * f; p.y += p.vy * f;
+    p.vx *= Math.pow(0.95, f); p.vy = p.vy * Math.pow(0.95, f) + 0.03 * f;
+    const c = color(p.col); c.setAlpha(255 * p.life);
+    fill(c); circle(p.x, p.y, p.size * p.life + 1);
+  });
+}
+
+/* ----- 訊息與提示 ----- */
+function showMessage(text, kind) { message = { text, kind, life: 3 }; }
+
+function drawMessage(dt) {
+  if (!message) return;
+  message.life -= dt;
+  if (message.life <= 0) { message = null; return; }
+  const a = clamp(message.life / 0.4, 0, 1);
+  textSize(15); textStyle(NORMAL);
+  const w = textWidth(message.text) + 40;
+  const col = { ok: [127, 152, 115], bad: [183, 126, 114], info: [111, 106, 98] }[message.kind];
+  push();
+  translate(LW / 2, 34);
+  noStroke(); fill(col[0], col[1], col[2], 235 * a);
+  rect(-w / 2, -18, w, 36, 18);
+  fill(255, 255, 255, 255 * a); textAlign(CENTER, CENTER);
+  text(message.text, 0, 1);
+  pop();
+}
+
+function drawHint() {
+  if (reactions > 0 || dragging || message) return;
+  noStroke(); fill(111, 106, 98, 170); textAlign(CENTER, CENTER); textSize(14); textStyle(NORMAL);
+  text('↓ 拖曳一個受質，放進酵素上方的凹槽', LW / 2, 34);
+}
+
+/* =========================================================
+   滑鼠 / 觸控（Pointer Events）
+   ========================================================= */
+function toLogical(e, el) {
+  const r = el.getBoundingClientRect();
+  return { x: (e.clientX - r.left) / S, y: (e.clientY - r.top) / S };
+}
+
+function hitTest(p) {
+  for (let i = substrates.length - 1; i >= 0; i--) {
+    const s = substrates[i];
+    if (s.state !== 'idle' || s.alpha < 0.5) continue;
+    const dx = p.x - s.pos.x, dy = p.y - s.pos.y;
+    if (Math.abs(dx) < 50 && dy > -95 && dy < 8) return s;
+  }
+  return null;
+}
+
+function bindInput(el) {
+  el.addEventListener('pointerdown', e => {
+    const p = toLogical(e, el);
+    const s = hitTest(p);
+    if (!s) return;
+    dragging = s; s.state = 'drag'; s.vel = { x: 0, y: 0 };
+    grabOff = { x: p.x - s.pos.x, y: p.y - s.pos.y };
+    el.setPointerCapture(e.pointerId);
+    el.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+  el.addEventListener('pointermove', e => {
+    const p = toLogical(e, el);
+    if (dragging) {
+      dragging.pos.x = clamp(p.x - grabOff.x, 40, LW - 40);
+      dragging.pos.y = clamp(p.y - grabOff.y, 100, LH - 10);
+    } else {
+      el.style.cursor = hitTest(p) ? 'grab' : 'default';
+    }
+  });
+  const end = () => {
+    if (!dragging) return;
+    const s = dragging; dragging = null;
+    el.style.cursor = 'default';
+    release(s);
+  };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+}
+
+/* =========================================================
+   控制面板
+   ========================================================= */
+function bindUI() {
+  $('tempRange').addEventListener('input', e => { $('tempVal').textContent = `${e.target.value} °C`; });
+  $('phRange').addEventListener('input', e => { $('phVal').textContent = Number(e.target.value).toFixed(1); });
+  $('resetBtn').addEventListener('click', () => {
+    $('tempRange').value = CFG.optimumT; $('tempVal').textContent = `${CFG.optimumT} °C`;
+    $('phRange').value = CFG.optimumPH;  $('phVal').textContent = CFG.optimumPH.toFixed(1);
+    damage = 0; dVis = 0; reactions = 0;
+    products = []; particles = []; rings = []; dragging = null;
+    makeSubstrates(); layout();
+    showMessage('已換上一個全新的酵素', 'info');
+  });
+}
+
+function updateStatusUI() {
+  const chip = $('stateChip');
+  let label = '活性良好', cls = '';
+  if (!env.canBind) {
+    label = env.cause === 'heat' ? '已變性（不可逆）' : '已變性（pH 極端）';
+    cls = 'bad';
+  } else if (env.T < 20 && env.activity < 0.5) {
+    label = '低溫：活性降低'; cls = 'warn';
+  } else if (env.activity < 0.6) {
+    label = '活性降低'; cls = 'warn';
+  }
+  if (chip.textContent !== label) chip.textContent = label;
+  chip.className = 'chip' + (cls ? ' ' + cls : '');
+  const pct = Math.round(env.activity * 100);
+  $('actBar').style.width = pct + '%';
+  $('actBar').style.background = cls === 'bad' ? 'var(--bad)' : cls === 'warn' ? 'var(--warn)' : 'var(--sage)';
+  $('actVal').textContent = pct + '%';
+  $('countVal').textContent = reactions + ' 次';
+
+  // 高溫已造成不可逆變性，但溫度已降回來時提示
+  if (damage >= CFG.bindThreshold && env.T < CFG.denatureT && !message && frameCount % 300 === 0) {
+    showMessage('降溫也救不回來：高溫變性是不可逆的，請按「重新開始」', 'info');
+  }
+}
+
+/* p5.js 載入失敗（例如離線）時的提示 */
+window.addEventListener('load', () => {
+  if (typeof p5 === 'undefined') {
+    $('stage').innerHTML = '<div class="fallback">無法載入 p5.js 函式庫。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+});
+</script>
+</body>
+</html>

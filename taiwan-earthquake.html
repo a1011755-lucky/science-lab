@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>台灣逆斷層與地震模擬器</title>
+<style>
+  :root {
+    --ink: #1c1c1e;
+    --ink-soft: #6e6e73;
+    --line: rgba(60,60,67,.12);
+    --card: rgba(255,255,255,.74);
+    --red: #e5484d;
+    --blue: #3b82f6;
+    --orange: #f59e0b;
+    --track: #e5e5ea;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: linear-gradient(#bfe3f5, #f4fbff);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; }
+
+  .glass {
+    background: var(--card); backdrop-filter: blur(10px) saturate(160%); -webkit-backdrop-filter: blur(10px) saturate(160%);
+    border: 1px solid rgba(255,255,255,.75); box-shadow: 0 10px 30px rgba(30,60,90,.15);
+  }
+  .collapse {
+    position: absolute; top: 14px; right: 14px; z-index: 2; cursor: pointer;
+    border: none; border-radius: 999px; padding: 4px 12px;
+    font: inherit; font-size: .76rem; font-weight: 600; color: var(--blue); background: rgba(59,130,246,.1);
+  }
+  .collapse:hover { background: rgba(59,130,246,.18); }
+  .collapsed .body { display: none; }
+
+  /* ===== 左側控制面板 ===== */
+  .panel { position: absolute; top: 16px; left: 16px; width: 310px; max-height: calc(100vh - 32px); overflow-y: auto; z-index: 10; border-radius: 22px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .back { font-size: .8rem; color: var(--blue); text-decoration: none; }
+  .title { font-size: 1.18rem; font-weight: 700; margin-top: 6px; padding-right: 62px; }
+  .sub { font-size: .78rem; color: var(--ink-soft); }
+
+  .group { background: rgba(255,255,255,.8); border-radius: 16px; padding: 4px 14px; margin-top: 12px; }
+  .row { padding: 11px 0; border-top: 1px solid var(--line); font-size: .88rem; }
+  .row:first-child { border-top: none; }
+  .row .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .row small { color: var(--ink-soft); font-size: .74rem; }
+  .mag { font-size: 1.35rem; font-weight: 800; color: var(--orange); }
+
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 999px; cursor: pointer;
+    background: linear-gradient(90deg, var(--orange) 0%, var(--orange) var(--fill, 50%), var(--track) var(--fill, 50%)); outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #fff;
+    box-shadow: 0 3px 8px rgba(0,0,0,.15), 0 0 0 .5px rgba(0,0,0,.06); }
+  input[type=range]::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 3px 8px rgba(0,0,0,.15); }
+  input[type=range]:focus-visible { box-shadow: 0 0 0 3px rgba(245,158,11,.35); }
+
+  .btn {
+    width: 100%; border: none; border-radius: 12px; padding: 11px; cursor: pointer; margin-top: 8px;
+    font: inherit; font-size: .9rem; font-weight: 700; color: var(--blue); background: rgba(59,130,246,.1);
+    transition: background .2s, transform .1s;
+  }
+  .btn:hover { background: rgba(59,130,246,.18); }
+  .btn:active { transform: scale(.98); }
+  .btn.quake { color: #fff; background: var(--red); }
+  .btn.quake:hover { background: #d63c41; }
+  .btn.on { color: #fff; background: var(--blue); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .msg { font-size: .8rem; line-height: 1.6; margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(59,130,246,.08); color: #1e3a8a; display: none; }
+  .msg.show { display: block; }
+
+  .stations { margin-top: 12px; background: rgba(255,255,255,.8); border-radius: 16px; padding: 10px 14px; }
+  .stations h4 { font-size: .78rem; color: var(--ink-soft); font-weight: 600; margin-bottom: 6px; }
+  .st { display: grid; grid-template-columns: 64px 1fr 52px; align-items: center; gap: 8px; font-size: .82rem; padding: 4px 0; }
+  .st .bar { height: 8px; border-radius: 4px; background: var(--track); overflow: hidden; }
+  .st .bar i { display: block; height: 100%; width: 0; border-radius: 4px; transition: width .4s; }
+  .st .lv { font-weight: 700; text-align: right; }
+  .st small { color: var(--ink-soft); font-size: .7rem; display: block; }
+
+  /* ===== 右上：會考觀念提示版 ===== */
+  .concept { position: absolute; top: 16px; right: 16px; width: 300px; z-index: 10; border-radius: 18px; padding: 14px 16px; }
+  .concept.collapsed { width: auto; min-width: 200px; }
+  .concept .ct { font-size: .9rem; font-weight: 700; padding-right: 60px; }
+  .concept p { font-size: .84rem; line-height: 1.65; margin-top: 8px; }
+  .concept b.m { color: var(--orange); }
+  .concept b.i { color: var(--red); }
+  .concept .cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; font-size: .76rem; line-height: 1.5; }
+  .concept .cmp div { background: rgba(255,255,255,.8); border-radius: 12px; padding: 8px 10px; }
+  .concept .cmp strong { display: block; font-size: .82rem; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -100%);
+    font-size: .74rem; font-weight: 600; padding: 4px 10px; border-radius: 10px; white-space: nowrap; line-height: 1.35;
+    background: rgba(255,255,255,.92); color: var(--ink); box-shadow: 0 3px 10px rgba(0,0,0,.12); text-align: center;
+    transition: opacity .25s;
+  }
+  .tag small { display: block; font-weight: 500; color: var(--ink-soft); font-size: .68rem; }
+  .tag.red { border: 1.5px solid var(--red); }
+  .tag.red b { color: var(--red); }
+  .tag.plate { background: rgba(255,255,255,.75); transform: translate(-50%, -50%); }
+  .tag.intensity { font-size: .85rem; }
+  .tag.intensity b { font-size: 1.05rem; }
+  .tag.hidden { opacity: 0; }
+  .hint { position: absolute; right: 16px; bottom: 14px; z-index: 5; font-size: .75rem; color: rgba(28,28,30,.55); }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 760px) {
+    .panel { top: auto; bottom: 10px; left: 10px; right: 10px; width: auto; max-height: 48vh; }
+    .concept { top: 10px; left: 10px; right: 10px; width: auto; }
+    .hint { display: none; }
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="scene"></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" data-target="panel">收合</button>
+  <a class="back" href="index.html#g9">‹ 課程總覽</a>
+  <div class="title">台灣逆斷層與地震模擬器</div>
+  <div class="sub">板塊擠壓 → 逆斷層 → 地震（規模 vs 震度）</div>
+
+  <div class="body">
+    <button class="btn" id="squeezeBtn">→← 模擬板塊擠壓</button>
+    <div class="msg" id="squeezeMsg">台灣主要受<b>壓力擠壓</b>，形成<b>逆斷層</b>：菲律賓海板塊（上磐）沿斷層面往上抬升，跨上歐亞板塊。</div>
+
+    <div class="group">
+      <div class="row">
+        <div class="head"><span>地震規模 Magnitude</span><span class="mag" id="magVal">M 6.5</span></div>
+        <input type="range" id="mag" min="5" max="7" step="0.1" value="6.5" aria-label="地震規模">
+        <small>規模代表震源釋放的<b>能量</b>，只改變震源能量球的大小。</small>
+      </div>
+    </div>
+    <button class="btn quake" id="quakeBtn">⚡ 觸發地震</button>
+
+    <div class="stations">
+      <h4>各測站觀測震度（規模 <span id="magEcho">6.5</span>，全台同一個值）</h4>
+      <div id="stList"></div>
+    </div>
+  </div>
+</aside>
+
+<aside class="concept glass" id="concept">
+  <button class="collapse" data-target="concept">收合</button>
+  <div class="ct">⚠️ 會考觀念釐清</div>
+  <div class="body">
+    <p>一次地震只有<b class="m">【一個規模】</b>，但各地有<b class="i">【不同震度】</b>。</p>
+    <div class="cmp">
+      <div><strong>規模 M</strong>震源釋放的能量<br>一次地震只有一個值<br>與觀測地點無關</div>
+      <div><strong>震度</strong>各地感受到的搖晃程度<br>每個地方都不同<br>通常離震央越遠越小</div>
+    </div>
+  </div>
+</aside>
+
+<div class="hint">拖曳旋轉 · 滾輪縮放 · 右鍵平移</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+window.__quakeReady = true;
+
+const $ = id => document.getElementById(id);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+const clamp = THREE.MathUtils.clamp;
+const S = THREE.MathUtils.smoothstep;
+
+/* =========================================================
+   參數
+   ---------------------------------------------------------
+   側視剖面：x 向東、y 向上、z 向南（北 = −z）
+   斷層面向東傾斜（傾角 50°）：斷層線右側（東側）壓在斷層面上方 → 上磐
+   ========================================================= */
+const BLOCK = { w: 8, depth: 4, d: 5 };            // x∈[−8,8]、y∈[−4,0]、z∈[−5,5]
+const DIP = 50 * Math.PI / 180;
+const TOP = V2(0, 0);                              // 斷層線與地表交點
+const BOT = V2(BLOCK.depth / Math.tan(DIP), -BLOCK.depth);
+const UP_DIP = V3(TOP.x - BOT.x, TOP.y - BOT.y, 0).normalize();   // 沿斷層面往上（逆斷層上磐移動方向）
+const KM_PER_UNIT = 40;                            // 地圖比例：1 單位 ≈ 40 公里
+const FOCAL_DEPTH_KM = 15;                          // 震源深度（標示用）
+
+/* =========================================================
+   場景（淺藍背景、無 Bloom）
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xcfeaf7);
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 8;
+controls.maxDistance = 50;
+function resetView() {
+  camera.position.set(6, 11, 19);
+  controls.target.set(0.5, -1, 0);
+  controls.update();
+}
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a7a66, 1.5));
+const sun = new THREE.DirectionalLight(0xfff4e0, 1.6);
+sun.position.set(-8, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 12, bottom: -12 });
+sun.shadow.radius = 5;
+scene.add(sun);
+
+/* =========================================================
+   地塊：依斷層切成下磐（歐亞板塊）與上磐（菲律賓海板塊）
+   ========================================================= */
+const STRATA = [
+  { y0: -4.0, y1: -3.0, color: 0x7b5f48 },
+  { y0: -3.0, y1: -2.1, color: 0xb08a62 },
+  { y0: -2.1, y1: -1.3, color: 0x8c8378 },
+  { y0: -1.3, y1: -0.6, color: 0xc9a777 },
+  { y0: -0.6, y1: -0.25, color: 0x9a7452 },
+  { y0: -0.25, y1: 0.0, color: 0x7fbf6a }     // 地表（草地）
+];
+const FOOT = [[-BLOCK.w, -BLOCK.depth], [BOT.x, -BLOCK.depth], [TOP.x, 0], [-BLOCK.w, 0]];
+const HANG = [[BOT.x, -BLOCK.depth], [BLOCK.w, -BLOCK.depth], [BLOCK.w, 0], [TOP.x, 0]];
+
+/** 凸多邊形裁切（Sutherland–Hodgman）：保留 keep(p) 為真的部分 */
+function clipPoly(pts, keep, cut) {
+  const out = [];
+  pts.forEach((cur, i) => {
+    const prev = pts[(i + pts.length - 1) % pts.length];
+    const ci = keep(cur), pi = keep(prev);
+    if (ci) { if (!pi) out.push(cut(prev, cur)); out.push(cur); }
+    else if (pi) out.push(cut(prev, cur));
+  });
+  return out;
+}
+const atY = y => (p, q) => [p[0] + (q[0] - p[0]) * (y - p[1]) / (q[1] - p[1]), y];
+const atX = x => (p, q) => [x, p[1] + (q[1] - p[1]) * (x - p[0]) / (q[0] - p[0])];
+
+function buildBlock(poly) {
+  const g = new THREE.Group();
+  STRATA.forEach(s => {
+    let pts = clipPoly(poly, p => p[1] >= s.y0 - 1e-9, atY(s.y0));
+    if (pts.length) pts = clipPoly(pts, p => p[1] <= s.y1 + 1e-9, atY(s.y1));
+    if (pts.length < 3) return;
+    const geo = new THREE.ExtrudeGeometry(new THREE.Shape(pts.map(([x, y]) => V2(x, y))), { depth: BLOCK.d * 2, bevelEnabled: false });
+    geo.translate(0, 0, -BLOCK.d);
+    const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: s.color, roughness: 0.92, flatShading: true }));
+    m.castShadow = m.receiveShadow = true;
+    g.add(m);
+    g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30), new THREE.LineBasicMaterial({ color: 0x3b2a1e, transparent: true, opacity: 0.35 })));
+  });
+  return g;
+}
+const footwall = buildBlock(FOOT);
+const hanging = buildBlock(HANG);
+scene.add(footwall, hanging);
+
+// 斷層面（淺色摩擦面）
+function faultFace(sign) {
+  const n = V3(-UP_DIP.y, UP_DIP.x, 0).multiplyScalar(-0.012 * sign);   // 法線朝上磐
+  const geo = new THREE.BufferGeometry();
+  const P = (p, z) => [p.x + n.x, p.y + n.y, z];
+  geo.setAttribute('position', new THREE.Float32BufferAttribute([...P(TOP, BLOCK.d), ...P(TOP, -BLOCK.d), ...P(BOT, BLOCK.d), ...P(BOT, -BLOCK.d)], 3));
+  geo.setIndex([0, 2, 1, 1, 2, 3]);
+  geo.computeVertexNormals();
+  return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xeadcc2, roughness: 0.4, side: THREE.DoubleSide }));
+}
+footwall.add(faultFace(1));
+hanging.add(faultFace(-1));
+
+/* ----- 地表的台灣島輪廓（被斷層線切開，各自跟著板塊移動） ----- */
+const TAIWAN = [
+  [121.53, 25.30], [121.75, 25.15], [121.93, 25.02], [121.85, 24.80], [121.86, 24.58], [121.70, 24.30],
+  [121.62, 24.00], [121.50, 23.60], [121.42, 23.20], [121.20, 22.85], [120.98, 22.55], [120.88, 22.30],
+  [120.85, 21.92], [120.72, 21.95], [120.62, 22.30], [120.40, 22.55], [120.25, 22.75], [120.10, 23.00],
+  [120.12, 23.40], [120.20, 23.80], [120.40, 24.20], [120.70, 24.60], [120.92, 24.85], [121.05, 25.05],
+  [121.25, 25.12], [121.40, 25.20]
+];
+const MAP_K = 111 / KM_PER_UNIT;                    // 每 1° 的單位數
+const geoXZ = (lon, lat) => [(lon - 121.05) * MAP_K * Math.cos(23.7 * Math.PI / 180), -(lat - 23.6) * MAP_K];
+const islandPts = TAIWAN.map(([lo, la]) => geoXZ(lo, la));    // [x, z]
+const islandMat = new THREE.MeshStandardMaterial({ color: 0x4caf50, roughness: 0.85, flatShading: true });
+function islandPiece(keep, cut, parent) {
+  // 以 (x, −z) 當 2D 形狀，裁切後擠出、轉平
+  const poly = clipPoly(islandPts.map(([x, z]) => [x, -z]), keep, cut);
+  if (poly.length < 3) return;
+  const geo = new THREE.ExtrudeGeometry(new THREE.Shape(poly.map(([x, y]) => V2(x, y))), { depth: 0.12, bevelEnabled: false });
+  geo.rotateX(-Math.PI / 2);
+  const m = new THREE.Mesh(geo, islandMat);
+  m.position.y = 0.005;
+  m.castShadow = m.receiveShadow = true;
+  parent.add(m);
+}
+islandPiece(p => p[0] <= TOP.x, atX(TOP.x), footwall);
+islandPiece(p => p[0] >= TOP.x, atX(TOP.x), hanging);
+// 中央山脈：幾座小山（在上磐，隨抬升一起升高）
+[[121.35, 24.3, 0.55], [121.2, 23.9, 0.7], [121.05, 23.5, 0.75], [120.95, 23.1, 0.6], [120.9, 22.7, 0.45]].forEach(([lo, la, h]) => {
+  const [x, z] = geoXZ(lo, la);
+  const m = new THREE.Mesh(new THREE.ConeGeometry(0.35, h, 5), new THREE.MeshStandardMaterial({ color: 0x3f8f45, flatShading: true }));
+  m.position.set(x, 0.12 + h / 2, z);
+  m.castShadow = true;
+  (x >= TOP.x ? hanging : footwall).add(m);
+});
+
+/* ----- 地塊表面文字標示（正面） ----- */
+function textPlane(big, small, w, color) {
+  const c = document.createElement('canvas');
+  c.width = 768; c.height = 200;
+  const g = c.getContext('2d');
+  g.textAlign = 'center';
+  g.font = '800 84px "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+  g.lineWidth = 10; g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineJoin = 'round';
+  g.strokeText(big, 384, 100); g.fillStyle = color; g.fillText(big, 384, 100);
+  g.font = '700 50px "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+  g.lineWidth = 8; g.strokeText(small, 384, 172); g.fillStyle = '#333'; g.fillText(small, 384, 172);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.Mesh(new THREE.PlaneGeometry(w, w * 200 / 768), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+}
+const tFoot = textPlane('歐亞板塊', '（下磐）', 4.6, '#1d4ed8');
+tFoot.position.set(-4.4, -2.2, BLOCK.d + 0.02);
+footwall.add(tFoot);
+const tHang = textPlane('菲律賓海板塊', '（上磐）', 4.8, '#c2410c');
+tHang.position.set(5.3, -2.2, BLOCK.d + 0.02);
+hanging.add(tHang);
+const faultLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V3(TOP.x, TOP.y, BLOCK.d + 0.03), V3(BOT.x, BOT.y, BLOCK.d + 0.03)]),
+  new THREE.LineDashedMaterial({ color: 0xb91c1c, dashSize: 0.25, gapSize: 0.15 }));
+faultLine.computeLineDistances();
+footwall.add(faultLine);
+
+/* ----- 擠壓箭頭 ----- */
+function pushArrow() {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.45 });
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 1.8, 16), mat);
+  shaft.rotation.z = -Math.PI / 2; shaft.position.x = 0.9;
+  const head = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.75, 20), mat);
+  head.rotation.z = -Math.PI / 2; head.position.x = 2.15;
+  g.add(shaft, head);
+  g.traverse(o => { o.castShadow = true; });
+  return g;
+}
+const arrows = [];
+for (const side of [-1, 1]) for (const y of [-1.2, -2.8]) {
+  const a = pushArrow();
+  a.userData = { side, y };
+  a.visible = false;
+  scene.add(a);
+  arrows.push(a);
+}
+
+/* =========================================================
+   測站（大頭針）
+   ========================================================= */
+const STATIONS = [
+  { name: '花蓮站', lon: 121.60, lat: 23.98 },
+  { name: '台中站', lon: 120.68, lat: 24.15 },
+  { name: '台北站', lon: 121.52, lat: 25.04 }
+];
+const LEVEL_COLORS = ['#9ca3af', '#86efac', '#22c55e', '#facc15', '#fb923c', '#f97316', '#ef4444', '#a21caf'];
+STATIONS.forEach(st => {
+  const [x, z] = geoXZ(st.lon, st.lat);
+  st.x = x; st.z = z;
+  st.parent = x >= TOP.x ? hanging : footwall;
+  const pin = new THREE.Group();
+  const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.9, 8), new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.4 }));
+  stick.position.y = 0.45;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 12), new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.35 }));
+  head.position.y = 0.95;
+  pin.add(stick, head);
+  pin.traverse(o => { o.castShadow = true; });
+  pin.position.set(x, 0.12, z);
+  st.parent.add(pin);
+  st.pin = pin; st.headMat = head.material;
+  st.shake = 0; st.level = null;
+  st.label = addLabel('intensity');
+  st.label.el.innerHTML = `${st.name}`;
+});
+
+/* =========================================================
+   震源、震央、波紋
+   ========================================================= */
+// 震源：花蓮外海下方、位於斷層面上
+const EPI_XZ = geoXZ(121.72, 23.62);                       // 花蓮東南外海
+const hypoDepth = EPI_XZ[0] * Math.tan(DIP);                // 斷層面上：y = −x·tan(DIP)
+const hypoBase = V3(EPI_XZ[0], -hypoDepth, EPI_XZ[1]);
+const hypoCore = new THREE.Mesh(new THREE.SphereGeometry(0.16, 24, 16), new THREE.MeshBasicMaterial({ color: 0xff2020, depthTest: false }));
+const energy = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 24), new THREE.MeshBasicMaterial({ color: 0xffd400, transparent: true, opacity: 0.45, depthTest: false, depthWrite: false }));
+hypoCore.renderOrder = 30; energy.renderOrder = 29;
+hypoCore.visible = energy.visible = false;
+scene.add(hypoCore, energy);
+const vLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0xe11d48, dashSize: 0.18, gapSize: 0.12, depthTest: false }));
+vLine.renderOrder = 28; vLine.visible = false;
+scene.add(vLine);
+// 震央十字靶心
+const target = new THREE.Group();
+{
+  const mat = new THREE.MeshBasicMaterial({ color: 0xe11d48, side: THREE.DoubleSide, depthTest: false });
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.32, 0.42, 40), mat);
+  const ring2 = new THREE.Mesh(new THREE.RingGeometry(0.1, 0.16, 32), mat);
+  const barA = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.07), mat);
+  const barB = new THREE.Mesh(new THREE.PlaneGeometry(0.07, 1.2), mat);
+  [ring, ring2, barA, barB].forEach(m => { m.rotation.x = -Math.PI / 2; m.renderOrder = 27; target.add(m); });
+}
+target.visible = false;
+scene.add(target);
+// 擴散波紋：4 道不同顏色的同心圓
+const WAVE_COLORS = [0xef4444, 0xf97316, 0xfacc15, 0x22c55e];
+const waves = WAVE_COLORS.map(c => {
+  const m = new THREE.Mesh(new THREE.RingGeometry(0.92, 1, 96), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0, side: THREE.DoubleSide, depthTest: false, depthWrite: false }));
+  m.rotation.x = -Math.PI / 2;
+  m.renderOrder = 26;
+  m.visible = false;
+  scene.add(m);
+  return m;
+});
+
+/* =========================================================
+   標籤
+   ========================================================= */
+function addLabel(cls = '') {
+  const el = document.createElement('div');
+  el.className = 'tag hidden ' + cls;
+  document.body.appendChild(el);
+  return { el, pos: V3(0, 0, 0), obj: null, visible: false };
+}
+const lHypo = addLabel('red');
+lHypo.el.innerHTML = '<b>震源 (Hypocenter / Focus)</b><small>岩層實際斷裂處 · 深約 15 公里</small>';
+const lEpi = addLabel('red');
+lEpi.el.innerHTML = '<b>震央 (Epicenter)</b><small>震源垂直對應的地表點</small>';
+const labelList = [lHypo, lEpi, ...STATIONS.map(s => s.label)];
+const tmpV = V3(0, 0, 0);
+function placeLabels() {
+  for (const L of labelList) {
+    tmpV.copy(L.pos);
+    if (L.obj) L.obj.localToWorld(tmpV);
+    tmpV.project(camera);
+    L.el.classList.toggle('hidden', !L.visible || tmpV.z > 1);
+    L.el.style.left = ((tmpV.x + 1) / 2 * window.innerWidth) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * window.innerHeight) + 'px';
+  }
+}
+
+/* =========================================================
+   邏輯：板塊擠壓
+   ========================================================= */
+let squeezing = false, slip = 0;
+const SLIP_MAX = 1.1;
+$('squeezeBtn').addEventListener('click', () => {
+  squeezing = !squeezing;
+  $('squeezeBtn').classList.toggle('on', squeezing);
+  $('squeezeBtn').textContent = squeezing ? '■ 停止擠壓（復原）' : '→← 模擬板塊擠壓';
+  $('squeezeMsg').classList.toggle('show', squeezing);
+  arrows.forEach(a => { a.visible = squeezing; });
+});
+
+/* =========================================================
+   邏輯：地震（規模固定、震度隨距離遞減）
+   ========================================================= */
+let M = 6.5;
+const paint = el => el.style.setProperty('--fill', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
+$('mag').addEventListener('input', e => {
+  M = Number(e.target.value);
+  $('magVal').textContent = `M ${M.toFixed(1)}`;
+  $('magEcho').textContent = M.toFixed(1);
+  paint(e.target);
+});
+paint($('mag'));
+
+/** 震度估算（示意）：規模越大越強、震源距離越遠越弱，取 0～7 級 */
+function intensityAt(distKm, mag) {
+  const R = Math.hypot(distKm, FOCAL_DEPTH_KM);
+  return clamp(Math.round(1.2 * mag - 7 * Math.log10(R) + 9.9), 0, 7);
+}
+
+function renderStationList() {
+  $('stList').innerHTML = STATIONS.map(st => {
+    const lv = st.level;
+    const w = lv == null ? 0 : (lv / 7) * 100;
+    const col = lv == null ? '#ccc' : LEVEL_COLORS[lv];
+    return `<div class="st"><div>${st.name}<small>距震央 ${st.km ?? '—'} km</small></div>
+      <div class="bar"><i style="width:${w}%;background:${col}"></i></div>
+      <div class="lv" style="color:${col}">${lv == null ? '—' : lv + ' 級'}</div></div>`;
+  }).join('');
+}
+
+let quake = null;   // { t0, epi, M }
+function surfaceY(x) {
+  // 震央在上磐（斷層線以東）時，地表高度跟著上磐抬升
+  return x >= TOP.x + hanging.position.x ? hanging.position.y : 0;
+}
+$('quakeBtn').addEventListener('click', () => {
+  const hypo = hypoBase.clone().add(hanging.position);
+  const epi = V3(hypo.x, surfaceY(hypo.x) + 0.13, hypo.z);
+  quake = { t0: clock.elapsedTime, hypo, epi, M };
+  STATIONS.forEach(st => {
+    st.world = V3(st.x, 0, st.z).add(st.parent.position);
+    const d = Math.hypot(st.world.x - epi.x, st.world.z - epi.z);
+    st.dist = d;
+    st.km = Math.round(d * KM_PER_UNIT);
+    st.level = null; st.hit = false;
+    st.label.visible = false;
+  });
+  renderStationList();
+
+  hypoCore.position.copy(hypo); energy.position.copy(hypo);
+  hypoCore.visible = energy.visible = true;
+  vLine.geometry.dispose();
+  vLine.geometry = new THREE.BufferGeometry().setFromPoints([hypo, epi]);
+  vLine.computeLineDistances();
+  target.position.copy(epi);
+  lHypo.pos.copy(hypo).add(V3(0, -0.35, 0)); lHypo.el.style.transform = 'translate(-50%, 10%)';
+  lEpi.pos.copy(epi).add(V3(0, 0.55, 0));
+  lHypo.visible = true;
+  lEpi.visible = false; target.visible = false; vLine.visible = false;
+});
+
+const WAVE_SPEED = 2.2;      // 單位/秒
+const WAVE_GAP = 0.45;       // 各道波紋的時間間隔
+function updateQuake(t) {
+  if (!quake) return;
+  const age = t - quake.t0;
+  // 震源閃爍 + 能量球膨脹（大小只由規模決定）
+  hypoCore.material.color.setHSL(0, 1, 0.45 + 0.15 * Math.sin(age * 18));
+  const maxR = 0.35 * Math.pow(1.55, quake.M - 5);
+  const grow = S(age, 0, 0.6);
+  energy.scale.setScalar(Math.max(0.01, maxR * grow * (1 + 0.06 * Math.sin(age * 10))));
+  energy.material.opacity = 0.5 * (1 - S(age, 3.5, 6));
+  // 0.35 秒後：垂直虛線 → 震央
+  if (age > 0.35) { vLine.visible = true; }
+  if (age > 0.7) { target.visible = true; lEpi.visible = true; }
+  // 波紋
+  waves.forEach((w, i) => {
+    const a = age - 0.7 - i * WAVE_GAP;
+    w.visible = a > 0;
+    if (!w.visible) return;
+    const r = a * WAVE_SPEED;
+    w.position.copy(quake.epi).setY(Math.max(hanging.position.y, 0) + 0.2);
+    w.scale.setScalar(Math.max(0.01, r));
+    w.material.opacity = 0.85 * (1 - S(r, 3, 9.5));
+  });
+  // 第一道波紋抵達測站 → 搖晃 + 顯示震度
+  const front = Math.max(0, (age - 0.7) * WAVE_SPEED);
+  STATIONS.forEach(st => {
+    if (!st.hit && front >= st.dist) {
+      st.hit = true;
+      st.level = intensityAt(st.dist * KM_PER_UNIT, quake.M);
+      st.shake = 0.6 + st.level * 0.35;          // 震度越大搖越久、越劇烈
+      st.amp = 0.04 + st.level * 0.045;
+      st.headMat.color.set(LEVEL_COLORS[st.level]);
+      st.label.el.innerHTML = `${st.name}<br><b style="color:${LEVEL_COLORS[st.level]}">震度 ${st.level} 級</b><small>距震央約 ${st.km} km</small>`;
+      st.label.obj = st.parent;
+      st.label.pos.set(st.x, 1.35, st.z);
+      st.label.visible = true;
+      renderStationList();
+    }
+  });
+}
+
+function updateStations(dt, t) {
+  STATIONS.forEach(st => {
+    if (st.shake > 0) {
+      st.shake -= dt;
+      const k = Math.min(1, st.shake);
+      st.pin.rotation.z = Math.sin(t * 55) * st.amp * 3 * k;
+      st.pin.rotation.x = Math.cos(t * 47) * st.amp * 2 * k;
+      st.pin.position.x = st.x + Math.sin(t * 61) * st.amp * k;
+    } else {
+      st.pin.rotation.set(0, 0, 0);
+      st.pin.position.x = st.x;
+    }
+  });
+}
+
+/* ----- 收合 ----- */
+document.querySelectorAll('.collapse').forEach(b => b.addEventListener('click', () => {
+  const p = $(b.dataset.target);
+  const c = p.classList.toggle('collapsed');
+  b.textContent = c ? '展開' : '收合';
+}));
+
+/* =========================================================
+   主迴圈
+   ========================================================= */
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.fov = w < h ? 70 : 42;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+const clock = new THREE.Clock();
+function animate() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+  // 擠壓：上磐沿斷層面往上、往西抬升（逆斷層）
+  slip += ((squeezing ? SLIP_MAX : 0) - slip) * Math.min(1, dt * 1.1);
+  hanging.position.copy(UP_DIP).multiplyScalar(slip);
+  const pulse = 0.3 * Math.sin(t * 5);
+  arrows.forEach(a => {
+    const { side, y } = a.userData;
+    a.position.set(side * (BLOCK.w + 3.2) - side * pulse, y, 0);
+    a.rotation.set(0, side > 0 ? Math.PI : 0, 0);          // 兩側都指向內
+  });
+  updateQuake(t);
+  updateStations(dt, t);
+  controls.update();
+  placeLabels();
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+
+window.quakeSim = { STATIONS, intensityAt, get slip() { return slip; }, UP_DIP };   // 除錯 / 驗證用
+
+renderStationList();
+resize();
+resetView();
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__quakeReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>

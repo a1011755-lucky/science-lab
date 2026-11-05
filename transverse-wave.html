@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>連續橫波與質點運動</title>
+<style>
+  :root {
+    --bg: #f9f9f9;
+    --surface: #ffffff;
+    --ink: #3b3833;
+    --ink-soft: #77726a;
+    --line: #e6e3dd;
+    --accent: #7f90a3;
+    --red: #c4675a;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+    line-height: 1.7; letter-spacing: .02em;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 28px 24px 56px; }
+  .back { font-size: .85rem; color: var(--ink-soft); text-decoration: none; }
+  .back:hover { color: var(--ink); }
+  h1 { font-family: "Noto Serif TC", serif; font-size: clamp(1.5rem, 3.4vw, 2rem); letter-spacing: .04em; margin: 6px 0 2px; }
+  .lead { color: var(--ink-soft); font-size: .92rem; margin-bottom: 18px; }
+  .lead b { color: var(--red); }
+
+  .panel {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 18px 24px; margin-bottom: 16px;
+    display: grid; grid-template-columns: 1fr 1fr auto; gap: 18px 32px; align-items: center;
+  }
+  .ctrl label { display: flex; justify-content: space-between; font-size: .9rem; font-weight: 500; margin-bottom: 8px; }
+  .ctrl output { font-weight: 600; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; background: var(--line); border-radius: 999px; outline: none; cursor: pointer; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); border: 2px solid var(--ink); }
+  input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--surface); border: 2px solid var(--ink); }
+  input[type=range]:focus-visible { outline: 2px solid var(--ink); outline-offset: 6px; }
+  .btn {
+    border: 1px solid var(--ink); background: var(--ink); color: #fff; font: inherit; font-size: .9rem;
+    padding: 9px 22px; border-radius: 999px; cursor: pointer; min-width: 112px;
+    transition: background .25s, color .25s;
+  }
+  .btn.paused { background: transparent; color: var(--ink); }
+  .options { grid-column: 1 / -1; display: flex; gap: 20px; flex-wrap: wrap; font-size: .85rem; color: var(--ink-soft); border-top: 1px solid var(--line); padding-top: 12px; }
+  .options label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .options input { accent-color: var(--ink); }
+
+  .stage { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  canvas { display: block; width: 100%; }
+
+  .note { margin-top: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; font-size: .88rem; color: var(--ink-soft); }
+  .note b { color: var(--ink); }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 20px 16px 40px; }
+    .panel { grid-template-columns: 1fr; padding: 16px; }
+    .btn { width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="index.html#g8">← 回課程總覽</a>
+  <h1>連續橫波與質點運動</h1>
+  <p class="lead">波形向右前進，但仔細看<b>紅色質點</b>：它只在原地上下振動，並沒有跟著波往右走。</p>
+
+  <section class="panel" aria-label="控制面板">
+    <div class="ctrl">
+      <label for="amp">振幅 <output id="ampVal">50</output></label>
+      <input type="range" id="amp" min="0" max="100" step="1" value="50">
+    </div>
+    <div class="ctrl">
+      <label for="freq">頻率 <output id="freqVal">0.50 Hz</output></label>
+      <input type="range" id="freq" min="0.1" max="1.5" step="0.05" value="0.5">
+    </div>
+    <button class="btn" id="playBtn">暫停</button>
+    <div class="options">
+      <label><input type="checkbox" id="optTrack" checked> 顯示紅色質點的運動軌跡</label>
+      <label><input type="checkbox" id="optLine" checked> 連接質點成波形線</label>
+    </div>
+  </section>
+
+  <section class="stage"><canvas id="cv"></canvas></section>
+
+  <p class="note">
+    <b>重點：</b>波傳遞的是「能量」與「波形」，介質質點本身只在平衡位置附近振動。
+    在同一介質中波速固定，因此<b>頻率越高，波長越短</b>（波速 = 頻率 × 波長）。
+  </p>
+  <p class="note"><a href="waves-3d.html" style="color:var(--ink)">延伸：3D 橫波與縱波對照 →</a></p>
+</div>
+
+<script>
+/* ===== 參數 ===== */
+const CFG = {
+  logicalW: 900, logicalH: 380,
+  particleCount: 49,     // 奇數，讓正中央剛好有一個質點
+  margin: 40,
+  waveSpeed: 160,        // 波速（像素/秒），同一介質固定
+  particleR: 5,
+  redR: 8
+};
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const $ = id => document.getElementById(id);
+
+let W = CFG.logicalW, H = CFG.logicalH, scale = 1;
+let A = 50, f = 0.5;
+let phase = 0;          // 累積相位 ωt（改頻率時不會跳動）
+let playing = true;
+let last = performance.now();
+
+/* ===== 尺寸 ===== */
+function resize() {
+  const cssW = cv.parentElement.clientWidth;
+  W = Math.max(560, cssW);                  // 邏輯寬
+  scale = cssW / W;
+  H = CFG.logicalH;
+  const dpr = window.devicePixelRatio || 1;
+  cv.style.height = (H * scale) + 'px';
+  cv.width = Math.round(cssW * dpr);
+  cv.height = Math.round(H * scale * dpr);
+  ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
+}
+window.addEventListener('resize', resize);
+
+/* ===== 波的物理 =====
+   y(x, t) = A · sin(k·(x − xc) − ωt)
+   ω = 2πf，k = ω / v → 每個質點的 x 固定不變，只有 y 隨時間改變 */
+function particleXs() {
+  const n = CFG.particleCount, m = CFG.margin;
+  return Array.from({ length: n }, (_, i) => m + (W - 2 * m) * i / (n - 1));
+}
+function waveY(x, xc) {
+  const k = 2 * Math.PI * f / CFG.waveSpeed;
+  return A * Math.sin(k * (x - xc) - phase);
+}
+
+/* ===== 繪圖 ===== */
+function draw() {
+  const midY = H / 2 + 10;
+  const xs = particleXs();
+  const xc = xs[(xs.length - 1) / 2];       // 正中央的紅色質點
+  const ys = xs.map(x => midY - waveY(x, xc));
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, W, H);
+
+  // 平衡位置
+  ctx.setLineDash([4, 6]);
+  ctx.strokeStyle = '#d9d5ce'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(CFG.margin - 20, midY); ctx.lineTo(W - CFG.margin + 20, midY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#aaa59d'; ctx.font = '12px "Microsoft JhengHei", sans-serif';
+  ctx.textAlign = 'left'; ctx.fillText('平衡位置', 8, midY - 8);
+
+  // 傳播方向
+  ctx.fillStyle = '#77726a'; ctx.font = '14px "Microsoft JhengHei", sans-serif';
+  ctx.textAlign = 'right'; ctx.fillText('波的傳播方向  →', W - CFG.margin, 30);
+
+  // 紅色質點的運動範圍（垂直軌道）
+  if ($('optTrack').checked && A > 0) {
+    ctx.strokeStyle = 'rgba(196,103,90,.35)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(xc, midY - A); ctx.lineTo(xc, midY + A); ctx.stroke();
+    [midY - A, midY + A].forEach(y => {
+      ctx.beginPath(); ctx.moveTo(xc - 10, y); ctx.lineTo(xc + 10, y); ctx.stroke();
+    });
+  }
+
+  // 波形線
+  if ($('optLine').checked) {
+    ctx.strokeStyle = 'rgba(127,144,163,.55)'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(xs[0], ys[0]);
+    for (let i = 1; i < xs.length - 1; i++) {   // 二次曲線讓線條平滑
+      const mx = (xs[i] + xs[i + 1]) / 2, my = (ys[i] + ys[i + 1]) / 2;
+      ctx.quadraticCurveTo(xs[i], ys[i], mx, my);
+    }
+    ctx.lineTo(xs[xs.length - 1], ys[ys.length - 1]);
+    ctx.stroke();
+  }
+
+  // 灰色質點
+  ctx.fillStyle = '#9b968e';
+  xs.forEach((x, i) => {
+    ctx.beginPath(); ctx.arc(x, ys[i], CFG.particleR, 0, Math.PI * 2); ctx.fill();
+  });
+
+  // 紅色質點
+  const ry = ys[(xs.length - 1) / 2];
+  ctx.fillStyle = 'rgba(196,103,90,.18)';
+  ctx.beginPath(); ctx.arc(xc, ry, CFG.redR + 7, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#c4675a';
+  ctx.beginPath(); ctx.arc(xc, ry, CFG.redR, 0, Math.PI * 2); ctx.fill();
+
+  // 紅色質點下方標示：x 位置固定
+  ctx.strokeStyle = 'rgba(196,103,90,.6)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(xc, H - 46); ctx.lineTo(xc, H - 30); ctx.stroke();
+  ctx.fillStyle = '#c4675a'; ctx.font = '13px "Microsoft JhengHei", sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('紅色質點的水平位置永遠在這裡', xc, H - 14);
+
+  // 暫停時標示波峰與波谷
+  if (!playing && A > 4) labelPeaks(xs, ys, midY);
+}
+
+function labelPeaks(xs, ys, midY) {
+  ctx.font = '13px "Microsoft JhengHei", sans-serif'; ctx.textAlign = 'center';
+  for (let i = 1; i < ys.length - 1; i++) {
+    if (ys[i] <= ys[i - 1] && ys[i] < ys[i + 1] && ys[i] < midY - A * 0.8) {
+      ctx.fillStyle = '#7f90a3'; ctx.fillText('波峰', xs[i], ys[i] - 16);
+    }
+    if (ys[i] >= ys[i - 1] && ys[i] > ys[i + 1] && ys[i] > midY + A * 0.8) {
+      ctx.fillStyle = '#b08d76'; ctx.fillText('波谷', xs[i], ys[i] + 26);
+    }
+  }
+}
+
+/* ===== 主迴圈 ===== */
+function loop(now) {
+  const dt = Math.min((now - last) / 1000, 0.05);
+  last = now;
+  if (playing) phase += 2 * Math.PI * f * dt;
+  draw();
+  requestAnimationFrame(loop);
+}
+
+/* ===== 控制面板 ===== */
+$('amp').addEventListener('input', e => { A = Number(e.target.value); $('ampVal').textContent = A; });
+$('freq').addEventListener('input', e => { f = Number(e.target.value); $('freqVal').textContent = f.toFixed(2) + ' Hz'; });
+$('playBtn').addEventListener('click', () => {
+  playing = !playing;
+  $('playBtn').textContent = playing ? '暫停' : '播放';
+  $('playBtn').classList.toggle('paused', !playing);
+});
+
+resize();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

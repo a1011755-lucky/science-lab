@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>高低氣壓模擬器</title>
+<style>
+  :root {
+    --ink: #1c1c1e;
+    --ink-soft: #6e6e73;
+    --line: rgba(60,60,67,.12);
+    --card: rgba(255,255,255,.72);
+    --red: #e5484d;
+    --blue: #3b82f6;
+    --green: #34c759;
+    --track: #e5e5ea;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: linear-gradient(#87ceeb, #ffffff);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; width: 100vw; height: 100vh; }
+  #scene canvas { display: block; }
+
+  /* ===== 晨間天氣 App 風格面板 ===== */
+  .panel {
+    position: absolute; top: 16px; left: 16px; width: 320px; max-height: calc(100vh - 32px); overflow-y: auto; z-index: 10;
+    background: var(--card); backdrop-filter: blur(10px) saturate(160%); -webkit-backdrop-filter: blur(10px) saturate(160%);
+    border: 1px solid rgba(255,255,255,.7); border-radius: 22px; padding: 18px 18px 16px;
+    box-shadow: 0 10px 30px rgba(30,60,90,.15);
+  }
+  .back { font-size: .8rem; color: var(--blue); text-decoration: none; }
+  .back:hover { text-decoration: underline; }
+  .title { font-size: 1.25rem; font-weight: 700; margin-top: 6px; letter-spacing: .01em; }
+  .sub { font-size: .8rem; color: var(--ink-soft); }
+
+  .now {
+    display: flex; align-items: center; gap: 14px; margin: 14px 0;
+    background: rgba(255,255,255,.75); border-radius: 18px; padding: 14px 16px;
+  }
+  .now .icon { font-size: 2.6rem; line-height: 1; }
+  .now .big { font-size: 1.6rem; font-weight: 700; line-height: 1.15; }
+  .now .big b { font-weight: 800; }
+  .now .desc { font-size: .8rem; color: var(--ink-soft); margin-top: 2px; }
+  .hi { color: var(--red); } .lo { color: var(--blue); }
+
+  /* iOS 開關 */
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 2px; border-top: 1px solid var(--line); font-size: .9rem; }
+  .row:first-of-type { border-top: none; }
+  .row small { color: var(--ink-soft); font-size: .75rem; display: block; }
+  .toggle-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; padding: 4px 2px 12px; }
+  .toggle-row span { font-size: .8rem; line-height: 1.3; color: var(--ink-soft); transition: color .25s; }
+  .toggle-row span.active { color: var(--ink); font-weight: 600; }
+  .toggle-row span:last-child { text-align: right; }
+  .switch { position: relative; width: 51px; height: 31px; flex: none; }
+  .switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
+  .switch .slider {
+    position: absolute; inset: 0; border-radius: 999px; background: var(--track);
+    transition: background .25s;
+  }
+  .switch .slider::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%;
+    background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,.15), 0 1px 1px rgba(0,0,0,.08);
+    transition: transform .28s cubic-bezier(.3,1.4,.6,1);
+  }
+  .switch input:checked + .slider { background: var(--green); }
+  .switch input:checked + .slider::after { transform: translateX(20px); }
+  .switch input:focus-visible + .slider { box-shadow: 0 0 0 3px rgba(59,130,246,.45); }
+  /* 高低氣壓主開關：紅 ↔ 藍 */
+  .switch.pressure .slider { background: var(--red); }
+  .switch.pressure input:checked + .slider { background: var(--blue); }
+
+  /* iOS 滑桿 */
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 130px; height: 4px; border-radius: 999px; cursor: pointer;
+    background: linear-gradient(90deg, var(--blue) 0%, var(--blue) var(--fill, 50%), var(--track) var(--fill, 50%)); outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #fff;
+    box-shadow: 0 3px 8px rgba(0,0,0,.15), 0 0 0 .5px rgba(0,0,0,.06); }
+  input[type=range]::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 3px 8px rgba(0,0,0,.15); }
+  input[type=range]:focus-visible { box-shadow: 0 0 0 3px rgba(59,130,246,.35); }
+
+  .steps { list-style: none; margin-top: 10px; background: rgba(255,255,255,.75); border-radius: 16px; padding: 12px 14px; }
+  .steps li { position: relative; font-size: .82rem; line-height: 1.55; padding: 4px 0 4px 22px; }
+  .steps li::before { content: attr(data-n); position: absolute; left: 0; top: 6px; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--accent, var(--red)); color: #fff; font-size: .65rem; font-weight: 700; display: grid; place-items: center; }
+
+  .btn {
+    width: 100%; margin-top: 12px; border: none; border-radius: 12px; padding: 11px; cursor: pointer;
+    font: inherit; font-size: .88rem; font-weight: 600; color: var(--blue); background: rgba(59,130,246,.1);
+    transition: background .2s, transform .1s;
+  }
+  .btn:hover { background: rgba(59,130,246,.18); }
+  .btn:active { transform: scale(.98); }
+  /* 收合鈕：桌機與手機都可收合，避免擋住畫面 */
+  .collapse {
+    position: absolute; top: 16px; right: 16px; z-index: 2; cursor: pointer;
+    border: none; border-radius: 999px; padding: 4px 12px;
+    font: inherit; font-size: .78rem; font-weight: 600; color: var(--blue); background: rgba(59,130,246,.1);
+  }
+  .collapse:hover { background: rgba(59,130,246,.18); }
+  .panel.collapsed .body { display: none; }
+  .panel.collapsed { width: auto; min-width: 230px; }
+  .panel .title { padding-right: 60px; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .75rem; font-weight: 600; padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+    background: rgba(255,255,255,.82); color: var(--ink); box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  }
+  .hint { position: absolute; right: 16px; bottom: 14px; z-index: 5; font-size: .75rem; color: rgba(28,28,30,.55); }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 640px) {
+    .panel { top: auto; bottom: 10px; left: 10px; right: 10px; width: auto; max-height: 52vh; border-radius: 20px; }
+    .panel.collapsed .body { display: none; }
+    .collapse { display: block; position: absolute; top: 14px; right: 16px; border: none; background: none; font: inherit; font-size: .8rem; color: var(--blue); cursor: pointer; }
+    .hint { display: none; }
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="scene"></div>
+
+<aside class="panel" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g9">‹ 課程總覽</a>
+  <div class="title">高低氣壓模擬器</div>
+  <div class="sub">北半球 · 拖曳畫面可旋轉觀察</div>
+
+  <div class="body">
+    <div class="now">
+      <div class="icon" id="nowIcon">☀️</div>
+      <div>
+        <div class="big" id="nowBig"><b class="hi">H</b> 高氣壓</div>
+        <div class="desc" id="nowDesc">空氣下沉 · 晴朗無雲</div>
+      </div>
+    </div>
+
+    <div class="toggle-row">
+      <span id="lblHigh" class="active">高氣壓<br>晴朗下沉</span>
+      <label class="switch pressure" aria-label="切換高氣壓／低氣壓">
+        <input type="checkbox" id="pressureToggle" role="switch">
+        <span class="slider"></span>
+      </label>
+      <span id="lblLow">低氣壓<br>陰雨上升</span>
+    </div>
+
+    <div class="row">
+      <div>氣流速度<small id="speedVal">1.0×</small></div>
+      <input type="range" id="speed" min="0.2" max="2" step="0.1" value="1">
+    </div>
+    <div class="row">
+      <div>地面風向箭頭<small>看出旋轉與輻合／輻散</small></div>
+      <label class="switch"><input type="checkbox" id="arrowToggle" role="switch" checked><span class="slider"></span></label>
+    </div>
+
+    <ol class="steps" id="steps"></ol>
+    <button class="btn" id="viewBtn">重設視角</button>
+  </div>
+</aside>
+
+<div class="hint">拖曳旋轉 · 滾輪縮放</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__weatherReady = true;
+
+/* =========================================================
+   參數（北半球）
+   ========================================================= */
+const CFG = {
+  particles: 700,
+  rMax: 11,            // 氣流範圍半徑
+  coreR: 2.2,          // 中心上升／下沉氣柱半徑
+  groundTop: 1.6,      // 地面層高度
+  aloft: 5.8,          // 高空層高度
+  cloudBase: 7.4,
+  colors: {
+    high: 0xe5484d, low: 0x3b82f6, ground: 0x88cc88,
+    skyHighTop: 0x4fa8e0, skyHighBot: 0xffffff,
+    skyLowTop: 0x7c8a9a, skyLowBot: 0xdfe3e8
+  }
+};
+const S = THREE.MathUtils.smoothstep;
+const clamp = THREE.MathUtils.clamp;
+const $ = id => document.getElementById(id);
+
+/* =========================================================
+   渲染器 / 場景 / 相機（無 Bloom）
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;   // 搭配 shadow.radius 做柔邊陰影
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 300);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI * 0.48;     // 不鑽到地底
+controls.minDistance = 8;
+controls.maxDistance = 60;
+function resetView() {
+  camera.position.set(17, 12, 21);
+  controls.target.set(0, 4.5, 0);
+  controls.update();
+}
+
+/* ----- 天空：漸層天空穹頂（天藍 → 白） ----- */
+const skyUniforms = {
+  topColor: { value: new THREE.Color(CFG.colors.skyHighTop) },
+  bottomColor: { value: new THREE.Color(CFG.colors.skyHighBot) }
+};
+const sky = new THREE.Mesh(new THREE.SphereGeometry(150, 32, 16), new THREE.ShaderMaterial({
+  uniforms: skyUniforms, side: THREE.BackSide, depthWrite: false,
+  vertexShader: `varying vec3 vPos; void main(){ vPos = (modelMatrix * vec4(position,1.0)).xyz; gl_Position = projectionMatrix * viewMatrix * vec4(vPos,1.0); }`,
+  fragmentShader: `uniform vec3 topColor; uniform vec3 bottomColor; varying vec3 vPos;
+    void main(){ float h = clamp(pow(max(normalize(vPos).y, 0.0), 0.3) * 1.5, 0.0, 1.0); gl_FragColor = vec4(mix(bottomColor, topColor, h), 1.0); }`
+}));
+scene.add(sky);
+scene.fog = new THREE.Fog(0xffffff, 45, 120);
+
+/* ----- 燈光：半球光 + 陽光（陰影） ----- */
+// 環境光調亮、陽光調弱 → 陰影變淡；shadow.radius 讓邊緣柔和
+const LIGHT = { hemi: 1.45, sun: 1.5 };
+const hemi = new THREE.HemisphereLight(0xeaf6ff, 0x7aa86a, LIGHT.hemi);
+scene.add(hemi);
+const sunLight = new THREE.DirectionalLight(0xfff3dd, LIGHT.sun);
+sunLight.position.set(-14, 20, 10);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(2048, 2048);
+Object.assign(sunLight.shadow.camera, { left: -18, right: 18, top: 18, bottom: -18, near: 1, far: 60 });
+sunLight.shadow.bias = -0.0005;
+sunLight.shadow.radius = 6;
+sunLight.shadow.blurSamples = 16;
+scene.add(sunLight);
+
+/* ----- Low-Poly 大地 ----- */
+const groundGeo = new THREE.PlaneGeometry(70, 70, 36, 36);
+groundGeo.rotateX(-Math.PI / 2);
+{
+  const pos = groundGeo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    const r = Math.hypot(x, z);
+    // 中央保持平坦，外圍起伏成小丘
+    const bump = S(r, 13, 30) * (Math.sin(x * 0.35) * Math.cos(z * 0.3) * 1.2 + Math.random() * 0.6);
+    pos.setY(i, bump + (Math.random() - 0.5) * 0.12);
+  }
+  groundGeo.computeVertexNormals();
+}
+const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: CFG.colors.ground, flatShading: true, roughness: 0.95 }));
+ground.receiveShadow = true;
+scene.add(ground);
+const grid = new THREE.GridHelper(24, 24, 0x79b879, 0x80c080);   // 與草地同色系
+grid.position.y = 0.04;
+grid.material.transparent = true;
+grid.material.opacity = 0.18;
+scene.add(grid);
+
+/* ----- 點綴：Low-Poly 小樹 ----- */
+const treeMat = new THREE.MeshStandardMaterial({ color: 0x4f9a4f, flatShading: true });
+const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8b6a4a, flatShading: true });
+for (let i = 0; i < 22; i++) {
+  const a = i / 22 * Math.PI * 2 + Math.random() * 0.2, r = 13.5 + Math.random() * 6;
+  const t = new THREE.Group();
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.7, 5), trunkMat);
+  trunk.position.y = 0.35;
+  const crown = new THREE.Mesh(new THREE.ConeGeometry(0.7, 1.8, 6), treeMat);
+  crown.position.y = 1.5;
+  t.add(trunk, crown);
+  t.traverse(o => { o.castShadow = true; });
+  t.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+  t.scale.setScalar(0.8 + Math.random() * 0.6);
+  scene.add(t);
+}
+
+/* ----- 太陽（低氣壓時被雲遮住） ----- */
+const sun = new THREE.Mesh(new THREE.IcosahedronGeometry(2.2, 1),
+  new THREE.MeshBasicMaterial({ color: 0xffd34d }));
+sun.position.set(-26, 26, -30);
+scene.add(sun);
+
+/* =========================================================
+   立體字 H / L（Low-Poly 方塊組成）
+   ========================================================= */
+function makeLetter(kind, color) {
+  const g = new THREE.Group();
+  // 微透光壓克力：像精緻的 3D 浮雕指標
+  const mat = new THREE.MeshPhysicalMaterial({
+    color, transmission: 0.5, roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.1,
+    thickness: 0.9, ior: 1.45, metalness: 0, emissive: color, emissiveIntensity: 0.18
+  });
+  const bar = (w, h, x, y) => {
+    const m = new THREE.Mesh(new RoundedBoxGeometry(w, h, 0.9, 4, 0.22), mat);
+    m.position.set(x, y, 0);
+    m.castShadow = true;
+    g.add(m);
+  };
+  if (kind === 'H') { bar(0.9, 4, -1.2, 0); bar(0.9, 4, 1.2, 0); bar(1.6, 0.85, 0, 0); }
+  else { bar(0.9, 4, -0.85, 0); bar(2.6, 0.9, 0.0, -1.55); }
+  return g;
+}
+const letterH = makeLetter('H', CFG.colors.high);
+const letterL = makeLetter('L', CFG.colors.low);
+const letters = new THREE.Group();
+letters.add(letterH, letterL);
+letters.position.set(0, 12, 0);
+scene.add(letters);
+
+/* 中央的上升／下沉大箭頭（半透明） */
+const coreArrow = new THREE.Group();
+{
+  const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, flatShading: true, depthWrite: false });
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 3.2, 8), mat);
+  const head = new THREE.Mesh(new THREE.ConeGeometry(0.8, 1.2, 8), mat);
+  head.position.y = 2.2;
+  coreArrow.add(shaft, head);
+  coreArrow.userData.mat = mat;
+}
+coreArrow.position.set(0, 3.8, 0);
+scene.add(coreArrow);
+
+/* =========================================================
+   氣流場（核心物理）
+   ---------------------------------------------------------
+   以柱座標 (r, φ, y) 表示；φ 由上往下看（北朝上）為逆時針遞增。
+   F(r, y) 為「低氣壓」的流場：
+     地面層：向內輻合 + 逆時針旋轉
+     中心氣柱：上升
+     高空層：向外輻散
+   高氣壓恰好是低氣壓的時間反轉：v = σ · F，σ = +1（低）→ −1（高）
+   因此高氣壓 = 中心下沉、地面向外輻散 + 順時針旋轉。
+   ========================================================= */
+function flow(r, y) {
+  const g = 1 - S(y, CFG.groundTop, 3.0);           // 地面層權重
+  const top = S(y, 4.6, CFG.aloft);                 // 高空層權重
+  const core = 1 - S(r, CFG.coreR * 0.55, CFG.coreR); // 中心氣柱權重
+  const h = clamp(r / 1.5, 0, 1);
+  return {
+    vr: -0.95 * g * h + 0.85 * top,                       // 徑向速度
+    w: (1.15 / (r + 1.2)) * g - 0.12 * top,               // 角速度（+ = 逆時針）
+    vy: 1.7 * core * S(y, 0.2, 1.4) * (1 - S(y, 5.9, 7.3)) // 垂直速度
+  };
+}
+
+/* ----- 粒子（InstancedMesh） ----- */
+const N = CFG.particles;
+// 風痕：細長、半透明的線條，沿氣流方向排列，若隱若現
+const particleMesh = new THREE.InstancedMesh(
+  new THREE.BoxGeometry(0.03, 0.03, 0.75),
+  new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, depthWrite: false }),
+  N
+);
+particleMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+scene.add(particleMesh);
+const P = Array.from({ length: N }, () => ({ r: 0, phi: 0, y: 0, spd: 0, age: 0, dir: new THREE.Vector3(1, 0, 0) }));
+
+function spawn(p, sigma) {
+  p.phi = Math.random() * Math.PI * 2;
+  p.r = CFG.rMax - 4.5 + Math.random() * 4;
+  p.y = sigma >= 0 ? 0.35 + Math.random() * 1.1           // 低氣壓：從四周地面流入
+                   : CFG.aloft + Math.random() * 1.2;       // 高氣壓：從高空四周流入後下沉
+  p.spd = 0.75 + Math.random() * 0.5;
+  p.age = 0;
+}
+let sigma = -1, sigmaTarget = -1;    // 預設高氣壓
+P.forEach(p => spawn(p, sigma));
+
+function stepParticles(dt) {
+  for (const p of P) {
+    const f = flow(p.r, p.y);
+    const k = sigma * p.spd * dt;
+    p.r = Math.max(0.02, p.r + f.vr * k);
+    p.phi += f.w * k;
+    p.y += f.vy * k;
+    p.age += dt;
+    if (p.r > CFG.rMax || p.y > 8.6 || p.y < 0.05) spawn(p, sigma);
+  }
+}
+// 預先跑一段時間，讓開場就是穩定的流動
+for (let i = 0; i < 1500; i++) stepParticles(1 / 30);
+
+const dummy = new THREE.Object3D();
+const lookTarget = new THREE.Vector3();
+function writeParticles() {
+  for (let i = 0; i < N; i++) {
+    const p = P[i];
+    const f = flow(p.r, p.y);
+    const vr = sigma * f.vr, vt = sigma * f.w * p.r, vy = sigma * f.vy;
+    const dx = vr * Math.cos(p.phi) - vt * Math.sin(p.phi);
+    const dz = -vr * Math.sin(p.phi) - vt * Math.cos(p.phi);
+    const mag = Math.hypot(dx, vy, dz);
+    if (mag > 1e-3) p.dir.set(dx / mag, vy / mag, dz / mag);   // 停住的瞬間保留上一次方向
+
+    dummy.position.set(p.r * Math.cos(p.phi), p.y, -p.r * Math.sin(p.phi));
+    lookTarget.copy(dummy.position).add(p.dir);
+    dummy.lookAt(lookTarget);                                   // 線條長軸對齊氣流方向
+    const grow = Math.min(1, p.age * 2);
+    dummy.scale.set(grow, grow, grow * (0.5 + 0.7 * clamp(mag, 0, 1.2)));  // 越快越長
+    dummy.updateMatrix();
+    particleMesh.setMatrixAt(i, dummy.matrix);
+  }
+  particleMesh.instanceMatrix.needsUpdate = true;
+}
+
+/* ----- 地面風向箭頭 ----- */
+const arrowShape = new THREE.Shape([
+  new THREE.Vector2(-0.7, -0.12), new THREE.Vector2(0.2, -0.12), new THREE.Vector2(0.2, -0.32),
+  new THREE.Vector2(0.75, 0), new THREE.Vector2(0.2, 0.32), new THREE.Vector2(0.2, 0.12), new THREE.Vector2(-0.7, 0.12)
+]);
+const arrowGeo = new THREE.ExtrudeGeometry(arrowShape, { depth: 0.08, bevelEnabled: false });
+arrowGeo.rotateX(Math.PI / 2);   // 平躺在地面
+const arrowMat = new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true, transparent: true });
+const ARROWS = 40;
+const arrowMesh = new THREE.InstancedMesh(arrowGeo, arrowMat, ARROWS);
+arrowMesh.castShadow = true;
+arrowMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+const arrowGroup = new THREE.Group();
+arrowGroup.add(arrowMesh);
+scene.add(arrowGroup);
+
+const ARROW_R = { inner: 1.7, outer: 10.5 };
+const arrows = Array.from({ length: ARROWS }, (_, i) => ({
+  r: ARROW_R.inner + (ARROW_R.outer - ARROW_R.inner) * (i + 0.5) / ARROWS,
+  phi: i * 2.39996,           // 黃金角，均勻散布
+  age: 1
+}));
+function respawnArrow(a) {
+  a.phi = Math.random() * Math.PI * 2;
+  // 低氣壓（向內）從外圈出發；高氣壓（向外）從內圈出發
+  a.r = sigma > 0 ? ARROW_R.outer - Math.random() * 1.2 : ARROW_R.inner + Math.random() * 1.0;
+  a.age = 0;
+}
+
+/** 箭頭沿地面氣流的螺旋軌跡「游動」，每幀重算位置與朝向 */
+function updateArrows(dt) {
+  const k = sigma * dt * speed * 1.25;
+  for (let i = 0; i < ARROWS; i++) {
+    const a = arrows[i];
+    const f = flow(a.r, 0.6);
+    a.r += f.vr * k;
+    a.phi += f.w * k;
+    a.age += dt;
+    if (a.r > ARROW_R.outer || a.r < ARROW_R.inner) respawnArrow(a);
+
+    const vr = sigma * f.vr, vt = sigma * f.w * a.r;
+    // 徑向單位向量 (cosφ, −sinφ)；φ 增加方向的切向單位向量 (−sinφ, −cosφ)
+    const vx = vr * Math.cos(a.phi) - vt * Math.sin(a.phi);
+    const vz = -vr * Math.sin(a.phi) - vt * Math.cos(a.phi);
+    const fade = Math.min(1, a.age * 1.5)
+      * S(a.r, ARROW_R.inner, ARROW_R.inner + 1) * (1 - S(a.r, ARROW_R.outer - 1, ARROW_R.outer));
+
+    dummy.position.set(a.r * Math.cos(a.phi), 0.12, -a.r * Math.sin(a.phi));
+    dummy.rotation.set(0, Math.atan2(-vz, vx), 0);
+    dummy.scale.setScalar(Math.max(0.001, (0.55 + 0.45 * Math.abs(sigma)) * fade));
+    dummy.updateMatrix();
+    arrowMesh.setMatrixAt(i, dummy.matrix);
+  }
+  arrowMesh.instanceMatrix.needsUpdate = true;
+  arrowMat.opacity = 0.35 + 0.6 * Math.abs(sigma);
+  arrowMat.color.set(sigma > 0 ? CFG.colors.low : CFG.colors.high).lerp(new THREE.Color(0xffffff), 0.1);
+}
+
+/* =========================================================
+   雲與雨（低氣壓時生成，高氣壓時消散）
+   ========================================================= */
+const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true, roughness: 0.9 });
+const clouds = [];
+const CLOUD_SPOTS = [[0, 0], [2.2, 0.8], [-2, 1.2], [0.8, -2.2], [-1.4, -1.8], [2.6, -1.6], [-2.8, -0.4], [0.4, 2.6]];
+CLOUD_SPOTS.forEach(([x, z], i) => {
+  const c = new THREE.Group();
+  const n = 4 + (i % 3);
+  for (let k = 0; k < n; k++) {
+    const s = 0.7 + Math.random() * 0.7;
+    const puff = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 1), cloudMat);
+    puff.position.set((k - n / 2) * 0.75 + Math.random() * 0.3, Math.random() * 0.5, (Math.random() - 0.5) * 0.9);
+    puff.castShadow = true;
+    c.add(puff);
+  }
+  c.position.set(x, CFG.cloudBase + (i % 3) * 0.35, z);
+  c.rotation.y = Math.random() * Math.PI;
+  c.scale.setScalar(0.001);
+  c.visible = false;
+  scene.add(c);
+  clouds.push({ group: c, delay: i / CLOUD_SPOTS.length * 0.45 });
+});
+
+const RAIN = 260;
+const rainMat = new THREE.MeshBasicMaterial({ color: 0x6aa6e8, transparent: true, opacity: 0 });
+const rain = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.018, 0.018, 0.5, 4), rainMat, RAIN);
+rain.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+scene.add(rain);
+const drops = Array.from({ length: RAIN }, () => {
+  const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * 3.4;
+  return { x: r * Math.cos(a), z: r * Math.sin(a), y: Math.random() * CFG.cloudBase, v: 7 + Math.random() * 3 };
+});
+
+let cloudAmt = 0;
+function updateClouds(dt, t) {
+  cloudAmt += ((sigma > 0.3 ? 1 : 0) - cloudAmt) * Math.min(1, dt * 0.55);
+  clouds.forEach(({ group, delay }, i) => {
+    const s = clamp((cloudAmt - delay) / 0.5, 0, 1);
+    group.visible = s > 0.01;
+    group.scale.setScalar(S(s, 0, 1) * (1 + 0.04 * Math.sin(t * 0.8 + i)));
+    group.rotation.y += dt * 0.05 * sigma;               // 雲隨氣旋緩慢轉動
+  });
+  const rainOn = clamp((cloudAmt - 0.65) / 0.3, 0, 1);
+  rainMat.opacity = 0.65 * rainOn;
+  rain.visible = rainOn > 0.01;
+  if (rain.visible) {
+    drops.forEach((d, i) => {
+      d.y -= d.v * dt;
+      if (d.y < 0.1) d.y = CFG.cloudBase - 0.4;
+      dummy.position.set(d.x, d.y, d.z);
+      dummy.scale.setScalar(1);
+      dummy.updateMatrix();
+      rain.setMatrixAt(i, dummy.matrix);
+    });
+    rain.instanceMatrix.needsUpdate = true;
+  }
+  // 天氣氛圍：陰天時天空變灰、陽光變弱
+  skyUniforms.topColor.value.set(CFG.colors.skyHighTop).lerp(new THREE.Color(CFG.colors.skyLowTop), cloudAmt);
+  skyUniforms.bottomColor.value.set(CFG.colors.skyHighBot).lerp(new THREE.Color(CFG.colors.skyLowBot), cloudAmt);
+  scene.fog.color.copy(skyUniforms.bottomColor.value);
+  sunLight.intensity = LIGHT.sun * (1 - 0.6 * cloudAmt);
+  hemi.intensity = LIGHT.hemi * (1 - 0.25 * cloudAmt);
+  sun.scale.setScalar(Math.max(0.001, 1 - cloudAmt));
+}
+
+/* =========================================================
+   標籤
+   ========================================================= */
+const labels = [];
+function addLabel(text) {
+  const el = document.createElement('div');
+  el.className = 'tag';
+  el.textContent = text;
+  document.body.appendChild(el);
+  const L = { el, pos: new THREE.Vector3(), visible: true };
+  labels.push(L);
+  return L;
+}
+const lCore = addLabel(''), lGround = addLabel(''), lAloft = addLabel('');
+const tmpV = new THREE.Vector3();
+function placeLabels() {
+  for (const L of labels) {
+    tmpV.copy(L.pos).project(camera);
+    const show = L.visible && tmpV.z < 1;
+    L.el.style.display = show ? '' : 'none';
+    if (!show) continue;
+    L.el.style.left = ((tmpV.x + 1) / 2 * window.innerWidth) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * window.innerHeight) + 'px';
+  }
+}
+
+/* =========================================================
+   UI
+   ========================================================= */
+const TEXT = {
+  high: {
+    icon: '☀️', big: '<b class="hi">H</b> 高氣壓', desc: '空氣下沉 · 晴朗無雲', accent: 'var(--red)',
+    core: '↓ 中心空氣下沉', ground: '↻ 地面：順時針向外輻散', aloft: '高空空氣向中心輻合',
+    steps: ['高空的空氣向中心輻合，然後在中心<b>下沉</b>。', '空氣下沉時受到壓縮而增溫，水氣不易凝結。', '到達地面後向四周<b>輻散</b>，北半球呈<b>順時針</b>旋轉。', '因此高氣壓籠罩時多半<b>晴朗少雲</b>。']
+  },
+  low: {
+    icon: '🌧️', big: '<b class="lo">L</b> 低氣壓', desc: '空氣上升 · 多雲有雨', accent: 'var(--blue)',
+    core: '↑ 中心空氣上升', ground: '↺ 地面：逆時針向內輻合', aloft: '高空空氣向外輻散',
+    steps: ['地面四周的空氣向中心<b>輻合</b>，北半球呈<b>逆時針</b>旋轉。', '空氣在中心<b>上升</b>，上升時膨脹冷卻。', '水氣冷卻凝結成<b>雲</b>，雲越積越厚就會下雨。', '因此低氣壓（例如颱風）常帶來<b>陰雨</b>天氣。']
+  }
+};
+function applyModeUI(isLow) {
+  const T = isLow ? TEXT.low : TEXT.high;
+  $('nowIcon').textContent = T.icon;
+  $('nowBig').innerHTML = T.big;
+  $('nowDesc').textContent = T.desc;
+  $('lblHigh').classList.toggle('active', !isLow);
+  $('lblLow').classList.toggle('active', isLow);
+  $('steps').style.setProperty('--accent', T.accent);
+  $('steps').innerHTML = T.steps.map((s, i) => `<li data-n="${i + 1}">${s}</li>`).join('');
+  lCore.el.textContent = T.core;
+  lGround.el.textContent = T.ground;
+  lAloft.el.textContent = T.aloft;
+}
+$('pressureToggle').addEventListener('change', e => {
+  sigmaTarget = e.target.checked ? 1 : -1;
+  applyModeUI(e.target.checked);
+});
+let speed = 1;
+const paint = el => el.style.setProperty('--fill', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
+$('speed').addEventListener('input', e => { speed = Number(e.target.value); $('speedVal').textContent = speed.toFixed(1) + '×'; paint(e.target); });
+paint($('speed'));
+$('arrowToggle').addEventListener('change', e => { arrowGroup.visible = e.target.checked; });
+$('viewBtn').addEventListener('click', resetView);
+$('collapse').addEventListener('click', () => {
+  const c = $('panel').classList.toggle('collapsed');
+  $('collapse').textContent = c ? '展開' : '收合';
+});
+
+/* =========================================================
+   主迴圈
+   ========================================================= */
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.fov = w < h ? 65 : 45;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+const clock = new THREE.Clock();
+function animate() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+  // σ 平滑過渡：氣流減速 → 停止 → 反向，無縫切換
+  sigma += (sigmaTarget - sigma) * Math.min(1, dt * 1.2);
+
+  stepParticles(dt * speed);
+  writeParticles();
+  updateArrows(dt);
+  updateClouds(dt, t);
+
+  // H / L 字母交替出現，並轉向鏡頭
+  const sH = S(-sigma, 0.1, 0.9), sL = S(sigma, 0.1, 0.9);
+  letterH.scale.setScalar(Math.max(0.001, sH));
+  letterL.scale.setScalar(Math.max(0.001, sL));
+  letters.position.y = 11 + Math.sin(t * 1.2) * 0.25;
+  letters.rotation.y = Math.atan2(camera.position.x, camera.position.z);
+
+  // 中央大箭頭：低氣壓朝上、高氣壓朝下
+  coreArrow.scale.set(1, Math.max(0.05, Math.abs(sigma)) * Math.sign(sigma || 1), 1);
+  coreArrow.userData.mat.color.set(sigma > 0 ? CFG.colors.low : CFG.colors.high).lerp(new THREE.Color(0xffffff), 0.35);
+
+  lCore.pos.set(1.6, 4.6, 0);
+  lGround.pos.set(0, 0.3, 9.6);
+  lAloft.pos.set(0, 6.6, -6.5);
+
+  controls.update();
+  placeLabels();
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+
+window.weather = { flow, get sigma() { return sigma; }, P, arrows, updateArrows, setLow: v => { $('pressureToggle').checked = v; $('pressureToggle').dispatchEvent(new Event('change')); } };
+
+applyModeUI(false);
+resize();
+resetView();
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__weatherReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>

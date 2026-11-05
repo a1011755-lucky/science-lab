@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D 橫波與縱波對照</title>
+<style>
+  :root {
+    --bg: #050510;
+    --white: #ffffff;
+    --cyan: #00e5ff;
+    --magenta: #8a7dff;
+    --yellow: #ffe45c;
+    --red: #ff4a4a;
+    --muted: rgba(255,255,255,.62);
+    --glass: rgba(15,15,25,.6);
+    --border: rgba(255,255,255,.1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--white);
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+    letter-spacing: .02em;
+  }
+
+  /* ===== 全螢幕 3D 畫布 ===== */
+  #scene { position: absolute; inset: 0; width: 100vw; height: 100vh; z-index: 0; }
+  #scene canvas { display: block; width: 100vw !important; height: 100vh !important; }
+
+  /* ===== 毛玻璃控制面板 ===== */
+  .panel {
+    position: absolute; top: 16px; left: 16px; width: 310px; z-index: 10;
+    background: var(--glass);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--border); border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: 0 0 0 1px rgba(0,229,255,.04), 0 12px 40px rgba(0,0,0,.5);
+  }
+  .back { font-size: .78rem; color: var(--muted); text-decoration: none; letter-spacing: .08em; }
+  .back:hover { color: var(--cyan); }
+  h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: .08em; margin: 6px 0 2px; color: var(--white); text-shadow: 0 0 12px rgba(0,229,255,.45); }
+  .lead { font-size: .8rem; color: var(--muted); line-height: 1.65; margin-bottom: 16px; }
+  .lead b { color: var(--red); text-shadow: 0 0 8px rgba(255,74,74,.6); }
+
+  .ctrl { margin-bottom: 16px; }
+  .ctrl label { display: flex; justify-content: space-between; align-items: baseline; font-size: .82rem; margin-bottom: 8px; color: var(--white); }
+  .ctrl label span { font-size: .68rem; color: var(--muted); letter-spacing: .12em; margin-left: 6px; }
+  .ctrl output { font-family: "Consolas", "SFMono-Regular", monospace; font-size: 1rem; color: var(--cyan); text-shadow: 0 0 8px rgba(0,229,255,.7); }
+
+  /* 科技風滑桿 */
+  input[type=range] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 999px;
+    background: linear-gradient(90deg, var(--cyan) 0%, var(--cyan) var(--fill, 50%), rgba(255,255,255,.12) var(--fill, 50%));
+    box-shadow: 0 0 10px rgba(0,229,255,.25);
+    outline: none; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--bg); border: 2px solid var(--cyan);
+    box-shadow: 0 0 10px var(--cyan), 0 0 22px rgba(0,229,255,.5);
+    transition: transform .15s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+  input[type=range]::-moz-range-thumb {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--bg); border: 2px solid var(--cyan); box-shadow: 0 0 10px var(--cyan);
+  }
+  input[type=range]::-moz-range-track { background: transparent; }
+  input[type=range]:focus-visible { outline: 1px solid var(--cyan); outline-offset: 8px; }
+
+  .info {
+    font-family: "Consolas", "SFMono-Regular", "Microsoft JhengHei", monospace;
+    font-size: .74rem; color: var(--muted); line-height: 1.75;
+    border-top: 1px solid var(--border); padding-top: 10px;
+  }
+  .info em { font-style: normal; color: var(--cyan); }
+  .info .warn { color: var(--yellow); }
+
+  /* 科技風按鈕 */
+  .btns { display: flex; gap: 8px; margin-top: 14px; }
+  .btn {
+    flex: 1; font: inherit; font-size: .8rem; letter-spacing: .1em; cursor: pointer;
+    color: var(--cyan); background: rgba(0,229,255,.06);
+    border: 1px solid rgba(0,229,255,.55); border-radius: 8px; padding: 8px 10px;
+    box-shadow: inset 0 0 10px rgba(0,229,255,.08);
+    transition: background .2s, box-shadow .2s, color .2s;
+  }
+  .btn:hover { background: rgba(0,229,255,.16); box-shadow: 0 0 14px rgba(0,229,255,.45), inset 0 0 10px rgba(0,229,255,.2); color: var(--white); }
+  .btn.on { background: var(--cyan); color: var(--bg); box-shadow: 0 0 18px rgba(0,229,255,.7); }
+  .btn:focus-visible { outline: 1px solid var(--white); outline-offset: 3px; }
+  /* 收合鈕：桌機與手機都可收合，避免擋住畫面 */
+  .toggle {
+    position: absolute; top: 14px; right: 14px; z-index: 2; cursor: pointer;
+    font: inherit; font-size: .74rem; letter-spacing: .08em; color: var(--cyan);
+    background: rgba(0,229,255,.08); border: 1px solid rgba(0,229,255,.4); border-radius: 999px; padding: 3px 12px;
+  }
+  .toggle:hover { background: rgba(0,229,255,.18); }
+  .panel.collapsed .body { display: none; }
+  .panel.collapsed { width: auto; min-width: 240px; padding-bottom: 14px; }
+  .panel h1 { padding-right: 64px; }
+
+  /* ===== 3D 標籤 ===== */
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .78rem; padding: 4px 12px; border-radius: 999px; white-space: nowrap;
+    background: var(--glass); border: 1px solid var(--border);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  }
+  #tagT { color: var(--cyan); border-color: rgba(0,229,255,.35); }
+  #tagL { color: var(--magenta); border-color: rgba(138,125,255,.4); }
+  .tag small { color: var(--muted); margin-left: 6px; }
+  .hint { position: absolute; right: 16px; bottom: 14px; z-index: 5; font-size: .72rem; letter-spacing: .1em; color: rgba(255,255,255,.45); }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--muted); font-size: .9rem; line-height: 1.8; padding: 24px; }
+
+  @media (max-width: 640px) {
+    .panel { top: 10px; left: 10px; right: 10px; width: auto; padding: 14px 16px; }
+    .panel.collapsed .body { display: none; }
+    .toggle { display: block; position: absolute; top: 12px; right: 14px; border: none; background: none; font: inherit; font-size: .78rem; color: var(--cyan); cursor: pointer; }
+    .hint { display: none; }
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="scene"></div>
+
+<aside class="panel" id="panel">
+  <button class="toggle" id="toggle">收合</button>
+  <a class="back" href="index.html#g8">← 回課程總覽</a>
+  <h1>3D 橫波與縱波對照</h1>
+  <div class="body">
+    <p class="lead">上排（青）為橫波、下排（紫）為縱波。盯著<b>紅色小球</b>：它們只在原地振動，不會跟著波前進。</p>
+    <div class="ctrl">
+      <label for="freq"><div>頻率<span>FREQUENCY</span></div><output id="freqVal">1.0 Hz</output></label>
+      <input type="range" id="freq" min="0.1" max="10" step="0.1" value="1">
+    </div>
+    <div class="ctrl">
+      <label for="amp"><div>振幅<span>AMPLITUDE</span></div><output id="ampVal">0.50</output></label>
+      <input type="range" id="amp" min="0" max="0.75" step="0.01" value="0.5">
+    </div>
+    <p class="info" id="info"></p>
+    <div class="btns">
+      <button class="btn" id="playBtn">暫停</button>
+      <button class="btn" id="viewBtn">重設視角</button>
+    </div>
+  </div>
+</aside>
+
+<div class="tag" id="tagT">橫波<small>質點上下振動</small></div>
+<div class="tag" id="tagL">縱波<small>質點左右振動</small></div>
+<div class="hint">拖曳旋轉 · 滾輪縮放 · 右鍵平移</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+window.__wavesReady = true;
+
+/* =========================================================
+   參數
+   ========================================================= */
+const CFG = {
+  count: 50,            // 每排小球數
+  length: 20,           // 陣列總長（場景單位）
+  wavelength: 5,        // 波長固定 → 波數 k = 2π / λ
+  ballRadius: 0.16,
+  redRadius: 0.22,
+  rowY: { transverse: 1.7, longitudinal: -1.7 },
+  colors: {
+    bg: 0x050510, grid: 0x222233, gridCenter: 0x2c2c48,
+    cyan: 0x00e5ff, magenta: 0x8a7dff, yellow: 0xffe45c, red: 0xff2020
+  },
+  bloom: { strength: 0.85, radius: 0.45, threshold: 0.12 },
+  camera: { pos: [1.5, 3.6, 19], target: [0, -0.3, 0] }
+};
+const k = 2 * Math.PI / CFG.wavelength;
+
+/* =========================================================
+   渲染器、場景、相機
+   ========================================================= */
+const container = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setClearColor(CFG.colors.bg);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+container.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(CFG.colors.bg);
+scene.fog = new THREE.FogExp2(CFG.colors.bg, 0.028);
+
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 5;
+controls.maxDistance = 40;
+
+function resetView() {
+  camera.position.set(...CFG.camera.pos);
+  controls.target.set(...CFG.camera.target);
+  controls.update();
+}
+
+/* ----- 後製：Bloom 發光 ----- */
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  CFG.bloom.strength, CFG.bloom.radius, CFG.bloom.threshold
+);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+/* ----- 燈光 ----- */
+scene.add(new THREE.AmbientLight(0x8899ff, 0.35));
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
+keyLight.position.set(6, 12, 8);
+scene.add(keyLight);
+const rimLight = new THREE.DirectionalLight(0x00e5ff, 0.6);
+rimLight.position.set(-8, -4, -6);
+scene.add(rimLight);
+
+/* ----- 網格底板與座標軸 ----- */
+const grid = new THREE.GridHelper(40, 40, CFG.colors.gridCenter, CFG.colors.grid);
+grid.position.y = -3.4;
+scene.add(grid);
+const axes = new THREE.AxesHelper(1.4);
+axes.position.set(-CFG.length / 2 - 1.2, -3.39, 0);
+axes.material.transparent = true;
+axes.material.opacity = 0.7;
+scene.add(axes);
+
+/* =========================================================
+   小球陣列
+   ========================================================= */
+const ballGeo = new THREE.SphereGeometry(CFG.ballRadius, 24, 16);
+const redGeo = new THREE.SphereGeometry(CFG.redRadius, 32, 20);
+const glowMat = (color, intensity) => new THREE.MeshStandardMaterial({
+  color, emissive: color, emissiveIntensity: intensity, roughness: 0.4, metalness: 0.1
+});
+const redIndex = Math.floor(CFG.count / 2);
+const redMat = glowMat(CFG.colors.red, 0.9);
+
+function buildRow(color, y) {
+  const mat = glowMat(color, 0.32);
+  const balls = [];
+  for (let i = 0; i < CFG.count; i++) {
+    const x0 = -CFG.length / 2 + CFG.length * i / (CFG.count - 1);
+    const isRed = i === redIndex;
+    const m = new THREE.Mesh(isRed ? redGeo : ballGeo, isRed ? redMat : mat);
+    m.position.set(x0, y, 0);
+    m.userData = { x0, y0: y };
+    scene.add(m);
+    balls.push(m);
+  }
+  return balls;
+}
+const transverse = buildRow(CFG.colors.cyan, CFG.rowY.transverse);
+const longitudinal = buildRow(CFG.colors.magenta, CFG.rowY.longitudinal);
+
+/* ----- 輔助線（LineBasicMaterial） ----- */
+const lineFrom = (pts, color, opacity = 1) => {
+  const l = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineBasicMaterial({ color, transparent: true, opacity })
+  );
+  scene.add(l);
+  return l;
+};
+
+// 波形連線（跟著質點即時更新）
+const waveLineT = lineFrom(transverse.map(b => b.position.clone()), CFG.colors.cyan, 0.55);
+const waveLineL = lineFrom(longitudinal.map(b => b.position.clone()), CFG.colors.magenta, 0.35);
+
+// 平衡位置
+[CFG.rowY.transverse, CFG.rowY.longitudinal].forEach(y => {
+  lineFrom([new THREE.Vector3(-CFG.length / 2 - 0.6, y, 0), new THREE.Vector3(CFG.length / 2 + 0.6, y, 0)], 0x5a5a80, 0.5);
+});
+
+// 紅球振動範圍（螢光黃）
+const guideT = lineFrom([new THREE.Vector3(), new THREE.Vector3()], CFG.colors.yellow, 0.9);
+const guideL = lineFrom([new THREE.Vector3(), new THREE.Vector3()], CFG.colors.yellow, 0.9);
+
+// 紅球平衡位置的固定標記（垂直光柱 + 地面光點），用來對照紅球沒有前進
+const x0Red = transverse[redIndex].userData.x0;
+lineFrom([new THREE.Vector3(x0Red, -3.4, 0), new THREE.Vector3(x0Red, CFG.rowY.transverse + 1.0, 0)], CFG.colors.yellow, 0.18);
+const markGeo = new THREE.ConeGeometry(0.12, 0.28, 16);
+const markMat = new THREE.MeshStandardMaterial({ color: CFG.colors.yellow, emissive: CFG.colors.yellow, emissiveIntensity: 1 });
+[CFG.rowY.transverse, CFG.rowY.longitudinal].forEach(y => {
+  const cone = new THREE.Mesh(markGeo, markMat);
+  cone.position.set(x0Red, y - 1.15, 0);
+  scene.add(cone);
+});
+const ring = new THREE.Mesh(
+  new THREE.RingGeometry(0.25, 0.32, 40),
+  new THREE.MeshBasicMaterial({ color: CFG.colors.yellow, transparent: true, opacity: 0.7, side: THREE.DoubleSide })
+);
+ring.rotation.x = -Math.PI / 2;
+ring.position.set(x0Red, -3.39, 0);
+scene.add(ring);
+
+/* =========================================================
+   狀態與控制
+   ========================================================= */
+const $ = id => document.getElementById(id);
+let freq = 1, amp = 0.5, playing = true;
+let phase = 0;   // 累積相位 = ∫ω dt，改頻率時波形不會跳動
+
+function paintSlider(el) {
+  const pct = (el.value - el.min) / (el.max - el.min) * 100;
+  el.style.setProperty('--fill', pct + '%');
+}
+
+function updateInfo() {
+  const v = freq * CFG.wavelength;
+  $('info').innerHTML =
+    `λ  波長 = <em>${CFG.wavelength.toFixed(1)}</em> 單位（固定）<br>` +
+    `T  週期 = <em>${(1 / freq).toFixed(2)}</em> s<br>` +
+    `v  波速 = fλ = <em>${v.toFixed(1)}</em> 單位/s` +
+    (freq > 4 ? '<br><span class="warn">⚠ 頻率很高時，受螢幕更新率限制，動畫可能出現頻閃。</span>' : '');
+}
+
+$('freq').addEventListener('input', e => {
+  freq = Number(e.target.value);
+  $('freqVal').textContent = freq.toFixed(1) + ' Hz';
+  paintSlider(e.target); updateInfo();
+});
+$('amp').addEventListener('input', e => {
+  amp = Number(e.target.value);
+  $('ampVal').textContent = amp.toFixed(2);
+  paintSlider(e.target);
+});
+$('playBtn').addEventListener('click', () => {
+  playing = !playing;
+  $('playBtn').textContent = playing ? '暫停' : '播放';
+  $('playBtn').classList.toggle('on', !playing);
+});
+$('viewBtn').addEventListener('click', resetView);
+$('toggle').addEventListener('click', () => {
+  const c = $('panel').classList.toggle('collapsed');
+  $('toggle').textContent = c ? '展開' : '收合';
+});
+
+/* =========================================================
+   波動計算
+   橫波：y = y0 + A·sin(k·x0 − ωt)
+   縱波：x = x0 + A·sin(k·x0 − ωt)
+   每顆球都以自己的平衡位置 x0 計算，因此只在原地振動
+   ========================================================= */
+function updateWaves() {
+  const posT = waveLineT.geometry.attributes.position;
+  const posL = waveLineL.geometry.attributes.position;
+  for (let i = 0; i < CFG.count; i++) {
+    const t = transverse[i], l = longitudinal[i];
+    const s = Math.sin(k * t.userData.x0 - phase);
+    t.position.set(t.userData.x0, t.userData.y0 + amp * s, 0);
+    l.position.set(l.userData.x0 + amp * s, l.userData.y0, 0);
+    posT.setXYZ(i, t.position.x, t.position.y, t.position.z);
+    posL.setXYZ(i, l.position.x, l.position.y, l.position.z);
+  }
+  posT.needsUpdate = true;
+  posL.needsUpdate = true;
+
+  const yT = CFG.rowY.transverse, yL = CFG.rowY.longitudinal;
+  guideT.geometry.setFromPoints([new THREE.Vector3(x0Red, yT - amp, 0), new THREE.Vector3(x0Red, yT + amp, 0)]);
+  guideL.geometry.setFromPoints([new THREE.Vector3(x0Red - amp, yL, 0), new THREE.Vector3(x0Red + amp, yL, 0)]);
+}
+
+/* 讓 HTML 標籤跟著 3D 位置 */
+const tmp = new THREE.Vector3();
+function placeTag(el, x, y) {
+  tmp.set(x, y, 0).project(camera);
+  el.style.display = tmp.z < 1 ? '' : 'none';
+  el.style.left = ((tmp.x + 1) / 2 * window.innerWidth) + 'px';
+  el.style.top = ((1 - tmp.y) / 2 * window.innerHeight) + 'px';
+}
+
+/* =========================================================
+   尺寸與主迴圈
+   ========================================================= */
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(w, h);
+  composer.setPixelRatio(window.devicePixelRatio);
+  composer.setSize(w, h);
+  bloom.setSize(w, h);
+  camera.aspect = w / h;
+  camera.fov = w < h ? 62 : 42;     // 直式螢幕拉寬視角，讓整排小球都看得到
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+const clock = new THREE.Clock();
+function animate() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (playing) phase += 2 * Math.PI * freq * dt;
+  updateWaves();
+  ring.material.opacity = 0.45 + 0.3 * Math.sin(clock.elapsedTime * 3);
+  controls.update();
+  placeTag($('tagT'), 0, CFG.rowY.transverse + 1.3);
+  placeTag($('tagL'), 0, CFG.rowY.longitudinal + 0.9);
+  composer.render();
+  requestAnimationFrame(animate);
+}
+
+// 給除錯/驗證用
+window.waves = { transverse, longitudinal, redIndex, get phase() { return phase; } };
+
+paintSlider($('freq'));
+paintSlider($('amp'));
+resize();
+resetView();
+updateInfo();
+animate();
+</script>
+
+<script>
+/* CDN 載入失敗（例如離線）時的提示 */
+setTimeout(() => {
+  if (!window.__wavesReady) {
+    document.getElementById('scene').innerHTML =
+      '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>

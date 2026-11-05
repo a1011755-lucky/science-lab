@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>颱風過境風向模擬器</title>
+<style>
+  :root {
+    --ink: #1c1c1e;
+    --ink-soft: #6e6e73;
+    --line: rgba(60,60,67,.12);
+    --card: rgba(255,255,255,.74);
+    --red: #e5484d;
+    --blue: #3b82f6;
+    --track: #e5e5ea;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: linear-gradient(#87ceeb, #ffffff);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; width: 100vw; height: 100vh; }
+  #scene canvas { display: block; touch-action: none; }
+
+  .glass {
+    background: var(--card); backdrop-filter: blur(10px) saturate(160%); -webkit-backdrop-filter: blur(10px) saturate(160%);
+    border: 1px solid rgba(255,255,255,.7); box-shadow: 0 10px 30px rgba(30,60,90,.15);
+  }
+
+  /* ===== 上方即時資訊列 ===== */
+  .topbar {
+    position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 11;
+    display: flex; align-items: stretch; gap: 0; border-radius: 18px; overflow: hidden;
+  }
+  .topbar .cell { padding: 9px 18px; min-width: 150px; }
+  .topbar .cell + .cell { border-left: 1px solid var(--line); }
+  .topbar .k { font-size: .7rem; color: var(--ink-soft); letter-spacing: .04em; }
+  .topbar .v { font-size: 1.15rem; font-weight: 700; line-height: 1.3; white-space: nowrap; }
+  .topbar .v small { font-size: .78rem; font-weight: 500; color: var(--ink-soft); margin-left: 4px; }
+  .topbar .wind { color: var(--blue); }
+
+  /* ===== 左側面板（可收合） ===== */
+  .panel {
+    position: absolute; top: 16px; left: 16px; width: 310px; max-height: calc(100vh - 32px); overflow-y: auto; z-index: 10;
+    border-radius: 22px; padding: 18px 18px 16px;
+  }
+  .collapse {
+    position: absolute; top: 16px; right: 16px; z-index: 2; cursor: pointer;
+    border: none; border-radius: 999px; padding: 4px 12px;
+    font: inherit; font-size: .78rem; font-weight: 600; color: var(--blue); background: rgba(59,130,246,.1);
+  }
+  .collapse:hover { background: rgba(59,130,246,.18); }
+  .panel.collapsed .body { display: none; }
+  .panel.collapsed { width: auto; min-width: 230px; }
+  .back { font-size: .8rem; color: var(--blue); text-decoration: none; }
+  .title { font-size: 1.2rem; font-weight: 700; margin-top: 6px; padding-right: 60px; }
+  .sub { font-size: .8rem; color: var(--ink-soft); }
+
+  .card { background: rgba(255,255,255,.78); border-radius: 16px; padding: 12px 14px; margin-top: 12px; font-size: .82rem; line-height: 1.6; }
+  .card b { color: var(--blue); }
+  .card .rule { display: flex; gap: 10px; align-items: center; }
+  .card .rule .ico { font-size: 1.8rem; }
+
+  .group { background: rgba(255,255,255,.78); border-radius: 16px; padding: 2px 14px; margin-top: 12px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 0; border-top: 1px solid var(--line); font-size: .88rem; }
+  .row:first-child { border-top: none; }
+  .row.col { flex-direction: column; align-items: stretch; gap: 8px; }
+  .row small { color: var(--ink-soft); font-size: .74rem; }
+
+  select {
+    font: inherit; font-size: .85rem; color: var(--blue); background: rgba(118,118,128,.12);
+    border: none; border-radius: 9px; padding: 6px 26px 6px 10px; cursor: pointer; outline: none;
+    appearance: none; -webkit-appearance: none; max-width: 170px;
+    background-image: linear-gradient(45deg, transparent 50%, var(--blue) 50%), linear-gradient(135deg, var(--blue) 50%, transparent 50%);
+    background-position: calc(100% - 14px) 52%, calc(100% - 9px) 52%; background-size: 5px 5px; background-repeat: no-repeat;
+  }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; border-radius: 999px; cursor: pointer;
+    background: linear-gradient(90deg, var(--blue) 0%, var(--blue) var(--fill, 50%), var(--track) var(--fill, 50%)); outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #fff;
+    box-shadow: 0 3px 8px rgba(0,0,0,.15), 0 0 0 .5px rgba(0,0,0,.06); }
+  input[type=range]::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 3px 8px rgba(0,0,0,.15); }
+  select:focus-visible, input[type=range]:focus-visible { box-shadow: 0 0 0 3px rgba(59,130,246,.35); }
+
+  .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .btn {
+    border: none; border-radius: 12px; padding: 10px; cursor: pointer;
+    font: inherit; font-size: .85rem; font-weight: 600; color: var(--blue); background: rgba(59,130,246,.1);
+    transition: background .2s, transform .1s;
+  }
+  .btn:hover { background: rgba(59,130,246,.18); }
+  .btn:active { transform: scale(.97); }
+  .btn.primary { color: #fff; background: var(--blue); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .74rem; color: var(--ink-soft); margin-top: 10px; }
+  .legend i { display: inline-block; width: 16px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 5px; }
+  .legend i.dash { background: repeating-linear-gradient(90deg, #8e8e93 0 4px, transparent 4px 7px) !important; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .72rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+    background: rgba(255,255,255,.85); color: var(--ink); box-shadow: 0 2px 6px rgba(0,0,0,.08);
+  }
+  .tag.city { background: none; box-shadow: none; color: #2c3e2c; font-weight: 600; text-shadow: 0 0 4px #fff, 0 0 4px #fff; }
+  .tag.key { background: var(--red); color: #fff; }
+  .tag.dir { background: none; box-shadow: none; font-size: .7rem; color: #444; }
+  .hint { position: absolute; right: 16px; bottom: 14px; z-index: 5; font-size: .75rem; color: rgba(28,28,30,.6); background: rgba(255,255,255,.6); padding: 4px 10px; border-radius: 999px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 760px) {
+    .topbar { top: 8px; left: 8px; right: 8px; transform: none; }
+    .topbar .cell { min-width: 0; flex: 1; padding: 7px 10px; }
+    .topbar .v { font-size: .95rem; }
+    .panel { top: auto; bottom: 10px; left: 10px; right: 10px; width: auto; max-height: 50vh; border-radius: 20px; }
+    .hint { display: none; }
+  }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="scene"></div>
+
+<!-- 上方即時資訊 -->
+<div class="topbar glass" aria-live="polite">
+  <div class="cell"><div class="k">颱風中心相對龍潭</div><div class="v" id="posVal">—</div></div>
+  <div class="cell"><div class="k">龍潭觀測風向</div><div class="v wind" id="windVal">—</div></div>
+</div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g9">‹ 課程總覽</a>
+  <div class="title">颱風過境風向模擬器</div>
+  <div class="sub">用滑鼠直接拖曳颱風 · 觀察龍潭的風向標</div>
+
+  <div class="body">
+    <div class="card">
+      <div class="rule"><span class="ico">🌀</span>
+        <div>北半球颱風：<b>逆時針旋轉</b>，同時<b>向中心輻合</b>。所以風<b>不會直直吹向颱風中心</b>，而是相對「指向中心」的方向<b>向右偏</b>。</div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="row col">
+        <div style="display:flex;justify-content:space-between"><span>內吹角 α</span><small id="alphaVal"></small></div>
+        <input type="range" id="alpha" min="10" max="45" step="1" value="30" aria-label="內吹角">
+        <small>風向與「繞中心的切線」夾角；陸地摩擦大，約 30°。右偏角 = 90° − α</small>
+      </div>
+      <div class="row">
+        <span>典型路徑</span>
+        <select id="track" aria-label="典型颱風路徑">
+          <option value="north">北部登陸・西行</option>
+          <option value="east">沿東岸北上</option>
+          <option value="south">南部登陸・西北行</option>
+          <option value="strait">台灣海峽北上</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="btns">
+      <button class="btn primary" id="playBtn">▶ 沿路徑移動</button>
+      <button class="btn" id="viewBtn">重設視角</button>
+    </div>
+
+    <div class="legend">
+      <span><i style="background:#e5484d"></i>風向標（箭頭指向風的來向）</span>
+      <span><i class="dash"></i>指向颱風中心</span>
+      <span><i style="background:#3b82f6"></i>實際吹去的方向</span>
+    </div>
+  </div>
+</aside>
+
+<div class="hint">拖曳颱風移動 · 拖曳空白處旋轉 · 滾輪縮放</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+window.__typhoonReady = true;
+
+/* =========================================================
+   地圖座標：東 = +x、北 = −z（從上往下看時北朝上）
+   ========================================================= */
+const K = 4;                                   // 每 1° 緯度 = 4 單位
+const COS_LAT = Math.cos(23.7 * Math.PI / 180);
+const KM_PER_UNIT = 111 / K;
+const geo = (lon, lat) => ({ x: (lon - 121) * K * COS_LAT, z: -(lat - 23.7) * K });
+const TY = { alt: 3.2, R: 7, eye: 0.7, rmax: 1.4, vmax: 50 };   // 颱風：高度、半徑、眼、最大風半徑、最大風速
+const $ = id => document.getElementById(id);
+const S = THREE.MathUtils.smoothstep;
+const clamp = THREE.MathUtils.clamp;
+
+/* 台灣簡化海岸線（經度, 緯度），由北端順時針 */
+const TAIWAN = [
+  [121.53, 25.30], [121.75, 25.15], [121.93, 25.02], [121.85, 24.80], [121.86, 24.58], [121.70, 24.30],
+  [121.62, 24.00], [121.50, 23.60], [121.42, 23.20], [121.20, 22.85], [120.98, 22.55], [120.88, 22.30],
+  [120.85, 21.92], [120.72, 21.95], [120.62, 22.30], [120.40, 22.55], [120.25, 22.75], [120.10, 23.00],
+  [120.12, 23.40], [120.20, 23.80], [120.40, 24.20], [120.70, 24.60], [120.92, 24.85], [121.05, 25.05],
+  [121.25, 25.12], [121.40, 25.20]
+];
+const LONGTAN = geo(121.21, 24.86);
+const CITIES = [['台北', 121.52, 25.04], ['台中', 120.68, 24.15], ['高雄', 120.30, 22.63], ['花蓮', 121.60, 23.98], ['台東', 121.15, 22.75]];
+
+/* 典型颱風路徑 */
+const TRACKS = {
+  north:  [[124.2, 23.6], [122.8, 24.4], [121.7, 24.9], [120.6, 25.2], [119.0, 25.5]],
+  east:   [[122.9, 20.8], [122.4, 22.5], [122.3, 24.0], [122.6, 25.6], [123.2, 27.0]],
+  south:  [[123.4, 21.4], [121.7, 22.2], [120.6, 22.9], [119.7, 24.0], [119.2, 25.3]],
+  strait: [[119.9, 21.6], [120.0, 22.9], [120.2, 24.2], [120.6, 25.3], [121.3, 26.6]]
+};
+
+/* =========================================================
+   風向物理：北半球氣旋（逆時針 + 向內輻合）
+   r = 測站 − 中心（地圖座標：東、北）
+   切線（逆時針）t = (−r北, r東)；向內 = −r̂
+   風吹去的方向 v = cosα·t + sinα·(−r̂)
+   ========================================================= */
+const DIR8 = ['北', '東北', '東', '東南', '南', '西南', '西', '西北'];
+const bearingName = deg => DIR8[Math.round(((deg % 360) + 360) % 360 / 45) % 8];
+function windAt(station, center, alphaDeg) {
+  const rE = station.x - center.x, rN = -(station.z - center.z);
+  const d = Math.hypot(rE, rN);
+  if (d < 1e-6) return { calm: true, d: 0 };
+  const a = alphaDeg * Math.PI / 180;
+  const tE = -rN / d, tN = rE / d;                 // 逆時針切線
+  const iE = -rE / d, iN = -rN / d;                // 指向中心
+  const vE = Math.cos(a) * tE + Math.sin(a) * iE;
+  const vN = Math.cos(a) * tN + Math.sin(a) * iN;
+  const fromDeg = (Math.atan2(-vE, -vN) * 180 / Math.PI + 360) % 360;   // 風的來向（方位角）
+  const toCenterDeg = (Math.atan2(iE, iN) * 180 / Math.PI + 360) % 360;
+  const blowDeg = (Math.atan2(vE, vN) * 180 / Math.PI + 360) % 360;
+  // 蘭金渦旋：眼牆附近最強，向外遞減
+  const speed = d < TY.rmax ? TY.vmax * d / TY.rmax : TY.vmax * Math.pow(TY.rmax / d, 0.55);
+  return { d, vE, vN, iE, iN, fromDeg, toCenterDeg, blowDeg, speed, calm: d < TY.eye * 0.8 };
+}
+
+/* =========================================================
+   渲染器 / 場景（無 Bloom）
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 300);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI * 0.47;
+controls.minDistance = 8;
+controls.maxDistance = 70;
+function resetView() {
+  camera.position.set(4, 26, 22);
+  controls.target.set(0, 0, -1);
+  controls.update();
+}
+
+const sky = new THREE.Mesh(new THREE.SphereGeometry(160, 32, 16), new THREE.ShaderMaterial({
+  uniforms: { top: { value: new THREE.Color(0x4fa8e0) }, bottom: { value: new THREE.Color(0xffffff) } },
+  side: THREE.BackSide, depthWrite: false,
+  vertexShader: `varying vec3 vPos; void main(){ vPos = (modelMatrix * vec4(position,1.0)).xyz; gl_Position = projectionMatrix * viewMatrix * vec4(vPos,1.0); }`,
+  fragmentShader: `uniform vec3 top; uniform vec3 bottom; varying vec3 vPos;
+    void main(){ float h = clamp(pow(max(normalize(vPos).y, 0.0), 0.3) * 1.5, 0.0, 1.0); gl_FragColor = vec4(mix(bottom, top, h), 1.0); }`
+}));
+scene.add(sky);
+scene.fog = new THREE.Fog(0xffffff, 60, 150);
+
+scene.add(new THREE.HemisphereLight(0xeaf6ff, 0x7aa86a, 1.4));
+const sunLight = new THREE.DirectionalLight(0xfff3dd, 1.5);
+sunLight.position.set(-12, 30, 14);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(2048, 2048);
+Object.assign(sunLight.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22, near: 1, far: 80 });
+sunLight.shadow.radius = 6;
+sunLight.shadow.bias = -0.0006;
+scene.add(sunLight);
+
+/* ----- 海面（Low-Poly） ----- */
+const seaGeo = new THREE.PlaneGeometry(120, 120, 48, 48);
+seaGeo.rotateX(-Math.PI / 2);
+{
+  const p = seaGeo.attributes.position;
+  for (let i = 0; i < p.count; i++) p.setY(i, (Math.random() - 0.5) * 0.1 - 0.05);
+  seaGeo.computeVertexNormals();
+}
+const sea = new THREE.Mesh(seaGeo, new THREE.MeshStandardMaterial({ color: 0x7cc4e8, flatShading: true, roughness: 0.6 }));
+sea.receiveShadow = true;
+scene.add(sea);
+const grid = new THREE.GridHelper(40, 20, 0x9fd3ec, 0x9fd3ec);
+grid.material.transparent = true; grid.material.opacity = 0.35;
+grid.position.y = 0.02;
+scene.add(grid);
+
+/* ----- 台灣立體地圖（Low-Poly） ----- */
+const islandShape = new THREE.Shape(TAIWAN.map(([lo, la]) => { const g = geo(lo, la); return new THREE.Vector2(g.x, -g.z); }));
+const islandGeo = new THREE.ExtrudeGeometry(islandShape, { depth: 0.3, bevelEnabled: true, bevelThickness: 0.08, bevelSize: 0.1, bevelSegments: 1 });
+islandGeo.rotateX(-Math.PI / 2);
+const island = new THREE.Mesh(islandGeo, new THREE.MeshStandardMaterial({ color: 0x88cc88, flatShading: true, roughness: 0.9 }));
+island.receiveShadow = true;
+island.castShadow = true;
+scene.add(island);
+const ISLAND_TOP = 0.38;
+
+// 中央山脈：沿脊線排列的低多邊形山
+const mtMat = new THREE.MeshStandardMaterial({ color: 0x5f9f5f, flatShading: true, roughness: 0.95 });
+const RIDGE = [[121.45, 24.55, 0.9], [121.30, 24.25, 1.3], [121.20, 23.95, 1.6], [121.05, 23.55, 1.7], [120.95, 23.20, 1.5], [120.90, 22.85, 1.1], [120.85, 22.45, 0.7]];
+RIDGE.forEach(([lo, la, h], i) => {
+  const g = geo(lo, la);
+  const m = new THREE.Mesh(new THREE.ConeGeometry(0.75 + h * 0.25, h, 5 + (i % 2)), mtMat);
+  m.position.set(g.x, ISLAND_TOP + h / 2, g.z);
+  m.rotation.y = i * 0.7;
+  m.castShadow = true; m.receiveShadow = true;
+  scene.add(m);
+});
+
+// 北方指示
+const northArrow = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.9, 4), new THREE.MeshStandardMaterial({ color: 0x334155, flatShading: true }));
+northArrow.rotation.x = -Math.PI / 2;
+northArrow.position.set(-11, 0.3, -13);
+scene.add(northArrow);
+
+/* =========================================================
+   龍潭 3D 風向標
+   ========================================================= */
+const vane = new THREE.Group();
+vane.position.set(LONGTAN.x, ISLAND_TOP, LONGTAN.z);
+scene.add(vane);
+{
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.5, roughness: 0.4 });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 2.4, 10), poleMat);
+  pole.position.y = 1.2; pole.castShadow = true;
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.38, 0.14, 12), poleMat);
+  base.position.y = 0.07;
+  vane.add(pole, base);
+  // 方位十字（東西南北）
+  const armMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.4, roughness: 0.4 });
+  const ns = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 1.4), armMat);
+  const ew = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.04, 0.04), armMat);
+  ns.position.y = ew.position.y = 1.85;
+  vane.add(ns, ew);
+}
+const vaneArrow = new THREE.Group();
+vaneArrow.position.y = 2.35;
+vane.add(vaneArrow);
+{
+  // 箭頭沿 +x 建立：箭頭指向「風的來向」、尾翼在下風處
+  const red = new THREE.MeshStandardMaterial({ color: 0xe5484d, flatShading: true, roughness: 0.4 });
+  const shaft = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.07, 0.07), red);
+  const head = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.42, 4), red);
+  head.rotation.z = -Math.PI / 2; head.position.x = 0.95;
+  const fin = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.42, 0.04), red);
+  fin.position.x = -0.68;
+  const hub = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), new THREE.MeshStandardMaterial({ color: 0x334155 }));
+  [shaft, head, fin].forEach(m => { m.castShadow = true; });
+  vaneArrow.add(shaft, head, fin, hub);
+}
+const stationRing = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.55, 32), new THREE.MeshBasicMaterial({ color: 0xe5484d, side: THREE.DoubleSide }));
+stationRing.rotation.x = -Math.PI / 2;
+stationRing.position.set(LONGTAN.x, ISLAND_TOP + 0.02, LONGTAN.z);
+scene.add(stationRing);
+
+/* 測站旁的兩條指示線：指向颱風中心（虛線）vs 實際吹去的方向（藍） */
+const toCenterLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0x6b7280, dashSize: 0.18, gapSize: 0.12 }));
+const blowArrow = new THREE.Group();
+{
+  const blue = new THREE.MeshStandardMaterial({ color: 0x3b82f6, flatShading: true });
+  const shaft = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.06, 0.12), blue);
+  shaft.position.x = 0.8;
+  const head = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.45, 4), blue);
+  head.rotation.z = -Math.PI / 2; head.position.x = 1.75;
+  blowArrow.add(shaft, head);
+}
+blowArrow.position.set(LONGTAN.x, ISLAND_TOP + 0.12, LONGTAN.z);
+scene.add(toCenterLine, blowArrow);
+
+/* 測站附近流動的風痕 */
+const STREAKS = 10;
+const streakMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.5, 0.03, 0.03),
+  new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.55 }), STREAKS);
+streakMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+scene.add(streakMesh);
+const streaks = Array.from({ length: STREAKS }, () => ({ u: Math.random(), off: (Math.random() - 0.5) * 1.6, h: 0.4 + Math.random() * 0.8 }));
+
+/* =========================================================
+   颱風（旋轉的雲粒子 + 颱風眼）
+   ========================================================= */
+const typhoon = new THREE.Group();
+scene.add(typhoon);
+const N = 1800;
+const cloudMesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.28, 0),
+  new THREE.MeshStandardMaterial({ color: 0xffffff, flatShading: true, roughness: 0.9, transparent: true, opacity: 0.92 }), N);
+cloudMesh.castShadow = true;
+cloudMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+typhoon.add(cloudMesh);
+const P = Array.from({ length: N }, (_, i) => spawnCloud({}, true));
+function spawnCloud(p, init = false) {
+  const eyewall = Math.random() < 0.28;
+  p.r = eyewall ? TY.eye + 0.15 + Math.random() * 0.9
+                : (init ? TY.eye + 0.8 + Math.random() * (TY.R - TY.eye - 0.8) : TY.R - Math.random() * 0.6);
+  const arm = Math.floor(Math.random() * 4);
+  p.phi = arm * Math.PI / 2 - Math.log(p.r) * 1.9 + (Math.random() - 0.5) * (eyewall ? 6.3 : 0.9);
+  p.y = (Math.random() - 0.5) * (eyewall ? 1.6 : 0.9) * (1 - p.r / (TY.R * 1.4));
+  p.s = (eyewall ? 1.3 : 0.6) + Math.random() * 0.9;
+  p.spin = Math.random() * Math.PI;
+  return p;
+}
+for (let i = 0; i < N; i++) {
+  const g = 0.86 + Math.random() * 0.14;
+  cloudMesh.setColorAt(i, new THREE.Color(g, g, g * 1.02));
+}
+const dummy = new THREE.Object3D();
+function updateTyphoon(dt) {
+  for (let i = 0; i < N; i++) {
+    const p = P[i];
+    p.phi += dt * 1.5 / (p.r + 0.4);                   // 逆時針旋轉（φ 增加）
+    p.r -= dt * 0.12;                                   // 緩慢向內輻合
+    if (p.r < TY.eye + 0.1) spawnCloud(p);
+    dummy.position.set(p.r * Math.cos(p.phi), p.y, -p.r * Math.sin(p.phi));
+    dummy.rotation.set(0, p.phi + p.spin, 0);
+    const fade = 1 - S(p.r, TY.R - 0.8, TY.R);          // 外緣淡出
+    dummy.scale.set(p.s * 1.4 * fade, p.s * 0.55 * fade, p.s * fade);
+    dummy.updateMatrix();
+    cloudMesh.setMatrixAt(i, dummy.matrix);
+  }
+  cloudMesh.instanceMatrix.needsUpdate = true;
+}
+// 颱風眼標記與拖曳把手
+const eyeRing = new THREE.Mesh(new THREE.TorusGeometry(TY.eye, 0.06, 8, 40), new THREE.MeshStandardMaterial({ color: 0xe5484d }));
+eyeRing.rotation.x = Math.PI / 2;
+typhoon.add(eyeRing);
+const pickDisc = new THREE.Mesh(new THREE.CylinderGeometry(TY.R * 0.75, TY.R * 0.75, 2.2, 24), new THREE.MeshBasicMaterial({ visible: false }));
+typhoon.add(pickDisc);
+// 颱風中心在地面的投影
+const groundMark = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.42, 32), new THREE.MeshBasicMaterial({ color: 0xe5484d, side: THREE.DoubleSide }));
+groundMark.rotation.x = -Math.PI / 2;
+scene.add(groundMark);
+const dropLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0xe5484d, dashSize: 0.2, gapSize: 0.15 }));
+scene.add(dropLine);
+const trackLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0x334155, dashSize: 0.35, gapSize: 0.25, transparent: true, opacity: 0.6 }));
+scene.add(trackLine);
+
+/* =========================================================
+   標籤
+   ========================================================= */
+const labels = [];
+function addLabel(text, pos, cls = '') {
+  const el = document.createElement('div');
+  el.className = 'tag ' + cls;
+  el.textContent = text;
+  document.body.appendChild(el);
+  const L = { el, pos };
+  labels.push(L);
+  return L;
+}
+CITIES.forEach(([n, lo, la]) => { const g = geo(lo, la); addLabel(n, new THREE.Vector3(g.x, ISLAND_TOP + 0.4, g.z), 'city'); });
+addLabel('龍潭', new THREE.Vector3(LONGTAN.x, ISLAND_TOP + 3.0, LONGTAN.z), 'key');
+addLabel('N', new THREE.Vector3(-11, 1.1, -13.4), 'dir');
+[['北', 0, -0.95], ['南', 0, 0.95], ['東', 0.95, 0], ['西', -0.95, 0]].forEach(([n, dx, dz]) =>
+  addLabel(n, new THREE.Vector3(LONGTAN.x + dx, ISLAND_TOP + 1.85, LONGTAN.z + dz), 'dir'));
+const eyeLabel = addLabel('颱風眼', new THREE.Vector3(), '');
+const tmpV = new THREE.Vector3();
+function placeLabels() {
+  for (const L of labels) {
+    tmpV.copy(L.pos).project(camera);
+    L.el.style.display = tmpV.z < 1 ? '' : 'none';
+    L.el.style.left = ((tmpV.x + 1) / 2 * window.innerWidth) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * window.innerHeight) + 'px';
+  }
+}
+
+/* =========================================================
+   更新：位置 → 風向
+   ========================================================= */
+let alpha = 30;
+let vaneAngle = 0, vaneTarget = 0, vaneSpin = 0;
+const shortest = (from, to) => from + Math.atan2(Math.sin(to - from), Math.cos(to - from));
+
+function refresh() {
+  const c = { x: typhoon.position.x, z: typhoon.position.z };
+  const w = windAt(LONGTAN, c, alpha);
+
+  groundMark.position.set(c.x, 0.05, c.z);
+  dropLine.geometry.dispose();
+  dropLine.geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(c.x, 0.05, c.z), new THREE.Vector3(c.x, TY.alt - 0.2, c.z)]);
+  dropLine.computeLineDistances();
+  eyeLabel.pos.set(c.x, TY.alt + 1.4, c.z);
+
+  // 颱風中心相對龍潭的方位
+  const dE = c.x - LONGTAN.x, dN = -(c.z - LONGTAN.z);
+  const km = Math.round(Math.hypot(dE, dN) * KM_PER_UNIT);
+  const posBearing = (Math.atan2(dE, dN) * 180 / Math.PI + 360) % 360;
+
+  if (w.calm) {
+    $('posVal').innerHTML = `正上方<small>颱風眼</small>`;
+    $('windVal').innerHTML = `風很小<small>颱風眼內</small>`;
+  } else {
+    $('posVal').innerHTML = `${bearingName(posBearing)}方<small>約 ${km} 公里</small>`;
+    $('windVal').innerHTML = `${bearingName(w.fromDeg)}風<small>約 ${Math.round(w.speed)} m/s</small>`;
+  }
+
+  // 風向標：箭頭（+x）轉向「風的來向」
+  if (!w.calm) {
+    const fx = -w.vE, fz = w.vN;                         // 世界座標：東 = +x、北 = −z
+    vaneTarget = Math.atan2(-fz, fx);
+    blowArrow.visible = true;
+    blowArrow.rotation.y = Math.atan2(w.vN, w.vE);       // 藍色箭頭：實際吹去的方向
+    toCenterLine.visible = true;
+    toCenterLine.geometry.dispose();
+    toCenterLine.geometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(LONGTAN.x, ISLAND_TOP + 0.1, LONGTAN.z),
+      new THREE.Vector3(LONGTAN.x + w.iE * 2.2, ISLAND_TOP + 0.1, LONGTAN.z - w.iN * 2.2)
+    ]);
+    toCenterLine.computeLineDistances();
+  } else {
+    blowArrow.visible = toCenterLine.visible = false;
+  }
+  current = w;
+}
+let current = null;
+
+function updateStreaks(dt) {
+  const w = current;
+  const show = w && !w.calm;
+  streakMesh.visible = show;
+  if (!show) return;
+  const dirX = w.vE, dirZ = -w.vN;                       // 吹去的方向（世界座標）
+  const perpX = -dirZ, perpZ = dirX;
+  const rate = 0.25 + w.speed / 60;
+  streaks.forEach((s, i) => {
+    s.u = (s.u + dt * rate) % 1;
+    const along = (s.u - 0.5) * 4;
+    dummy.position.set(LONGTAN.x + dirX * along + perpX * s.off, ISLAND_TOP + s.h, LONGTAN.z + dirZ * along + perpZ * s.off);
+    dummy.rotation.set(0, Math.atan2(-dirZ, dirX), 0);
+    dummy.scale.setScalar(Math.sin(s.u * Math.PI));
+    dummy.updateMatrix();
+    streakMesh.setMatrixAt(i, dummy.matrix);
+  });
+  streakMesh.instanceMatrix.needsUpdate = true;
+}
+
+/* =========================================================
+   拖曳颱風（在颱風高度的水平面上移動）
+   ========================================================= */
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -TY.alt);
+const hitPt = new THREE.Vector3();
+const dragOff = new THREE.Vector3();
+let dragging = false;
+const LIMIT = 18;
+function setRay(e) {
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+}
+// 以捕獲階段攔截，拖到颱風時不讓 OrbitControls 旋轉視角
+renderer.domElement.addEventListener('pointerdown', e => {
+  setRay(e);
+  if (!raycaster.intersectObject(pickDisc).length) return;
+  e.stopImmediatePropagation();
+  dragging = true;
+  stopPlay();
+  controls.enabled = false;
+  raycaster.ray.intersectPlane(dragPlane, hitPt);
+  dragOff.copy(typhoon.position).sub(hitPt);
+  renderer.domElement.setPointerCapture(e.pointerId);
+  renderer.domElement.style.cursor = 'grabbing';
+}, { capture: true });
+renderer.domElement.addEventListener('pointermove', e => {
+  setRay(e);
+  if (dragging) {
+    if (raycaster.ray.intersectPlane(dragPlane, hitPt)) {
+      typhoon.position.set(clamp(hitPt.x + dragOff.x, -LIMIT, LIMIT), TY.alt, clamp(hitPt.z + dragOff.z, -LIMIT, LIMIT));
+      refresh();
+    }
+  } else {
+    renderer.domElement.style.cursor = raycaster.intersectObject(pickDisc).length ? 'grab' : '';
+  }
+});
+const endDrag = () => { if (!dragging) return; dragging = false; controls.enabled = true; renderer.domElement.style.cursor = ''; };
+renderer.domElement.addEventListener('pointerup', endDrag);
+renderer.domElement.addEventListener('pointercancel', endDrag);
+
+/* =========================================================
+   典型路徑與自動移動
+   ========================================================= */
+let trackCurve = null, playT = 0, playing = false;
+function setTrack(key) {
+  const pts = TRACKS[key].map(([lo, la]) => { const g = geo(lo, la); return new THREE.Vector3(g.x, 0.06, g.z); });
+  trackCurve = new THREE.CatmullRomCurve3(pts);
+  trackLine.geometry.dispose();
+  trackLine.geometry = new THREE.BufferGeometry().setFromPoints(trackCurve.getPoints(120));
+  trackLine.computeLineDistances();
+}
+function placeOnTrack(t) {
+  const p = trackCurve.getPointAt(clamp(t, 0, 1));
+  typhoon.position.set(p.x, TY.alt, p.z);
+  refresh();
+}
+function stopPlay() { playing = false; $('playBtn').textContent = '▶ 沿路徑移動'; }
+$('track').addEventListener('change', e => { setTrack(e.target.value); stopPlay(); playT = 0; placeOnTrack(0); });
+$('playBtn').addEventListener('click', () => {
+  if (playing) return stopPlay();
+  if (playT >= 1) playT = 0;
+  playing = true;
+  $('playBtn').textContent = '⏸ 暫停';
+});
+
+const paint = el => el.style.setProperty('--fill', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
+$('alpha').addEventListener('input', e => {
+  alpha = Number(e.target.value);
+  $('alphaVal').textContent = `${alpha}°（右偏 ${90 - alpha}°）`;
+  paint(e.target); refresh();
+});
+$('alphaVal').textContent = `${alpha}°（右偏 ${90 - alpha}°）`;
+paint($('alpha'));
+$('viewBtn').addEventListener('click', resetView);
+$('collapse').addEventListener('click', () => {
+  const c = $('panel').classList.toggle('collapsed');
+  $('collapse').textContent = c ? '展開' : '收合';
+});
+
+/* =========================================================
+   主迴圈
+   ========================================================= */
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.fov = w < h ? 68 : 45;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+const clock = new THREE.Clock();
+function animate() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  if (playing) {
+    playT += dt * 0.045;
+    placeOnTrack(playT);
+    if (playT >= 1) stopPlay();
+  }
+  updateTyphoon(dt);
+  updateStreaks(dt);
+  // 風向標平滑轉向；風越大轉得越俐落，並輕微抖動
+  if (current && !current.calm) {
+    vaneAngle = shortest(vaneAngle, vaneTarget);
+    vaneAngle += (vaneTarget - vaneAngle) * Math.min(1, dt * 4);
+    vaneSpin += dt * (6 + current.speed * 0.3);
+    vaneArrow.rotation.y = vaneAngle + Math.sin(vaneSpin) * 0.03 * Math.min(1, current.speed / 30);
+  }
+  controls.update();
+  placeLabels();
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+
+window.typhoonSim = { windAt, geo, LONGTAN, bearingName, alpha: () => alpha, typhoon, refresh, get current() { return current; } };   // 除錯 / 驗證用
+
+setTrack('north');
+placeOnTrack(0.18);
+resize();
+resetView();
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__typhoonReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>

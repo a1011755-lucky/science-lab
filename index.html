@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>自然科互動動畫實驗室</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  /* ===== 色彩與基礎設定（無印風 / 莫蘭迪色系） ===== */
+  :root {
+    --bg: #f4f0e8;          /* 米白底 */
+    --surface: #fbf9f5;     /* 卡片底 */
+    --ink: #3b3833;         /* 主要文字 */
+    --ink-soft: #6f6a62;    /* 次要文字 */
+    --line: #e2dccf;        /* 分隔線 */
+    --g1: #8c9a7e;          /* 國一：鼠尾草綠 */
+    --g2: #7f90a3;          /* 國二：霧藍 */
+    --g3: #b08d76;          /* 國三：陶土 */
+    --earth: #a39a6f;       /* 地科標籤：橄欖土 */
+    --shadow: 0 1px 2px rgba(59,56,51,.06), 0 2px 8px rgba(59,56,51,.05);
+    --shadow-hover: 0 6px 14px rgba(59,56,51,.10), 0 14px 32px rgba(59,56,51,.10);
+    --radius: 14px;
+    --ease: cubic-bezier(.22,.61,.36,1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+    line-height: 1.7;
+    letter-spacing: .02em;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { font-family: "Noto Serif TC", "Noto Sans TC", serif; font-weight: 700; letter-spacing: .04em; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; }
+
+  /* ===== 導覽列 ===== */
+  .navbar {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(244,240,232,.88);
+    backdrop-filter: saturate(140%) blur(10px);
+    -webkit-backdrop-filter: saturate(140%) blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .nav-inner {
+    max-width: 1180px; margin: 0 auto;
+    padding: 14px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-family: "Noto Serif TC", serif; font-weight: 700; font-size: 1.15rem; white-space: nowrap; }
+  .brand-mark {
+    width: 30px; height: 30px; border-radius: 50%;
+    border: 1.5px solid var(--ink); display: grid; place-items: center;
+  }
+  .brand-mark svg { width: 16px; height: 16px; }
+  .nav-tabs { display: flex; gap: 6px; }
+  .nav-tab {
+    border: 1px solid transparent; background: transparent;
+    padding: 7px 16px; border-radius: 999px; cursor: pointer;
+    font-size: .92rem; color: var(--ink-soft);
+    transition: background .25s var(--ease), color .25s var(--ease), border-color .25s var(--ease);
+    white-space: nowrap;
+  }
+  .nav-tab:hover { color: var(--ink); border-color: var(--line); }
+  .nav-tab[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+  .nav-tab:focus-visible, .unit-card:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+
+  /* ===== 主視覺 ===== */
+  .hero { max-width: 1180px; margin: 0 auto; padding: 72px 24px 48px; }
+  .hero-eyebrow { font-size: .8rem; letter-spacing: .3em; color: var(--ink-soft); margin-bottom: 14px; }
+  .hero h1 { font-size: clamp(1.8rem, 4.2vw, 2.8rem); line-height: 1.35; margin-bottom: 18px; }
+  .hero p { max-width: 560px; color: var(--ink-soft); font-size: 1rem; }
+  .hero-stats { display: flex; gap: 36px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+  .stat b { display: block; font-family: "Noto Serif TC", serif; font-size: 1.6rem; font-weight: 500; }
+  .stat span { font-size: .82rem; color: var(--ink-soft); }
+
+  /* ===== 年級面板 ===== */
+  main { max-width: 1180px; margin: 0 auto; padding: 0 24px 80px; }
+  .grade-panel { display: none; animation: fadeUp .45s var(--ease); }
+  .grade-panel.active { display: block; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  .grade-head {
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+  .grade-head h2 { font-size: 1.5rem; display: flex; align-items: center; gap: 12px; }
+  .grade-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+  .grade-head p { color: var(--ink-soft); font-size: .92rem; margin-top: 4px; }
+  .grade-count { font-size: .85rem; color: var(--ink-soft); }
+
+  /* ===== 卡片網格 ===== */
+  .unit-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 18px;
+  }
+  .unit-card {
+    position: relative;
+    display: flex; flex-direction: column; justify-content: space-between;
+    min-height: 168px; padding: 22px 22px 18px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    transition: transform .35s var(--ease), box-shadow .35s var(--ease), border-color .35s var(--ease);
+    overflow: hidden;
+  }
+  .unit-card::before {   /* 頂部色條 */
+    content: ""; position: absolute; left: 0; top: 0; right: 0; height: 3px;
+    background: var(--accent); opacity: .75;
+  }
+  .unit-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); border-color: transparent; }
+
+  .unit-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .unit-no { font-family: "Noto Serif TC", serif; font-size: 1.9rem; line-height: 1; color: var(--accent); opacity: .85; }
+  .unit-tag {
+    font-size: .72rem; padding: 3px 10px; border-radius: 999px;
+    border: 1px solid currentColor; color: var(--tag, var(--accent)); white-space: nowrap;
+  }
+  .unit-title { font-size: 1.08rem; font-weight: 500; margin: 18px 0 14px; line-height: 1.5; }
+
+  .unit-foot { display: flex; align-items: center; justify-content: space-between; border-top: 1px dashed var(--line); padding-top: 12px; }
+  .unit-foot span { font-size: .8rem; color: var(--ink-soft); transition: color .3s var(--ease); }
+  .play-icon {
+    width: 34px; height: 34px; border-radius: 50%;
+    display: grid; place-items: center;
+    border: 1.5px solid var(--accent); color: var(--accent);
+    transition: background .3s var(--ease), color .3s var(--ease), transform .3s var(--ease);
+  }
+  .play-icon svg { width: 13px; height: 13px; margin-left: 2px; }
+  .unit-card:hover .play-icon { background: var(--accent); color: var(--surface); transform: scale(1.06); }
+  .unit-card:hover .unit-foot span { color: var(--ink); }
+
+  /* ===== 頁尾 ===== */
+  footer { border-top: 1px solid var(--line); text-align: center; padding: 28px 24px; font-size: .8rem; color: var(--ink-soft); }
+
+  /* ===== 響應式 ===== */
+  @media (max-width: 760px) {
+    .nav-inner { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px 16px; }
+    .brand { justify-content: center; font-size: 1.05rem; }
+    .nav-tabs { justify-content: center; }
+    .nav-tab { flex: 1; padding: 7px 8px; font-size: .85rem; }
+    .hero { padding: 44px 16px 32px; }
+    main { padding: 0 16px 56px; }
+    .hero-stats { gap: 24px; }
+  }
+  @media (max-width: 480px) {
+    .unit-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .unit-card { min-height: 150px; padding: 16px 14px 14px; }
+    .unit-no { font-size: 1.5rem; }
+    .unit-title { font-size: .95rem; margin: 12px 0 10px; }
+    .unit-foot span { display: none; }
+    .unit-foot { justify-content: flex-end; }
+    .nav-tab { font-size: .8rem; }
+  }
+  @media (max-width: 340px) { .unit-grid { grid-template-columns: 1fr; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    html { scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 導覽列 -->
+<header class="navbar">
+  <div class="nav-inner">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/></svg>
+      </span>
+      自然科互動動畫實驗室
+    </div>
+    <nav class="nav-tabs" id="navTabs" role="tablist" aria-label="年級切換"></nav>
+  </div>
+</header>
+
+<!-- 主視覺 -->
+<section class="hero">
+  <p class="hero-eyebrow">108 課綱 · 國中自然科學</p>
+  <h1>把看不見的自然現象，<br>變成看得見的動畫。</h1>
+  <p>依年級與章節整理的互動動畫課程。點選任一單元，即可進入對應的 3D 動畫，從觀察出發，理解生命、物質、能量與地球的運作。</p>
+  <div class="hero-stats" id="heroStats"></div>
+</section>
+
+<!-- 課程內容（由 JS 動態渲染） -->
+<main id="courseRoot"></main>
+
+<footer>自然科互動動畫實驗室 · 依 108 課綱國中自然科學章節編排</footer>
+
+<script>
+/* =========================================================
+   課程資料：日後擴充只需修改這裡
+   - url：預設 javascript:void(0)，換成你的 3D 動畫網址即可
+   - tag：可選，覆寫單元的學科標籤（例如國三的理化 / 地科）
+   ========================================================= */
+const DEFAULT_URL = 'javascript:void(0)';
+
+const COURSES = [
+  {
+    id: 'g7',
+    tabLabel: '國一生物',
+    title: '國一 · 生物',
+    subject: '生物',
+    desc: '從細胞到生態系，認識生命如何運作與彼此相連。',
+    color: 'var(--g1)',
+    units: [
+      { title: '生命的特性',         url: DEFAULT_URL },
+      { title: '養分',               url: 'enzyme-lock-key.html' },
+      { title: '生物的運輸與防禦',   url: DEFAULT_URL },
+      { title: '生物的協調作用',     url: DEFAULT_URL },
+      { title: '生物的恆定性',       url: DEFAULT_URL },
+      { title: '生殖',               url: 'cell-division.html' },
+      { title: '遺傳',               url: DEFAULT_URL },
+      { title: '地球上的生物',       url: DEFAULT_URL },
+      { title: '生態系',             url: DEFAULT_URL },
+      { title: '人類與環境',         url: DEFAULT_URL }
+    ]
+  },
+  {
+    id: 'g8',
+    tabLabel: '國二理化',
+    title: '國二 · 理化',
+    subject: '理化',
+    desc: '從測量與物質出發，探索波、光、熱與化學反應的規律。',
+    color: 'var(--g2)',
+    units: [
+      { title: '科學方法與基本測量', url: DEFAULT_URL },
+      { title: '物質的世界',         url: DEFAULT_URL },
+      { title: '波動與聲音',         url: 'transverse-wave.html' },
+      { title: '光',                 url: 'optics-lab.html' },
+      { title: '溫度與熱',           url: DEFAULT_URL },
+      { title: '探索物質組成',       url: DEFAULT_URL },
+      { title: '化學反應',           url: DEFAULT_URL },
+      { title: '氧化與還原',         url: DEFAULT_URL },
+      { title: '電解質與酸鹼反應',   url: DEFAULT_URL },
+      { title: '反應速率與平衡',     url: DEFAULT_URL },
+      { title: '有機化合物',         url: DEFAULT_URL },
+      { title: '力與壓力',           url: DEFAULT_URL }
+    ]
+  },
+  {
+    id: 'g9',
+    tabLabel: '國三地科/理化',
+    title: '國三 · 理化與地科',
+    subject: '理化',
+    desc: '運動、能量與電磁，再延伸到地球、天氣與浩瀚宇宙。',
+    color: 'var(--g3)',
+    units: [
+      { title: '直線運動',                 url: DEFAULT_URL },
+      { title: '力與運動',                 url: DEFAULT_URL },
+      { title: '功與能',                   url: DEFAULT_URL },
+      { title: '基本的靜電現象與電路',     url: DEFAULT_URL },
+      { title: '水與陸地',                 url: DEFAULT_URL, tag: '地科' },
+      { title: '板塊運動與地球歷史：斷層與地球構造', url: 'geology-fault.html',     tag: '地科' },
+      { title: '板塊運動與地球歷史：台灣地震',       url: 'taiwan-earthquake.html', tag: '地科' },
+      { title: '宇宙中的天體：月相',       url: 'https://a1011755-lucky.github.io/sky-lab/#moon',  tag: '地科' },
+      { title: '宇宙中的天體：周日運動',   url: 'https://a1011755-lucky.github.io/sky-lab/#daily', tag: '地科' },
+      { title: '電的應用',                 url: DEFAULT_URL },
+      { title: '電與磁現象',               url: DEFAULT_URL },
+      { title: '千變萬化的天氣：高低氣壓', url: 'weather-pressure.html', tag: '地科' },
+      { title: '千變萬化的天氣：鋒面',     url: 'weather-fronts.html',   tag: '地科' },
+      { title: '千變萬化的天氣：颱風風向', url: 'typhoon-wind.html',     tag: '地科' },
+      { title: '全球氣候變遷與因應',       url: DEFAULT_URL, tag: '地科' }
+    ]
+  }
+];
+
+/* ===== 工具函式 ===== */
+const PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z"/></svg>';
+const pad = n => String(n).padStart(2, '0');
+const escapeHTML = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const isPlaceholder = url => !url || url.startsWith('javascript:');
+
+/* ===== 渲染：導覽按鈕 ===== */
+function renderTabs() {
+  document.getElementById('navTabs').innerHTML = COURSES.map(c => `
+    <button class="nav-tab" role="tab" id="tab-${c.id}" data-target="${c.id}"
+            aria-controls="panel-${c.id}" aria-selected="false">${escapeHTML(c.tabLabel)}</button>
+  `).join('');
+}
+
+/* ===== 渲染：主視覺統計 ===== */
+function renderStats() {
+  const total = COURSES.reduce((sum, c) => sum + c.units.length, 0);
+  const stats = [
+    { n: COURSES.length, label: '個年級' },
+    { n: total,          label: '個互動單元' },
+    { n: '3D',           label: '動畫視覺化' }
+  ];
+  document.getElementById('heroStats').innerHTML = stats
+    .map(s => `<div class="stat"><b>${s.n}</b><span>${s.label}</span></div>`).join('');
+}
+
+/* ===== 渲染：年級面板與單元卡片 ===== */
+function renderCourses() {
+  document.getElementById('courseRoot').innerHTML = COURSES.map(c => `
+    <section class="grade-panel" id="panel-${c.id}" role="tabpanel"
+             aria-labelledby="tab-${c.id}" style="--accent:${c.color}">
+      <div class="grade-head">
+        <div>
+          <h2><span class="grade-dot"></span>${escapeHTML(c.title)}</h2>
+          <p>${escapeHTML(c.desc)}</p>
+        </div>
+        <span class="grade-count">共 ${c.units.length} 個單元</span>
+      </div>
+      <div class="unit-grid">
+        ${c.units.map((u, i) => {
+          const tag = u.tag || c.subject;
+          const tagStyle = tag === '地科' ? 'style="--tag:var(--earth)"' : '';
+          // 同資料夾的動畫頁在本分頁開啟（動畫頁有「回課程總覽」）；外部網址才開新分頁
+          const external = /^https?:\/\//.test(u.url || '') ? 'target="_blank" rel="noopener"' : '';
+          return `
+          <a class="unit-card" href="${escapeHTML(u.url || DEFAULT_URL)}" ${external}
+             data-grade="${c.id}" data-index="${i}"
+             aria-label="播放動畫：${escapeHTML(u.title)}">
+            <div>
+              <div class="unit-top">
+                <span class="unit-no">${pad(i + 1)}</span>
+                <span class="unit-tag" ${tagStyle}>${escapeHTML(tag)}</span>
+              </div>
+              <h3 class="unit-title">${escapeHTML(u.title)}</h3>
+            </div>
+            <div class="unit-foot">
+              <span>播放動畫</span>
+              <span class="play-icon">${PLAY_SVG}</span>
+            </div>
+          </a>`;
+        }).join('')}
+      </div>
+    </section>
+  `).join('');
+}
+
+/* ===== 切換年級 ===== */
+function switchGrade(id, { scroll = false } = {}) {
+  if (!COURSES.some(c => c.id === id)) id = COURSES[0].id;
+  document.querySelectorAll('.nav-tab').forEach(t =>
+    t.setAttribute('aria-selected', String(t.dataset.target === id)));
+  document.querySelectorAll('.grade-panel').forEach(p =>
+    p.classList.toggle('active', p.id === `panel-${id}`));
+  try { history.replaceState(null, '', `#${id}`); } catch (e) { /* 部分瀏覽器以 file:// 開啟時不允許 */ }
+  if (scroll) {
+    const top = document.getElementById('courseRoot').getBoundingClientRect().top
+              + window.scrollY - document.querySelector('.navbar').offsetHeight - 16;
+    window.scrollTo({ top, behavior: 'smooth' });
+  }
+}
+
+/* ===== 事件綁定 ===== */
+function bindEvents() {
+  document.getElementById('navTabs').addEventListener('click', e => {
+    const tab = e.target.closest('.nav-tab');
+    if (tab) switchGrade(tab.dataset.target, { scroll: true });
+  });
+
+  // 單元點擊：若尚未設定網址，可在這裡加入你自己的處理邏輯
+  document.getElementById('courseRoot').addEventListener('click', e => {
+    const card = e.target.closest('.unit-card');
+    if (!card) return;
+    const course = COURSES.find(c => c.id === card.dataset.grade);
+    const unit = course.units[Number(card.dataset.index)];
+    if (isPlaceholder(unit.url)) {
+      console.log(`[待替換] ${course.title} › ${unit.title}`);
+      // 例：window.location.href = `animations/${course.id}/${card.dataset.index}.html`;
+    }
+  });
+}
+
+/* ===== 初始化 ===== */
+renderTabs();
+renderStats();
+renderCourses();
+bindEvents();
+switchGrade(location.hash.slice(1) || COURSES[0].id);
+</script>
+</body>
+</html>
