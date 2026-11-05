@@ -93,9 +93,10 @@
         const p = document.querySelector('.panel');
         const bottom = p ? Math.max(0, h - p.getBoundingClientRect().top) : 0;
         let top = 0;
-        document.querySelectorAll('.data, .monitor, .concept').forEach(el => {
+        document.querySelectorAll('.data, .monitor, .concept, .tip').forEach(el => {
           const r = el.getBoundingClientRect();
-          if (r.height && r.top < h * 0.3) top = Math.max(top, r.bottom);
+          const visible = r.height && getComputedStyle(el).opacity !== '0';
+          if (visible && r.top < h * 0.3) top = Math.max(top, r.bottom);
         });
         oy = Math.round((bottom - top) * 0.5);
       }
