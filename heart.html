@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D 心臟血液循環模擬器</title>
+<style>
+  :root {
+    --bg: #eef3f7;
+    --ink: #1d1d1f;
+    --ink-soft: #6e6e73;
+    --card: rgba(255,255,255,.62);
+    --accent: #e0557a;
+    --blue: #3f7be8;
+    --red: #e5484d;
+    --track: #e4e7eb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; }
+
+  .glass {
+    background: var(--card); backdrop-filter: blur(22px) saturate(180%); -webkit-backdrop-filter: blur(22px) saturate(180%);
+    border: 1px solid rgba(255,255,255,.8); box-shadow: 0 20px 50px rgba(40,60,80,.12), 0 2px 6px rgba(40,60,80,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 320px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 250px; }
+  .panel.collapsed .body { display: none; }
+  .collapse {
+    position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none;
+    font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent);
+    background: rgba(224,85,122,.1); border-radius: 999px; padding: 4px 12px;
+  }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.18rem; font-weight: 700; margin-top: 6px; padding-right: 62px; }
+  .sub { font-size: .78rem; color: var(--ink-soft); }
+
+  .box { background: rgba(255,255,255,.78); border-radius: 18px; padding: 12px 14px; margin-top: 10px; font-size: .82rem; line-height: 1.6; }
+  .box .h { font-size: .72rem; font-weight: 700; color: var(--ink-soft); letter-spacing: .04em; margin-bottom: 6px; }
+  .rate { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .rate .v { font-size: 1.5rem; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .rate .v small { font-size: .74rem; color: var(--ink-soft); font-weight: 600; margin-left: 2px; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 12px; border-radius: 999px; cursor: pointer; outline: none;
+    background: linear-gradient(90deg, #b9d6ff 0%, #ffc2d1 50%, #e0557a 100%); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 30px; border-radius: 50%; background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+  input[type=range]::-moz-range-thumb { width: 28px; height: 28px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+  input[type=range]:focus-visible { box-shadow: 0 0 0 4px rgba(224,85,122,.3); }
+  .scale { display: flex; justify-content: space-between; font-size: .7rem; color: var(--ink-soft); margin-top: 6px; }
+
+  .phases { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .phase { text-align: center; font-size: .74rem; font-weight: 700; padding: 8px 2px; border-radius: 12px; background: rgba(118,118,128,.1); color: var(--ink-soft); transition: background .2s, color .2s, transform .2s; }
+  .phase.on { background: var(--accent); color: #fff; transform: scale(1.04); }
+  .valves { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+  .valve { border-radius: 12px; padding: 8px 10px; background: rgba(255,255,255,.9); font-size: .76rem; }
+  .valve b { display: block; font-size: .95rem; transition: color .2s; }
+  .valve b.open { color: #16a34a; } .valve b.shut { color: #94a3b8; }
+  .phase-desc { font-size: .8rem; margin-top: 8px; color: var(--ink); min-height: 2.6em; }
+
+  .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .btn { border: none; border-radius: 14px; padding: 11px; cursor: pointer; font: inherit; font-size: .86rem; font-weight: 700; color: var(--accent); background: rgba(224,85,122,.1); }
+  .btn:hover { background: rgba(224,85,122,.18); }
+  .btn.primary { color: #fff; background: var(--accent); box-shadow: 0 6px 16px rgba(224,85,122,.3); }
+
+  .legend { display: grid; gap: 6px; }
+  .legend div { display: flex; align-items: center; gap: 8px; font-size: .8rem; }
+  .legend i { width: 14px; height: 14px; border-radius: 50%; flex: none; box-shadow: 0 0 8px currentColor; }
+  .route { font-size: .76rem; line-height: 1.7; }
+  .route .b { color: var(--blue); font-weight: 700; } .route .r { color: var(--red); font-weight: 700; }
+
+  /* 上方提示牌 */
+  .warn {
+    position: absolute; top: 18px; left: 50%; transform: translateX(-50%); z-index: 9;
+    padding: 10px 18px; border-radius: 18px; font-size: .92rem; font-weight: 700; white-space: nowrap;
+    background: rgba(255,248,225,.9); border: 1.5px solid #f5b83d; color: #7a4b00;
+    box-shadow: 0 8px 22px rgba(245,184,61,.25);
+  }
+  @media (min-width: 761px) { .warn { left: calc(50% + 170px); } }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 600; padding: 4px 10px; border-radius: 12px; white-space: nowrap;
+    background: rgba(255,255,255,.85); color: var(--ink); box-shadow: 0 4px 12px rgba(0,0,0,.08);
+  }
+  .tag.b { color: var(--blue); } .tag.r { color: var(--red); }
+  .hint { position: absolute; right: 18px; bottom: 16px; z-index: 5; font-size: .74rem; color: rgba(29,29,31,.5); }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 760px) {
+    .warn { top: 8px; left: 8px; right: 8px; transform: none; white-space: normal; font-size: .8rem; padding: 8px 12px; text-align: center; }
+  }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="scene"></div>
+<div class="warn">⚠️ 畫面的左邊，其實是人體的右邊喔！</div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g7">‹ 課程總覽</a>
+  <div class="title">3D 心臟血液循環</div>
+  <div class="sub">半透明果凍心臟 · 看穿血流與瓣膜</div>
+
+  <div class="body">
+    <div class="box">
+      <div class="rate"><span>心搏速度</span><span class="v" id="bpmVal">60<small>次/分</small></span></div>
+      <input type="range" id="bpm" min="6" max="150" step="1" value="40" aria-label="心搏速度">
+      <div class="scale"><span>極慢（看瓣膜）</span><span>正常</span><span>激烈運動</span></div>
+      <div class="btns">
+        <button class="btn primary" id="playBtn">⏸ 暫停</button>
+        <button class="btn" id="viewBtn">重設視角</button>
+      </div>
+    </div>
+
+    <div class="box">
+      <div class="h">目前階段</div>
+      <div class="phases">
+        <div class="phase" data-p="atrial">心房收縮</div>
+        <div class="phase" data-p="ventricular">心室收縮</div>
+        <div class="phase" data-p="diastole">全心舒張</div>
+      </div>
+      <div class="valves">
+        <div class="valve">房室瓣<b id="avState">—</b></div>
+        <div class="valve">半月瓣<b id="slState">—</b></div>
+      </div>
+      <div class="phase-desc" id="phaseDesc"></div>
+    </div>
+
+    <div class="box">
+      <div class="h">圖例</div>
+      <div class="legend">
+        <div><i style="background:#3f7be8;color:#3f7be8"></i>缺氧血（含氧量少）</div>
+        <div><i style="background:#e5484d;color:#e5484d"></i>充氧血（含氧量多）</div>
+        <div><i style="background:#fff;color:#bbb;border:1px solid #ddd"></i>瓣膜（防止血液逆流）</div>
+      </div>
+      <div class="route" style="margin-top:8px">
+        <span class="b">肺循環</span>：右心室 → 肺動脈 → 肺 → 肺靜脈 → 左心房<br>
+        <span class="r">體循環</span>：左心室 → 主動脈 → 全身 → 上、下腔靜脈 → 右心房
+      </div>
+    </div>
+  </div>
+</aside>
+
+<div class="hint">拖曳旋轉 · 滾輪縮放</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__heartReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = THREE.MathUtils.clamp;
+
+/* =========================================================
+   場景：Soft 3D 果凍黏土風
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xeef3f7);
+scene.add(new THREE.HemisphereLight(0xffffff, 0xd6dde6, 1.1));
+const sun = new THREE.DirectionalLight(0xffffff, 2.0);
+sun.position.set(-5, 10, 8);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8, near: 1, far: 40 });
+sun.shadow.radius = 4;
+scene.add(sun);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.ShadowMaterial({ opacity: 0.1 }));
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = -3.4;
+floor.receiveShadow = true;
+scene.add(floor);
+
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 100);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 6;
+controls.maxDistance = 30;
+
+/* ----- 材質 ----- */
+const jelly = color => new THREE.MeshPhysicalMaterial({
+  color, transmission: 0.7, roughness: 0.2, thickness: 1, ior: 1.3,
+  clearcoat: 0.4, clearcoatRoughness: 0.3, metalness: 0, transparent: true, opacity: 0.95, side: THREE.DoubleSide
+});
+const clay = color => new THREE.MeshPhysicalMaterial({ color, roughness: 0.55, metalness: 0.05, clearcoat: 0.4 });
+
+/* =========================================================
+   心臟：四個圓潤艙室（從觀察者看：左邊 = 人體右側）
+   ========================================================= */
+const heart = new THREE.Group();
+scene.add(heart);
+const CH = {
+  RA: { c: V3(-1.35, 1.25, 0),  s: V3(1.05, 0.85, 0.95), mat: jelly(0xc9d8ff), kind: 'atrium' },
+  RV: { c: V3(-1.25, -1.0, 0),  s: V3(1.15, 1.3, 1.05),  mat: jelly(0xbfd0ff), kind: 'ventricle' },
+  LA: { c: V3(1.35, 1.25, 0),   s: V3(1.05, 0.85, 0.95), mat: jelly(0xffcfd8), kind: 'atrium' },
+  LV: { c: V3(1.25, -1.05, 0),  s: V3(1.25, 1.4, 1.1),   mat: jelly(0xffc2cf), kind: 'ventricle' }
+};
+Object.values(CH).forEach(ch => {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 48), ch.mat);
+  m.position.copy(ch.c);
+  m.scale.copy(ch.s);
+  m.castShadow = true;
+  heart.add(m);
+  ch.mesh = m;
+});
+// 中隔（分隔左右心）
+const septum = new THREE.Mesh(new RoundedBoxGeometry(0.12, 4.2, 1.6, 4, 0.05), jelly(0xffffff));
+septum.position.set(0, 0.05, 0);
+heart.add(septum);
+
+/* ----- 血管（半透明果凍管） ----- */
+const curve = pts => new THREE.CatmullRomCurve3(pts);
+const VESSELS = {
+  svc: { pts: [V3(-3.0, 3.3, -0.4), V3(-2.2, 2.6, -0.35), V3(-1.55, 1.9, -0.2)], color: 0x9fb8ff, r: 0.26 },          // 上腔靜脈
+  ivc: { pts: [V3(-2.7, -3.0, -0.6), V3(-2.4, -0.6, -0.7), V3(-1.75, 0.75, -0.45)], color: 0x9fb8ff, r: 0.26 },       // 下腔靜脈
+  pa:  { pts: [V3(-0.85, -0.55, 0.35), V3(-0.6, 0.35, 0.85), V3(-0.4, 2.35, 0.8), V3(-1.2, 3.25, 0.55), V3(-2.7, 3.35, 0.3)], color: 0x9fb8ff, r: 0.24 },  // 肺動脈
+  pv:  { pts: [V3(3.2, 3.1, -0.45), V3(2.35, 2.45, -0.4), V3(1.55, 1.9, -0.2)], color: 0xffa9b8, r: 0.24 },          // 肺靜脈
+  ao:  { pts: [V3(0.85, -0.6, 0.35), V3(0.55, 0.4, 0.85), V3(0.35, 2.7, 0.75), V3(1.3, 3.55, 0.4), V3(2.9, 3.3, 0.0)], color: 0xffa9b8, r: 0.27 }   // 主動脈
+};
+Object.values(VESSELS).forEach(v => {
+  v.curve = curve(v.pts);
+  // 血管：細一點、更透明，讓腔室與血流當主角
+  const mat = jelly(v.color);
+  mat.opacity = 0.55;
+  mat.transmission = 0.85;
+  const m = new THREE.Mesh(new THREE.TubeGeometry(v.curve, 80, v.r * 0.68, 24, false), mat);
+  m.castShadow = true;
+  heart.add(m);
+});
+
+/* ----- 瓣膜：白色圓潤閘門 ----- */
+const valveMat = clay(0xffffff);
+function makeValve(center, width, up) {
+  // 兩片瓣葉，鉸鏈在外側；關閉時水平相接，打開時向下（房室瓣）或向上（半月瓣）翻開
+  const g = new THREE.Group();
+  g.position.copy(center);
+  const flaps = [-1, 1].map(s => {
+    const pivot = new THREE.Group();
+    pivot.position.x = s * width / 2;
+    const leaf = new THREE.Mesh(new RoundedBoxGeometry(width / 2, 0.07, width * 0.9, 4, 0.03), valveMat);
+    leaf.position.x = -s * width / 4;
+    leaf.castShadow = true;
+    pivot.add(leaf);
+    g.add(pivot);
+    // 鉸鏈小圓珠
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 12), valveMat);
+    knob.position.x = s * width / 2;
+    g.add(knob);
+    return { pivot, s };
+  });
+  heart.add(g);
+  return { g, flaps, up, open: 0 };
+}
+const VALVES = {
+  tri: makeValve(V3(-1.3, 0.33, 0), 0.95, false),   // 三尖瓣（右房室瓣）
+  mit: makeValve(V3(1.3, 0.33, 0), 0.95, false),    // 二尖瓣（左房室瓣）
+  pul: makeValve(V3(-0.62, 0.2, 0.8), 0.48, true),  // 肺動脈瓣（半月瓣）
+  aor: makeValve(V3(0.6, 0.25, 0.8), 0.5, true)     // 主動脈瓣（半月瓣）
+};
+function setValve(v, k) {
+  v.open = k;
+  const ang = k * 1.25;                      // 最大約 72°
+  // 瓣葉從外側鉸鏈伸向中央：房室瓣尖端往下翻、半月瓣尖端往上翻
+  v.flaps.forEach(({ pivot, s }) => { pivot.rotation.z = (v.up ? 1 : -1) * -s * ang; });
+}
+
+/* ----- 腔室名稱（立體粗體字貼片） ----- */
+function textSprite(text, color, w = 1.9) {
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 180;
+  const g = c.getContext('2d');
+  g.font = '900 120px "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  // 立體感：多層位移陰影
+  for (let i = 8; i > 0; i--) { g.fillStyle = `rgba(0,0,0,${0.05})`; g.fillText(text, 256 + i * 1.2, 92 + i * 1.6); }
+  g.lineWidth = 14; g.strokeStyle = '#ffffff'; g.lineJoin = 'round'; g.strokeText(text, 256, 90);
+  g.fillStyle = color; g.fillText(text, 256, 90);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
+  s.scale.set(w, w * 180 / 512, 1);
+  s.renderOrder = 20;
+  return s;
+}
+const NAMES = [
+  ['右心房', '#2f6ae0', V3(-3.75, 1.35, 0), CH.RA.c], ['右心室', '#2f6ae0', V3(-3.75, -1.05, 0), CH.RV.c],
+  ['左心房', '#e03a44', V3(3.75, 1.35, 0), CH.LA.c],  ['左心室', '#e03a44', V3(3.75, -1.1, 0), CH.LV.c]
+];
+NAMES.forEach(([t, col, p, target]) => {
+  const s = textSprite(t, col);
+  s.position.copy(p);
+  heart.add(s);
+  const end = target.clone().add(V3(Math.sign(p.x) * 0.55, 0, 0.6));
+  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([p.clone().add(V3(-Math.sign(p.x) * 0.95, 0, 0)), end]),
+    new THREE.LineDashedMaterial({ color: col, dashSize: 0.1, gapSize: 0.08, depthTest: false }));
+  line.computeLineDistances();
+  line.renderOrder = 19;
+  heart.add(line);
+});
+
+/* ----- HTML 小標籤（血管與方向） ----- */
+const labels = [];
+function addLabel(html, pos, cls = '') {
+  const el = document.createElement('div');
+  el.className = 'tag ' + cls;
+  el.innerHTML = html;
+  document.body.appendChild(el);
+  labels.push({ el, pos });
+}
+addLabel('上腔靜脈（來自全身）', V3(-3.6, 2.85, -0.4), 'b');
+addLabel('下腔靜脈（來自全身）', V3(-2.7, -3.25, -0.6), 'b');
+addLabel('肺動脈 → 肺', V3(-2.5, 3.9, 0.3), 'b');
+addLabel('肺靜脈（來自肺）', V3(3.7, 2.7, -0.45), 'r');
+addLabel('主動脈 → 全身', V3(2.6, 4.0, 0.0), 'r');
+addLabel('房室瓣', V3(-1.3, 0.33, 1.1));
+addLabel('半月瓣', V3(0.6, 0.25, 1.3));
+const tmpV = V3(0, 0, 0);
+function placeLabels() {
+  for (const L of labels) {
+    tmpV.copy(L.pos).project(camera);
+    L.el.style.display = tmpV.z < 1 ? '' : 'none';
+    L.el.style.left = ((tmpV.x + 1) / 2 * window.innerWidth) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * window.innerHeight) + 'px';
+  }
+}
+
+/* =========================================================
+   心動週期（相位 φ ∈ [0,1)）
+     0.00–0.15 心房收縮：房室瓣開、半月瓣關
+     0.15–0.22 等容收縮：全部關閉
+     0.22–0.55 心室收縮：房室瓣關（防逆流）、半月瓣開
+     0.55–1.00 全心舒張：半月瓣關、房室瓣開（血液被動流入心室）
+   ========================================================= */
+const PHASE = {
+  avOpen: p => p < 0.15 || p > 0.6,
+  slOpen: p => p > 0.22 && p < 0.55,
+  name: p => p < 0.15 ? 'atrial' : p < 0.55 ? 'ventricular' : 'diastole'
+};
+const bump = (p, a, b) => (p > a && p < b) ? Math.sin(Math.PI * (p - a) / (b - a)) : 0;
+const DESC = {
+  atrial: '心房收縮，把血液擠進心室。<b>房室瓣向下打開</b>，半月瓣關閉。',
+  ventricular: '心室強力收縮！<b>房室瓣立刻關閉（防止血液逆流回心房）</b>，<b>半月瓣打開</b>，血液衝進動脈。',
+  diastole: '心臟放鬆。<b>半月瓣關閉</b>（防止動脈血倒流），房室瓣打開，血液從靜脈流回心房、再流進心室。'
+};
+
+/* =========================================================
+   血液粒子：沿路徑移動，遇到「關閉的瓣膜」就在腔室裡等待
+   ========================================================= */
+function randIn(ch, k = 0.55) {
+  const d = V3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(Math.cbrt(Math.random()) * k);
+  return ch.c.clone().add(V3(d.x * ch.s.x, d.y * ch.s.y, d.z * ch.s.z));
+}
+const sample = (cv, n = 8) => Array.from({ length: n + 1 }, (_, i) => cv.getPointAt(i / n));
+
+function routeFor(side) {
+  const right = side === 'R';
+  const atrium = right ? CH.RA : CH.LA, ventricle = right ? CH.RV : CH.LV;
+  const inflow = right ? (Math.random() < 0.5 ? VESSELS.svc : VESSELS.ivc) : VESSELS.pv;
+  const av = right ? VALVES.tri : VALVES.mit, sl = right ? VALVES.pul : VALVES.aor;
+  const out = right ? VESSELS.pa : VESSELS.ao;
+  const outPts = sample(out.curve, 10);
+  return [
+    ...sample(inflow.curve, 6).map(p => ({ p })),
+    { p: randIn(atrium), pool: true },
+    { p: av.g.position.clone().add(V3(0, 0.15, 0)), gate: 'av' },
+    { p: av.g.position.clone().add(V3(0, -0.25, 0)) },
+    { p: randIn(ventricle), pool: true },
+    { p: outPts[0], gate: 'sl' },
+    ...outPts.slice(1).map(p => ({ p }))
+  ];
+}
+
+const N = 46;
+const particleGeo = new THREE.SphereGeometry(0.105, 16, 12);
+const glow = color => new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.3, roughness: 0.3 });
+const MAT = { R: glow(0x3f7be8), L: glow(0xe5484d) };
+const particles = [];
+['R', 'L'].forEach(side => {
+  for (let i = 0; i < N; i++) {
+    const m = new THREE.Mesh(particleGeo, MAT[side]);
+    heart.add(m);
+    const pt = { m, side, route: routeFor(side), idx: 0, seed: Math.random() * 10 };
+    // 開場先把粒子分散在路徑各處
+    pt.idx = Math.floor(Math.random() * (pt.route.length - 1));
+    m.position.copy(pt.route[pt.idx].p);
+    particles.push(pt);
+  }
+});
+
+function stepParticles(dt, phase, speedK) {
+  const av = PHASE.avOpen(phase), sl = PHASE.slOpen(phase);
+  const ventSqueeze = bump(phase, 0.22, 0.55), atrSqueeze = bump(phase, 0, 0.15);
+  particles.forEach(pt => {
+    const wp = pt.route[pt.idx];
+    if (!wp) return;
+    // 閘門關閉 → 在腔室內輕輕晃動等待
+    if (wp.gate && !(wp.gate === 'av' ? av : sl)) {
+      const t = performance.now() / 1000;
+      pt.m.position.x += Math.sin(t * 2 + pt.seed) * 0.0015;
+      pt.m.position.y += Math.cos(t * 2.3 + pt.seed) * 0.0015;
+      return;
+    }
+    // 收縮時血流加速（心室收縮推力最大）
+    let v = 1.2 * speedK;
+    if (wp.gate === 'sl' || pt.idx > pt.route.findIndex(w => w.gate === 'sl')) v *= 1 + 2.5 * ventSqueeze;
+    else if (wp.gate === 'av' || wp.pool) v *= 1 + 1.5 * atrSqueeze;
+    const d = wp.p.clone().sub(pt.m.position);
+    const step = v * dt;
+    if (d.length() <= step) {
+      pt.m.position.copy(wp.p);
+      pt.idx++;
+      if (pt.idx >= pt.route.length) {                // 離開心臟 → 從靜脈重新進入
+        pt.route = routeFor(pt.side);
+        pt.idx = 0;
+        pt.m.position.copy(pt.route[0].p);
+      }
+    } else {
+      pt.m.position.addScaledVector(d.normalize(), step);
+    }
+  });
+}
+
+/* =========================================================
+   UI 與主迴圈
+   ========================================================= */
+let bpm = Number($('bpm').value), playing = true, phase = 0.6;
+const paintBpm = () => { $('bpmVal').innerHTML = `${bpm}<small>次/分</small>`; };
+$('bpm').addEventListener('input', e => { bpm = Number(e.target.value); paintBpm(); });
+paintBpm();
+$('playBtn').addEventListener('click', () => { playing = !playing; $('playBtn').textContent = playing ? '⏸ 暫停' : '▶ 播放'; });
+$('collapse').addEventListener('click', () => {
+  const c = $('panel').classList.toggle('collapsed');
+  $('collapse').textContent = c ? '展開' : '收合';
+});
+
+function resetView() {
+  // 微俯視、正對剖面；桌機時避開左側面板
+  const pos = V3(0, 3.6, 11.5), tgt = V3(0, 0.5, 0);
+  const panel = $('panel');
+  const mobile = window.MobileView?.isMobile();
+  if (!mobile && !panel.classList.contains('collapsed')) {
+    const visW = 2 * pos.distanceTo(tgt) * Math.tan(camera.fov * Math.PI / 360) * camera.aspect;
+    const shift = -(panel.getBoundingClientRect().right / 2) / window.innerWidth * visW;
+    pos.x += shift; tgt.x += shift;
+  }
+  camera.position.copy(pos);
+  controls.target.copy(tgt);
+  controls.update();
+  window.MobileView?.frame(camera, controls, 1.4);
+}
+$('viewBtn').addEventListener('click', resetView);
+
+let lastPhaseName = '';
+function updateUI() {
+  const n = PHASE.name(phase);
+  if (n !== lastPhaseName) {
+    lastPhaseName = n;
+    document.querySelectorAll('.phase').forEach(el => el.classList.toggle('on', el.dataset.p === n));
+    $('phaseDesc').innerHTML = DESC[n];
+  }
+  const av = PHASE.avOpen(phase), sl = PHASE.slOpen(phase);
+  $('avState').textContent = av ? '打開 ▼' : '關閉';
+  $('avState').className = av ? 'open' : 'shut';
+  $('slState').textContent = sl ? '打開 ▲' : '關閉';
+  $('slState').className = sl ? 'open' : 'shut';
+}
+
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.fov = 40;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+const clock = new THREE.Clock();
+const valveTarget = {};
+function animate() {
+  frame(Math.min(clock.getDelta(), 0.05));
+  requestAnimationFrame(animate);
+}
+/** 單一幀的所有更新（也供測試直接呼叫） */
+function frame(dt) {
+  if (playing) phase = (phase + dt * bpm / 60) % 1;
+  // 心跳時間函數：心房、心室依序收縮
+  const atr = bump(phase, 0, 0.15), ven = bump(phase, 0.22, 0.55);
+  [CH.RA, CH.LA].forEach(ch => ch.mesh.scale.copy(ch.s).multiplyScalar(1 - 0.12 * atr));
+  [CH.RV, CH.LV].forEach(ch => ch.mesh.scale.set(ch.s.x * (1 - 0.15 * ven), ch.s.y * (1 - 0.1 * ven), ch.s.z * (1 - 0.15 * ven)));
+  // 瓣膜平滑開關（關閉要快，表現「立刻關閉」）
+  const avT = PHASE.avOpen(phase) ? 1 : 0, slT = PHASE.slOpen(phase) ? 1 : 0;
+  [['tri', avT], ['mit', avT], ['pul', slT], ['aor', slT]].forEach(([k, tg]) => {
+    const v = VALVES[k];
+    const rate = tg < v.open ? 22 : 7;
+    setValve(v, v.open + (tg - v.open) * Math.min(1, dt * rate * Math.max(0.35, bpm / 60)));
+  });
+  if (playing) stepParticles(dt, phase, 0.6 + bpm / 60);
+  updateUI();
+  controls.update();
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+
+window.heartSim = { PHASE, get phase() { return phase; }, set phase(v) { phase = v; }, VALVES, particles, frame };   // 除錯 / 驗證用
+
+resize();
+resetView();
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__heartReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>
