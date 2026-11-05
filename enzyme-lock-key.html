@@ -100,6 +100,14 @@
     .status { grid-column: 1 / -1; border-left: none; padding-left: 0; border-top: 1px solid var(--line); padding-top: 16px; }
     .notes { grid-template-columns: 1fr; }
   }
+  /* 手機：動畫放最上面，控制面板在下方 */
+  @media (max-width: 760px) {
+    .wrap { display: flex; flex-direction: column; }
+    .top { order: 1; }
+    .stage-card { order: 2; margin-bottom: 14px; }
+    .panel { order: 3; }
+    .notes { order: 4; }
+  }
   @media (max-width: 560px) {
     .wrap { padding: 20px 16px 40px; }
     .panel { grid-template-columns: 1fr; padding: 18px; }

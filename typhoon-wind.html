@@ -117,6 +117,7 @@
     .hint { display: none; }
   }
 </style>
+<script src="mobile.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -247,7 +248,7 @@ function windAt(station, center, alphaDeg) {
    渲染器 / 場景（無 Bloom）
    ========================================================= */
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -264,6 +265,7 @@ function resetView() {
   camera.position.set(4, 26, 22);
   controls.target.set(0, 0, -1);
   controls.update();
+  window.MobileView?.frame(camera, controls);
 }
 
 const sky = new THREE.Mesh(new THREE.SphereGeometry(160, 32, 16), new THREE.ShaderMaterial({
@@ -636,7 +638,7 @@ $('collapse').addEventListener('click', () => {
    ========================================================= */
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
-  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(w, h);
   camera.aspect = w / h;
   camera.fov = w < h ? 68 : 45;
@@ -663,6 +665,7 @@ function animate() {
   }
   controls.update();
   placeLabels();
+  window.MobileView?.offset(camera);
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }

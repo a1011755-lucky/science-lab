@@ -144,6 +144,7 @@
     .tag { font-size: .66rem; }
   }
 </style>
+<script src="mobile.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -291,7 +292,7 @@ const rad = d => d * Math.PI / 180;
    渲染器 / 場景 / 相機 / 後製
    ========================================================= */
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
@@ -1147,6 +1148,7 @@ function resetView() {
   camera.position.set(...c.pos);
   controls.target.set(...c.target);
   controls.update();
+  window.MobileView?.frame(camera, controls);
 }
 
 function setMode(mode) {
@@ -1191,9 +1193,9 @@ $('toggle').addEventListener('click', () => {
    ========================================================= */
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
-  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(w, h);
-  composer.setPixelRatio(window.devicePixelRatio);
+  composer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   composer.setSize(w, h);
   bloom.setSize(w, h);
   camera.aspect = w / h;
@@ -1209,6 +1211,7 @@ function animate() {
   if (MODES[currentMode].tick) MODES[currentMode].tick(t);
   controls.update();
   placeLabels();
+  window.MobileView?.offset(camera);
   composer.render();
   requestAnimationFrame(animate);
 }

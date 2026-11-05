@@ -120,6 +120,7 @@
     .hint { display: none; }
   }
 </style>
+<script src="mobile.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -193,7 +194,7 @@ const k = 2 * Math.PI / CFG.wavelength;
    ========================================================= */
 const container = document.getElementById('scene');
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setClearColor(CFG.colors.bg);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 container.appendChild(renderer.domElement);
@@ -213,6 +214,7 @@ function resetView() {
   camera.position.set(...CFG.camera.pos);
   controls.target.set(...CFG.camera.target);
   controls.update();
+  window.MobileView?.frame(camera, controls);
 }
 
 /* ----- 後製：Bloom 發光 ----- */
@@ -394,9 +396,9 @@ function placeTag(el, x, y) {
    ========================================================= */
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
-  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(w, h);
-  composer.setPixelRatio(window.devicePixelRatio);
+  composer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   composer.setSize(w, h);
   bloom.setSize(w, h);
   camera.aspect = w / h;
@@ -414,6 +416,7 @@ function animate() {
   controls.update();
   placeTag($('tagT'), 0, CFG.rowY.transverse + 1.3);
   placeTag($('tagL'), 0, CFG.rowY.longitudinal + 0.9);
+  window.MobileView?.offset(camera);
   composer.render();
   requestAnimationFrame(animate);
 }

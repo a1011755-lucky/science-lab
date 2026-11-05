@@ -114,6 +114,7 @@
     .hint { display: none; }
   }
 </style>
+<script src="mobile.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -197,7 +198,7 @@ const FOCAL_DEPTH_KM = 15;                          // 震源深度（標示用�
    場景（淺藍背景、無 Bloom）
    ========================================================= */
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -214,6 +215,7 @@ function resetView() {
   camera.position.set(6, 11, 19);
   controls.target.set(0.5, -1, 0);
   controls.update();
+  window.MobileView?.frame(camera, controls, 1.15);
 }
 
 scene.add(new THREE.HemisphereLight(0xffffff, 0x8a7a66, 1.5));
@@ -601,7 +603,7 @@ document.querySelectorAll('.collapse').forEach(b => b.addEventListener('click', 
    ========================================================= */
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
-  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(w, h);
   camera.aspect = w / h;
   camera.fov = w < h ? 70 : 42;
@@ -626,6 +628,7 @@ function animate() {
   updateStations(dt, t);
   controls.update();
   placeLabels();
+  window.MobileView?.offset(camera);
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }

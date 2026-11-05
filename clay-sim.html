@@ -107,6 +107,7 @@
     .hint { display: none; }
   }
 </style>
+<script src="mobile.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -135,12 +136,12 @@
     <section class="section" data-mode="cell">
       <div class="steps" id="steps"></div>
       <div class="stepname" id="stepName"></div>
-      <div class="box"><div class="h">左：一般細胞分裂</div><div id="leftText"></div></div>
-      <div class="box"><div class="h">右：減數分裂</div><div id="rightText"></div></div>
-      <div class="btns">
+      <div class="btns" style="margin:0 0 10px">
         <button class="btn" id="prevBtn">‹ 上一步</button>
         <button class="btn primary" id="nextBtn">下一步 ›</button>
       </div>
+      <div class="box"><div class="h">左：一般細胞分裂</div><div id="leftText"></div></div>
+      <div class="box"><div class="h">右：減數分裂</div><div id="rightText"></div></div>
       <div class="legend"><span><i style="background:#6aa0f5"></i>爸爸給的</span><span><i style="background:#f28bb0"></i>媽媽給的</span></div>
     </section>
 
@@ -184,7 +185,7 @@ const clay = (color, extra = {}) => new THREE.MeshPhysicalMaterial({ color, roug
 const C = { blue: 0x6aa0f5, pink: 0xf28bb0, mint: 0xcdeee2, lavender: 0xe4dcf7, land: 0x9fd9a0, pole: 0xd9dee5, red: 0xff6b6b };
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -661,11 +662,13 @@ function resetView() {
   const dist = V3(...c.pos).distanceTo(V3(...c.target));
   const visW = 2 * dist * Math.tan(camera.fov * Math.PI / 360) * camera.aspect;   // 目標處的可視寬度
   const panel = $('panel');
-  const covered = window.innerWidth > 760 && !panel.classList.contains('collapsed') ? panel.getBoundingClientRect().right : 0;
+  // 行動版面（手機／直式平板）面板在底部，由 mobile.js 處理；桌機才需要避開左側面板
+  const covered = !window.MobileView?.isMobile() && !panel.classList.contains('collapsed') ? panel.getBoundingClientRect().right : 0;
   const shift = -(covered / 2) / window.innerWidth * visW;
   camera.position.set(c.pos[0] + shift, c.pos[1], c.pos[2]);
   controls.target.set(c.target[0] + shift, c.target[1], c.target[2]);
   controls.update();
+  window.MobileView?.frame(camera, controls);
 }
 function setMode(m) {
   if (!MODES[m]) m = 'cell';
@@ -687,7 +690,7 @@ $('collapse').addEventListener('click', () => {
 
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
-  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(w, h);
   camera.aspect = w / h;
   camera.fov = w < h ? 68 : 40;
@@ -701,6 +704,7 @@ function animate() {
   MODES[mode].tick(clock.elapsedTime, dt);
   controls.update();
   placeLabels();
+  window.MobileView?.offset(camera);
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }

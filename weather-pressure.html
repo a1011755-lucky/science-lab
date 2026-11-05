@@ -120,6 +120,7 @@
     .hint { display: none; }
   }
 </style>
+<script src="mobile.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -204,7 +205,7 @@ const $ = id => document.getElementById(id);
    渲染器 / 場景 / 相機（無 Bloom）
    ========================================================= */
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;   // 搭配 shadow.radius 做柔邊陰影
@@ -221,6 +222,7 @@ function resetView() {
   camera.position.set(17, 12, 21);
   controls.target.set(0, 4.5, 0);
   controls.update();
+  window.MobileView?.frame(camera, controls);
 }
 
 /* ----- 天空：漸層天空穹頂（天藍 → 白） ----- */
@@ -619,7 +621,7 @@ $('collapse').addEventListener('click', () => {
    ========================================================= */
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
-  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(w, h);
   camera.aspect = w / h;
   camera.fov = w < h ? 65 : 45;
@@ -656,6 +658,7 @@ function animate() {
 
   controls.update();
   placeLabels();
+  window.MobileView?.offset(camera);
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }

@@ -112,6 +112,7 @@
     .tag { font-size: .66rem; }
   }
 </style>
+<script src="mobile.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -200,7 +201,7 @@ const FRONT_X = { cold: t => -5 + 9 * t, warm: t => 5 - 9 * t };
    渲染器 / 場景 / 相機（無 Bloom）
    ========================================================= */
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -217,6 +218,7 @@ function resetView() {
   camera.position.set(1.5, 6, 26);
   controls.target.set(-1.5, 3, 0);
   controls.update();
+  window.MobileView?.frame(camera, controls, 1.4);
 }
 
 // 天空穹頂：天藍 → 白
@@ -625,7 +627,7 @@ $('collapse').addEventListener('click', () => {
    ========================================================= */
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
-  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(w, h);
   camera.aspect = w / h;
   camera.fov = w < h ? 70 : 42;
@@ -647,6 +649,7 @@ function animate() {
   updateRain(dt);
   controls.update();
   placeLabels();
+  window.MobileView?.offset(camera);
   renderer.render(scene, camera);
   requestAnimationFrame(animate);
 }
