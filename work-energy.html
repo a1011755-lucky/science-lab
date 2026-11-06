@@ -59,6 +59,25 @@
   .switch input:checked + .s { background: #8e8e93; }
   .switch input:checked + .s::after { transform: translateX(20px); }
 
+  /* iOS 風格滑桿 */
+  .ios { background: rgba(255,255,255,.8); border-radius: 16px; padding: 10px 14px 12px; margin-top: 8px; transition: opacity .2s; }
+  .ios .top { display: flex; justify-content: space-between; align-items: baseline; font-size: .84rem; margin-bottom: 8px; }
+  .ios .top b { font-size: 1.05rem; font-weight: 800; color: var(--c); font-variant-numeric: tabular-nums; }
+  .ios .top small { font-size: .7rem; color: var(--ink-soft); font-weight: 500; }
+  .ios input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 999px; cursor: pointer; outline: none;
+    background: linear-gradient(90deg, var(--c) 0%, var(--c) var(--fill, 0%), #e5e5ea var(--fill, 0%)); }
+  .ios input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,.18), 0 0 0 .5px rgba(0,0,0,.06); }
+  .ios input[type=range]::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 3px 8px rgba(0,0,0,.18); }
+  .ios input[type=range]:focus-visible { box-shadow: 0 0 0 3px rgba(196,106,76,.3); }
+  .ios.locked { opacity: .45; }
+  .ios.locked input { cursor: not-allowed; }
+  .v0ek { font-size: .74rem; color: var(--ink-soft); margin-top: 6px; line-height: 1.5; }
+  .v0ek b { color: var(--ek); }
+  .row2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 6px; margin-top: 2px; }
+  .gaugebox { background: rgba(255,255,255,.82); border-radius: 18px; padding: 8px 12px 10px; margin-top: 8px; }
+  #gauge { width: 100%; height: auto; display: block; }
+  .gread { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: .78rem; }
+  .gread b { text-align: right; font-variant-numeric: tabular-nums; }
   .energy { background: rgba(255,255,255,.82); border-radius: 18px; padding: 12px 14px; margin-top: 12px; }
   .energy .h { font-size: .72rem; font-weight: 700; color: var(--ink-soft); margin-bottom: 8px; display: flex; justify-content: space-between; }
   .erow { display: grid; grid-template-columns: 74px 1fr 62px; align-items: center; gap: 8px; font-size: .78rem; padding: 3px 0; }
@@ -117,10 +136,28 @@
     </div>
 
     <section class="section" data-mode="m1">
-      <p class="desc">方塊質量 2 kg。<b>推力作正功</b>給方塊能量；<b>摩擦力</b>把能量變成熱能「偷走」。</p>
-      <button class="btn primary" id="pushBtn">➡ 作正功（給予能量）</button>
-      <div class="switch-row"><span>開啟摩擦力（偷走能量）</span><label class="switch"><input type="checkbox" id="fric1" role="switch"><span class="s"></span></label></div>
-      <button class="btn" id="reset1">↺ 重來</button>
+      <p class="desc">方塊質量 <b>10 kg</b>。<b>推力作正功</b>給方塊能量；<b>摩擦力</b>把能量變成熱能「偷走」。</p>
+      <div class="ios" style="--c:#ff7a00">
+        <div class="top"><span>推力大小 F</span><b id="fVal">40 N</b></div>
+        <input type="range" id="sF" min="0" max="100" step="1" value="40" aria-label="推力大小">
+      </div>
+      <div class="ios" style="--c:#7a6656">
+        <div class="top"><span>阻力／摩擦力 f</span><b id="frVal">20 N</b></div>
+        <input type="range" id="sFr" min="0" max="100" step="1" value="20" aria-label="摩擦力大小">
+      </div>
+      <div class="ios" id="v0Row" style="--c:#e5484d">
+        <div class="top"><span>初速度 V₀ <small id="v0Lock"></small></span><b id="v0Val">0 m/s</b></div>
+        <input type="range" id="sV0" min="0" max="10" step="0.5" value="0" aria-label="初速度">
+        <div class="v0ek" id="v0Ek"></div>
+      </div>
+      <div class="row2">
+        <button class="btn primary" id="play1">▶ 開始</button>
+        <button class="btn" id="reset1">↺ 重來</button>
+      </div>
+      <div class="gaugebox">
+        <canvas id="gauge" width="260" height="140" aria-label="即時速度儀表板"></canvas>
+        <div class="gread"><span>淨力 F − f</span><b id="gNet">—</b><span>加速度 a</span><b id="gAcc">—</b></div>
+      </div>
     </section>
 
     <section class="section" data-mode="m2" hidden>
@@ -284,87 +321,234 @@ function stepParticles(dt) {
 }
 
 /* =========================================================
-   模組一：作功與功能定理（2 kg 方塊在平地上）
-   推力 F = 8 N（作正功）；摩擦力 f = μmg（μ = 0.3）
+   模組一：作功與功能定理（10 kg 方塊在平地上）— 變因控制版
+   ---------------------------------------------------------
+   淨力 = F − f（運動中摩擦力向後；靜止時若 F ≤ f，靜摩擦力讓方塊不動）
+   a = 淨力 / m；v = v + a·Δt
+   動能 Ek = ½mv²；熱能 = f × 累積移動距離
    地面向後捲動，方塊永遠在畫面中央
    ========================================================= */
 const M1 = (() => {
   const group = new THREE.Group();
-  const m = 2, F = 8, MU = 0.3, VMAX = 14;
+  const m = 10, VMAX = 20, E_REF = 500;          // E_REF：V₀ = 10 m/s 時的動能，作為能量條的固定比例尺
   const box = shadowed(new THREE.Mesh(new RoundedBoxGeometry(1.4, 1.2, 1.2, 5, 0.22), clay(0xf0a35e)));
   box.position.set(0, 0.6, 0);
   group.add(box);
-  // 捲動的地面條紋（看出速度）
+
+  // 地面：條紋 + 底板，顏色與粗糙度隨摩擦力改變
+  const stripeMat = clay(0xf7f2ec), padMat = clay(0xe8dfd4);
+  const SMOOTH = new THREE.Color(0xf7f2ec), ROUGH = new THREE.Color(0x5e4a3a);
+  const PAD_SMOOTH = new THREE.Color(0xe8dfd4), PAD_ROUGH = new THREE.Color(0x7a6352);
   const stripes = [];
-  const stripeMatSmooth = clay(0xf7f2ec), stripeMatRough = clay(0xb39b84);
   for (let i = 0; i < 22; i++) {
-    const s = new THREE.Mesh(new RoundedBoxGeometry(0.7, 0.04, 2.6, 2, 0.02), stripeMatSmooth);
-    s.position.set(-11 + i * 1.05, 0.02, 0);
+    const s = new THREE.Mesh(new RoundedBoxGeometry(0.7, 0.05, 2.6, 2, 0.02), stripeMat);
+    s.position.set(-11 + i * 1.05, 0.03, 0);
     s.receiveShadow = true;
     group.add(s); stripes.push(s);
   }
-  const roughPad = new THREE.Mesh(new RoundedBoxGeometry(23, 0.03, 2.7, 2, 0.01), clay(0x9c8670, { roughness: 1 }));
-  roughPad.position.y = 0.0; roughPad.visible = false; group.add(roughPad);
-  const push = (() => {
-    const a = new THREE.Group();
-    const mat = clay(0x3f7be8, { emissive: 0x3f7be8, emissiveIntensity: 0.3 });
-    const sh = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 1.4, 8, 16), mat); sh.rotation.z = Math.PI / 2; sh.position.x = -0.7;
-    const hd = new THREE.Mesh(new THREE.ConeGeometry(0.38, 0.6, 24), mat); hd.rotation.z = -Math.PI / 2; hd.position.x = 0.3;
-    a.add(sh, hd);
-    return shadowed(a);
-  })();
-  push.position.set(-1.3, 0.65, 0);
-  group.add(push);
-  const lPush = addLabel('m1', '推力 F = 8 N', 'color:#3f7be8');
-  const lFric = addLabel('m1', '摩擦力 f = μmg = 5.9 N', 'color:#6b6b70');
-  const bar = makeEnergyBar('m1');
+  const pad = new THREE.Mesh(new RoundedBoxGeometry(23, 0.03, 2.8, 2, 0.01), padMat);
+  pad.receiveShadow = true; group.add(pad);
+  // 粗糙顆粒（摩擦力越大越多）
+  const grit = [];
+  const gritMat = clay(0x4a3a2e);
+  for (let i = 0; i < 80; i++) {
+    const g = new THREE.Mesh(new THREE.SphereGeometry(0.05 + Math.random() * 0.04, 8, 6), gritMat);
+    g.userData = { x0: -11.5 + Math.random() * 23, z: (Math.random() - 0.5) * 2.5, th: Math.random() };
+    g.position.y = 0.06;
+    group.add(g); grit.push(g);
+  }
 
-  let x = 0, v = 0, pushing = false, friction = false, Q = 0, WF = 0, Wf = 0, coinAcc = 0, smokeAcc = 0;
-  function reset() { x = 0; v = 0; Q = 0; WF = 0; Wf = 0; pushing = false; $('pushBtn').classList.remove('on'); $('pushBtn').textContent = '➡ 作正功（給予能量）'; }
-  $('pushBtn').addEventListener('click', () => {
-    pushing = !pushing;
-    $('pushBtn').classList.toggle('on', pushing);
-    $('pushBtn').textContent = pushing ? '⏸ 停止推（不再作功）' : '➡ 作正功（給予能量）';
+  // 推力箭頭（越大越長、越粗、越亮橘）
+  const pushMat = clay(0xffd2a0, { emissive: 0xff7a00, emissiveIntensity: 0.1 });
+  const pushArrow = new THREE.Group();
+  const pShaft = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 24), pushMat);
+  pShaft.rotation.z = Math.PI / 2;
+  const pHead = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 32), pushMat);
+  pHead.rotation.z = -Math.PI / 2;
+  pushArrow.add(pShaft, pHead);
+  group.add(shadowed(pushArrow));
+  // 摩擦力箭頭（灰，向後）
+  const fricMat = clay(0x8e8e93, { emissive: 0x555555, emissiveIntensity: 0.1 });
+  const fricArrow = new THREE.Group();
+  const fShaft = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 20), fricMat);
+  fShaft.rotation.z = Math.PI / 2;
+  const fHead = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 24), fricMat);
+  fHead.rotation.z = Math.PI / 2;
+  fricArrow.add(fShaft, fHead);
+  group.add(shadowed(fricArrow));
+  const lPush = addLabel('m1', '', 'color:#e46a00');
+  const lFric = addLabel('m1', '', 'color:#6b6b70');
+  const lStop = addLabel('m1', '', 'color:#6b6b70');
+  const bar = makeEnergyBar('m1');
+  const PALE = new THREE.Color(0xffd2a0), BRIGHT = new THREE.Color(0xff7a00);
+
+  /** 箭頭：沿 x 軸，tipX 為箭尖位置，dir = +1 向右 / −1 向左 */
+  function setXArrow(group, shaft, head, tipX, dir, len, r, y, z = 0) {
+    const hl = Math.min(len * 0.45, r * 3.4);
+    const sl = Math.max(0.01, len - hl);
+    head.scale.set(r * 2.4, hl, r * 2.4);
+    head.position.set(tipX - dir * hl / 2, y, z);
+    shaft.scale.set(r, sl, r);
+    shaft.position.set(tipX - dir * (hl + sl / 2), y, z);
+  }
+
+  // 狀態：'ready' 準備（可調 V₀）｜'run' 播放｜'pause' 暫停（可調 V₀）
+  let status = 'ready', F = 40, fr = 20, V0 = 0;
+  let v = 0, x = 0, dist = 0, Q = 0, WF = 0, coinAcc = 0, smokeAcc = 0;
+  const $F = $('sF'), $Fr = $('sFr'), $V0 = $('sV0');
+  const paint = el => el.style.setProperty('--fill', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
+  [$F, $Fr, $V0].forEach(paint);
+
+  function applyV0() {                       // 以目前 V₀ 重新出發（帳目歸零）
+    v = V0; x = 0; dist = 0; Q = 0; WF = 0;
+  }
+  function setStatus(s) {
+    status = s;
+    const locked = s === 'run';
+    $V0.disabled = locked;
+    $('v0Row').classList.toggle('locked', locked);
+    $('v0Lock').textContent = locked ? '（播放中無法調整）' : '';
+    $('play1').textContent = s === 'run' ? '⏸ 暫停' : (s === 'pause' ? '▶ 繼續' : '▶ 開始');
+    $('play1').classList.toggle('on', s === 'run');
+  }
+  function reset() { applyV0(); setStatus('ready'); }
+
+  $F.addEventListener('input', e => { F = Number(e.target.value); $('fVal').textContent = `${F} N`; paint(e.target); });
+  $Fr.addEventListener('input', e => { fr = Number(e.target.value); $('frVal').textContent = `${fr} N`; paint(e.target); });
+  $V0.addEventListener('input', e => {
+    if (status === 'run') return;
+    V0 = Number(e.target.value);
+    $('v0Val').textContent = `${V0} m/s`;
+    paint(e.target);
+    applyV0();
+    setStatus('ready');
   });
-  $('fric1').addEventListener('change', e => { friction = e.target.checked; });
+  $('play1').addEventListener('click', () => setStatus(status === 'run' ? 'pause' : 'run'));
   $('reset1').addEventListener('click', reset);
 
-  function update(dt) {
-    const SUB = 8, h = dt / SUB;
+  /** 物理：每幀細分成 10 小步，等加速度內用平均速度算距離（帳目精確） */
+  function physics(dt) {
+    const SUB = 10, h = dt / SUB;
     for (let i = 0; i < SUB; i++) {
-      const Fp = pushing && v < VMAX ? F : 0;
-      const f = friction && v > 1e-6 ? MU * m * G : 0;
-      // 功能定理：ΔEk = W推 − W摩擦；摩擦力作功全部變成熱能
-      const v0 = v, Ek0 = 0.5 * m * v0 * v0;
-      v = Math.max(0, v0 + (Fp - f) / m * h);
-      const vAvg = (v0 + v) / 2;                       // 等加速度：用平均速度算位移與功，帳目才精確
-      const wPush = Fp * vAvg * h;
-      WF += wPush;
-      const heat = f ? Ek0 + wPush - 0.5 * m * v * v : 0;   // 減少的能量全部變成熱能（含剛好停下的那一步）
-      Wf += heat; Q += heat;
-      x += vAvg * h;
+      const Fp = v >= VMAX ? 0 : F;                       // 速度上限：避免無限加速
+      if (v <= 1e-9 && Fp <= fr) { v = 0; continue; }     // 靜止且推不動（靜摩擦）
+      const a = (Fp - fr) / m;                             // a = 淨力 / m
+      const vNew = v + a * h;                              // v = v + a·Δt
+      if (vNew <= 0) {                                     // 這一小步內就停下：算出剛好停住的距離
+        const d = v * v / (2 * -a);
+        dist += d; x += d; Q += fr * d; WF += Fp * d; v = 0;
+        continue;
+      }
+      const d = (v + vNew) / 2 * h;
+      dist += d; x += d; Q += fr * d; WF += Fp * d;        // 熱能 = f × 移動距離；推力作功 = F × 移動距離
+      v = vNew;
     }
+  }
+
+  function update(dt) {
+    if (status === 'run') physics(dt);
     const Ek = 0.5 * m * v * v;
-    // 地面條紋往後捲動
-    stripes.forEach((s, i) => { s.position.x = ((-11 + i * 1.05 - x) % 23.1 + 23.1) % 23.1 - 11.5; s.material = friction ? stripeMatRough : stripeMatSmooth; });
-    roughPad.visible = friction;
-    push.visible = pushing && v < VMAX;
-    push.position.x = -1.45 + Math.sin(performance.now() / 120) * 0.05;
-    lPush.visible = push.visible; lPush.pos.set(-1.6, 1.4, 0);
-    lFric.visible = friction && v > 0.01; lFric.pos.set(0.9, -0.05, 1.0);
-    box.rotation.z = -Math.min(v, 6) * 0.004;
-    // 粒子：作功 → 金幣；摩擦 → 灰色煙霧
-    if (push.visible) { coinAcc += dt; while (coinAcc > 0.09) { coinAcc -= 0.09; emit('coin', V3((Math.random() - 0.5) * 0.6, 1.4, (Math.random() - 0.5) * 0.4), V3((Math.random() - 0.5) * 0.6, 2.2 + Math.random(), 0), 0.9); } }
-    if (friction && v > 0.05) { smokeAcc += dt * (0.4 + v / 6); while (smokeAcc > 0.06) { smokeAcc -= 0.06; emit('smoke', V3(-0.6 + Math.random() * 0.4, 0.1, (Math.random() - 0.5) * 1.1), V3(-v * 0.3 - 0.4, 0.4 + Math.random() * 0.4, (Math.random() - 0.5) * 0.4), 1.1); } }
+    const Ek0 = 0.5 * m * V0 * V0;
+    const t = F / 100, k = fr / 100;
+
+    // 地面捲動 + 粗糙程度
+    stripes.forEach((s, i) => { s.position.x = ((-11 + i * 1.05 - x) % 23.1 + 23.1) % 23.1 - 11.5; });
+    stripeMat.color.copy(SMOOTH).lerp(ROUGH, k);
+    stripeMat.roughness = 0.4 + 0.6 * k;
+    padMat.color.copy(PAD_SMOOTH).lerp(PAD_ROUGH, k);
+    padMat.roughness = 0.5 + 0.5 * k;
+    grit.forEach(g => {
+      const on = g.userData.th < k;
+      g.visible = on;
+      if (on) g.position.set(((g.userData.x0 - x) % 23 + 23) % 23 - 11.5, 0.06, g.userData.z);
+    });
+
+    // 推力箭頭：長度、粗細、亮度都隨 F 變大
+    pushArrow.visible = F > 0;
+    if (F > 0) {
+      setXArrow(pushArrow, pShaft, pHead, -0.75, 1, 0.7 + 2.4 * t, 0.07 + 0.17 * t, 0.62 + Math.sin(performance.now() / 140) * 0.02);
+      pushMat.color.copy(PALE).lerp(BRIGHT, t);
+      pushMat.emissiveIntensity = 0.1 + 0.55 * t;
+    }
+    lPush.visible = F > 0;
+    lPush.pos.set(-1.6 - 1.2 * t, 1.35, 0);
+    lPush.el.textContent = `推力 F = ${F} N`;
+    // 摩擦力箭頭：有摩擦且「在動或被推」時才出現
+    const fricOn = fr > 0 && (v > 0 || F > 0);
+    fricArrow.visible = fricOn;
+    if (fricOn) {
+      const shown = v > 0 ? fr : Math.min(fr, F);          // 靜止時是靜摩擦力，大小 = 推力（不超過最大值）
+      setXArrow(fricArrow, fShaft, fHead, -0.85 - 0.5 - 1.6 * shown / 100, -1, 0.5 + 1.6 * shown / 100, 0.05 + 0.08 * shown / 100, 0.12, 0.75);
+      lFric.visible = true;
+      lFric.pos.set(-1.4, -0.15, 1.1);
+      lFric.el.textContent = v > 0 ? `摩擦力 f = ${fr} N` : `靜摩擦力 = ${shown} N`;
+    } else lFric.visible = false;
+    lStop.visible = status === 'run' && v === 0;
+    lStop.pos.set(0, 2.0, 0.8);
+    lStop.el.textContent = F <= fr ? '推力 ≤ 摩擦力：方塊推不動／停下來了' : '';
+    if (!lStop.el.textContent) lStop.visible = false;
+    box.rotation.z = -Math.min(v, 8) * 0.004;
+
+    // 粒子：功率越大金幣越多；摩擦力 × 速度越大煙霧越濃
+    if (status === 'run' && F > 0 && v < VMAX && (v > 0 || F > fr)) {
+      coinAcc += dt * (0.4 + F / 25);
+      while (coinAcc > 0.1) { coinAcc -= 0.1; emit('coin', V3((Math.random() - 0.5) * 0.6, 1.4, (Math.random() - 0.5) * 0.4), V3((Math.random() - 0.5) * 0.6, 2.2 + Math.random(), 0), 0.9); }
+    }
+    if (status === 'run' && fr > 0 && v > 0.05) {
+      smokeAcc += dt * (fr / 100) * (1 + v / 3) * 2.2;
+      while (smokeAcc > 0.05) { smokeAcc -= 0.05; emit('smoke', V3(-0.6 + Math.random() * 0.4, 0.1, (Math.random() - 0.5) * 1.1), V3(-v * 0.25 - 0.4, 0.4 + Math.random() * 0.4, (Math.random() - 0.5) * 0.4), 1.1); }
+    }
+
+    // 能量條：固定比例尺（V₀ 加倍 → 紅條變 4 倍），能量超過參考值才自動縮放
     const E = { Ek, Ug: 0, Ue: 0, Q };
     bar.g.position.set(0, 1.45, 0);
     const total = Ek + Q;
-    bar.scaleTarget = 3.2 / Math.max(80, total * 1.1);         // 比例尺自動調整
-    bar.scale += (bar.scaleTarget - bar.scale) * Math.min(1, dt * 3);
+    const target = 3.2 / Math.max(E_REF, total * 1.05);
+    bar.scale += (target - bar.scale) * Math.min(1, dt * 4);
     setEnergyBar(bar, E, bar.scale);
-    showEnergy(E, `速度 <b>${v.toFixed(2)} m/s</b>　推力作功 <b>+${WF.toFixed(1)} J</b>　摩擦力作功 <b>−${Wf.toFixed(1)} J</b><br>動能 = 推力作功 − 摩擦力作功（功能定理）`);
+
+    // 面板
+    const net = (v > 0 || F > fr) ? (v >= VMAX ? 0 : F) - fr : 0;
+    $('gNet').textContent = `${net.toFixed(0)} N`;
+    $('gAcc').textContent = `${(net / m).toFixed(2)} m/s²`;
+    $('v0Ek').innerHTML = `Ek = ½mV₀² = ½ × 10 × ${V0}² = <b>${Ek0.toFixed(0)} J</b>`
+      + (V0 > 0 && V0 <= 5 ? `<br>試試看：V₀ 拉到 ${V0 * 2} m/s，動能會變 <b>4 倍</b>（${(Ek0 * 4).toFixed(0)} J）` : '');
+    drawGauge(v);
+    showEnergy(E, `初動能 <b>${Ek0.toFixed(1)} J</b> ＋ 推力作功 <b>${WF.toFixed(1)} J</b> − 摩擦生熱 <b>${Q.toFixed(1)} J</b> ＝ 動能 <b>${Ek.toFixed(1)} J</b><br>移動距離 ${dist.toFixed(1)} m（熱能 = f × 距離）`);
   }
-  return { group, update, enter: reset, camera: { pos: [0.5, 4.2, 12], target: [0.5, 1.6, 0] }, get state() { return { v, WF, Wf, Q, Ek: 0.5 * m * v * v }; }, setPush: on => { pushing = on; }, setFriction: on => { friction = on; $('fric1').checked = on; }, reset };
+
+  /** 即時速度儀表板（半圓指針，0–20 m/s） */
+  function drawGauge(speed) {
+    const c = $('gauge'), g = c.getContext('2d');
+    const W = c.width, H = c.height, cx = W / 2, cy = H - 18, R = 100;
+    g.clearRect(0, 0, W, H);
+    g.lineCap = 'round';
+    g.lineWidth = 14; g.strokeStyle = '#ece6df';
+    g.beginPath(); g.arc(cx, cy, R, Math.PI, 2 * Math.PI); g.stroke();
+    const k = Math.min(1, speed / VMAX);
+    const grad = g.createLinearGradient(cx - R, 0, cx + R, 0);
+    grad.addColorStop(0, '#ffb38a'); grad.addColorStop(1, '#e5484d');
+    g.strokeStyle = grad;
+    g.beginPath(); g.arc(cx, cy, R, Math.PI, Math.PI + Math.PI * k); g.stroke();
+    g.fillStyle = '#9a948d'; g.font = '11px -apple-system, "PingFang TC", sans-serif'; g.textAlign = 'center';
+    for (let s = 0; s <= 20; s += 5) {
+      const a = Math.PI + Math.PI * s / 20;
+      g.fillText(s, cx + Math.cos(a) * (R - 24), cy + Math.sin(a) * (R - 24) + 4);
+    }
+    const a = Math.PI + Math.PI * k;
+    // 指針只畫在弧線附近，不擋住中間的數字
+    g.strokeStyle = '#1d1d1f'; g.lineWidth = 5;
+    g.beginPath(); g.moveTo(cx + Math.cos(a) * (R - 40), cy + Math.sin(a) * (R - 40)); g.lineTo(cx + Math.cos(a) * (R + 6), cy + Math.sin(a) * (R + 6)); g.stroke();
+    g.font = '800 26px -apple-system, "PingFang TC", sans-serif';
+    g.fillText(speed.toFixed(2), cx, cy - 34);
+    g.font = '11px -apple-system, "PingFang TC", sans-serif'; g.fillStyle = '#6e6e73';
+    g.fillText('即時速度 V（m/s）', cx, cy - 16);
+  }
+
+  return { group, update, enter: reset, camera: { pos: [0.5, 4.2, 12], target: [0.5, 1.6, 0] },
+    get state() { return { v, dist, WF, Q, Ek: 0.5 * m * v * v, Ek0: 0.5 * m * V0 * V0, status }; },
+    set: (f, r, v0) => { if (f != null) { $F.value = f; $F.dispatchEvent(new Event('input')); } if (r != null) { $Fr.value = r; $Fr.dispatchEvent(new Event('input')); } if (v0 != null) { $V0.value = v0; $V0.dispatchEvent(new Event('input')); } },
+    play: () => setStatus('run'), pause: () => setStatus('pause'), reset };
 })();
 
 /* =========================================================

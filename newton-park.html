@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>牛頓力學遊樂園</title>
+<style>
+  :root {
+    --bg: #e6edf1;
+    --ink: #1d1d1f;
+    --ink-soft: #6e6e73;
+    --card: rgba(255,255,255,.62);
+    --accent: #4f7fb8;
+    --red: #e5484d; --green: #22a35a; --blue: #3f7be8; --yellow: #e9a800;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(22px) saturate(180%); -webkit-backdrop-filter: blur(22px) saturate(180%);
+    border: 1px solid rgba(255,255,255,.8); box-shadow: 0 20px 50px rgba(40,60,90,.12), 0 2px 6px rgba(40,60,90,.05);
+  }
+
+  /* 左側控制面板 */
+  .panel { position: absolute; top: 18px; left: 18px; width: 300px; max-height: calc(100vh - 170px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(79,127,184,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.15rem; font-weight: 700; margin-top: 6px; padding-right: 62px; }
+  .mname { font-size: .95rem; font-weight: 800; margin: 12px 0 4px; }
+  .section[hidden] { display: none; }
+  .desc { font-size: .8rem; color: var(--ink-soft); line-height: 1.65; margin-bottom: 8px; }
+  .desc b { color: var(--ink); }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 11px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .88rem; font-weight: 700; color: var(--accent); background: rgba(79,127,184,.12);
+    transition: background .2s, transform .1s, opacity .2s;
+  }
+  .btn:hover { background: rgba(79,127,184,.2); }
+  .btn:active { transform: scale(.98); }
+  .btn.primary { color: #fff; background: var(--accent); box-shadow: 0 6px 16px rgba(79,127,184,.3); }
+  .btn.danger { color: #fff; background: var(--red); box-shadow: 0 6px 16px rgba(229,72,77,.3); }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .ios { background: rgba(255,255,255,.8); border-radius: 16px; padding: 10px 14px 12px; margin-top: 8px; }
+  .ios .top { display: flex; justify-content: space-between; align-items: baseline; font-size: .84rem; margin-bottom: 8px; }
+  .ios .top b { font-size: 1.02rem; font-weight: 800; color: var(--c, var(--accent)); font-variant-numeric: tabular-nums; }
+  .ios input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 999px; cursor: pointer; outline: none;
+    background: linear-gradient(90deg, var(--c, var(--accent)) 0%, var(--c, var(--accent)) var(--fill, 0%), #e5e5ea var(--fill, 0%)); }
+  .ios input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,.18); }
+  .ios input[type=range]::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 3px 8px rgba(0,0,0,.18); }
+  .read { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin-top: 10px; font-size: .8rem; line-height: 1.6; }
+  .read .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-variant-numeric: tabular-nums; }
+  .read .kv b { text-align: right; }
+  .concl { background: #fff8e6; border: 1.5px solid #f2c75c; color: #6b4b00; font-weight: 600; border-radius: 14px; padding: 9px 12px; margin-top: 8px; font-size: .8rem; line-height: 1.6; }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: .74rem; color: var(--ink-soft); margin-top: 8px; }
+  .legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+
+  /* 底部 5 張圖卡 */
+  .dock { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 11; display: flex; gap: 10px; padding: 10px; border-radius: 24px; }
+  .mcard {
+    width: 128px; border: none; cursor: pointer; text-align: left; font: inherit; color: var(--ink);
+    padding: 10px 12px; border-radius: 18px; background: rgba(255,255,255,.55);
+    border: 1.5px solid rgba(255,255,255,.7); transition: transform .2s, background .2s, box-shadow .2s, border-color .2s;
+  }
+  .mcard:hover { transform: translateY(-3px); background: rgba(255,255,255,.85); }
+  .mcard .ic { font-size: 1.5rem; line-height: 1; }
+  .mcard .n { font-size: .8rem; font-weight: 800; margin-top: 6px; }
+  .mcard .s { font-size: .68rem; color: var(--ink-soft); margin-top: 1px; }
+  .mcard.on { background: #fff; border-color: var(--accent); box-shadow: 0 8px 20px rgba(79,127,184,.25); transform: translateY(-4px); }
+  @media (min-width: 1101px) { .dock { left: calc(50% + 160px); } }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 700; padding: 3px 10px; border-radius: 12px; white-space: nowrap;
+    background: rgba(255,255,255,.9); color: var(--ink); box-shadow: 0 4px 12px rgba(0,0,0,.08);
+  }
+  .banner {
+    position: absolute; top: 18px; left: 50%; transform: translateX(-50%); z-index: 9; pointer-events: none; text-align: center;
+    padding: 10px 18px; border-radius: 18px; font-size: .95rem; font-weight: 800; opacity: 0; transition: opacity .3s;
+    background: rgba(255,248,225,.95); border: 1.5px solid #f2c75c; color: #6b4b00; max-width: 80vw;
+  }
+  .banner.show { opacity: 1; }
+  @media (min-width: 1101px) { .banner { left: calc(50% + 160px); } }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 760px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; overflow-x: auto; padding: 6px; gap: 6px; border-radius: 18px; scrollbar-width: none; }
+    .dock::-webkit-scrollbar { display: none; }
+    .mcard { flex: 0 0 auto; width: 96px; padding: 6px 8px; border-radius: 14px; }
+    .mcard .ic { font-size: 1.1rem; }
+    .mcard .n { font-size: .72rem; margin-top: 2px; }
+    .mcard .s { display: none; }
+    .mcard.on { transform: none; }
+    .banner { top: 82px; font-size: .78rem; padding: 6px 12px; }
+  }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="scene"></div>
+<div class="banner" id="banner"></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g9">‹ 課程總覽</a>
+  <div class="title">牛頓力學遊樂園</div>
+
+  <div class="body">
+    <div class="mname" id="mname"></div>
+
+    <section class="section" data-mode="m1">
+      <p class="desc">黏土人站在滑板車上，<b>沒有綁安全帶</b>。看看車子突然加速、急煞車時，人會怎樣？</p>
+      <div class="row2">
+        <button class="btn primary" id="m1Go">🚀 突然爆衝</button>
+        <button class="btn danger" id="m1Brake" disabled>🛑 急煞車</button>
+      </div>
+      <button class="btn" id="m1Reset">↺ 重來</button>
+      <div class="read" id="m1Read"></div>
+    </section>
+
+    <section class="section" data-mode="m2" hidden>
+      <p class="desc">冰面<b>沒有摩擦力</b>。調整推力與質量，比較<b style="color:#e5484d">推力 F</b>和<b style="color:#22a35a">加速度 a</b>箭頭的長度。</p>
+      <div class="ios" style="--c:#e5484d"><div class="top"><span>推力大小 F</span><b id="m2FV">10 N</b></div><input type="range" id="m2F" min="0" max="20" step="1" value="10" aria-label="推力"></div>
+      <div class="ios" style="--c:#4f7fb8"><div class="top"><span>物體質量 m</span><b id="m2MV">2 kg</b></div><input type="range" id="m2M" min="1" max="10" step="0.5" value="2" aria-label="質量"></div>
+      <div class="row2">
+        <button class="btn primary" id="m2Go">▶ 開始推</button>
+        <button class="btn" id="m2Reset">↺ 重來</button>
+      </div>
+      <div class="read" id="m2Read"></div>
+    </section>
+
+    <section class="section" data-mode="m3" hidden>
+      <p class="desc">光滑溜冰場上，左邊大胖子 <b>80 kg</b>、右邊小瘦子 <b>35 kg</b>，兩人手貼手。</p>
+      <button class="btn primary" id="m3Go">🤲 互相推開</button>
+      <button class="btn" id="m3Reset">↺ 回到原位</button>
+      <div class="read" id="m3Read"></div>
+      <div class="legend"><span><i style="background:#e5484d"></i>力</span><span><i style="background:#22a35a"></i>速度</span></div>
+    </section>
+
+    <section class="section" data-mode="m4" hidden>
+      <p class="desc">黃色箭頭是兩顆星球互相吸引的<b>萬有引力</b>。可以用滑桿，或直接<b>用滑鼠拖曳星球</b>改變距離。</p>
+      <div class="ios" style="--c:#e9a800"><div class="top"><span>A 星球質量</span><b id="m4MV">1 倍</b></div><input type="range" id="m4M" min="1" max="3" step="0.5" value="1" aria-label="A 星球質量"></div>
+      <div class="ios" style="--c:#4f7fb8"><div class="top"><span>距離 r</span><b id="m4RV">8.0</b></div><input type="range" id="m4R" min="3" max="8" step="0.1" value="8" aria-label="距離"></div>
+      <div class="read" id="m4Read"></div>
+    </section>
+
+    <section class="section" data-mode="m5" hidden>
+      <p class="desc">水球被繩子綁著做<b>等速率圓周運動</b>。<b style="color:#3f7be8">藍色 = 向心力</b>（指向圓心），<b style="color:#e5484d">紅色 = 速度</b>（沿切線）。</p>
+      <div class="ios" style="--c:#4f7fb8"><div class="top"><span>轉動快慢 ω</span><b id="m5WV">1.5 rad/s</b></div><input type="range" id="m5W" min="0.5" max="3" step="0.1" value="1.5" aria-label="角速度"></div>
+      <button class="btn danger" id="m5Cut">✂ 剪斷繩子</button>
+      <button class="btn" id="m5Reset">↺ 重新綁好</button>
+      <div class="read" id="m5Read"></div>
+    </section>
+
+    <button class="btn" id="viewBtn" style="margin-top:12px">重設視角</button>
+  </div>
+</aside>
+
+<nav class="dock glass" id="dock" aria-label="選擇實驗">
+  <button class="mcard on" data-mode="m1"><div class="ic">🛹</div><div class="n">牛一：慣性</div><div class="s">靜者恆靜、動者恆動</div></button>
+  <button class="mcard" data-mode="m2"><div class="ic">🧊</div><div class="n">牛二：F = ma</div><div class="s">力越大、質量越小 → a 越大</div></button>
+  <button class="mcard" data-mode="m3"><div class="ic">🤝</div><div class="n">牛三：作用與反作用</div><div class="s">力一樣大、方向相反</div></button>
+  <button class="mcard" data-mode="m4"><div class="ic">🪐</div><div class="n">萬有引力</div><div class="s">距離平方反比</div></button>
+  <button class="mcard" data-mode="m5"><div class="ic">💧</div><div class="n">圓周運動</div><div class="s">向心力與切線速度</div></button>
+</nav>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__newtonReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const UP = V3(0, 1, 0);
+const clamp = THREE.MathUtils.clamp;
+const G = 9.8;
+
+/* =========================================================
+   場景（Soft 3D 黏土風）
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+$('scene').appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const BG = { light: new THREE.Color(0xe6edf1), space: new THREE.Color(0x2c3050) };
+scene.background = BG.light.clone();
+const hemi = new THREE.HemisphereLight(0xffffff, 0xcdd6dd, 1.25);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffffff, 2.0);
+sun.position.set(-6, 14, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -12, near: 1, far: 60 });
+sun.shadow.radius = 4;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 4;
+controls.maxDistance = 60;
+
+const clay = (color, extra = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.5, metalness: 0.05, clearcoat: 0.25, ...extra });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+
+/** 圓潤向量箭頭（預設指向 +y），setArrow 指定起點、方向、長度 */
+function makeArrow(color, r = 0.08) {
+  const g = new THREE.Group();
+  const mat = clay(color, { emissive: color, emissiveIntensity: 0.25 });
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, 16), mat);
+  const head = new THREE.Mesh(new THREE.ConeGeometry(r * 2.6, r * 4.5, 24), mat);
+  const base = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), mat);
+  g.add(shaft, head, base);
+  g.userData = { shaft, head, hl: r * 4.5, mat };
+  return shadowed(g);
+}
+function setArrow(A, origin, dir, len) {
+  if (len < 0.03 || dir.lengthSq() < 1e-12) { A.visible = false; return; }
+  A.visible = true;
+  const { shaft, head, hl } = A.userData;
+  const h = Math.min(hl, len * 0.5), sl = Math.max(0.001, len - h);
+  shaft.scale.y = sl; shaft.position.y = sl / 2;
+  head.scale.setScalar(h / hl); head.position.y = sl + h / 2;
+  A.position.copy(origin);
+  A.quaternion.setFromUnitVectors(UP, dir.clone().normalize());
+}
+
+/** 圓潤黏土人：腳底為原點；upper 以臀部為支點，可前後傾 */
+function makePerson(color, { w = 1, h = 1 } = {}) {
+  const g = new THREE.Group();
+  const skin = clay(0xffd9bf), cloth = clay(color), pants = clay(0x4a5568);
+  const legH = 0.7 * h;
+  [-0.16, 0.16].forEach(z => {
+    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.11 * w, legH - 0.2, 6, 12), pants);
+    leg.position.set(0, legH / 2, z * w);
+    g.add(leg);
+  });
+  const upper = new THREE.Group();
+  upper.position.y = legH;
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.3 * w, 0.55 * h, 8, 20), cloth);
+  torso.position.y = 0.45 * h;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.27 * Math.sqrt(w), 24, 18), skin);
+  head.position.y = 1.0 * h + 0.18 * w;
+  const eyeMat = clay(0x2b2b2b);
+  [-0.09, 0.09].forEach(z => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), eyeMat); e.position.set(0.24 * Math.sqrt(w), head.position.y + 0.04, z); upper.add(e); });
+  const arms = [-1, 1].map(s => {
+    const pivot = new THREE.Group();
+    pivot.position.set(0, 0.75 * h, s * (0.3 * w + 0.1));
+    const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.09 * w, 0.45 * h, 6, 12), skin);
+    arm.position.y = -0.28 * h;
+    pivot.add(arm);
+    upper.add(pivot);
+    return pivot;
+  });
+  upper.add(torso, head);
+  g.add(upper);
+  g.userData = { upper, arms, height: legH + head.position.y + 0.3 };
+  return shadowed(g);
+}
+
+/* ----- 標籤與橫幅 ----- */
+const labels = [];
+function addLabel(mode, html = '', style = '') {
+  const el = document.createElement('div');
+  el.className = 'tag'; el.innerHTML = html;
+  if (style) el.style.cssText += style;
+  document.body.appendChild(el);
+  const L = { el, mode, pos: V3(0, 0, 0), visible: true };
+  labels.push(L);
+  return L;
+}
+const tmpV = V3(0, 0, 0);
+function placeLabels() {
+  for (const L of labels) {
+    if (L.mode !== mode || !L.visible) { L.el.style.display = 'none'; continue; }
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * window.innerWidth) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * window.innerHeight) + 'px';
+  }
+}
+function banner(html, ms = 3200) {
+  $('banner').innerHTML = html;
+  $('banner').classList.add('show');
+  clearTimeout(banner.t);
+  if (ms) banner.t = setTimeout(() => $('banner').classList.remove('show'), ms);
+}
+const hideBanner = () => { clearTimeout(banner.t); $('banner').classList.remove('show'); };
+
+/** 會捲動的地面條紋（讓物體留在畫面中央，看出速度） */
+function makeStripes(group, color, n = 24, gap = 1.1, width = 3, y = 0.03) {
+  const mat = clay(color);
+  const list = [];
+  for (let i = 0; i < n; i++) {
+    const s = new THREE.Mesh(new RoundedBoxGeometry(0.55, 0.04, width, 2, 0.02), mat);
+    s.position.y = y; s.receiveShadow = true;
+    group.add(s); list.push(s);
+  }
+  return (offset) => list.forEach((s, i) => { const L = n * gap; s.position.x = ((i * gap - offset) % L + L) % L - L / 2; });
+}
+
+/* =========================================================
+   模組一：牛頓第一運動定律（慣性）
+   上半身用「彈簧 + 阻尼」模擬：θ'' = −Kθ − Cθ' − a車·g₀（車往前加速 → 人往後仰）
+   ========================================================= */
+const M1 = (() => {
+  const group = new THREE.Group();
+  const ground = new THREE.Mesh(new RoundedBoxGeometry(40, 0.4, 8, 4, 0.2), clay(0xd5dee5));
+  ground.position.y = -0.2; ground.receiveShadow = true; group.add(ground);
+  const scroll = makeStripes(group, 0xf4f7f9, 30, 1.2, 4);
+  // 滑板車
+  const car = new THREE.Group();
+  const deck = new THREE.Mesh(new RoundedBoxGeometry(2.4, 0.22, 1.0, 4, 0.1), clay(0x58a6a6));
+  deck.position.y = 0.42;
+  const stem = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 1.3, 6, 12), clay(0x8a95a3));
+  stem.position.set(1.05, 1.15, 0); stem.rotation.z = -0.12;
+  const bar = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.8, 6, 12), clay(0x8a95a3));
+  bar.rotation.x = Math.PI / 2; bar.position.set(1.13, 1.85, 0);
+  car.add(deck, stem, bar);
+  const wheels = [];
+  [[-0.85, 0.36], [0.85, 0.36], [-0.85, -0.36], [0.85, -0.36]].forEach(([x, z]) => {
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.14, 24), clay(0x333a40));
+    w.rotation.x = Math.PI / 2; w.position.set(x, 0.2, z); car.add(w); wheels.push(w);
+  });
+  group.add(shadowed(car));
+  const man = makePerson(0xf2a65a);
+  group.add(man);
+  const lMan = addLabel('m1', '', 'color:#b4561d');
+  const lCar = addLabel('m1', '', 'color:#2f7d7d');
+
+  let carX = 0, carV = 0, carA = 0, state = 'stop', theta = 0, omega = 0, accelT = 0, brakeT = 0;
+  let manFree = false, manX = 0, manY = 0, manVx = 0, manVy = 0, manSpin = 0, manAng = 0, landed = false;
+  const V_TOP = 7, ACC_TIME = 0.25, BRAKE_TIME = 0.15;
+
+  function reset() {
+    carX = 0; carV = 0; carA = 0; state = 'stop'; theta = 0; omega = 0;
+    manFree = false; landed = false; manAng = 0; manSpin = 0;
+    man.rotation.set(0, 0, 0);
+    $('m1Go').disabled = false; $('m1Brake').disabled = true;
+    hideBanner();
+  }
+  $('m1Go').addEventListener('click', () => {
+    if (state !== 'stop' || manFree) return;
+    state = 'accel'; accelT = 0;
+    $('m1Go').disabled = true; $('m1Brake').disabled = false;
+    banner('🚀 車子突然往前衝！人的上半身「想保持靜止」→ <b>向後仰</b>（靜者恆靜）');
+  });
+  $('m1Brake').addEventListener('click', () => {
+    if (carV < 2 || manFree) return;
+    state = 'brake'; brakeT = 0;
+    // 人沒綁安全帶：車停了，人還保持原來的速度往前飛
+    manFree = true; manX = carX + 0.0; manY = 0.64; manVx = carV; manVy = 2.6; manSpin = -3.2;
+    $('m1Brake').disabled = true;
+    banner('🛑 車子急煞車！人「想保持原來的速度」→ <b>往前飛出去</b>（動者恆動）', 0);
+  });
+  $('m1Reset').addEventListener('click', reset);
+
+  function update(dt) {
+    // 車的運動
+    if (state === 'accel') { accelT += dt; carA = V_TOP / ACC_TIME; carV = Math.min(V_TOP, carV + carA * dt); if (carV >= V_TOP) { state = 'cruise'; carA = 0; } }
+    else if (state === 'brake') { carA = -V_TOP / BRAKE_TIME; carV = Math.max(0, carV + carA * dt); if (carV <= 0) { state = 'stopped'; carA = 0; } }
+    else carA = 0;
+    carX += carV * dt;
+    // 上半身的慣性傾斜（只有人還在車上時）
+    if (!manFree) {
+      const SUB = 6, h = dt / SUB;
+      for (let i = 0; i < SUB; i++) { const alpha = -60 * theta - 6 * omega + carA * 0.9; omega += alpha * h; theta += omega * h; }
+      theta = clamp(theta, -0.9, 0.9);
+      man.position.set(-0.25, 0.53, 0);
+      man.userData.upper.rotation.z = theta;                // 正值 = 向後仰
+      man.userData.arms.forEach(a => { a.rotation.z = theta * 1.4; });
+    } else {
+      // 人被「甩」出去：拋體運動，落地後滑行停下
+      const SUB = 6, h = dt / SUB;
+      for (let i = 0; i < SUB; i++) {
+        if (!landed) {
+          manVy -= G * h; manX += manVx * h; manY += manVy * h; manAng += manSpin * h;
+          if (manY <= 0.3) { manY = 0.3; landed = true; manVy = 0; }
+        } else {
+          manVx = Math.max(0, manVx - 6 * h); manX += manVx * h;
+          manAng += (-Math.PI / 2 - manAng) * Math.min(1, h * 8);
+        }
+      }
+      man.position.set(manX - carX - 0.25, manY, 0);
+      man.rotation.z = manAng;
+      man.userData.upper.rotation.z = 0;
+      man.userData.arms.forEach(a => { a.rotation.z = -1.2; });
+      if (landed && manVx < 0.05) banner('🛑 車子停了，但人保持原來的速度往前飛出去：<b>動者恆動（慣性）</b>。所以坐車要繫安全帶！', 0);
+    }
+    car.position.set(0, 0, 0);
+    wheels.forEach(w => { w.rotation.y -= carV * dt / 0.2; });
+    scroll(carX);
+    lMan.pos.copy(man.position).add(V3(0, manFree ? 1.1 : 2.6, 0));
+    lMan.el.textContent = manFree ? '人：保持原速往前飛' : theta > 0.15 ? '上半身向後仰' : '黏土人';
+    lCar.pos.set(0, -0.15, 0.9);
+    lCar.el.textContent = `車速 ${carV.toFixed(1)} m/s`;
+    $('m1Read').innerHTML = `<div class="kv"><span>車子速度</span><b>${carV.toFixed(2)} m/s</b><span>車子加速度</span><b>${carA.toFixed(1)} m/s²</b><span>上半身傾斜</span><b>${(theta * 180 / Math.PI).toFixed(0)}°</b></div>
+      <div class="concl">慣性：物體會保持原來的運動狀態。<br>靜者恆靜（爆衝時向後仰）、動者恆動（急煞時往前衝）。</div>`;
+  }
+  return { group, update, enter: reset, camera: { pos: [1.5, 3.6, 11], target: [1.2, 1.2, 0] }, bg: 'light',
+    get state() { return { state, carV, theta, manFree, manX: manX - carX, landed }; }, go: () => $('m1Go').click(), brake: () => $('m1Brake').click() };
+})();
+
+/* =========================================================
+   模組二：牛頓第二運動定律（F = ma）
+   冰面無摩擦；冰塊體積 ∝ 質量（邊長 ∝ ∛m）
+   ========================================================= */
+const M2 = (() => {
+  const group = new THREE.Group();
+  const ice = new THREE.Mesh(new RoundedBoxGeometry(40, 0.3, 5, 4, 0.14), clay(0xcfe8f5, { roughness: 0.15, clearcoat: 1 }));
+  ice.position.y = -0.15; ice.receiveShadow = true; group.add(ice);
+  const scroll = makeStripes(group, 0xe8f6fc, 30, 1.2, 4.6);
+  const cubeMat = new THREE.MeshPhysicalMaterial({ color: 0xbfe6ff, roughness: 0.1, transmission: 0.55, thickness: 1.2, clearcoat: 1, ior: 1.3, transparent: true });
+  const cube = shadowed(new THREE.Mesh(new RoundedBoxGeometry(1, 1, 1, 6, 0.16), cubeMat));
+  group.add(cube);
+  const aF = makeArrow(0xe5484d, 0.1), aA = makeArrow(0x22a35a, 0.1);
+  group.add(aF, aA);
+  const lF = addLabel('m2', '', 'color:#e5484d'), lA = addLabel('m2', '', 'color:#22a35a'), lM = addLabel('m2', '');
+
+  let F = 10, m = 2, x = 0, v = 0, t = 0, running = false, size = 1;
+  const paint = el => el.style.setProperty('--fill', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
+  $('m2F').addEventListener('input', e => { F = Number(e.target.value); $('m2FV').textContent = `${F} N`; paint(e.target); });
+  $('m2M').addEventListener('input', e => { m = Number(e.target.value); $('m2MV').textContent = `${m} kg`; paint(e.target); });
+  paint($('m2F')); paint($('m2M'));
+  $('m2Go').addEventListener('click', () => { running = !running; $('m2Go').textContent = running ? '⏸ 暫停' : '▶ 繼續推'; });
+  function reset() { x = 0; v = 0; t = 0; running = false; $('m2Go').textContent = '▶ 開始推'; }
+  $('m2Reset').addEventListener('click', reset);
+
+  function update(dt) {
+    const a = F / m;                                         // 牛頓第二定律：a = F / m
+    if (running) { v += a * dt; x += v * dt; t += dt; }
+    const target = 0.9 * Math.cbrt(m);                       // 體積 ∝ 質量
+    size += (target - size) * Math.min(1, dt * 8);
+    cube.scale.setScalar(size);
+    cube.position.set(0, size / 2, 0);
+    scroll(x);
+    const top = size + 0.45;
+    setArrow(aF, V3(-size / 2 - 0.1, top, 0), V3(1, 0, 0), F * 0.14);
+    setArrow(aA, V3(-size / 2 - 0.1, top + 0.65, 0), V3(1, 0, 0), a * 0.14);
+    lF.pos.set(-size / 2 - 0.6, top, 0); lF.el.textContent = `F = ${F} N`;
+    lA.pos.set(-size / 2 - 0.6, top + 0.65, 0); lA.el.textContent = `a = ${a.toFixed(1)} m/s²`;
+    lM.pos.set(0, size / 2, size / 2 + 0.6); lM.el.textContent = `${m} kg`;
+    $('m2Read').innerHTML = `<div class="kv"><span>加速度 a = F ÷ m</span><b>${F} ÷ ${m} = ${a.toFixed(2)} m/s²</b><span>時間</span><b>${t.toFixed(1)} s</b><span>速度</span><b>${v.toFixed(1)} m/s</b></div>
+      <div class="concl">F 越大 → a 越大（正比）；m 越大 → a 越小（反比）。<br>質量變 2 倍、推力不變 → 加速度變一半。</div>`;
+  }
+  return { group, update, enter: reset, camera: { pos: [0, 4, 12.5], target: [0, 1.6, 0] }, bg: 'light',
+    set: (f, mm) => { if (f != null) { $('m2F').value = f; $('m2F').dispatchEvent(new Event('input')); } if (mm != null) { $('m2M').value = mm; $('m2M').dispatchEvent(new Event('input')); } },
+    get state() { return { F, m, a: F / m, v, size }; }, start: () => { running = true; } };
+})();
+
+/* =========================================================
+   模組三：牛頓第三運動定律（作用力與反作用力）
+   推的過程中雙方受力 F 大小相等、方向相反；a = F/m → 速度 v = FΔt/m
+   ========================================================= */
+const M3 = (() => {
+  const group = new THREE.Group();
+  const rink = new THREE.Mesh(new RoundedBoxGeometry(26, 0.3, 8, 4, 0.14), clay(0xd8eef7, { roughness: 0.12, clearcoat: 1 }));
+  rink.position.y = -0.15; rink.receiveShadow = true; group.add(rink);
+  const M_BIG = 80, M_SMALL = 35, F = 240, DT = 0.35;
+  const big = makePerson(0x8f7bd6, { w: 1.9, h: 1.15 });
+  const small = makePerson(0x4fb38a, { w: 0.75, h: 0.95 });
+  small.rotation.y = Math.PI;                               // 面向左邊的大胖子
+  group.add(big, small);
+  const fOnBig = makeArrow(0xe5484d, 0.11), fOnSmall = makeArrow(0xe5484d, 0.11);
+  const vBig = makeArrow(0x22a35a, 0.1), vSmall = makeArrow(0x22a35a, 0.1);
+  group.add(fOnBig, fOnSmall, vBig, vSmall);
+  const lFB = addLabel('m3', '', 'color:#e5484d'), lFS = addLabel('m3', '', 'color:#e5484d');
+  const lVB = addLabel('m3', '', 'color:#22a35a'), lVS = addLabel('m3', '', 'color:#22a35a');
+  const lBig = addLabel('m3', '大胖子 80 kg'), lSmall = addLabel('m3', '小瘦子 35 kg');
+  const X_BIG0 = -0.95, X_SMALL0 = 0.62;
+
+  let xb = X_BIG0, xs = X_SMALL0, vb = 0, vs = 0, t = -1;
+  function reset() { xb = X_BIG0; xs = X_SMALL0; vb = 0; vs = 0; t = -1; hideBanner(); }
+  $('m3Go').addEventListener('click', () => { reset(); t = 0; banner('作用力 = 反作用力，<b>兩個人受的力一樣大</b>（方向相反）！', 0); });
+  $('m3Reset').addEventListener('click', reset);
+
+  function update(dt) {
+    const pushing = t >= 0 && t < DT;
+    if (t >= 0) {
+      const SUB = 8, h = dt / SUB;
+      for (let i = 0; i < SUB; i++) {
+        if (t < DT) { const hp = Math.min(h, DT - t); vb -= F / M_BIG * hp; vs += F / M_SMALL * hp; }   // 同樣的力，質量小的加速度大
+        xb += vb * h; xs += vs * h;
+        t += h;
+        if (xs > 11) { vs = 0; } if (xb < -11) { vb = 0; }
+      }
+      if (t > DT + 1.2) banner('力一樣大，但<b>質量小的小瘦子加速度大</b> → 往後飛得比較快（a = F ÷ m）', 0);
+    }
+    big.position.set(xb, 0, 0);
+    small.position.set(xs, 0, 0);
+    // 手臂：推的時候伸直
+    const reach = pushing ? 1.45 : (t < 0 ? 1.2 : 0.2);
+    big.userData.arms.forEach(a => { a.rotation.z = reach; });
+    small.userData.arms.forEach(a => { a.rotation.z = reach; });
+    const hy = 1.55;
+    if (pushing || t < 0) {
+      // 作用力與反作用力：等長、反向（推開瞬間顯示）
+      const showF = pushing;
+      setArrow(fOnSmall, V3(xs - 0.1, hy + 0.55, 0), V3(1, 0, 0), showF ? 2.2 : 0);
+      setArrow(fOnBig, V3(xb + 0.1, hy + 0.55, 0), V3(-1, 0, 0), showF ? 2.2 : 0);
+      lFS.visible = lFB.visible = showF;
+    } else { fOnSmall.visible = fOnBig.visible = false; lFS.visible = lFB.visible = false; }
+    lFS.pos.set(xs + 1.1, hy + 0.95, 0); lFS.el.textContent = `推力 ${F} N →`;
+    lFB.pos.set(xb - 1.1, hy + 0.95, 0); lFB.el.textContent = `← 推力 ${F} N`;
+    // 速度箭頭
+    setArrow(vSmall, V3(xs, 2.75, 0), V3(1, 0, 0), Math.abs(vs) * 1.1);
+    setArrow(vBig, V3(xb, 3.2, 0), V3(-1, 0, 0), Math.abs(vb) * 1.1);
+    lVS.visible = Math.abs(vs) > 0.05; lVS.pos.set(xs + Math.abs(vs) * 0.55, 3.15, 0); lVS.el.textContent = `v = ${Math.abs(vs).toFixed(2)} m/s`;
+    lVB.visible = Math.abs(vb) > 0.05; lVB.pos.set(xb - Math.abs(vb) * 0.55, 3.6, 0); lVB.el.textContent = `v = ${Math.abs(vb).toFixed(2)} m/s`;
+    lBig.pos.set(xb, -0.35, 1.3); lSmall.pos.set(xs, -0.35, 1.0);
+    $('m3Read').innerHTML = `<div class="kv"><span>推力（雙方相同）</span><b>${F} N，作用 ${DT} s</b>
+      <span>大胖子 a = F ÷ m</span><b>${(F / M_BIG).toFixed(1)} m/s²</b><span>小瘦子 a = F ÷ m</span><b>${(F / M_SMALL).toFixed(1)} m/s²</b>
+      <span>大胖子速度</span><b>${Math.abs(vb).toFixed(2)} m/s</b><span>小瘦子速度</span><b>${Math.abs(vs).toFixed(2)} m/s</b></div>
+      <div class="concl">作用力與反作用力：大小相等、方向相反、同時出現。<br>力一樣大，質量小的加速度大，所以小瘦子飛得快。</div>`;
+  }
+  return { group, update, enter: reset, camera: { pos: [0, 4.5, 14], target: [0, 1.6, 0] }, bg: 'light',
+    push: () => $('m3Go').click(), get state() { return { vb, vs, t }; } };
+})();
+
+/* =========================================================
+   模組四：萬有引力定律  F = G·mA·mB / r²
+   以「A 質量 1 倍、距離 8」為基準：F 相對值 = mA × (8 / r)²
+   ========================================================= */
+const M4 = (() => {
+  const group = new THREE.Group();
+  const stars = new THREE.Group();
+  for (let i = 0; i < 160; i++) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.03 + Math.random() * 0.05, 6, 4), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    const r = 22 + Math.random() * 18, a = Math.random() * Math.PI * 2, b = (Math.random() - 0.5) * Math.PI;
+    s.position.set(Math.cos(a) * Math.cos(b) * r, Math.sin(b) * r * 0.6 + 2, Math.sin(a) * Math.cos(b) * r - 8);
+    stars.add(s);
+  }
+  group.add(stars);
+  const planetA = shadowed(new THREE.Mesh(new THREE.SphereGeometry(1, 48, 32), clay(0xf0a35e, { emissive: 0xf08a3e, emissiveIntensity: 0.15 })));
+  const planetB = shadowed(new THREE.Mesh(new THREE.SphereGeometry(1, 48, 32), clay(0x6fb3d9, { emissive: 0x3f8fbf, emissiveIntensity: 0.15 })));
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.35, 0.06, 12, 64), clay(0xf6d29a));
+  ring.rotation.x = Math.PI / 2.4;
+  planetA.add(ring);
+  group.add(planetA, planetB);
+  const fA = makeArrow(0xf5c518, 0.1), fB = makeArrow(0xf5c518, 0.1);
+  group.add(fA, fB);
+  const lA = addLabel('m4', 'A'), lB = addLabel('m4', 'B'), lF = addLabel('m4', '', 'color:#a07800');
+  const lR = addLabel('m4', '', 'color:#4f7fb8');
+  const rLine = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0xbfc8ff, dashSize: 0.2, gapSize: 0.15 }));
+  group.add(rLine);
+
+  const R_REF = 8, L_REF = 0.6, L_MAX = 10;
+  let mA = 1, r = 8;
+  const paint = el => el.style.setProperty('--fill', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
+  const setR = v => { r = clamp(v, 3, 8); $('m4R').value = r; $('m4RV').textContent = r.toFixed(1); paint($('m4R')); };
+  $('m4M').addEventListener('input', e => { mA = Number(e.target.value); $('m4MV').textContent = `${mA} 倍`; paint(e.target); });
+  $('m4R').addEventListener('input', e => setR(Number(e.target.value)));
+  paint($('m4M')); paint($('m4R'));
+
+  const Frel = () => mA * (R_REF / r) ** 2;                  // 質量正比、距離平方反比
+  function update() {
+    const ra = 0.7 * Math.cbrt(mA), rb = 0.7;
+    planetA.scale.setScalar(ra); planetB.scale.setScalar(rb);
+    planetA.position.set(-r / 2, 2.2, 0); planetB.position.set(r / 2, 2.2, 0);
+    planetA.rotation.y += 0.004; planetB.rotation.y -= 0.006;
+    const F = Frel(), len = Math.min(L_MAX, F * L_REF);
+    // 兩支等長、反向的引力箭頭（上下錯開，靠近時才不會重疊）
+    // 箭頭從星球表面出發（A 受 B 吸引 → 指向 B；B 受 A 吸引 → 指向 A）
+    setArrow(fA, V3(-r / 2 + ra * 0.9, 2.2 + 0.3, 0), V3(1, 0, 0), len);
+    setArrow(fB, V3(r / 2 - rb * 0.9, 2.2 - 0.3, 0), V3(-1, 0, 0), len);
+    rLine.geometry.dispose();
+    rLine.geometry = new THREE.BufferGeometry().setFromPoints([V3(-r / 2, 1.0, 0), V3(r / 2, 1.0, 0)]);
+    rLine.computeLineDistances();
+    lA.pos.set(-r / 2, 2.2 + ra + 0.5, 0); lB.pos.set(r / 2, 2.2 + rb + 0.5, 0);
+    lR.pos.set(0, 0.7, 0); lR.el.textContent = `距離 r = ${r.toFixed(1)}`;
+    lF.pos.set(0, 3.6, 0); lF.el.textContent = `引力 = 基準的 ${F.toFixed(2)} 倍${F * L_REF > L_MAX ? '（箭頭已超出畫面）' : ''}`;
+    $('m4Read').innerHTML = `<div class="kv"><span>A 質量</span><b>${mA} 倍</b><span>距離 r</span><b>${r.toFixed(1)}（基準 8）</b>
+      <span>引力 ∝ m ÷ r²</span><b>${mA} × (8 ÷ ${r.toFixed(1)})² = ${F.toFixed(2)} 倍</b></div>
+      <div class="concl">質量變 2 倍 → 引力變 2 倍（正比）。<br>距離變一半 → 引力變 <b>4 倍</b>（距離平方反比）。</div>`;
+  }
+
+  // 拖曳星球改變距離
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), plane = new THREE.Plane(V3(0, 0, 1), 0), hit = V3(0, 0, 0);
+  let drag = null;
+  const setRay = e => { const rc = renderer.domElement.getBoundingClientRect(); ndc.set(((e.clientX - rc.left) / rc.width) * 2 - 1, -((e.clientY - rc.top) / rc.height) * 2 + 1); ray.setFromCamera(ndc, camera); };
+  renderer.domElement.addEventListener('pointerdown', e => {
+    if (mode !== 'm4') return;
+    setRay(e);
+    const h = ray.intersectObjects([planetA, planetB])[0];
+    if (!h) return;
+    e.stopImmediatePropagation();
+    drag = h.object === planetA ? 'A' : 'B';
+    controls.enabled = false;
+    renderer.domElement.setPointerCapture(e.pointerId);
+  }, { capture: true });
+  renderer.domElement.addEventListener('pointermove', e => {
+    if (mode !== 'm4') return;
+    setRay(e);
+    if (drag) { if (ray.ray.intersectPlane(plane, hit)) setR(Math.abs(hit.x) * 2); }
+    else renderer.domElement.style.cursor = ray.intersectObjects([planetA, planetB]).length ? 'grab' : '';
+  });
+  const end = () => { if (drag) { drag = null; controls.enabled = true; } };
+  renderer.domElement.addEventListener('pointerup', end);
+  renderer.domElement.addEventListener('pointercancel', end);
+
+  return { group, update, enter: () => {}, camera: { pos: [0, 4, 15], target: [0, 2.2, 0] }, bg: 'space',
+    set: (m, rr) => { if (m != null) { $('m4M').value = m; $('m4M').dispatchEvent(new Event('input')); } if (rr != null) setR(rr); },
+    get state() { return { mA, r, F: Frel(), arrowLen: Math.min(L_MAX, Frel() * L_REF) }; } };
+})();
+
+/* =========================================================
+   模組五：圓周運動與切線方向
+   等速率圓周：v = ωR（切線）、向心力 Fc = m v² / R（指向圓心）
+   剪斷繩子 → 沒有向心力 → 沿當下切線方向做等速直線運動
+   ========================================================= */
+const M5 = (() => {
+  const group = new THREE.Group();
+  const R = 3, Y = 1.4, m = 1;
+  const floorPad = new THREE.Mesh(new THREE.CylinderGeometry(7, 7, 0.3, 64), clay(0xd9e6ee));
+  floorPad.position.y = -0.15; floorPad.receiveShadow = true; group.add(floorPad);
+  const pole = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 1.2, 8, 16), clay(0x8a95a3)));
+  pole.position.y = 0.75; group.add(pole);
+  const knob = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.22, 20, 14), clay(0xf0a35e)));
+  knob.position.y = Y; group.add(knob);
+  // 圓形軌跡（虛線）
+  const pathPts = [];
+  for (let i = 0; i <= 96; i++) { const a = i / 96 * Math.PI * 2; pathPts.push(V3(R * Math.cos(a), Y, -R * Math.sin(a))); }
+  const path = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pathPts), new THREE.LineDashedMaterial({ color: 0x8aa4bf, dashSize: 0.18, gapSize: 0.14 }));
+  path.computeLineDistances(); group.add(path);
+  const rope = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1, 10), clay(0xc9a46b)));
+  group.add(rope);
+  const stub = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.6, 10), clay(0xc9a46b)));
+  stub.visible = false; group.add(stub);
+  const ball = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.42, 40, 28),
+    new THREE.MeshPhysicalMaterial({ color: 0x7cc4f0, roughness: 0.1, transmission: 0.6, thickness: 0.8, clearcoat: 1, ior: 1.33, transparent: true })));
+  group.add(ball);
+  const aFc = makeArrow(0x3f7be8, 0.08), aV = makeArrow(0xe5484d, 0.08);
+  group.add(aFc, aV);
+  const tangent = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0xe5484d, dashSize: 0.25, gapSize: 0.18, transparent: true, opacity: 0.7 }));
+  group.add(tangent);
+  const lFc = addLabel('m5', '', 'color:#3f7be8'), lV = addLabel('m5', '', 'color:#e5484d');
+
+  let w = 1.5, phi = 0, cut = false, pos = V3(R, Y, 0), vel = V3(0, 0, 0);
+  const paint = el => el.style.setProperty('--fill', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
+  $('m5W').addEventListener('input', e => { w = Number(e.target.value); $('m5WV').textContent = `${w} rad/s`; paint(e.target); });
+  paint($('m5W'));
+  function reset() { cut = false; rope.visible = true; stub.visible = false; tangent.visible = false; $('m5Cut').disabled = false; hideBanner(); }
+  $('m5Cut').addEventListener('click', () => {
+    if (cut) return;
+    cut = true;
+    // 剪斷瞬間：速度 = 切線方向（逆時針轉動的切線）
+    vel.set(-Math.sin(phi), 0, -Math.cos(phi)).multiplyScalar(w * R);
+    rope.visible = false; stub.visible = true;
+    const p0 = pos.clone();
+    tangent.geometry.dispose();
+    tangent.geometry = new THREE.BufferGeometry().setFromPoints([p0, p0.clone().addScaledVector(vel.clone().normalize(), 16)]);
+    tangent.computeLineDistances();
+    tangent.visible = true;
+    $('m5Cut').disabled = true;
+    banner('✂ 繩子斷了 → <b>沒有向心力</b> → 水球沿「斷掉瞬間的切線方向」直線飛出（慣性）', 0);
+  });
+  $('m5Reset').addEventListener('click', reset);
+
+  function update(dt) {
+    const v = w * R, Fc = m * v * v / R;
+    if (!cut) {
+      phi += w * dt;
+      pos.set(R * Math.cos(phi), Y, -R * Math.sin(phi));
+      const center = V3(0, Y, 0);
+      // 繩子：從柱子到水球
+      const mid = center.clone().add(pos).multiplyScalar(0.5);
+      rope.position.copy(mid);
+      rope.scale.y = R - 0.4;
+      rope.quaternion.setFromUnitVectors(UP, pos.clone().sub(center).normalize());
+      const inward = center.clone().sub(pos).normalize();
+      const tang = V3(-Math.sin(phi), 0, -Math.cos(phi));
+      setArrow(aFc, pos.clone().addScaledVector(inward, 0.4).add(V3(0, 0.02, 0)), inward, Math.min(2.2, Fc * 0.1));
+      setArrow(aV, pos.clone().addScaledVector(tang, 0.42), tang, v * 0.33);
+      lFc.visible = true;
+      lFc.pos.copy(pos).addScaledVector(inward, 1.2).add(V3(0, 0.45, 0)); lFc.el.textContent = `向心力 Fc = ${Fc.toFixed(1)} N`;
+    } else {
+      pos.addScaledVector(vel, dt);                          // 沒有外力 → 等速直線運動
+      aFc.visible = false; lFc.visible = false;               // 向心力瞬間消失
+      const dir = vel.clone().normalize();
+      setArrow(aV, pos.clone().addScaledVector(dir, 0.42), dir, v * 0.33);
+      stub.position.set(0.3, Y, 0); stub.rotation.z = Math.PI / 2;
+    }
+    ball.position.copy(pos);
+    ball.visible = pos.length() < 30;
+    const dir = cut ? vel.clone().normalize() : V3(-Math.sin(phi), 0, -Math.cos(phi));
+    lV.pos.copy(pos).addScaledVector(dir, v * 0.33 + 0.9).add(V3(0, 0.4, 0)); lV.el.textContent = `速度 v = ${v.toFixed(1)} m/s`;
+    lV.visible = ball.visible;
+    $('m5Read').innerHTML = `<div class="kv"><span>半徑 R</span><b>${R} m</b><span>速率 v = ωR</span><b>${v.toFixed(2)} m/s</b>
+      <span>向心力 Fc = mv²/R</span><b>${cut ? '0（繩子斷了）' : Fc.toFixed(2) + ' N'}</b></div>
+      <div class="concl">速度方向永遠沿著<b>切線</b>；向心力負責把方向「拉彎」。<br>繩子一斷，水球不會往外直直飛，而是沿<b>切線</b>直線飛出。</div>`;
+  }
+  return { group, update, enter: reset, camera: { pos: [0, 7.5, 12.5], target: [0, 1, 0] }, bg: 'light',
+    cutRope: () => $('m5Cut').click(), get state() { return { cut, phi, pos: pos.clone(), vel: vel.clone(), w } } };
+})();
+
+/* =========================================================
+   切換（5 張圖卡）與主迴圈
+   ========================================================= */
+const MODES = { m1: M1, m2: M2, m3: M3, m4: M4, m5: M5 };
+const NAMES = { m1: '🛹 牛頓第一運動定律：慣性', m2: '🧊 牛頓第二運動定律：F = ma', m3: '🤝 牛頓第三運動定律：作用與反作用', m4: '🪐 萬有引力定律', m5: '💧 圓周運動與切線方向' };
+Object.values(MODES).forEach(m => { m.group.visible = false; scene.add(m.group); });
+let mode = 'm1';
+function resetView() {
+  const c = MODES[mode].camera;
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  const panel = $('panel');
+  if (!window.MobileView?.isMobile() && !panel.classList.contains('collapsed')) {
+    const visW = 2 * pos.distanceTo(tgt) * Math.tan(camera.fov * Math.PI / 360) * camera.aspect;
+    const shift = -(panel.getBoundingClientRect().right / 2) / window.innerWidth * visW;
+    pos.x += shift; tgt.x += shift;
+    tgt.y -= 0.6; pos.y -= 0.6;                               // 底部有圖卡列：場景稍微往上
+  }
+  camera.position.copy(pos); controls.target.copy(tgt); controls.update();
+  window.MobileView?.frame(camera, controls, mode === 'm5' ? 1.0 : 1.45);
+}
+function setMode(m) {
+  mode = m;
+  Object.entries(MODES).forEach(([k, v]) => { v.group.visible = k === m; });
+  document.querySelectorAll('.mcard').forEach(b => {
+    b.classList.toggle('on', b.dataset.mode === m);
+    if (b.dataset.mode === m) b.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });   // 手機：選中的圖卡捲到中間
+  });
+  document.querySelectorAll('.section').forEach(s => { s.hidden = s.dataset.mode !== m; });
+  $('mname').textContent = NAMES[m];
+  hideBanner();
+  // 背景：宇宙場景用深色
+  const space = MODES[m].bg === 'space';
+  scene.background.copy(space ? BG.space : BG.light);
+  hemi.intensity = space ? 0.8 : 1.25;
+  MODES[m].enter();
+  resetView();
+}
+document.querySelectorAll('.mcard').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+$('viewBtn').addEventListener('click', resetView);
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; });
+
+function resize() {
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.fov = 40;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  MODES[mode].update(dt);
+  controls.update();
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.np = { M1, M2, M3, M4, M5, setMode, frame, camera };   // 除錯 / 驗證用
+
+resize();
+setMode('m1');
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__newtonReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>

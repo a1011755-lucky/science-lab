@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>溫度與熱實驗室</title>
+<style>
+  :root {
+    --bg: #efe5da;
+    --ink: #1d1d1f;
+    --ink-soft: #6e6e73;
+    --card: rgba(255,255,255,.6);
+    --accent: #c0714f;
+    --red: #e5484d; --blue: #3f7be8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(22px) saturate(180%); -webkit-backdrop-filter: blur(22px) saturate(180%);
+    border: 1px solid rgba(255,255,255,.8); box-shadow: 0 20px 50px rgba(90,60,40,.12), 0 2px 6px rgba(90,60,40,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 310px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(192,113,79,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.15rem; font-weight: 700; margin-top: 6px; padding-right: 62px; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .8rem; font-weight: 700; padding: 9px 6px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); transition: background .2s, color .2s; }
+  .tab:hover { background: rgba(255,255,255,.9); }
+  .tab.on { color: #fff; background: var(--accent); box-shadow: 0 6px 16px rgba(192,113,79,.3); }
+  .section[hidden] { display: none; }
+  .desc { font-size: .8rem; color: var(--ink-soft); line-height: 1.65; margin-bottom: 6px; }
+  .desc b { color: var(--ink); }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .86rem; font-weight: 700; color: var(--accent); background: rgba(192,113,79,.12);
+    transition: background .2s, transform .1s, opacity .2s;
+  }
+  .btn:hover { background: rgba(192,113,79,.2); }
+  .btn:active { transform: scale(.98); }
+  .btn.primary { color: #fff; background: var(--accent); box-shadow: 0 6px 16px rgba(192,113,79,.3); }
+  .btn.hot { color: #fff; background: #e5674d; }
+  .btn.cold { color: #fff; background: #4f8fd6; }
+  .btn.on { outline: 3px solid rgba(0,0,0,.18); }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .cupbox { background: rgba(255,255,255,.8); border-radius: 16px; padding: 10px 12px; margin-top: 8px; }
+  .cupbox .h { display: flex; justify-content: space-between; align-items: center; font-size: .84rem; font-weight: 800; }
+  .cupbox select { font: inherit; font-size: .8rem; border: 1px solid #ddd; border-radius: 10px; padding: 4px 8px; background: #fff; }
+  .ios .top { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; margin: 8px 0 6px; }
+  .ios .top b { font-weight: 800; color: var(--c, var(--accent)); font-variant-numeric: tabular-nums; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 999px; cursor: pointer; outline: none;
+    background: linear-gradient(90deg, var(--c, var(--accent)) 0%, var(--c, var(--accent)) var(--fill, 0%), #e5e5ea var(--fill, 0%)); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,.18); }
+  input[type=range]::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 3px 8px rgba(0,0,0,.18); }
+  .read { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin-top: 10px; font-size: .8rem; line-height: 1.6; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-variant-numeric: tabular-nums; }
+  .kv b { text-align: right; }
+  .tbl { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  .tbl th, .tbl td { padding: 2px 4px; text-align: right; }
+  .tbl th:first-child, .tbl td:first-child { text-align: left; color: var(--ink-soft); font-weight: 500; }
+  .concl { background: #fff4e0; border: 1.5px solid #f0c27a; color: #6b4300; font-weight: 600; border-radius: 14px; padding: 9px 12px; margin-top: 8px; font-size: .8rem; line-height: 1.6; }
+  .stage { border-radius: 12px; padding: 7px 10px; margin-top: 6px; font-size: .8rem; font-weight: 700; background: #f2ece6; color: #8a7b70; }
+  .stage.act { background: #ffe3d6; color: #a2431f; }
+  .stage.act.c { background: #dceaff; color: #2a5ea8; }
+  #m1Spark { width: 100%; height: 80px; display: block; margin-top: 8px; background: rgba(255,255,255,.85); border-radius: 12px; }
+
+  .chartbox { position: absolute; right: 18px; bottom: 18px; width: 440px; height: 250px; z-index: 9; border-radius: 22px; padding: 10px 12px 8px; }
+  .chartbox .ct { font-size: .8rem; font-weight: 800; }
+  .chartbox canvas { width: 100%; height: calc(100% - 20px); display: block; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 700; padding: 3px 10px; border-radius: 12px; white-space: nowrap;
+    background: rgba(255,255,255,.9); color: var(--ink); box-shadow: 0 4px 12px rgba(0,0,0,.08);
+  }
+  .banner {
+    position: absolute; top: 18px; left: 50%; transform: translateX(-50%); z-index: 9; pointer-events: none; text-align: center;
+    padding: 10px 18px; border-radius: 18px; font-size: .95rem; font-weight: 800; opacity: 0; transition: opacity .3s;
+    background: rgba(255,246,228,.96); border: 1.5px solid #f0c27a; color: #6b4300; max-width: 70vw;
+  }
+  .banner.show { opacity: 1; }
+  @media (min-width: 1101px) { .banner { left: calc(50% + 165px); } }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 760px), (max-width: 1100px) and (orientation: portrait) {
+    .chartbox { top: 8px; left: 8px; right: 8px; bottom: auto; width: auto; height: 180px; padding: 8px 10px 6px; border-radius: 18px; }
+    .tabs { grid-template-columns: repeat(4, 1fr) !important; }
+  }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="scene"></div>
+<div class="banner" id="banner"></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g8">‹ 課程總覽</a>
+  <div class="title">溫度與熱實驗室</div>
+
+  <div class="body">
+    <div class="tabs">
+      <button class="tab on" data-mode="m1">🌡 自製溫度計</button>
+      <button class="tab" data-mode="m2">🔥 比熱賽跑</button>
+      <button class="tab" data-mode="m3">🏖 海風陸風</button>
+      <button class="tab" data-mode="m4">🧊 三態變化</button>
+    </div>
+
+    <!-- 模組一 -->
+    <section class="section" data-mode="m1">
+      <p class="desc">把錐形瓶<b>拖曳</b>到熱水或冷水裡（也可以按按鈕），盯著玻璃管裡的紅色液面：它<b>一開始</b>往哪裡走？</p>
+      <div class="row2">
+        <button class="btn hot" id="m1Hot">♨ 放入熱水 80℃</button>
+        <button class="btn cold" id="m1Cold">🧊 放入冰水 0℃</button>
+      </div>
+      <button class="btn" id="m1Table">↩ 拿回桌上（室溫 25℃）</button>
+      <div class="stage" id="m1S1">① 玻璃先受熱膨脹（容積變大）→ 液面先微降</div>
+      <div class="stage" id="m1S2">② 液體後受熱，膨脹得比玻璃多 → 液面大幅上升</div>
+      <canvas id="m1Spark"></canvas>
+      <div class="read" id="m1Read"></div>
+      <div class="concl">固體先傳熱膨脹，液體後傳熱膨脹！<br>液體的膨脹程度 ＞ 固體，所以最後液面大幅上升。</div>
+    </section>
+
+    <!-- 模組二 -->
+    <section class="section" data-mode="m2" hidden>
+      <p class="desc">兩盞酒精燈<b>每秒提供相同的熱量 H</b>。比一比：哪一杯溫度上升得快？</p>
+      <div class="cupbox">
+        <div class="h"><span>A 杯</span><select id="m2SA" aria-label="A 杯物質"></select></div>
+        <div class="ios" style="--c:#c0714f"><div class="top"><span>質量 M</span><b id="m2MAV">100 g</b></div><input type="range" id="m2MA" min="10" max="200" step="10" value="100" aria-label="A 杯質量"></div>
+      </div>
+      <div class="cupbox">
+        <div class="h"><span>B 杯</span><select id="m2SB" aria-label="B 杯物質"></select></div>
+        <div class="ios" style="--c:#4f8fd6"><div class="top"><span>質量 M</span><b id="m2MBV">10 g</b></div><input type="range" id="m2MB" min="10" max="200" step="10" value="10" aria-label="B 杯質量"></div>
+      </div>
+      <div class="row2">
+        <button class="btn primary" id="m2Go">🔥 開始加熱</button>
+        <button class="btn" id="m2Reset">↺ 重來</button>
+      </div>
+      <div class="read" id="m2Read"></div>
+      <div class="concl">H = M × S × ΔT　→　ΔT = H ÷ (M × S)<br>熱量相同時，M × S 越大，溫度變化越小（越難熱）。</div>
+    </section>
+
+    <!-- 模組三 -->
+    <section class="section" data-mode="m3" hidden>
+      <p class="desc">海水<b>比熱大</b>（溫度變化慢）、沙子<b>比熱小</b>（溫度變化快）。切換白天與夜晚，看空氣怎麼流動。</p>
+      <div class="row2">
+        <button class="btn hot on" id="m3Day">☀ 白天</button>
+        <button class="btn cold" id="m3Night">🌙 夜晚</button>
+      </div>
+      <div class="read" id="m3Read"></div>
+      <div class="concl">熱的地方空氣上升（低氣壓），冷的地方空氣下沉（高氣壓）；<br>地面的風從冷處吹向熱處：<b>白天吹海風、夜晚吹陸風</b>。</div>
+    </section>
+
+    <!-- 模組四 -->
+    <section class="section" data-mode="m4" hidden>
+      <p class="desc">100 g、−20℃ 的冰持續加熱。對照下方的<b>溫度-時間圖</b>：哪兩段是水平線？</p>
+      <div class="row2">
+        <button class="btn primary" id="m4Go">🔥 開始加熱</button>
+        <button class="btn" id="m4Reset">↺ 重來</button>
+      </div>
+      <div class="row3" id="m4Speed">
+        <button class="btn on" data-s="1">1×</button>
+        <button class="btn" data-s="3">3× 快轉</button>
+        <button class="btn" data-s="8">8× 快轉</button>
+      </div>
+      <div class="read" id="m4Read"></div>
+      <div class="concl" id="m4Tip">水平線＝溫度不變，但仍在吸熱！<br>熱量用來改變狀態（熔化、汽化），不是用來升溫。</div>
+    </section>
+
+    <button class="btn" id="viewBtn" style="margin-top:12px">重設視角</button>
+  </div>
+</aside>
+
+<div class="chartbox data glass" id="chartBox" style="display:none">
+  <div class="ct">溫度 − 時間圖（T − t）</div>
+  <canvas id="chart"></canvas>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__heatReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const UP = V3(0, 1, 0);
+const clamp = THREE.MathUtils.clamp;
+const lerp = THREE.MathUtils.lerp;
+
+/* =========================================================
+   場景：溫暖莫蘭迪 Soft 3D
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+$('scene').appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const BG = new THREE.Color(0xefe5da), BG_NIGHT = new THREE.Color(0x394063);
+scene.background = BG.clone();
+// 環境光源：讓透明玻璃有反光可看
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf7efe6);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.4); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+const hemi = new THREE.HemisphereLight(0xfff6ee, 0xd9c9ba, 1.0);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffffff, 2.0);
+sun.position.set(-6, 14, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 12, bottom: -10, near: 1, far: 60 });
+sun.shadow.radius = 4;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 4;
+controls.maxDistance = 60;
+
+/* ----- 材質 ----- */
+const clay = (color, extra = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.5, metalness: 0.03, clearcoat: 0.3, ...extra });
+const glow = (color, k = 0.5) => clay(color, { emissive: color, emissiveIntensity: k });
+/** 透射玻璃（錐形瓶、溫度計、細玻璃管：內含不透明的發光液體） */
+const glassT = (o = {}) => new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.9, roughness: 0.1, thickness: 0.25, ior: 1.5, clearcoat: 1, clearcoatRoughness: 0.05, side: THREE.DoubleSide, ...o });
+/** 燒杯玻璃：高光透明（不寫入深度、最後繪製，內部的水與冰才看得見） */
+const glassA = () => new THREE.MeshPhysicalMaterial({ color: 0xf6fbff, roughness: 0.05, clearcoat: 1, transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide });
+/** 燒杯裡的水：透明層 + 微微發光（排在不透明／透射物體之後繪製，杯中的錐形瓶、冰塊、溫度計才看得見） */
+const waterMat = (color, o = {}) => {
+  const m = new THREE.MeshPhysicalMaterial({ color, roughness: 0.08, clearcoat: 1, transparent: true, opacity: 0.5, depthWrite: false,
+    emissive: color, emissiveIntensity: 0.18, ...o });
+  return m;
+};
+/** 海水（模型剖面）：透射材質 */
+const seaMat = (color, o = {}) => new THREE.MeshPhysicalMaterial({
+  color, transmission: 0.7, roughness: 0.08, thickness: 1.5, ior: 1.33, clearcoat: 1,
+  emissive: color, emissiveIntensity: 0.14, attenuationColor: new THREE.Color(color), attenuationDistance: 2.5, ...o
+});
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+
+/** 圓潤箭頭：setArrow(起點, 方向, 長度) */
+function makeArrow(color, r = 0.08) {
+  const g = new THREE.Group();
+  const mat = clay(color, { emissive: color, emissiveIntensity: 0.3 });
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, 16), mat);
+  const head = new THREE.Mesh(new THREE.ConeGeometry(r * 2.6, r * 4.5, 24), mat);
+  const base = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), mat);
+  g.add(shaft, head, base);
+  g.userData = { shaft, head, hl: r * 4.5 };
+  return g;
+}
+function setArrow(A, origin, dir, len) {
+  if (len < 0.05) { A.visible = false; return; }
+  A.visible = true;
+  const { shaft, head, hl } = A.userData;
+  const h = Math.min(hl, len * 0.5), sl = Math.max(0.001, len - h);
+  shaft.scale.y = sl; shaft.position.y = sl / 2;
+  head.scale.setScalar(h / hl); head.position.y = sl + h / 2;
+  A.position.copy(origin);
+  A.quaternion.setFromUnitVectors(UP, dir.clone().normalize());
+}
+
+/** 燒杯：透明玻璃壁 + 底 + 杯緣 */
+function makeBeaker(r, h) {
+  const g = new THREE.Group();
+  const wall = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.97, h, 48, 1, true), glassA());
+  wall.position.y = h / 2; wall.renderOrder = 5;
+  const bottom = new THREE.Mesh(new THREE.CircleGeometry(r * 0.97, 48), glassA());
+  bottom.rotation.x = -Math.PI / 2; bottom.position.y = 0.01; bottom.renderOrder = 5;
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(r, 0.045, 10, 64), clay(0xffffff, { transparent: true, opacity: 0.75, roughness: 0.1, clearcoat: 1 }));
+  rim.rotation.x = Math.PI / 2; rim.position.y = h; rim.renderOrder = 6;
+  g.add(wall, bottom, rim);
+  return g;
+}
+
+/** 3D 溫度計：透射玻璃管 + 紅色發光液柱 + 刻度 */
+function makeThermo(len, Tmin, Tmax) {
+  const g = new THREE.Group();
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, len + 0.35, 16), glassT());
+  tube.position.y = (len + 0.35) / 2;
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.075, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), glassT());
+  cap.position.y = len + 0.35;
+  const red = glow(0xe8323c, 0.55);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.12, 20, 14), red);
+  const col = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 1, 10), red);
+  g.add(tube, cap, bulb, col);
+  const tickMat = clay(0x5b4a42);
+  for (let T = Math.ceil(Tmin / 10) * 10; T <= Tmax; T += 10) {
+    const big = T % 50 === 0;
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(big ? 0.095 : 0.085, big ? 0.095 : 0.085, big ? 0.022 : 0.012, 16, 1, true), tickMat);
+    t.position.y = 0.1 + (T - Tmin) / (Tmax - Tmin) * len;
+    g.add(t);
+  }
+  const yOf = T => 0.1 + clamp((T - Tmin) / (Tmax - Tmin), 0, 1) * len;
+  g.userData = {
+    set(T) { const h = yOf(T); col.scale.y = h; col.position.y = h / 2; },
+    yOf
+  };
+  g.userData.set(Tmin);
+  return g;
+}
+
+/** 煙霧／蒸氣粒子 */
+function makeSteam(group, n, color = 0xffffff) {
+  const list = [];
+  for (let i = 0; i < n; i++) {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 8), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, depthWrite: false }));
+    m.renderOrder = 8; m.userData = { life: Math.random() * 3, speed: 0.5 + Math.random() * 0.5, ox: (Math.random() - 0.5) * 1.6, oz: (Math.random() - 0.5) * 1.6 };
+    group.add(m); list.push(m);
+  }
+  /** rate 0~1：蒸氣量；origin：起點 */
+  return (dt, rate, origin, spread = 1) => {
+    for (const m of list) {
+      const u = m.userData;
+      u.life += dt * u.speed;
+      if (u.life > 3) { u.life = 0; u.ox = (Math.random() - 0.5) * 1.6 * spread; u.oz = (Math.random() - 0.5) * 1.6 * spread; u.on = Math.random() < rate; }
+      const k = u.life / 3;
+      m.visible = !!u.on && rate > 0.01;
+      m.position.set(origin.x + u.ox * (1 + k * 0.6) + Math.sin(u.life * 2 + u.oz) * 0.15, origin.y + u.life * 0.9, origin.z + u.oz);
+      m.scale.setScalar(0.6 + k * 1.6);
+      m.material.opacity = Math.sin(Math.PI * k) * 0.45;
+    }
+  };
+}
+
+/* ----- 標籤與橫幅 ----- */
+const labels = [];
+function addLabel(mode, html = '', style = '') {
+  const el = document.createElement('div');
+  el.className = 'tag'; el.innerHTML = html;
+  if (style) el.style.cssText += style;
+  document.body.appendChild(el);
+  const L = { el, mode, pos: V3(0, 0, 0), visible: true };
+  labels.push(L);
+  return L;
+}
+const tmpV = V3(0, 0, 0);
+function placeLabels() {
+  for (const L of labels) {
+    if (L.mode !== mode || !L.visible) { L.el.style.display = 'none'; continue; }
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * window.innerWidth) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * window.innerHeight) + 'px';
+  }
+}
+function banner(html, ms = 3500) {
+  $('banner').innerHTML = html;
+  $('banner').classList.add('show');
+  clearTimeout(banner.t);
+  if (ms) banner.t = setTimeout(() => $('banner').classList.remove('show'), ms);
+}
+const hideBanner = () => { clearTimeout(banner.t); $('banner').classList.remove('show'); };
+const paint = el => el.style.setProperty('--fill', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
+
+/* =========================================================
+   模組一：自製溫度計（先降後升）
+   玻璃溫度 Tg 先跟上水溫（τ 短）；液體溫度 Tl 由玻璃傳熱，較慢（τ 長）
+   液面 h = H0 + KL·(Tl − 25) − KG·(Tg − 25)，KL > KG（液體膨脹程度大於固體）
+   ========================================================= */
+const M1 = (() => {
+  const group = new THREE.Group();
+  const T_ROOM = 25, H0 = 1.4, KL = 0.036, KG = 0.011, TAU_G = 0.5, TAU_L = 2.5, BX = 4.3, LIFT = 2.75;
+  const PLACES = { table: { x: 0, y: 0, T: T_ROOM }, hot: { x: -BX, y: 0.08, T: 80 }, cold: { x: BX, y: 0.08, T: 0 } };
+  const table = new THREE.Mesh(new RoundedBoxGeometry(15, 0.4, 6, 4, 0.18), clay(0xd8c6b3));
+  table.position.y = -0.2; table.receiveShadow = true; group.add(table);
+
+  // 兩個燒杯
+  const hotB = makeBeaker(1.3, 2.4); hotB.position.x = -BX;
+  const coldB = makeBeaker(1.3, 2.4); coldB.position.x = BX;
+  const hotW = new THREE.Mesh(new THREE.CylinderGeometry(1.22, 1.22, 1.6, 48), waterMat(0xff9d66, { opacity: 0.5 }));
+  hotW.position.set(-BX, 0.82, 0); hotW.renderOrder = 3;
+  const coldW = new THREE.Mesh(new THREE.CylinderGeometry(1.22, 1.22, 1.6, 48), waterMat(0x5aa8e6, { opacity: 0.5 }));
+  coldW.position.set(BX, 0.82, 0); coldW.renderOrder = 3;
+  group.add(hotB, coldB, hotW, coldW);
+  const iceMat = clay(0xe8f7ff, { roughness: 0.12, clearcoat: 1, emissive: 0xbfe6ff, emissiveIntensity: 0.2 });
+  [[0.8, 0.45], [-0.85, -0.3], [0.2, -0.85], [-0.4, 0.8]].forEach(([x, z], i) => {
+    const c = new THREE.Mesh(new RoundedBoxGeometry(0.42, 0.42, 0.42, 3, 0.08), iceMat);
+    c.position.set(BX + x, 1.55, z); c.rotation.set(i, i * 0.7, 0.3);
+    group.add(shadowed(c));
+  });
+  const steam = makeSteam(group, 18);
+  // 加熱底座（熱水下方的小電熱盤）
+  const pad = new THREE.Mesh(new THREE.CylinderGeometry(1.45, 1.5, 0.12, 48), glow(0xe86a3c, 0.35));
+  pad.position.set(-BX, -0.03, 0); group.add(pad);
+
+  // 錐形瓶 + 細玻璃管
+  const flask = new THREE.Group(); group.add(flask);
+  const body = new THREE.Group(); flask.add(body);
+  const P = (a) => a.map(([x, y]) => new THREE.Vector2(x, y));
+  const glassPts = P([[0, 0], [0.85, 0], [0.93, 0.06], [0.9, 0.2], [0.32, 1.45], [0.27, 1.6], [0.27, 1.95]]);
+  const liqPts = P([[0, 0.05], [0.8, 0.05], [0.85, 0.2], [0.29, 1.45], [0.23, 1.6], [0.23, 1.9]]);
+  const red = glow(0xe8323c, 0.5);
+  const liquid = new THREE.Mesh(new THREE.LatheGeometry(liqPts, 48), red);
+  const fglass = new THREE.Mesh(new THREE.LatheGeometry(glassPts, 48), glassT({ thickness: 0.35 }));
+  body.add(liquid, fglass);
+  const cork = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.26, 0.3, 24), clay(0xb98a62));
+  cork.position.y = 1.98;
+  const COL0 = 1.9, TUBE = 3.8;
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, TUBE, 16), glassT());
+  tube.position.y = COL0 + TUBE / 2;
+  const col = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 1, 12), red);
+  const mark = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.018, 8, 32), clay(0x3b6fd1, { emissive: 0x3b6fd1, emissiveIntensity: 0.4 }));
+  mark.rotation.x = Math.PI / 2; mark.position.y = COL0 + H0;
+  flask.add(cork, tube, col, mark);
+  for (let i = 1; i < 15; i++) {
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, i % 4 === 0 ? 0.02 : 0.01, 16, 1, true), clay(0x7a6a60));
+    t.position.y = COL0 + i * 0.25; flask.add(t);
+  }
+  shadowed(flask);
+  const pick = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 6, 8), new THREE.MeshBasicMaterial({ visible: false }));
+  pick.position.y = 3; flask.add(pick);
+
+  const lFlask = addLabel('m1', '');
+  const lHot = addLabel('m1', '♨ 熱水 80℃', 'color:#c2410c');
+  const lCold = addLabel('m1', '🧊 冰水 0℃', 'color:#2563eb');
+  const lMark = addLabel('m1', '原液面', 'color:#3b6fd1;font-size:.66rem');
+
+  let place = 'table', Tg = T_ROOM, Tl = T_ROOM, drag = false, hist = [], histT = 0, hPrev = H0, stage = 0, tIn = 0;
+  const level = () => H0 + KL * (Tl - T_ROOM) - KG * (Tg - T_ROOM);
+  function putIn(p) {
+    place = p; hist = []; histT = 0; stage = 0; tIn = 0;
+    hideBanner();
+    ['m1Hot', 'm1Cold', 'm1Table'].forEach(id => $(id).classList.remove('on'));
+    $({ hot: 'm1Hot', cold: 'm1Cold', table: 'm1Table' }[p]).classList.add('on');
+  }
+  function reset() { flask.position.set(0, 0, 0); Tg = Tl = T_ROOM; drag = false; putIn('table'); }
+  $('m1Hot').addEventListener('click', () => putIn('hot'));
+  $('m1Cold').addEventListener('click', () => putIn('cold'));
+  $('m1Table').addEventListener('click', () => putIn('table'));
+
+  // 拖曳錐形瓶
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), plane = new THREE.Plane(V3(0, 0, 1), 0), hit = V3(0, 0, 0);
+  const setRay = e => { const rc = renderer.domElement.getBoundingClientRect(); ndc.set(((e.clientX - rc.left) / rc.width) * 2 - 1, -((e.clientY - rc.top) / rc.height) * 2 + 1); ray.setFromCamera(ndc, camera); };
+  renderer.domElement.addEventListener('pointerdown', e => {
+    if (mode !== 'm1') return;
+    setRay(e);
+    if (!ray.intersectObject(pick).length) return;
+    e.stopImmediatePropagation();
+    drag = true; controls.enabled = false;
+    renderer.domElement.setPointerCapture(e.pointerId);
+    hideBanner();
+  }, { capture: true });
+  renderer.domElement.addEventListener('pointermove', e => {
+    if (mode !== 'm1') return;
+    setRay(e);
+    if (drag) { if (ray.ray.intersectPlane(plane, hit)) flask.position.x = clamp(hit.x, -6, 6); }
+    else renderer.domElement.style.cursor = ray.intersectObject(pick).length ? 'grab' : '';
+  });
+  const endDrag = () => {
+    if (!drag) return;
+    drag = false; controls.enabled = true;
+    const x = flask.position.x;
+    putIn(Math.abs(x + BX) < 1.9 ? 'hot' : Math.abs(x - BX) < 1.9 ? 'cold' : 'table');
+  };
+  renderer.domElement.addEventListener('pointerup', endDrag);
+  renderer.domElement.addEventListener('pointercancel', endDrag);
+
+  // 液面－時間小圖
+  const spark = $('m1Spark'), sctx = spark.getContext('2d');
+  function drawSpark() {
+    const dpr = Math.min(devicePixelRatio, 2), W = spark.clientWidth, H = spark.clientHeight;
+    if (!W) return;
+    if (spark.width !== Math.round(W * dpr)) { spark.width = Math.round(W * dpr); spark.height = Math.round(H * dpr); }
+    sctx.setTransform(dpr, 0, 0, dpr, 0, 0); sctx.clearRect(0, 0, W, H);
+    sctx.font = '10px sans-serif'; sctx.fillStyle = '#8a7b70';
+    sctx.fillText('液面高度 − 時間（放入後 10 秒）', 8, 12);
+    if (hist.length < 2) return;
+    const h0 = hist[0][1];
+    let lo = h0 - 0.3, hi = h0 + 0.3;
+    hist.forEach(([, h]) => { lo = Math.min(lo, h); hi = Math.max(hi, h); });
+    const X = t => 8 + t / 10 * (W - 16), Y = h => 18 + (hi - h) / (hi - lo) * (H - 26);
+    sctx.strokeStyle = '#3b6fd1'; sctx.setLineDash([4, 3]); sctx.beginPath(); sctx.moveTo(8, Y(h0)); sctx.lineTo(W - 8, Y(h0)); sctx.stroke(); sctx.setLineDash([]);
+    sctx.strokeStyle = '#e8323c'; sctx.lineWidth = 2.2; sctx.beginPath();
+    hist.forEach(([t, h], i) => i ? sctx.lineTo(X(t), Y(h)) : sctx.moveTo(X(t), Y(h)));
+    sctx.stroke(); sctx.lineWidth = 1;
+  }
+
+  function update(dt) {
+    const P0 = PLACES[place];
+    const fp = flask.position;
+    let arrived = false;
+    if (!drag) {
+      const dx = P0.x - fp.x;
+      const ty = Math.abs(dx) > 0.08 ? LIFT : P0.y;              // 先抬高、再平移、最後放下
+      fp.y += (ty - fp.y) * Math.min(1, dt * 7);
+      if (fp.y > LIFT - 0.3 || Math.abs(dx) <= 0.08) fp.x += dx * Math.min(1, dt * 7);
+      arrived = Math.abs(dx) < 0.08 && Math.abs(fp.y - P0.y) < 0.08;
+    } else fp.y += (LIFT - fp.y) * Math.min(1, dt * 10);
+    const Te = arrived ? P0.T : T_ROOM;
+    const SUB = 8, h = dt / SUB;
+    for (let i = 0; i < SUB; i++) { Tg += (Te - Tg) / TAU_G * h; Tl += (Tg - Tl) / TAU_L * h; }
+    // 玻璃熱脹冷縮（視覺放大），液面高度
+    body.scale.setScalar(1 + 0.0018 * (Tg - T_ROOM));
+    const lv = clamp(level(), 0.05, TUBE - 0.1);
+    col.scale.y = lv; col.position.y = COL0 + lv / 2;
+    // 階段判斷
+    const dh = (lv - hPrev) / Math.max(dt, 1e-6); hPrev = lv;
+    if (arrived && place !== 'table') {
+      tIn += dt;
+      const heat = place === 'hot';
+      const s = Math.abs(dh) < 0.004 && tIn > 3 ? 3 : (heat ? dh < 0 : dh > 0) ? 1 : 2;
+      if (s !== stage && !(stage === 2 && s === 1)) {
+        stage = s;
+        if (s === 1) banner(heat ? '① 玻璃先受熱膨脹，瓶子容積變大 → 液面先<b>微微下降</b>' : '① 玻璃先遇冷收縮，瓶子容積變小 → 液面先<b>微微上升</b>', 0);
+        if (s === 2) banner(heat ? '② 液體後受熱，膨脹得比玻璃多 → 液面<b>大幅上升</b>！' : '② 液體後變冷，收縮得比玻璃多 → 液面<b>大幅下降</b>！', 0);
+        if (s === 3) banner('固體先傳熱膨脹，液體後傳熱膨脹！（液體膨脹程度 ＞ 固體）', 4000);
+      }
+      if (histT <= 10) { histT += dt; hist.push([histT, lv]); }
+    }
+    const heat = place === 'hot';
+    $('m1S1').className = 'stage' + (stage === 1 ? ' act' + (heat ? '' : ' c') : '');
+    $('m1S2').className = 'stage' + (stage === 2 ? ' act' + (heat ? '' : ' c') : '');
+    $('m1S1').textContent = heat || place === 'table' ? '① 玻璃先受熱膨脹（容積變大）→ 液面先微降' : '① 玻璃先遇冷收縮（容積變小）→ 液面先微升';
+    $('m1S2').textContent = heat || place === 'table' ? '② 液體後受熱，膨脹得比玻璃多 → 液面大幅上升' : '② 液體後變冷，收縮得比玻璃多 → 液面大幅下降';
+    steam(dt, 0.8, V3(-BX, 1.7, 0));
+    pad.material.emissiveIntensity = 0.3 + Math.sin(performance.now() / 300) * 0.08;
+    lFlask.pos.set(fp.x, fp.y + COL0 + TUBE + 0.35, 0);
+    lFlask.el.innerHTML = `玻璃 ${Tg.toFixed(0)}℃ ／ 液體 ${Tl.toFixed(0)}℃`;
+    lHot.pos.set(-BX, -0.35, 1.6); lCold.pos.set(BX, -0.35, 1.6);
+    lMark.pos.set(fp.x + 0.55, fp.y + COL0 + H0, 0);
+    $('m1Read').innerHTML = `<div class="kv"><span>玻璃瓶溫度</span><b>${Tg.toFixed(1)} ℃</b><span>紅色液體溫度</span><b>${Tl.toFixed(1)} ℃</b>
+      <span>液面變化</span><b style="color:${lv >= H0 ? '#c2410c' : '#2563eb'}">${lv >= H0 ? '+' : ''}${((lv - H0) * 10).toFixed(1)} 格</b></div>`;
+    drawSpark();
+  }
+  return { group, update, enter: reset, camera: { pos: [0, 4.2, 15.5], target: [0, 2.4, 0] }, extra: 1.3,
+    put: putIn, get state() { return { place, Tg, Tl, level: level(), stage, hist }; } };
+})();
+
+/* =========================================================
+   模組二：H = M × S × ΔT（比熱賽跑）
+   兩盞酒精燈每秒供熱 H 相同 → 每秒升溫 ΔT = H ÷ (M × S)
+   ========================================================= */
+const M2 = (() => {
+  const group = new THREE.Group();
+  const H_RATE = 20, T0 = 25;                                 // 每秒 20 cal
+  const SUBS = {
+    water: { name: '水', S: 1, mat: () => waterMat(0x5aa8e6, { opacity: 0.55 }), max: 100 },
+    oil: { name: '沙拉油', S: 0.5, mat: () => waterMat(0xf0b52e, { opacity: 0.6 }), max: 110 },
+    sand: { name: '沙子', S: 0.2, mat: () => clay(0xdcb77a, { roughness: 0.95, clearcoat: 0 }), max: 110 },
+    iron: { name: '鐵粉', S: 0.11, mat: () => clay(0x6b7078, { roughness: 0.6, metalness: 0.5 }), max: 110 }
+  };
+  ['m2SA', 'm2SB'].forEach(id => { $(id).innerHTML = Object.entries(SUBS).map(([k, s]) => `<option value="${k}">${s.name}（S = ${s.S}）</option>`).join(''); });
+  $('m2SA').value = 'water'; $('m2SB').value = 'sand';
+  const table = new THREE.Mesh(new RoundedBoxGeometry(14, 0.4, 6, 4, 0.18), clay(0xd8c6b3));
+  table.position.y = -0.2; table.receiveShadow = true; group.add(table);
+
+  function makeCup(id, x, color) {
+    const g = new THREE.Group(); g.position.x = x; group.add(g);
+    // 酒精燈
+    const lampBody = new THREE.Mesh(new THREE.SphereGeometry(0.6, 32, 20), glassT({ thickness: 0.6 }));
+    lampBody.scale.set(1, 0.75, 1); lampBody.position.y = 0.45;
+    const fuel = new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), glow(0x9fd3ff, 0.15));
+    fuel.scale.set(1, 0.7, 1); fuel.position.y = 0.42;
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.3, 16), clay(0xc9c2bb));
+    neck.position.y = 0.95;
+    const wick = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.16, 8), clay(0xf5f1e8));
+    wick.position.y = 1.15;
+    const flame = new THREE.Group();
+    const outer = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.62, 20), new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.85, depthWrite: false }));
+    const inner = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.32, 16), new THREE.MeshBasicMaterial({ color: 0x6fa8ff, transparent: true, opacity: 0.9, depthWrite: false }));
+    outer.position.y = 0.31; inner.position.y = 0.17; flame.add(outer, inner);
+    flame.position.y = 1.2; flame.visible = false;
+    const light = new THREE.PointLight(0xff9a40, 0, 5, 1.5); light.position.y = 1.6;
+    g.add(shadowed(lampBody), fuel, neck, wick, flame, light);
+    // 三腳架 + 陶瓷網
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.05, 8, 48), clay(0x4a4f57, { metalness: 0.5 }));
+    ring.rotation.x = Math.PI / 2; ring.position.y = 2.0;
+    const gauze = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, 0.04, 40), clay(0xd9d6d0));
+    gauze.position.y = 2.03;
+    g.add(ring, gauze);
+    for (let i = 0; i < 3; i++) {
+      const a = i / 3 * Math.PI * 2 + 0.5;
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.05, 8), clay(0x4a4f57, { metalness: 0.5 }));
+      leg.position.set(Math.cos(a) * 1.1, 1.0, Math.sin(a) * 1.1); g.add(leg);
+    }
+    // 燒杯與內容物
+    const BY = 2.06;
+    const beaker = makeBeaker(1.0, 2.2); beaker.position.y = BY; g.add(beaker);
+    const content = new THREE.Mesh(new THREE.CylinderGeometry(0.93, 0.93, 1, 40), SUBS.water.mat());
+    content.renderOrder = 3; g.add(content);
+    const thermo = makeThermo(3.4, 0, 110);
+    thermo.position.set(0.42, BY + 0.18, 0.1); thermo.rotation.z = -0.08;
+    g.add(thermo);
+    const bubbles = [];
+    for (let i = 0; i < 14; i++) {
+      const b = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, depthWrite: false }));
+      b.userData = { y: Math.random(), x: (Math.random() - 0.5) * 1.4, z: (Math.random() - 0.5) * 1.4 };
+      b.renderOrder = 7; b.visible = false; g.add(b); bubbles.push(b);
+    }
+    const lTitle = addLabel('m2', '', `color:${color}`);
+    const lT = addLabel('m2', '', 'color:#d02d36');
+    return { id, g, flame, outer, light, content, thermo, bubbles, lTitle, lT, BY, sub: 'water', M: 100, T: T0, mat: {}, x };
+  }
+  const cups = [makeCup('A', -2.8, '#c0714f'), makeCup('B', 2.8, '#2f6fb5')];
+  let heating = false, t = 0;
+  function applyInputs() {
+    [['A', 0], ['B', 1]].forEach(([id, i]) => {
+      const c = cups[i];
+      c.M = Number($('m2M' + id).value);
+      $('m2M' + id + 'V').textContent = c.M + ' g';
+      paint($('m2M' + id));
+      const s = $('m2S' + id).value;
+      if (s !== c.sub || !c.content.material.userData.k) {
+        c.sub = s;
+        c.content.material.dispose();
+        c.content.material = SUBS[s].mat();
+        c.content.material.userData.k = s;
+      }
+    });
+  }
+  ['m2MA', 'm2MB', 'm2SA', 'm2SB'].forEach(id => $(id).addEventListener('input', () => { applyInputs(); reset(); }));
+  function reset() { heating = false; t = 0; cups.forEach(c => { c.T = T0; c.done = ''; }); $('m2Go').textContent = '🔥 開始加熱'; hideBanner(); }
+  $('m2Go').addEventListener('click', () => {
+    heating = !heating;
+    $('m2Go').textContent = heating ? '⏸ 熄火暫停' : '🔥 繼續加熱';
+    if (heating && t === 0) banner('兩盞酒精燈火力一樣：每秒都提供 <b>20 cal</b> 的熱量', 3000);
+  });
+  $('m2Reset').addEventListener('click', reset);
+  applyInputs();
+
+  const rate = c => H_RATE / (c.M * SUBS[c.sub].S);         // ΔT/秒 = H ÷ (M·S)
+  function update(dt) {
+    if (heating) t += dt;
+    const now = performance.now() / 1000;
+    for (const c of cups) {
+      const sub = SUBS[c.sub];
+      if (heating && !c.done) {
+        c.T += rate(c) * dt;
+        if (c.T >= sub.max) { c.T = sub.max; c.done = c.sub === 'water' ? '沸騰中' : '超出溫度計量程'; }
+      }
+      // 火焰閃爍
+      c.flame.visible = heating;
+      c.flame.scale.set(1 + Math.sin(now * 17 + c.x) * 0.06, 1 + Math.sin(now * 23 + c.x) * 0.12, 1);
+      c.light.intensity = heating ? 2.2 + Math.sin(now * 19) * 0.4 : 0;
+      // 內容物高度 ∝ 質量
+      const hgt = 0.18 + c.M / 200 * 1.3;
+      c.content.scale.y = hgt; c.content.position.y = c.BY + 0.02 + hgt / 2;
+      if (c.sub === 'sand' || c.sub === 'iron') { c.content.material.emissive.setHex(0xff3a10); c.content.material.emissiveIntensity = clamp((c.T - T0) / 85, 0, 1) * 0.45; }
+      c.thermo.userData.set(c.T);
+      // 沸騰氣泡
+      const boiling = c.sub === 'water' && c.T >= 99.5 && heating;
+      c.bubbles.forEach(b => {
+        b.visible = boiling;
+        if (!boiling) return;
+        b.userData.y += dt * 1.5;
+        if (b.userData.y > 1) { b.userData.y = 0; b.userData.x = (Math.random() - 0.5) * 1.4; b.userData.z = (Math.random() - 0.5) * 1.4; }
+        b.position.set(b.userData.x, c.BY + 0.05 + b.userData.y * hgt, b.userData.z);
+      });
+      c.lTitle.pos.set(c.x, c.BY + 2.75, 0);
+      c.lTitle.el.textContent = `${c.id} 杯：${c.M} g ${sub.name}`;
+      c.lT.pos.set(c.x + 0.42, c.BY + 0.18 + c.thermo.userData.yOf(c.T), 0.1);
+      c.lT.el.textContent = `${c.T.toFixed(1)} ℃`;
+      c.lT.el.style.transform = 'translate(12px, -50%)';
+    }
+    const [A, B] = cups;
+    const row = (k, f) => `<tr><td>${k}</td><td>${f(A)}</td><td>${f(B)}</td></tr>`;
+    $('m2Read').innerHTML = `<table class="tbl"><tr><th>加熱 ${t.toFixed(1)} 秒</th><th>A 杯</th><th>B 杯</th></tr>
+      ${row('物質', c => SUBS[c.sub].name)}${row('M × S', c => (c.M * SUBS[c.sub].S).toFixed(1))}
+      ${row('每秒升溫', c => rate(c).toFixed(2) + '℃')}${row('溫度', c => `<b>${c.T.toFixed(1)}℃</b>`)}
+      ${row('吸收熱量', c => (Math.min(t, c.done ? (SUBS[c.sub].max - T0) / rate(c) : t) * H_RATE).toFixed(0) + ' cal')}</table>
+      ${A.done || B.done ? `<div style="margin-top:4px;color:#a2431f">${[A, B].filter(c => c.done).map(c => c.id + ' 杯' + c.done).join('、')}</div>` : ''}`;
+  }
+  return { group, update, enter: reset, camera: { pos: [0, 4.6, 14], target: [0, 2.5, 0] }, extra: 1.4,
+    set: (id, sub, M) => { if (sub) $('m2S' + id).value = sub; if (M) $('m2M' + id).value = M; applyInputs(); reset(); },
+    start: () => { heating = true; }, get state() { return { t, A: { T: cups[0].T, rate: rate(cups[0]) }, B: { T: cups[1].T, rate: rate(cups[1]) } }; } };
+})();
+
+/* =========================================================
+   模組三：海風與陸風
+   陸地（沙子，比熱小）溫度變化快；海水（比熱大）溫度變化慢
+   熱處空氣上升、冷處下沉 → 地面風由冷處吹向熱處
+   ========================================================= */
+const M3 = (() => {
+  const group = new THREE.Group();
+  const base = new THREE.Mesh(new RoundedBoxGeometry(13.4, 0.8, 5.2, 4, 0.2), clay(0x9b8574));
+  base.position.y = -1.6; group.add(base);
+  const seaFloor = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.25, 4.9), clay(0xd8c49a));
+  seaFloor.position.set(-3.25, -1.08, 0); group.add(seaFloor);
+  const sea = new THREE.Mesh(new RoundedBoxGeometry(6.5, 1.0, 4.9, 3, 0.08), seaMat(0x3f8fd0, { attenuationDistance: 1.2 }));
+  sea.position.set(-3.25, -0.45, 0); group.add(sea);
+  const landMat = clay(0xe8cf9a, { roughness: 0.85, clearcoat: 0.1 });
+  const land = new THREE.Mesh(new RoundedBoxGeometry(6.5, 1.6, 4.9, 3, 0.12), landMat);
+  land.position.set(3.25, -0.55, 0); group.add(land);
+  // 小椰子樹
+  const palm = new THREE.Group();
+  const trunk = new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 1.6, 6, 12), clay(0x9b6b43));
+  trunk.position.y = 0.9; trunk.rotation.z = 0.12; palm.add(trunk);
+  for (let i = 0; i < 6; i++) {
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 10), clay(0x5aa469));
+    leaf.scale.set(1.3, 0.16, 0.45);
+    const a = i / 6 * Math.PI * 2;
+    leaf.position.set(Math.cos(a) * 0.5 - 0.1, 1.75, Math.sin(a) * 0.5);
+    leaf.rotation.y = -a; leaf.rotation.z = -0.35;
+    palm.add(leaf);
+  }
+  palm.position.set(4.9, 0.25, -1.4); group.add(palm);
+  shadowed(group);
+  // 太陽與月亮
+  const sunBall = new THREE.Mesh(new THREE.SphereGeometry(0.7, 32, 20), glow(0xffc93c, 1.0));
+  const moon = new THREE.Mesh(new THREE.SphereGeometry(0.55, 32, 20), glow(0xe9edf7, 0.6));
+  group.add(sunBall, moon);
+
+  // 空氣對流迴圈（白天：海→陸→上升→高空回海→下沉）
+  const X1 = -3.4, X2 = 3.4, YB = 1.0, YT = 4.2;
+  const SEGS = [[V3(X1, YB), V3(X2, YB)], [V3(X2, YB), V3(X2, YT)], [V3(X2, YT), V3(X1, YT)], [V3(X1, YT), V3(X1, YB)]];
+  const LENS = SEGS.map(([a, b]) => a.distanceTo(b)), TOTAL = LENS.reduce((a, b) => a + b, 0);
+  function pathAt(u, out) {
+    let s = ((u % 1) + 1) % 1 * TOTAL;
+    for (let i = 0; i < 4; i++) { if (s <= LENS[i]) return out.lerpVectors(SEGS[i][0], SEGS[i][1], s / LENS[i]); s -= LENS[i]; }
+    return out.copy(SEGS[0][0]);
+  }
+  const N = 80;
+  const parts = new THREE.InstancedMesh(new THREE.SphereGeometry(0.09, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85 }), N);
+  parts.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  const pu = Array.from({ length: N }, (_, i) => ({ u: i / N + Math.random() * 0.01, z: (Math.random() - 0.5) * 3.6, j: Math.random() * 6, k: 0.8 + Math.random() * 0.4 }));
+  group.add(parts);
+  const aWind = makeArrow(0x2aa198, 0.17), aUp = makeArrow(0xe5484d, 0.11), aDown = makeArrow(0x3f7be8, 0.11), aTop = makeArrow(0xc9a06a, 0.09);
+  group.add(aWind, aUp, aDown, aTop);
+  const lWind = addLabel('m3', '', 'font-size:.9rem;color:#14766f');
+  const lUp = addLabel('m3', '熱空氣上升', 'color:#d02d36'), lDown = addLabel('m3', '冷空氣下沉', 'color:#2f62c9');
+  const lLand = addLabel('m3', ''), lSea = addLabel('m3', '');
+
+  let night = false, TL = 24, TS = 24, nightK = 0;
+  const dummy = new THREE.Object3D(), pp = V3(0, 0, 0), cCold = new THREE.Color(0x5b8fe0), cHot = new THREE.Color(0xff6a4a), cTmp = new THREE.Color();
+  const LAND_C = [[8, 0x4f86e8], [24, 0xe8cf9a], [42, 0xe8573a]];
+  function landColor(T, out) {
+    if (T <= LAND_C[1][0]) return out.setHex(LAND_C[0][1]).lerp(new THREE.Color(LAND_C[1][1]), clamp((T - LAND_C[0][0]) / (LAND_C[1][0] - LAND_C[0][0]), 0, 1));
+    return out.setHex(LAND_C[1][1]).lerp(new THREE.Color(LAND_C[2][1]), clamp((T - LAND_C[1][0]) / (LAND_C[2][0] - LAND_C[1][0]), 0, 1));
+  }
+  function setNight(n) {
+    night = n;
+    $('m3Day').classList.toggle('on', !n); $('m3Night').classList.toggle('on', n);
+    banner(n ? '🌙 夜晚：沙子比熱小，<b>很快變冷</b>；海水比熱大，還保持溫暖 → 吹<b>陸風</b>' : '☀ 白天：沙子比熱小，<b>很快變熱</b>；海水比熱大，升溫很慢 → 吹<b>海風</b>', 4500);
+  }
+  $('m3Day').addEventListener('click', () => setNight(false));
+  $('m3Night').addEventListener('click', () => setNight(true));
+  function reset() { night = false; TL = TS = 24; nightK = 0; $('m3Day').classList.add('on'); $('m3Night').classList.remove('on'); }
+
+  function update(dt) {
+    // 比熱小 → 時間常數短（升降溫快）
+    const tl = night ? 12 : 40, ts = night ? 22 : 27;
+    TL += (tl - TL) * Math.min(1, dt / 1.2);
+    TS += (ts - TS) * Math.min(1, dt / 14);
+    nightK += ((night ? 1 : 0) - nightK) * Math.min(1, dt * 2);
+    scene.background.copy(BG).lerp(BG_NIGHT, nightK);
+    sun.intensity = lerp(2.0, 0.7, nightK); sun.color.setHex(0xffffff).lerp(new THREE.Color(0x9fb4ff), nightK);
+    hemi.intensity = lerp(1.0, 0.55, nightK);
+    sunBall.position.set(4.6, lerp(6.6, 2, nightK), -2.5); sunBall.scale.setScalar(1 - nightK * 0.99);
+    moon.position.set(-4.6, lerp(2, 6.6, nightK), -2.5); moon.scale.setScalar(0.01 + nightK * 0.99);
+    landColor(TL, landMat.color);
+    sea.material.color.setHex(0x2f78c4).lerp(new THREE.Color(0x56a6dc), clamp((TS - 18) / 12, 0, 1));
+    // 對流：方向由「陸 − 海」溫差決定
+    const dT = TL - TS, dir = Math.sign(dT), s = clamp(Math.abs(dT) / 12, 0, 1);
+    const hotX = dir >= 0 ? X2 : X1, coldX = dir >= 0 ? X1 : X2;
+    for (let i = 0; i < N; i++) {
+      const p = pu[i];
+      p.u += dir * s * 0.09 * p.k * dt;
+      pathAt(p.u, pp);
+      dummy.position.set(pp.x + Math.sin(p.j + p.u * 30) * 0.12, pp.y + Math.cos(p.j + p.u * 25) * 0.12, p.z);
+      dummy.scale.setScalar(s < 0.05 ? 0.001 : 1);
+      dummy.updateMatrix();
+      parts.setMatrixAt(i, dummy.matrix);
+      const f = clamp(1 - Math.abs(pp.x - hotX) / (X2 - X1), 0, 1) * 0.6 + clamp((pp.y - YB) / (YT - YB), 0, 1) * 0 + (Math.abs(pp.x - hotX) < 0.01 ? 0.4 : 0);
+      cTmp.copy(cCold).lerp(cHot, clamp(f, 0, 1));
+      parts.setColorAt(i, cTmp);
+    }
+    parts.instanceMatrix.needsUpdate = true;
+    if (parts.instanceColor) parts.instanceColor.needsUpdate = true;
+    const wl = 1.2 + 4.6 * s;
+    setArrow(aWind, V3(dir >= 0 ? -wl / 2 : wl / 2, 0.75, 2.5), V3(dir >= 0 ? 1 : -1, 0, 0), s > 0.04 ? wl : 0);
+    setArrow(aUp, V3(hotX, YB + 0.5, 2.0), V3(0, 1, 0), s > 0.04 ? 0.6 + 2.0 * s : 0);
+    setArrow(aDown, V3(coldX, YT - 0.4, 2.0), V3(0, -1, 0), s > 0.04 ? 0.6 + 2.0 * s : 0);
+    setArrow(aTop, V3(hotX - dir * 0.6, YT + 0.2, 2.0), V3(-dir || 1, 0, 0), s > 0.04 ? 1 + 4 * s : 0);
+    lWind.visible = s > 0.04; lWind.pos.set(0, 0.25, 2.6);
+    lWind.el.innerHTML = dir >= 0 ? '🌊 → 🏖　海風（由海吹向陸地）' : '🌊 ← 🏖　陸風（由陸地吹向海）';
+    lUp.visible = lDown.visible = s > 0.04;
+    lUp.pos.set(hotX + (dir >= 0 ? 0.9 : -0.9), YB + 1.9, 2.0); lDown.pos.set(coldX + (dir >= 0 ? -0.9 : 0.9), YT - 1.2, 2.0);
+    lLand.pos.set(3.3, -0.6, 2.6); lLand.el.innerHTML = `🏖 沙灘 ${TL.toFixed(1)}℃`;
+    lSea.pos.set(-3.3, -0.6, 2.6); lSea.el.innerHTML = `🌊 海水 ${TS.toFixed(1)}℃`;
+    $('m3Read').innerHTML = `<div class="kv"><span>時段</span><b>${night ? '🌙 夜晚' : '☀ 白天'}</b><span>沙灘溫度（比熱小）</span><b>${TL.toFixed(1)} ℃</b>
+      <span>海水溫度（比熱大）</span><b>${TS.toFixed(1)} ℃</b><span>地面風向</span><b>${s < 0.04 ? '無風' : dir > 0 ? '海風 →' : '← 陸風'}</b></div>`;
+  }
+  return { group, update, enter: reset, camera: { pos: [0, 5.2, 16], target: [0, 1.6, 0] }, extra: 1.5,
+    setNight, get state() { return { night, TL, TS }; } };
+})();
+
+/* =========================================================
+   模組四：水的三態變化（T−t 圖即時連動）
+   100 g 冰：c冰 = 0.5、c水 = 1 cal/g℃、熔化熱 80、汽化熱 540 cal/g
+   ========================================================= */
+const M4 = (() => {
+  const group = new THREE.Group();
+  const m = 100, CI = 0.5, CW = 1, LF = 80, LV = 540, P = 500;   // 爐火每秒 500 cal
+  const Q1 = m * CI * 20, Q2 = Q1 + m * LF, Q3 = Q2 + m * CW * 100, Q4 = Q3 + m * LV;
+  function stateOf(Q) {
+    if (Q < Q1) return { ph: 0, T: -20 + Q / (m * CI), ice: m, water: 0, steam: 0 };
+    if (Q < Q2) { const x = (Q - Q1) / LF; return { ph: 1, T: 0, ice: m - x, water: x, steam: 0 }; }
+    if (Q < Q3) return { ph: 2, T: (Q - Q2) / (m * CW), ice: 0, water: m, steam: 0 };
+    if (Q < Q4) { const v = (Q - Q3) / LV; return { ph: 3, T: 100, ice: 0, water: m - v, steam: v }; }
+    return { ph: 4, T: 100, ice: 0, water: 0, steam: m };
+  }
+  const PH = [
+    { name: '固態冰升溫', c: '#4f8fd6', tip: '冰吸熱 → 溫度上升（−20℃ → 0℃）' },
+    { name: '熔化中（固液共存）', c: '#9a5fd0', tip: '吸熱用來破壞晶體結構，溫度保持不變！' },
+    { name: '液態水升溫', c: '#22a35a', tip: '冰全部熔化，水吸熱 → 溫度上升（0℃ → 100℃）' },
+    { name: '沸騰中（液氣共存）', c: '#e5484d', tip: '吸熱用來讓水變成水蒸氣，溫度保持 100℃ 不變！' },
+    { name: '全部汽化', c: '#8a7b70', tip: '水全部變成水蒸氣了' }
+  ];
+
+  const stove = new THREE.Mesh(new RoundedBoxGeometry(3.8, 1.0, 3.8, 4, 0.22), clay(0xa48f84));
+  stove.position.y = 0.5;
+  const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.18, 20), clay(0x5b4a42));
+  knob.rotation.x = Math.PI / 2; knob.position.set(1.3, 0.5, 1.95);
+  const plate = new THREE.Mesh(new THREE.TorusGeometry(1.15, 0.07, 10, 48), clay(0x3b3d44, { metalness: 0.4 }));
+  plate.rotation.x = Math.PI / 2; plate.position.y = 1.08;
+  group.add(shadowed(stove), knob, plate);
+  const table = new THREE.Mesh(new RoundedBoxGeometry(12, 0.4, 6, 4, 0.18), clay(0xd8c6b3));
+  table.position.y = -0.2; table.receiveShadow = true; group.add(table);
+  const flames = [];
+  for (let i = 0; i < 16; i++) {
+    const a = i / 16 * Math.PI * 2;
+    const f = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.3, 10), new THREE.MeshBasicMaterial({ color: i % 2 ? 0x5f9bff : 0xffa64d, transparent: true, opacity: 0.9, depthWrite: false }));
+    f.position.set(Math.cos(a) * 0.95, 1.08, Math.sin(a) * 0.95);
+    f.visible = false; group.add(f); flames.push(f);
+  }
+  const fireLight = new THREE.PointLight(0xff8a3c, 0, 6, 1.5); fireLight.position.y = 1.2; group.add(fireLight);
+  const BR = 1.3, BH = 2.8, BY = 1.14, WMAX = 1.7;
+  const beaker = makeBeaker(BR, BH); beaker.position.y = BY; group.add(beaker);
+  const water = new THREE.Mesh(new THREE.CylinderGeometry(1.22, 1.22, 1, 48), waterMat(0x5aa8e6, { opacity: 0.5 }));
+  group.add(water);
+  const surf = new THREE.Mesh(new THREE.RingGeometry(0.02, 1.21, 48, 8), waterMat(0x7cbcf0, { opacity: 0.35 }));
+  surf.rotation.x = -Math.PI / 2; group.add(surf);
+  water.renderOrder = 3; surf.renderOrder = 3;
+  const surfBase = surf.geometry.attributes.position.array.slice();
+  const iceMat = clay(0xe4f5ff, { roughness: 0.12, clearcoat: 1, emissive: 0xbfe6ff, emissiveIntensity: 0.22 });
+  const ICE = [[-0.45, -0.35, 0], [0.38, -0.42, 0], [-0.5, 0.4, 0], [0.32, 0.45, 0], [-0.02, 0.0, 0], [-0.2, 0.15, 1], [0.25, -0.15, 1]];
+  const cubes = ICE.map(([x, z, L], i) => {
+    const c = shadowed(new THREE.Mesh(new RoundedBoxGeometry(0.62, 0.62, 0.62, 3, 0.11), iceMat));
+    c.userData = { x, z, L, rot: i * 0.6 }; c.rotation.y = i * 0.6; group.add(c); return c;
+  });
+  const thermo = makeThermo(3.3, -30, 110);
+  thermo.position.set(0.88, BY + 0.15, -0.62); thermo.rotation.z = -0.06; group.add(thermo);
+  const bubbles = [];
+  for (let i = 0; i < 45; i++) {
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.045 + Math.random() * 0.05, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.65, depthWrite: false }));
+    b.renderOrder = 7; b.userData = { y: Math.random(), r: Math.random() * 1.05, a: Math.random() * 6.28, sp: 0.6 + Math.random() * 0.6 };
+    b.visible = false; group.add(b); bubbles.push(b);
+  }
+  const steam = makeSteam(group, 26);
+  const lState = addLabel('m4', '', 'font-size:.85rem');
+  const lT = addLabel('m4', '', 'color:#d02d36');
+
+  let Q = 0, heating = false, speed = 1, pts = [], lastPh = -1, simT = 0, recT = 0;
+  function reset() { Q = 0; heating = false; pts = [[0, -20, 0]]; lastPh = -1; simT = 0; recT = 0; $('m4Go').textContent = '🔥 開始加熱'; hideBanner(); }
+  $('m4Go').addEventListener('click', () => {
+    if (Q >= Q4) reset();
+    heating = !heating;
+    $('m4Go').textContent = heating ? '⏸ 關火暫停' : '🔥 繼續加熱';
+  });
+  $('m4Reset').addEventListener('click', reset);
+  document.querySelectorAll('#m4Speed .btn').forEach(b => b.addEventListener('click', () => {
+    speed = Number(b.dataset.s);
+    document.querySelectorAll('#m4Speed .btn').forEach(x => x.classList.toggle('on', x === b));
+  }));
+
+  // ---- T−t 圖 ----
+  const cv = $('chart'), ctx = cv.getContext('2d');
+  const niceMax = v => [20, 40, 60, 80, 100, 120, 160, 200].find(n => n >= v) || Math.ceil(v / 50) * 50;
+  function drawChart() {
+    const dpr = Math.min(devicePixelRatio, 2), W = cv.clientWidth, H = cv.clientHeight;
+    if (!W || !H) return;
+    if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+    const L = 34, R = 10, T = 8, B = 22, pw = W - L - R, ph = H - T - B;
+    const tMax = niceMax(Math.max(20, simT * 1.12)), TMIN = -30, TMAX = 115;
+    const X = s => L + s / tMax * pw, Y = v => T + (TMAX - v) / (TMAX - TMIN) * ph;
+    ctx.font = '10px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    for (let v = -20; v <= 100; v += 20) {
+      ctx.strokeStyle = v === 0 || v === 100 ? 'rgba(192,113,79,.55)' : 'rgba(0,0,0,.07)';
+      ctx.setLineDash(v === 0 || v === 100 ? [4, 3] : []);
+      ctx.beginPath(); ctx.moveTo(L, Y(v)); ctx.lineTo(W - R, Y(v)); ctx.stroke();
+      ctx.fillStyle = v === 0 || v === 100 ? '#a2431f' : '#8a7b70'; ctx.fillText(v + '℃', L - 4, Y(v));
+    }
+    ctx.setLineDash([]);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.fillStyle = '#8a7b70';
+    const step = tMax / 4;
+    for (let s = 0; s <= tMax + 1e-6; s += step) ctx.fillText(Math.round(s) + ' s', X(s), H - B + 6);
+    ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.moveTo(L, T); ctx.lineTo(L, H - B); ctx.lineTo(W - R, H - B); ctx.stroke();
+    // 依階段分色畫線
+    ctx.lineWidth = 3; ctx.lineJoin = 'round';
+    const seg = {};
+    for (let i = 1; i < pts.length; i++) {
+      const [t0, T0, p0] = pts[i - 1], [t1, T1, p1] = pts[i];
+      ctx.strokeStyle = PH[p1].c;
+      ctx.beginPath(); ctx.moveTo(X(t0), Y(T0)); ctx.lineTo(X(t1), Y(T1)); ctx.stroke();
+      (seg[p1] ||= [t1, t1, T1])[1] = t1; seg[p1][2] = T1;
+    }
+    ctx.lineWidth = 1;
+    // 階段標註
+    ctx.font = 'bold 10px sans-serif';
+    Object.entries(seg).forEach(([p, [a, b, v]]) => {
+      if (X(b) - X(a) < 14) return;
+      p = Number(p);
+      const label = ['冰升溫', '熔化：溫度不變', '水升溫', '沸騰：溫度不變', ''][p];
+      ctx.fillStyle = PH[p].c; ctx.textBaseline = 'bottom';
+      const flat = p === 1 || p === 3;
+      ctx.fillText(label, X((a + b) / 2) + (flat ? 0 : -14), flat ? Y(v) - 5 : Y(v) - 10);
+    });
+    const last = pts[pts.length - 1];
+    ctx.fillStyle = PH[last[2]].c; ctx.beginPath(); ctx.arc(X(last[0]), Y(last[1]), 4.5, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function update(dt) {
+    const now = performance.now() / 1000;
+    if (heating && Q < Q4) {
+      const sdt = dt * speed;
+      // 每 0.05 秒（模擬時間）記錄一點，保證水平段畫得完整
+      let left = sdt;
+      while (left > 1e-9) {
+        const h = Math.min(left, 0.05 - (recT % 0.05 || 0) || 0.05);
+        Q = Math.min(Q4, Q + P * h); simT += h; recT += h; left -= h;
+        const s = stateOf(Q);
+        if (recT >= 0.05 - 1e-9 || s.ph !== pts[pts.length - 1][2]) { pts.push([simT, s.T, s.ph]); recT = 0; }
+        if (Q >= Q4) break;
+      }
+      if (Q >= Q4) { heating = false; $('m4Go').textContent = '↺ 再做一次'; }
+    }
+    const s = stateOf(Q);
+    if (s.ph !== lastPh) {
+      if (lastPh >= 0 || s.ph > 0) banner(`${PH[s.ph].name}：${PH[s.ph].tip}`, s.ph === 1 || s.ph === 3 ? 0 : 3500);
+      lastPh = s.ph;
+      $('m4Tip').innerHTML = s.ph === 1 || s.ph === 3 ? `<b>${PH[s.ph].tip}</b><br>T−t 圖畫出水平線，但爐火仍持續供熱。` : '水平線＝溫度不變，但仍在吸熱！<br>熱量用來改變狀態（熔化、汽化），不是用來升溫。';
+    }
+    // 火焰
+    const fireOn = heating;
+    flames.forEach((f, i) => { f.visible = fireOn; f.scale.set(1, 1 + Math.sin(now * 20 + i) * 0.25, 1); });
+    fireLight.intensity = fireOn ? 3 + Math.sin(now * 18) * 0.5 : 0;
+    // 水位 ∝ 液態水質量
+    const wl = s.water / m * WMAX;
+    water.visible = wl > 0.01;
+    water.scale.y = Math.max(wl, 0.001); water.position.y = BY + 0.02 + wl / 2;
+    // 水面波紋（液態加熱時）
+    surf.visible = wl > 0.05;
+    surf.position.y = BY + 0.025 + wl;
+    const amp = s.ph >= 2 && heating ? 0.012 + (s.T / 100) * 0.03 : 0.004;
+    const pa = surf.geometry.attributes.position;
+    for (let i = 0; i < pa.count; i++) {
+      const x = surfBase[i * 3], y = surfBase[i * 3 + 1], r = Math.hypot(x, y);
+      pa.array[i * 3 + 2] = amp * Math.sin(r * 9 - now * 5) * Math.min(1, r * 2);
+    }
+    pa.needsUpdate = true; surf.geometry.computeVertexNormals();
+    // 冰塊：體積 ∝ 剩下的冰
+    const k = Math.cbrt(s.ice / m);
+    cubes.forEach(c => {
+      const u = c.userData;
+      c.visible = k > 0.02;
+      c.scale.setScalar(Math.max(k, 0.001));
+      const rest = BY + 0.02 + 0.31 * k + u.L * 0.6 * k;
+      const float = BY + 0.02 + wl - 0.18 * k + u.L * 0.25 * k;
+      c.position.set(u.x, Math.max(rest, float), u.z);
+      c.rotation.y = u.rot + (s.ph === 1 ? Math.sin(now + u.rot) * 0.1 : 0);
+    });
+    thermo.userData.set(s.T);
+    // 氣泡：接近沸騰開始冒小泡，沸騰時大量
+    const bubN = s.ph === 3 ? bubbles.length : s.ph === 2 && s.T > 70 && heating ? Math.round((s.T - 70) / 30 * 12) : 0;
+    bubbles.forEach((b, i) => {
+      b.visible = i < bubN && heating && wl > 0.05;
+      if (!b.visible) return;
+      const u = b.userData;
+      u.y += dt * u.sp * (s.ph === 3 ? 1.6 : 0.8);
+      if (u.y > 1) { u.y = 0; u.r = Math.random() * 1.05; u.a = Math.random() * 6.28; }
+      b.position.set(Math.cos(u.a) * u.r, BY + 0.05 + u.y * wl, Math.sin(u.a) * u.r);
+    });
+    steam(dt, s.ph === 3 && heating ? 1 : s.ph === 2 && s.T > 60 ? (s.T - 60) / 80 : 0, V3(0, BY + wl + 0.3, 0), 0.7);
+    lState.pos.set(0, BY + BH + 0.55, 0);
+    lState.el.innerHTML = `<span style="color:${PH[s.ph].c}">● ${PH[s.ph].name}</span>`;
+    lT.pos.set(0.88, BY + 0.15 + thermo.userData.yOf(s.T), -0.62);
+    lT.el.textContent = `${s.T.toFixed(1)} ℃`; lT.el.style.transform = 'translate(14px, -50%)';
+    $('m4Read').innerHTML = `<div class="kv"><span>狀態</span><b style="color:${PH[s.ph].c}">${PH[s.ph].name}</b><span>溫度</span><b>${s.T.toFixed(1)} ℃</b>
+      <span>冰／水／水蒸氣</span><b>${s.ice.toFixed(0)} ／ ${s.water.toFixed(0)} ／ ${s.steam.toFixed(0)} g</b>
+      <span>加熱時間</span><b>${simT.toFixed(1)} s</b><span>吸收熱量</span><b>${Math.round(Q).toLocaleString()} cal</b></div>`;
+    drawChart();
+  }
+  return { group, update, enter: reset, camera: { pos: [0, 4.6, 11.5], target: [0, 2.3, 0] }, extra: 1.2,
+    start: () => { heating = true; }, setSpeed: v => { speed = v; }, get state() { return { Q, simT, ...stateOf(Q), pts }; }, Q: { Q1, Q2, Q3, Q4 } };
+})();
+
+/* =========================================================
+   切換與主迴圈
+   ========================================================= */
+const MODES = { m1: M1, m2: M2, m3: M3, m4: M4 };
+Object.values(MODES).forEach(m => { m.group.visible = false; scene.add(m.group); });
+let mode = 'm1';
+function resetView() {
+  const c = MODES[mode].camera;
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  const panel = $('panel');
+  if (!window.MobileView?.isMobile()) {
+    const visW = 2 * pos.distanceTo(tgt) * Math.tan(camera.fov * Math.PI / 360) * camera.aspect;
+    const left = panel.classList.contains('collapsed') ? 0 : panel.getBoundingClientRect().right;
+    const right = mode === 'm4' ? $('chartBox').getBoundingClientRect().width + 18 : 0;
+    const shift = -((left - right) / 2) / window.innerWidth * visW;
+    pos.x += shift; tgt.x += shift;
+  }
+  camera.position.copy(pos); controls.target.copy(tgt); controls.update();
+  window.MobileView?.frame(camera, controls, MODES[mode].extra);
+}
+function setMode(m) {
+  mode = m;
+  Object.entries(MODES).forEach(([k, v]) => { v.group.visible = k === m; });
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+  document.querySelectorAll('.section').forEach(s => { s.hidden = s.dataset.mode !== m; });
+  $('chartBox').style.display = m === 'm4' ? '' : 'none';
+  hideBanner();
+  // 還原共用的燈光與背景（海陸風會調暗）
+  scene.background.copy(BG); sun.intensity = 2.0; sun.color.setHex(0xffffff); hemi.intensity = 1.0;
+  renderer.domElement.style.cursor = '';
+  MODES[m].enter();
+  resetView();
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+$('viewBtn').addEventListener('click', resetView);
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; });
+
+function resize() {
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.fov = 40;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  MODES[mode].update(dt);
+  controls.update();
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.heat = { M1, M2, M3, M4, setMode, frame };   // 除錯 / 驗證用
+
+resize();
+setMode('m1');
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__heatReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>
