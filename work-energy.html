@@ -330,7 +330,7 @@ function stepParticles(dt) {
    ========================================================= */
 const M1 = (() => {
   const group = new THREE.Group();
-  const m = 10, VMAX = 20, E_REF = 500;          // E_REF：V₀ = 10 m/s 時的動能，作為能量條的固定比例尺
+  const m = 10, E_REF = 500;                     // 沒有速度上限；E_REF：V₀ = 10 m/s 時的動能，能量條的最小比例尺
   const box = shadowed(new THREE.Mesh(new RoundedBoxGeometry(1.4, 1.2, 1.2, 5, 0.22), clay(0xf0a35e)));
   box.position.set(0, 0.6, 0);
   group.add(box);
@@ -356,6 +356,16 @@ const M1 = (() => {
     g.userData = { x0: -11.5 + Math.random() * 23, z: (Math.random() - 0.5) * 2.5, th: Math.random() };
     g.position.y = 0.06;
     group.add(g); grit.push(g);
+  }
+
+  // 速度風痕：越快越長、越多（高速時地面條紋會「看起來停住」，改用風痕表現越來越快）
+  const streakMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, depthWrite: false });
+  const streaks = [];
+  for (let i = 0; i < 40; i++) {
+    const s = new THREE.Mesh(new THREE.CapsuleGeometry(0.025, 1, 4, 8), streakMat);
+    s.rotation.z = Math.PI / 2;
+    s.userData = { x: -11.5 + Math.random() * 23, y: 0.2 + Math.random() * 1.9, z: (Math.random() - 0.5) * 3, k: 0.6 + Math.random() * 0.8, th: Math.random() };
+    s.visible = false; group.add(s); streaks.push(s);
   }
 
   // 推力箭頭（越大越長、越粗、越亮橘）
@@ -430,7 +440,7 @@ const M1 = (() => {
   function physics(dt) {
     const SUB = 10, h = dt / SUB;
     for (let i = 0; i < SUB; i++) {
-      const Fp = v >= VMAX ? 0 : F;                       // 速度上限：避免無限加速
+      const Fp = F;                                        // 推力一直作用：合力 > 0 就持續加速，沒有上限
       if (v <= 1e-9 && Fp <= fr) { v = 0; continue; }     // 靜止且推不動（靜摩擦）
       const a = (Fp - fr) / m;                             // a = 淨力 / m
       const vNew = v + a * h;                              // v = v + a·Δt
@@ -453,6 +463,17 @@ const M1 = (() => {
 
     // 地面捲動 + 粗糙程度
     stripes.forEach((s, i) => { s.position.x = ((-11 + i * 1.05 - x) % 23.1 + 23.1) % 23.1 - 11.5; });
+    // 高速：條紋淡出、風痕變長變多
+    const fast = clamp((v - 12) / 25, 0, 1);
+    stripeMat.transparent = true; stripeMat.opacity = 1 - 0.85 * fast;
+    streaks.forEach(s => {
+      const u = s.userData;
+      s.visible = v > 4 && u.th < 0.25 + 0.75 * clamp(v / 40, 0, 1);
+      if (status === 'run') u.x -= v * dt * u.k * 0.5;
+      if (u.x < -12) { u.x += 24; u.y = 0.2 + Math.random() * 1.9; u.z = (Math.random() - 0.5) * 3; }
+      s.position.set(u.x, u.y, u.z);
+      s.scale.y = 0.3 + Math.min(v, 120) * 0.06;
+    });
     stripeMat.color.copy(SMOOTH).lerp(ROUGH, k);
     stripeMat.roughness = 0.4 + 0.6 * k;
     padMat.color.copy(PAD_SMOOTH).lerp(PAD_ROUGH, k);
@@ -490,7 +511,7 @@ const M1 = (() => {
     box.rotation.z = -Math.min(v, 8) * 0.004;
 
     // 粒子：功率越大金幣越多；摩擦力 × 速度越大煙霧越濃
-    if (status === 'run' && F > 0 && v < VMAX && (v > 0 || F > fr)) {
+    if (status === 'run' && F > 0 && (v > 0 || F > fr)) {
       coinAcc += dt * (0.4 + F / 25);
       while (coinAcc > 0.1) { coinAcc -= 0.1; emit('coin', V3((Math.random() - 0.5) * 0.6, 1.4, (Math.random() - 0.5) * 0.4), V3((Math.random() - 0.5) * 0.6, 2.2 + Math.random(), 0), 0.9); }
     }
@@ -499,7 +520,7 @@ const M1 = (() => {
       while (smokeAcc > 0.05) { smokeAcc -= 0.05; emit('smoke', V3(-0.6 + Math.random() * 0.4, 0.1, (Math.random() - 0.5) * 1.1), V3(-v * 0.25 - 0.4, 0.4 + Math.random() * 0.4, (Math.random() - 0.5) * 0.4), 1.1); }
     }
 
-    // 能量條：固定比例尺（V₀ 加倍 → 紅條變 4 倍），能量超過參考值才自動縮放
+    // 能量條：固定比例尺（V₀ 加倍 → 紅條變 4 倍）；能量再大時用同一個 scaleFactor 把所有能量條等比例縮小（速度本身不設上限）
     const E = { Ek, Ug: 0, Ue: 0, Q };
     bar.g.position.set(0, 1.45, 0);
     const total = Ek + Q;
@@ -508,33 +529,37 @@ const M1 = (() => {
     setEnergyBar(bar, E, bar.scale);
 
     // 面板
-    const net = (v > 0 || F > fr) ? (v >= VMAX ? 0 : F) - fr : 0;
+    const net = (v > 0 || F > fr) ? F - fr : 0;
     $('gNet').textContent = `${net.toFixed(0)} N`;
     $('gAcc').textContent = `${(net / m).toFixed(2)} m/s²`;
     $('v0Ek').innerHTML = `Ek = ½mV₀² = ½ × 10 × ${V0}² = <b>${Ek0.toFixed(0)} J</b>`
       + (V0 > 0 && V0 <= 5 ? `<br>試試看：V₀ 拉到 ${V0 * 2} m/s，動能會變 <b>4 倍</b>（${(Ek0 * 4).toFixed(0)} J）` : '');
     drawGauge(v);
-    showEnergy(E, `初動能 <b>${Ek0.toFixed(1)} J</b> ＋ 推力作功 <b>${WF.toFixed(1)} J</b> − 摩擦生熱 <b>${Q.toFixed(1)} J</b> ＝ 動能 <b>${Ek.toFixed(1)} J</b><br>移動距離 ${dist.toFixed(1)} m（熱能 = f × 距離）`);
+    showEnergy(E, `初動能 <b>${Ek0.toFixed(1)} J</b> ＋ 推力作功 <b>${WF.toFixed(1)} J</b> − 摩擦生熱 <b>${Q.toFixed(1)} J</b> ＝ 動能 <b>${Ek.toFixed(1)} J</b><br>移動距離 ${dist.toFixed(1)} m（熱能 = f × 距離）`
+      + (total * 1.05 > E_REF ? `<br><span style="color:#e5484d">能量條比例尺已縮小為 1 / ${((3.2 / E_REF) / bar.scale).toFixed(1)}（能量太大，所有長條等比例縮小）</span>` : ''));
   }
 
-  /** 即時速度儀表板（半圓指針，0–20 m/s） */
+  /** 即時速度儀表板（半圓指針）：速度沒有上限，量程自動放大 20 → 40 → 80 → … m/s */
   function drawGauge(speed) {
     const c = $('gauge'), g = c.getContext('2d');
     const W = c.width, H = c.height, cx = W / 2, cy = H - 18, R = 100;
+    let GMAX = 20;
+    while (speed > GMAX) GMAX *= 2;
     g.clearRect(0, 0, W, H);
     g.lineCap = 'round';
     g.lineWidth = 14; g.strokeStyle = '#ece6df';
     g.beginPath(); g.arc(cx, cy, R, Math.PI, 2 * Math.PI); g.stroke();
-    const k = Math.min(1, speed / VMAX);
+    const k = Math.min(1, speed / GMAX);
     const grad = g.createLinearGradient(cx - R, 0, cx + R, 0);
     grad.addColorStop(0, '#ffb38a'); grad.addColorStop(1, '#e5484d');
     g.strokeStyle = grad;
     g.beginPath(); g.arc(cx, cy, R, Math.PI, Math.PI + Math.PI * k); g.stroke();
     g.fillStyle = '#9a948d'; g.font = '11px -apple-system, "PingFang TC", sans-serif'; g.textAlign = 'center';
-    for (let s = 0; s <= 20; s += 5) {
-      const a = Math.PI + Math.PI * s / 20;
+    for (let i = 0; i <= 4; i++) {
+      const s = GMAX * i / 4, a = Math.PI + Math.PI * i / 4;
       g.fillText(s, cx + Math.cos(a) * (R - 24), cy + Math.sin(a) * (R - 24) + 4);
     }
+    if (GMAX > 20) { g.fillStyle = '#e5484d'; g.font = '700 10px -apple-system, "PingFang TC", sans-serif'; g.fillText(`量程自動放大到 ${GMAX} m/s`, cx, 12); }
     const a = Math.PI + Math.PI * k;
     // 指針只畫在弧線附近，不擋住中間的數字
     g.strokeStyle = '#1d1d1f'; g.lineWidth = 5;
