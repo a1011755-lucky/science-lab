@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>長度的測量與估計值</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #3b3127;
+    --ink-soft: #7a6e60;
+    --card: rgba(255,252,245,.62);
+    --accent: #c0703f;
+    --ok: #2f8a5b;
+    --bad: #d0453a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(22px) saturate(160%); -webkit-backdrop-filter: blur(22px) saturate(160%);
+    border: 1px solid rgba(255,255,255,.85); box-shadow: 0 20px 50px rgba(90,60,30,.12), 0 2px 6px rgba(90,60,30,.06);
+  }
+  /* 面板放在右側 */
+  .panel { position: absolute; top: 18px; right: 18px; width: 330px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(192,112,63,.13); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.15rem; font-weight: 800; margin-top: 6px; padding-right: 62px; }
+
+  .concept { background: #fff; border-radius: 16px; padding: 11px 13px; margin: 12px 0 10px; box-shadow: 0 4px 14px rgba(90,60,30,.08); border-left: 5px solid var(--accent); }
+  .concept .cd { font-size: .92rem; font-weight: 800; line-height: 1.6; }
+  .concept .cd em { font-style: normal; color: #b45309; }
+  .concept small { display: block; margin-top: 4px; font-size: .8rem; font-weight: 800; color: var(--bad); }
+
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 4px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.62); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .7rem; }
+  .tab:hover { background: rgba(255,255,255,.92); }
+  .tab.on { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(91,138,114,.35); }
+
+  .steps { display: grid; gap: 4px; margin-bottom: 8px; }
+  .step { display: flex; gap: 8px; align-items: flex-start; font-size: .78rem; line-height: 1.5; color: var(--ink-soft); background: rgba(255,255,255,.45); border-radius: 12px; padding: 6px 9px; }
+  .step i { font-style: normal; flex: none; display: grid; place-items: center; width: 19px; height: 19px; border-radius: 50%; background: rgba(120,90,60,.14); font-weight: 800; font-size: .7rem; }
+  .step.on { color: var(--ink); background: #fff; box-shadow: 0 4px 12px rgba(90,60,30,.1); font-weight: 700; }
+  .step.on i { background: #5b8a72; color: #fff; }
+  .step.done i { background: rgba(91,138,114,.4); color: #fff; }
+
+  .challenge { background: rgba(255,255,255,.78); border-radius: 18px; padding: 12px; margin-top: 4px; }
+  .challenge[hidden] { display: none; }
+  .challenge h4 { font-size: .84rem; margin-bottom: 8px; }
+  .inrow { display: flex; align-items: flex-end; gap: 6px; }
+  .field { flex: 1; display: grid; gap: 3px; }
+  .field label { font-size: .7rem; font-weight: 800; color: var(--ink-soft); text-align: center; }
+  .field input {
+    width: 100%; font: inherit; font-size: 1.35rem; font-weight: 900; text-align: center; font-variant-numeric: tabular-nums;
+    padding: 6px 4px; border-radius: 12px; border: 2px solid #e4d9c6; background: #fffdf8; color: var(--ink); outline: none;
+    transition: border-color .2s, box-shadow .2s, color .2s;
+  }
+  .field input:focus { border-color: #d8b48a; }
+  .field input.ok { color: var(--ok); border-color: #6cc596; box-shadow: 0 0 0 4px rgba(108,197,150,.25), 0 0 18px rgba(47,138,91,.45); text-shadow: 0 0 10px rgba(47,138,91,.45); }
+  .field input.bad { border-color: #ee9a90; }
+  .op { font-size: 1.3rem; font-weight: 900; color: var(--ink-soft); padding-bottom: 8px; }
+  .unit { font-size: 1rem; font-weight: 900; padding-bottom: 10px; }
+  .total { margin-top: 8px; font-size: .8rem; color: var(--ink-soft); text-align: center; min-height: 1.3em; font-variant-numeric: tabular-nums; }
+  .total b { color: var(--ink); font-size: .95rem; }
+  .fb { margin-top: 8px; border-radius: 14px; padding: 9px 11px; font-size: .82rem; font-weight: 800; line-height: 1.6; display: none; }
+  .fb.ok { display: block; background: #e6f6ec; border: 1.5px solid #7fcf9f; color: #1f6b43; box-shadow: 0 0 20px rgba(47,138,91,.25); }
+  .fb.bad { display: block; background: #fdecea; border: 1.5px solid #f0a59c; color: #9b2c22; }
+  .fb small { display: block; font-weight: 600; margin-top: 3px; }
+
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin-top: 8px; }
+  .desc b { color: var(--ink); }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 8px;
+    font: inherit; font-size: .84rem; font-weight: 700; color: var(--accent); background: rgba(192,112,63,.13);
+    transition: background .2s, transform .1s;
+  }
+  .btn:hover { background: rgba(192,112,63,.22); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+  .banner {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9; pointer-events: none; text-align: center;
+    padding: 10px 20px; border-radius: 20px; font-size: .95rem; font-weight: 800; line-height: 1.5;
+    background: rgba(255,250,236,.94); border: 1.5px solid #ecc46a; color: #6b4b00; box-shadow: 0 10px 30px rgba(90,60,30,.12);
+    max-width: min(640px, calc(100vw - 400px)); transition: opacity .3s;
+  }
+  .banner.good { background: rgba(232,247,238,.95); border-color: #7fcf9f; color: #1f6b43; }
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,253,248,.92); color: var(--ink); box-shadow: 0 4px 12px rgba(90,60,30,.1);
+  }
+  .tag.hl { background: #5b8a72; color: #fff; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 760px), (max-width: 1100px) and (orientation: portrait) {
+    .banner { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; font-size: .8rem; padding: 8px 12px; }
+    .field input { font-size: 1.15rem; }
+    .tag { font-size: .66rem; padding: 3px 7px; }
+  }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="scene"></div>
+<div class="banner" id="banner"></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g8">‹ 課程總覽</a>
+  <div class="title">長度的測量與估計值</div>
+  <div class="body">
+    <div class="concept">
+      <div class="cd">完整的測量結果 ＝ 數字部分（<em>準確值</em> ＋ <em>一位估計值</em>）＋ 單位</div>
+      <small>請務必記錄至最小刻度的下一位！</small>
+    </div>
+
+    <div class="tabs">
+      <button class="tab on" data-ruler="A">📏 A 尺<small>最小刻度 1 公分（cm）</small></button>
+      <button class="tab" data-ruler="B">📐 B 尺<small>最小刻度 1 毫米（mm）</small></button>
+    </div>
+
+    <div class="steps" id="steps">
+      <div class="step"><i>1</i><span>選一把尺（上方按鈕）</span></div>
+      <div class="step"><i>2</i><span>用滑鼠<b>拖曳直尺</b>，把尺的<b>「0」刻度</b>對齊鉛筆<b>左端</b></span></div>
+      <div class="step"><i>3</i><span>鏡頭自動特寫鉛筆<b>右端</b>，讀出刻度</span></div>
+      <div class="step"><i>4</i><span>填寫<b>準確值</b>與<b>估計值</b></span></div>
+    </div>
+
+    <div class="challenge" id="challenge" hidden>
+      <h4>📝 測量挑戰：鉛筆長度是多少？</h4>
+      <div class="inrow">
+        <div class="field"><label for="inA">準確值</label><input id="inA" inputmode="decimal" autocomplete="off" placeholder="?"></div>
+        <span class="op">＋</span>
+        <div class="field"><label for="inE">估計值</label><input id="inE" inputmode="decimal" autocomplete="off" placeholder="?"></div>
+        <span class="unit">cm</span>
+      </div>
+      <div class="total" id="total"></div>
+      <div class="fb" id="fb"></div>
+    </div>
+
+    <p class="desc" id="rulerDesc"></p>
+    <div class="row2">
+      <button class="btn" id="resetBtn">↺ 重新放尺</button>
+      <button class="btn" id="viewBtn" disabled>🔭 看全景</button>
+    </div>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+
+/* =========================================================
+   場景、燈光、原木桌面（1 個單位 ＝ 1 公分）
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.HemisphereLight(0xfffaf0, 0xd8c3a0, 1.05));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.9);
+sun.position.set(-6, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 12, bottom: -12, near: 1, far: 60 });
+sun.shadow.radius = 6;
+scene.add(sun);
+
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 1.5; controls.maxDistance = 45;
+controls.maxPolarAngle = Math.PI * 0.48;
+
+function woodTexture() {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, '#e2c39b'); grd.addColorStop(1, '#d6b285');
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(42, 1, 22, 5, 0.4),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.72, clearcoat: 0.25, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.5, 2); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.55, metalness: 0, clearcoat: 0.35, clearcoatRoughness: 0.4, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+
+/* =========================================================
+   3D 鉛筆（待測物）：左端（橡皮擦）到右端（筆尖）＝ 14.75 cm
+   ========================================================= */
+const PENCIL_LEN = 14.75;
+const PL = -PENCIL_LEN / 2, PR = PL + PENCIL_LEN;       // 鉛筆左端、右端的 x
+const PY = 0.36;                                         // 鉛筆半徑＝中心高度
+const pencil = new THREE.Group(); scene.add(pencil);
+function alongX(geo, x0, x1, mat) {                      // 沿 x 軸放一段圓柱／圓錐（幾何的 +y 端朝向 +x）
+  const m = new THREE.Mesh(geo, mat); m.rotation.z = -Math.PI / 2; m.position.set((x0 + x1) / 2, PY, 0); pencil.add(m); return m;
+}
+{
+  const eraser = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.5, 8, 24), clay(0xf4a3b4, { roughness: 0.8, clearcoat: 0 }));
+  eraser.rotation.z = Math.PI / 2; eraser.position.set(PL + 0.55, PY, 0); pencil.add(eraser);
+  alongX(new THREE.CylinderGeometry(0.335, 0.335, 0.62, 32), PL + 0.6, PL + 1.22, clay(0xc9ccd2, { metalness: 0.6, roughness: 0.25, clearcoat: 1 }));
+  for (const dx of [0.75, 1.07]) alongX(new THREE.CylinderGeometry(0.345, 0.345, 0.05, 32), PL + dx, PL + dx + 0.05, clay(0xa9adb5, { metalness: 0.6, roughness: 0.3 }));
+  alongX(new THREE.CylinderGeometry(0.36, 0.36, 11.4, 6).rotateY(Math.PI / 6), PL + 1.2, PL + 12.6, clay(0xf6c945, { clearcoat: 0.8, roughness: 0.35 }));
+  alongX(new THREE.CylinderGeometry(0.11, 0.36, 1.8, 6).rotateY(Math.PI / 6), PL + 12.6, PL + 14.4, clay(0xe8c9a0, { roughness: 0.8, clearcoat: 0 }));
+  alongX(new THREE.CylinderGeometry(0.0, 0.11, 0.35, 24), PL + 14.4, PR, clay(0x3a3a40, { roughness: 0.4, metalness: 0.2 }));
+  shadowed(pencil);
+}
+// 鉛筆左端的「對齊雷射線」
+const laserMat = new THREE.MeshBasicMaterial({ color: 0x2fbf71, transparent: true, opacity: 0.6, depthWrite: false, toneMapped: false });
+const laser = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.02, 4.6), laserMat);
+laser.position.set(PL, 0.012, 1.6); scene.add(laser);
+
+/* =========================================================
+   直尺：刻度用 Canvas 分塊繪製成貼圖（每公分 384 像素），特寫時依然清晰
+   ========================================================= */
+const RULER = {
+  A: { name: 'A 尺', step: 1, dec: 0, acc: 14, est: [7, 8], tint: 0xd7f2e4, glow: 0x7fd6a8, mm: false,
+       desc: '<b>A 尺</b>最小刻度是 <b>1 cm</b>：準確值只能讀到「公分」，再<b>估計一位</b>到 0.1 cm。' },
+  B: { name: 'B 尺', step: 0.1, dec: 1, acc: 14.7, est: [5], tint: 0xdbe8ff, glow: 0x8fb4ff, mm: true,
+       desc: '<b>B 尺</b>最小刻度是 <b>1 mm（0.1 cm）</b>：準確值讀到 0.1 cm，再<b>估計一位</b>到 0.01 cm。' }
+};
+const R_X0 = -0.6, R_LEN = 17.2, R_W = 3.0, R_T = 0.12;   // 尺：左邊留白 0.6 cm、長 17.2、寬 3、厚 0.12
+const STRIP = 1.8, PX = 384, TILES = 8, TILE_W = R_LEN / TILES;
+const Z_TARGET = 0.42;                                  // 對齊時尺的後緣（刻度邊）貼著鉛筆
+const START = V3(PL + 3.4, 0, 3.6);                     // 尺的初始位置（0 刻度的位置）
+const ruler = new THREE.Group(); scene.add(ruler);
+let rulerKey = 'A', rulerParts = [];
+
+function drawRuler(g, R) {
+  g.fillStyle = '#2e2a25'; g.strokeStyle = '#2e2a25'; g.lineCap = 'butt';
+  const line = (x, len, w) => { g.lineWidth = w * PX; g.beginPath(); g.moveTo(x * PX, 0); g.lineTo(x * PX, len * PX); g.stroke(); };
+  if (R.mm) {
+    for (let i = 0; i <= 160; i++) {
+      const x = i / 10;
+      if (i % 10 === 0) line(x, 0.72, 0.03); else if (i % 5 === 0) line(x, 0.5, 0.022); else line(x, 0.33, 0.016);
+    }
+  } else {
+    for (let i = 0; i <= 16; i++) line(i, 0.72, 0.03);
+  }
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (let i = 0; i <= 16; i++) {
+    g.fillStyle = i === 0 ? '#c0392b' : '#2e2a25';
+    g.font = `700 ${0.46 * PX}px "Segoe UI", "PingFang TC", sans-serif`;
+    g.fillText(String(i), i * PX, 1.08 * PX);
+  }
+  g.fillStyle = '#5a5045';
+  g.font = `700 ${0.24 * PX}px "PingFang TC", "Microsoft JhengHei", sans-serif`;
+  g.textAlign = 'left';
+  g.fillText(`${R.name}｜最小刻度 ${R.mm ? '1 mm' : '1 cm'}`, 0.4 * PX, 1.56 * PX);
+  g.textAlign = 'right';
+  g.fillText('cm', 16.45 * PX, 1.56 * PX);
+}
+function buildRuler(key) {
+  rulerKey = key;
+  rulerParts.forEach(o => { ruler.remove(o); o.traverse(c => { c.geometry?.dispose(); if (c.material) { c.material.map?.dispose(); c.material.dispose(); } }); });
+  rulerParts = [];
+  const R = RULER[key];
+  const body = new THREE.Mesh(new RoundedBoxGeometry(R_LEN, R_T, R_W, 3, 0.05), new THREE.MeshPhysicalMaterial({
+    color: R.tint, transmission: 0.6, roughness: 0.15, thickness: 0.12, ior: 1.3, clearcoat: 1, clearcoatRoughness: 0.1,
+    emissive: R.glow, emissiveIntensity: 0.12 }));
+  body.position.set(R_X0 + R_LEN / 2, R_T / 2, R_W / 2); body.castShadow = true; body.receiveShadow = true;
+  ruler.add(body); rulerParts.push(body);
+  const maxAniso = renderer.capabilities.getMaxAnisotropy();
+  for (let i = 0; i < TILES; i++) {
+    const c = document.createElement('canvas');
+    c.width = Math.round(TILE_W * PX); c.height = Math.round(STRIP * PX);
+    const g = c.getContext('2d');
+    g.translate(-(R_X0 + i * TILE_W) * PX, 0);
+    drawRuler(g, R);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = maxAniso;
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(TILE_W, STRIP),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false }));
+    plane.rotation.x = -Math.PI / 2;
+    plane.position.set(R_X0 + (i + 0.5) * TILE_W, R_T + 0.003, STRIP / 2);
+    ruler.add(plane); rulerParts.push(plane);
+  }
+  // 尺上「0」刻度的發光標記
+  const zero = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.015, 0.8), new THREE.MeshBasicMaterial({ color: 0xff5a4a, transparent: true, opacity: 0.85, toneMapped: false }));
+  zero.position.set(0, R_T + 0.01, 0.4); ruler.add(zero); rulerParts.push(zero);
+  ruler.userData.zero = zero;
+}
+
+/* =========================================================
+   浮動標籤
+   ========================================================= */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(html, cls, follow, off) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { el, follow, off, visible: true, pos: off.clone() }; labels.push(L); return L;
+}
+function placeLabels() {
+  for (const L of labels) {
+    if (!L.visible) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * window.innerWidth) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * window.innerHeight) + 'px';
+  }
+}
+const Lleft = addLabel('鉛筆左端<br>👉 把尺的 0 對齊這裡', 'hl', null, V3(PL - 0.2, 1.6, 0));
+const Lzero = addLabel('尺的「0」刻度', '', ruler, V3(0, 0.4, 2.3));
+const Ltip = addLabel('鉛筆右端：讀這裡！', 'hl', null, V3(PR, 1.2, -0.4));
+
+/* =========================================================
+   鏡頭：全景 ↔ 特寫（平滑移動）
+   ========================================================= */
+const VIEWS = {
+  overview: { pos: [0.5, 13, 15], target: [0.5, 0, 1.8], fitW: 22 },
+  A: { pos: [PR, 5.6, 2.9], target: [PR, 0.1, 0.8] },
+  B: { pos: [PR, 3.7, 2.15], target: [PR, 0.1, 0.75] }
+};
+let view = 'overview', camTw = null;
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (window.MobileView?.isMobile()) return { pos, tgt };
+  const panel = $('panel');
+  const right = panel.classList.contains('collapsed') ? 0 : window.innerWidth - panel.getBoundingClientRect().left;
+  const dist = pos.distanceTo(tgt);
+  const visW = 2 * dist * Math.tan(camera.fov * Math.PI / 360) * camera.aspect;
+  if (c.fitW) {   // 全景：確保整個場景塞得進面板左邊的空白區
+    const avail = Math.max(0.35, (window.innerWidth - right) / window.innerWidth);
+    const need = c.fitW / avail / (2 * Math.tan(camera.fov * Math.PI / 360) * camera.aspect);
+    if (need > dist) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  if (!c.fitW) return { pos, tgt };   // 特寫：鏡頭必須正對筆尖上方，避免視差讓讀數偏掉
+  const sx = (right / 2) / window.innerWidth * visW;
+  pos.x += sx; tgt.x += sx;
+  return { pos, tgt };
+}
+function goView(name, instant = false) {
+  view = name;
+  const { pos, tgt } = viewFor(VIEWS[name]);
+  $('viewBtn').textContent = name === 'overview' ? '🔍 特寫筆尖' : '🔭 看全景';
+  if (instant) {
+    camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update();
+    if (name === 'overview') window.MobileView?.frame(camera, controls, 2.0);
+    return;
+  }
+  if (window.MobileView?.isMobile() && name === 'overview') {
+    const p = pos.clone().sub(tgt), k = Math.max(1, Math.min(2.0, window.innerHeight / window.innerWidth) * 2.0);
+    pos.copy(tgt).add(p.multiplyScalar(k));
+  }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+
+/* =========================================================
+   拖曳直尺（在桌面平面上移動），放開時檢查是否對齊
+   ========================================================= */
+const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
+const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -R_T);
+const hitP = V3(0, 0, 0), grabOff = V3(0, 0, 0);
+let dragging = false, aligned = false;
+function setNdc(ev) {
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+}
+const overRuler = ev => { setNdc(ev); return raycaster.intersectObjects(rulerParts, false).length > 0; };
+renderer.domElement.addEventListener('pointerdown', ev => {
+  if (aligned || !overRuler(ev)) return;
+  if (!raycaster.ray.intersectPlane(dragPlane, hitP)) return;
+  dragging = true; controls.enabled = false; camTw = null;
+  grabOff.copy(ruler.position).sub(hitP);
+  renderer.domElement.setPointerCapture(ev.pointerId);
+  renderer.domElement.style.cursor = 'grabbing';
+});
+renderer.domElement.addEventListener('pointermove', ev => {
+  if (!dragging) {
+    if (!ev.buttons) renderer.domElement.style.cursor = !aligned && overRuler(ev) ? 'grab' : '';
+    return;
+  }
+  setNdc(ev);
+  if (!raycaster.ray.intersectPlane(dragPlane, hitP)) return;
+  ruler.position.x = clamp(hitP.x + grabOff.x, -16, 8);
+  ruler.position.z = clamp(hitP.z + grabOff.z, Z_TARGET, 7.5);
+  updateNearHint();
+});
+function endDrag(ev) {
+  if (!dragging) return;
+  dragging = false; controls.enabled = true;
+  renderer.domElement.style.cursor = '';
+  try { renderer.domElement.releasePointerCapture(ev.pointerId); } catch (e) { /* 已釋放 */ }
+  checkAlign();
+}
+renderer.domElement.addEventListener('pointerup', endDrag);
+renderer.domElement.addEventListener('pointercancel', endDrag);
+
+const nearX = () => Math.abs(ruler.position.x - PL), nearZ = () => Math.abs(ruler.position.z - Z_TARGET);
+function updateNearHint() {
+  const close = nearX() < 0.6 && nearZ() < 1.0;
+  laserMat.opacity = close ? 0.95 : 0.6;
+  if (close) banner(nearX() < 0.25 ? '✨ 快對準了！放開滑鼠就會自動吸附' : '再靠近一點：尺的<b>紅色 0 刻度</b>要對準<b>綠色雷射線</b>');
+}
+function checkAlign() {
+  if (nearX() < 0.28 && nearZ() < 0.8) {
+    aligned = true;
+    snap = { x0: ruler.position.x, z0: ruler.position.z, k: 0 };
+    banner('🎯 對齊成功！0 刻度對準鉛筆左端。鏡頭拉近到鉛筆<b>右端</b>——請讀出刻度', 'good');
+    setTimeout(() => goView(rulerKey), 350);
+    if (window.MobileView?.isMobile()) banner.t = setTimeout(() => { $('banner').style.opacity = 0; }, 2600);   // 手機：字幕別擋住筆尖
+    showChallenge(true);
+    setStep(3);
+  } else if (nearX() < 1.2 && nearZ() < 1.5) {
+    banner('差一點！把尺的<b>紅色 0 刻度</b>移到<b>綠色雷射線</b>上（尺要貼著鉛筆）');
+  } else {
+    banner('👉 拖曳直尺：把尺的<b>「0」刻度</b>對齊鉛筆<b>左端</b>');
+  }
+}
+let snap = null;
+
+/* =========================================================
+   面板：步驟、答案驗證
+   ========================================================= */
+function banner(html, cls = '') { const b = $('banner'); b.innerHTML = html; b.className = 'banner ' + cls; b.style.opacity = ''; clearTimeout(banner.t); }
+function setStep(n) {
+  document.querySelectorAll('.step').forEach((s, i) => { s.classList.toggle('on', i + 1 === n); s.classList.toggle('done', i + 1 < n); });
+}
+function showChallenge(on) {
+  $('challenge').hidden = !on;
+  $('viewBtn').disabled = !on;
+  Ltip.visible = on;
+  Lleft.visible = !on; laser.visible = !on;
+}
+const decimals = s => (s.split('.')[1] || '').length;
+function check() {
+  const R = RULER[rulerKey];
+  const a = $('inA').value.trim(), e = $('inE').value.trim();
+  const fb = $('fb');
+  $('inA').classList.remove('ok', 'bad'); $('inE').classList.remove('ok', 'bad');
+  fb.className = 'fb'; fb.innerHTML = '';
+  if (a || e) setStep(4);
+  if (!a || !e) { $('total').innerHTML = ''; return; }
+  const av = Number(a), ev0 = Number(e);
+  if (!Number.isFinite(av) || !Number.isFinite(ev0)) { fb.className = 'fb bad'; fb.innerHTML = '❌ 請輸入數字喔！'; return; }
+  // 估計值可以寫成「0.7」，也可以只寫那一位數字「7」
+  const digitOnly = !e.includes('.');
+  const unitE = R.step / 10;                                 // 估計那一位的單位：A 尺 0.1、B 尺 0.01
+  const ev = digitOnly ? ev0 * unitE : ev0;
+  const needDec = R.dec + 1;
+  const total = av + ev;
+  $('total').innerHTML = `測量結果：<b>${(Math.round(total * 1000) / 1000).toFixed(Math.max(needDec, decimals(a), digitOnly ? needDec : decimals(e)))} cm</b>`;
+  const estDigit = Math.round(ev / unitE);
+  let bad = null, part = null;
+  if (decimals(a) !== R.dec || Math.abs(av - R.acc) > 1e-9) {
+    part = 'inA';
+    bad = decimals(a) > R.dec
+      ? `❌ 準確值只記到<b>最小刻度</b>為止（這把尺是 ${R.mm ? '0.1 cm' : '1 cm'}），多出來的那一位要寫在「估計值」。`
+      : `❌ 準確值不對：鉛筆尖已經<b>超過了哪一條刻度</b>？${R.mm ? '（要讀到 0.1 cm）' : ''}`;
+  } else if ((digitOnly && !(Number.isInteger(ev0) && ev0 >= 0 && ev0 <= 9)) || (!digitOnly && decimals(e) !== needDec) || ev >= R.step - 1e-9) {
+    part = 'inE';
+    bad = '❌ 注意最小刻度！請再檢查估計值的位數。';
+    bad += `<small>估計值只有一位，而且要落在最小刻度的<b>下一位</b>（例：${R.mm ? '0.03' : '0.3'}）。</small>`;
+  } else if (!R.est.includes(estDigit)) {
+    part = 'inE';
+    bad = '❌ 位數對了！但估計值再看仔細一點：鉛筆尖落在兩條刻度之間的<b>哪個位置</b>？';
+  }
+  if (bad) { $(part).classList.add('bad'); fb.className = 'fb bad'; fb.innerHTML = bad; return; }
+  $('inA').classList.add('ok'); $('inE').classList.add('ok');
+  fb.className = 'fb ok';
+  const shown = total.toFixed(needDec);
+  fb.innerHTML = `💯 完全正確！你掌握了估計值的精髓！<small>完整測量結果：<b>${shown} cm</b>（準確值 ${R.acc.toFixed(R.dec)} cm ＋ 估計值 ${ev.toFixed(needDec)} cm）${rulerKey === 'A' ? '<br>👉 換 <b>B 尺</b>試試：最小刻度變小，就能多記一位！' : '<br>👉 比較 A 尺：最小刻度越小，測量結果的位數越多、越精確。'}</small>`;
+  banner(`💯 正確！鉛筆長 <b>${shown} cm</b>`, 'good');
+}
+$('inA').addEventListener('input', check);
+$('inE').addEventListener('input', check);
+
+function resetRuler(key = rulerKey) {
+  if (key !== rulerKey || !rulerParts.length) buildRuler(key);
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.ruler === key));
+  $('rulerDesc').innerHTML = RULER[key].desc;
+  ruler.position.copy(START);
+  aligned = false; snap = null;
+  $('inA').value = ''; $('inE').value = ''; check();
+  showChallenge(false);
+  setStep(2);
+  banner('👉 拖曳直尺：把尺的<b>「0」刻度</b>對齊鉛筆<b>左端</b>（綠色雷射線）');
+  goView('overview');
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => resetRuler(b.dataset.ruler)));
+$('resetBtn').addEventListener('click', () => resetRuler());
+$('viewBtn').addEventListener('click', () => goView(view === 'overview' ? rulerKey : 'overview'));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; });
+
+/* =========================================================
+   主迴圈
+   ========================================================= */
+function resize() {
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.fov = 40;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(view, true); });
+
+const clock = new THREE.Clock();
+let wall = 0;
+function frame(dt) {
+  wall += dt;
+  if (snap) {                                            // 吸附到正確位置
+    snap.k = Math.min(1, snap.k + dt * 5);
+    const s = smooth(0, 1, snap.k);
+    ruler.position.x = THREE.MathUtils.lerp(snap.x0, PL, s);
+    ruler.position.z = THREE.MathUtils.lerp(snap.z0, Z_TARGET, s);
+    if (snap.k >= 1) snap = null;
+  }
+  if (laser.visible) laserMat.opacity = Math.max(laserMat.opacity * 0.98, 0.45 + 0.3 * Math.sin(wall * 4));
+  ruler.userData.zero.material.opacity = aligned ? 0.4 : 0.6 + 0.35 * Math.sin(wall * 5);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.4);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, resetRuler, checkAlign, ruler, camera, controls, get aligned() { return aligned; }, PL, PR, Z_TARGET };
+
+resize();
+buildRuler('A');
+resetRuler('A');
+goView('overview', true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>

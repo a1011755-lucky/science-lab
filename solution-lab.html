@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>物質與水溶液實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #3b3127;
+    --ink-soft: #7a6e60;
+    --card: rgba(255,252,245,.62);
+    --accent: #c0703f;
+    --ok: #2f8a5b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(22px) saturate(160%); -webkit-backdrop-filter: blur(22px) saturate(160%);
+    border: 1px solid rgba(255,255,255,.85); box-shadow: 0 20px 50px rgba(90,60,30,.12), 0 2px 6px rgba(90,60,30,.06);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 316px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(192,112,63,.13); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.15rem; font-weight: 800; margin-top: 6px; padding-right: 62px; }
+  .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .7rem; font-weight: 800; padding: 8px 2px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.62); line-height: 1.35; }
+  .tab:hover { background: rgba(255,255,255,.92); }
+  .tab.on { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(91,138,114,.35); }
+  .sec[hidden] { display: none; }
+  .concept { background: #fff; border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(90,60,30,.08); border-left: 5px solid var(--cc, #5b8a72); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #5b8a72); }
+  .concept .cd { font-size: .84rem; font-weight: 800; margin-top: 2px; line-height: 1.55; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .84rem; font-weight: 700; color: var(--accent); background: rgba(192,112,63,.13);
+    transition: background .2s, transform .1s, opacity .2s;
+  }
+  .btn:hover { background: rgba(192,112,63,.22); }
+  .btn:active { transform: scale(.98); }
+  .btn.primary { color: #fff; background: var(--accent); box-shadow: 0 6px 16px rgba(192,112,63,.3); }
+  .btn.on { outline: 3px solid rgba(91,138,114,.45); color: #fff; background: #5b8a72; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .legend { display: grid; gap: 4px; font-size: .76rem; color: var(--ink-soft); background: rgba(255,255,255,.7); border-radius: 14px; padding: 8px 10px; margin-top: 8px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  .legend i.cap { width: 18px; height: 9px; border-radius: 6px; }
+  .note { background: #fff4d8; border: 1.5px solid #ecc46a; color: #6b4b00; font-weight: 600; border-radius: 14px; padding: 8px 11px; margin-top: 10px; font-size: .77rem; line-height: 1.6; }
+  .note b { color: #9a3b00; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.7; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .95rem; }
+  .stat .ok { color: var(--ok); } .stat .warn { color: #b45309; }
+  #satChart { display: block; width: 100%; height: 170px; background: rgba(255,255,255,.85); border-radius: 14px; margin-top: 8px; }
+
+  /* 下方中央：字幕／公式 */
+  .dock { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 20px; text-align: center;
+          width: max-content; max-width: min(820px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .98rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .08em; }
+  .cap b { color: #9a3b00; }
+  .cap.big { font-size: 1.15rem; }
+  .fx { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: nowrap; }
+  .fbox { display: grid; justify-items: center; background: rgba(255,255,255,.88); border-radius: 18px; padding: 6px 12px 8px; box-shadow: inset 0 0 0 2px rgba(120,90,60,.08); }
+  .fbox small { font-size: .7rem; font-weight: 800; color: var(--ink-soft); white-space: nowrap; }
+  .fbox b { font-size: clamp(1.3rem, 2.3vw, 2.3rem); line-height: 1.15; font-variant-numeric: tabular-nums; font-weight: 900; white-space: nowrap; }
+  .fbox.s b { color: #c26a00; } .fbox.w b { color: #1d6fd8; }
+  .fbox.z { background: #fff3e2; box-shadow: inset 0 0 0 2.5px #f2b56b; } .fbox.z b { color: #b4530a; }
+  .fbox.live b { animation: jit .09s steps(2) infinite; }
+  .op { font-size: clamp(1.2rem, 2.1vw, 2rem); font-weight: 900; color: var(--ink-soft); }
+  .paren { font-size: clamp(1.6rem, 3vw, 2.8rem); font-weight: 300; color: var(--ink-soft); }
+  .fxnote { font-size: .78rem; color: var(--ink-soft); font-weight: 700; margin-top: 6px; }
+  .fxnote b { color: #9a3b00; }
+  @keyframes jit { 0% { transform: translate(-1px, 1px); } 100% { transform: translate(1px, -1px); } }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,253,248,.92); color: var(--ink); box-shadow: 0 4px 12px rgba(90,60,30,.1);
+  }
+  .tag small { font-size: .66rem; color: var(--ink-soft); font-weight: 700; }
+  .tag.hl { background: #5b8a72; color: #fff; }
+  .tag.hl small { color: rgba(255,255,255,.85); }
+  .tag.lcd { background: #3b3127; color: #9df0c2; font-variant-numeric: tabular-nums; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 760px), (max-width: 1100px) and (orientation: portrait) {
+    .tabs { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; }
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap, .cap.big { font-size: .8rem; }
+    .fx { gap: 3px; }
+    .fbox { padding: 3px 5px 5px; border-radius: 12px; }
+    .fbox small { font-size: .55rem; }
+    .fbox b { font-size: 1rem; }
+    .op { font-size: .9rem; } .paren { font-size: 1.2rem; }
+    .fxnote { font-size: .66rem; }
+    .tag { font-size: .64rem; padding: 3px 7px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .fbox.live b { animation: none; } }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="scene"></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g8">‹ 課程總覽</a>
+  <div class="title">物質與水溶液實驗室</div>
+  <div class="body">
+    <div class="tabs">
+      <button class="tab on" data-tab="mix">🔍<br>純物質<br>混合物</button>
+      <button class="tab" data-tab="pct">⚖️<br>重量<br>百分濃度</button>
+      <button class="tab" data-tab="sat">🔥<br>飽和與<br>溫度</button>
+      <button class="tab" data-tab="ppm">💧<br>百萬<br>分點 ppm</button>
+    </div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="mix">
+      <div class="concept" style="--cc:#2a86c9"><div class="ct">微觀粒子透視鏡</div><div class="cd">純物質：只有一種物質，組成固定<br>混合物：兩種以上物質，比例可以改變</div></div>
+      <div class="row2">
+        <button class="btn on" data-cup="A">🔍 看 A 杯<br>純水</button>
+        <button class="btn" data-cup="B">🔍 看 B 杯<br>食鹽水</button>
+      </div>
+      <button class="btn" id="saltBtn">🧂 B 杯多加一匙鹽</button>
+      <div class="legend">
+        <span><i class="cap" style="background:#9ebfe6"></i>H₂O 水分子</span>
+        <span><i style="background:#2fd27e;box-shadow:0 0 8px #2fd27e"></i>Na⁺ 鈉離子</span>
+        <span><i style="background:#3d7dff;box-shadow:0 0 8px #3d7dff"></i>Cl⁻ 氯離子</span>
+      </div>
+      <p class="desc">👆 也可以直接<b>點畫面中的杯子</b>。兩杯看起來一模一樣，放大到粒子才看得出差別！</p>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="pct" hidden>
+      <div class="concept" style="--cc:#c26a00"><div class="ct">重量百分濃度 P%</div><div class="cd">P% ＝ 溶質質量 ÷ <u>溶液</u>質量 × 100%<br>溶液 ＝ 溶質 ＋ 溶劑</div></div>
+      <label class="lab" for="sugarS">🍬 加入方糖（溶質）<b><span id="sugarV">20</span> g</b></label>
+      <input type="range" id="sugarS" min="0" max="50" step="1" value="20">
+      <label class="lab" for="waterS">💧 加入水（溶劑）<b><span id="waterV">80</span> g</b></label>
+      <input type="range" id="waterS" min="20" max="200" step="5" value="80">
+      <div class="note">⚠️ 迷思破解：分母是<b>溶液</b>（糖＋水），不是只有水！<br>例：20 g 糖＋80 g 水 → 20 ÷ 100 ＝ <b>20%</b>，不是 20 ÷ 80 ＝ 25%。</div>
+      <p class="desc">杯中溶液的<b>橘黃色深淺</b>和濃度成正比；磅秤已扣除燒杯重量（歸零）。</p>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="sec" data-tab="sat" hidden>
+      <div class="concept" style="--cc:#d0453a"><div class="ct">飽和溶液與溫度</div><div class="cd">杯中：100 g 水 ＋ 110 g 硝酸鉀<br>溫度越高，硝酸鉀的溶解度越大</div></div>
+      <label class="lab" for="tempS">🌡️ 溫度<b><span id="tempV">20</span> ℃</b></label>
+      <input type="range" id="tempS" min="20" max="100" step="1" value="20">
+      <div class="stat" id="satStat"></div>
+      <canvas id="satChart"></canvas>
+      <p class="desc">往右拉：本生燈加熱，杯底晶體<b>溶解</b>變成發光粒子散入水中。<br>往左拉：降溫，溶不下的硝酸鉀<b>結晶析出</b>，小山又長回來。</p>
+    </section>
+
+    <!-- Tab 4 -->
+    <section class="sec" data-tab="ppm" hidden>
+      <div class="concept" style="--cc:#d0453a"><div class="ct">百萬分點濃度 ppm</div><div class="cd">1 ppm ＝ 1 mg ÷ 1 kg ＝ 百萬分之一</div></div>
+      <button class="btn primary" id="dropBtn">💧 滴入 1 公克汙染物</button>
+      <button class="btn" id="ppmReset">↺ 重來</button>
+      <div class="stat" id="ppmStat"></div>
+      <p class="desc">水族箱裝 <b>1000 公升</b>水（約 1000 公斤）。<br>1 公克 ÷ 1000 公斤 ＝ 1 毫克 ÷ 1 公斤 ＝ <b>1 ppm</b>。<br>滴入後，箱內會出現 <b>999,999 顆</b>水粒子，鏡頭會飛進去找那 1 顆紅色汙染物。</p>
+    </section>
+
+    <button class="btn" id="viewBtn" style="margin-top:10px">重設視角</button>
+  </div>
+</aside>
+
+<div class="dock glass" id="dock">
+  <div class="cap" id="cap"></div>
+  <div id="fxWrap" hidden>
+    <div class="fx">
+      <div class="fbox s" id="fbS"><small>糖（溶質）</small><b><span id="fxS">0</span> g</b></div>
+      <span class="op">÷</span>
+      <span class="paren">(</span>
+      <div class="fbox s" id="fbS2"><small>糖</small><b><span id="fxS2">0</span> g</b></div>
+      <span class="op">＋</span>
+      <div class="fbox w" id="fbW"><small>水（溶劑）</small><b><span id="fxW">0</span> g</b></div>
+      <span class="paren">)</span>
+      <span class="op">＝</span>
+      <div class="fbox z" id="fbZ"><small>濃度</small><b><span id="fxZ">0</span> %</b></div>
+    </div>
+    <div class="fxnote" id="fxNote"></div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = THREE.MathUtils.clamp, lerp = THREE.MathUtils.lerp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const rnd = (a, b) => a + Math.random() * (b - a);
+
+/* =========================================================
+   共用：場景、燈光、原木桌面、材質
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.HemisphereLight(0xfffaf0, 0xd8c3a0, 1.05));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.9);
+sun.position.set(-6, 15, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -8, near: 1, far: 50 });
+sun.shadow.radius = 6;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.01, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 0.05; controls.maxDistance = 40;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture() {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, '#e2c39b'); grd.addColorStop(1, '#d6b285');
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(30, 0.6, 14, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.72, clearcoat: 0.25, clearcoatRoughness: 0.5 }));
+table.position.y = -0.3; table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.55, metalness: 0, clearcoat: 0.35, clearcoatRoughness: 0.4, ...o });
+const frost = (color = 0xf4fbff, o = {}) => new THREE.MeshPhysicalMaterial({ color, transmission: 0.93, roughness: 0.1, thickness: 0.15, ior: 1.1, clearcoat: 1, clearcoatRoughness: 0.1, ...o });
+/** 燒杯壁：用半透明（不是透射），裡面的透射液體才看得到 */
+const glassA = (o = {}) => new THREE.MeshPhysicalMaterial({ color: 0xf6fbff, roughness: 0.05, clearcoat: 1, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide, ...o });
+const liquidMat = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, transmission: 0.85, roughness: 0.04, thickness: 0.8, ior: 1.2, clearcoat: 1,
+  attenuationColor: new THREE.Color(color), attenuationDistance: 3, ...o });
+const glowMat = color => new THREE.MeshBasicMaterial({ color, toneMapped: false });
+const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+function makeBeaker(r, h) {
+  const g = new THREE.Group();
+  const wall = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.97, h, 56, 1, true), glassA());
+  wall.position.y = h / 2; wall.renderOrder = 5;
+  const bottom = new THREE.Mesh(new THREE.CircleGeometry(r * 0.97, 56), glassA());
+  bottom.rotation.x = -Math.PI / 2; bottom.position.y = 0.01; bottom.renderOrder = 5;
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(r, 0.045, 12, 72), clay(0xffffff, { transparent: true, opacity: 0.8, roughness: 0.1, clearcoat: 1 }));
+  rim.rotation.x = Math.PI / 2; rim.position.y = h; rim.renderOrder = 6;
+  g.add(wall, bottom, rim);
+  return g;
+}
+
+/* ----- 浮動標籤（每個 Tab 各自一組） ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tab, html, cls, pos, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab, el, html, pos: pos.clone(), off: pos.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html) { if (L.html !== html) { L.html = html; L.el.innerHTML = html; } }
+function placeLabels() {
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * window.innerWidth) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * window.innerHeight) + 'px';
+  }
+}
+let tab = 'mix', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+
+/* =========================================================
+   Tab 1：微觀粒子透視鏡（純物質 vs 混合物）
+   ========================================================= */
+const MIX = { group: new THREE.Group(), target: 'A', salt: 1, magX: -2.3 };
+scene.add(MIX.group);
+const CUP_X = { A: -2.3, B: 2.3 };
+const cupHits = [];
+for (const k of ['A', 'B']) {
+  const g = new THREE.Group(); g.position.set(CUP_X[k], 0, 0); MIX.group.add(g);
+  g.add(makeBeaker(0.95, 2.0));
+  const liq = new THREE.Mesh(new THREE.CylinderGeometry(0.89, 0.89, 1.35, 48), liquidMat(0xeaf6ff, { attenuationDistance: 6 }));
+  liq.position.y = 0.7; g.add(liq);
+  const hit = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, 2.2, 16), hitMat); hit.position.y = 1.05; hit.userData.cup = k; g.add(hit);
+  cupHits.push(hit);
+  addLabel('mix', k === 'A' ? '<b>A 杯：純水</b>' : '<b>B 杯：食鹽水</b>', '', V3(CUP_X[k], -0.15, 1.3));
+}
+// 大型放大鏡
+const mag = new THREE.Group(); mag.position.set(CUP_X.A, 4.55, 0.6); mag.rotation.x = -0.1; MIX.group.add(mag);
+mag.add(shadowed(new THREE.Mesh(new THREE.TorusGeometry(1.55, 0.13, 18, 72), clay(0xb4865a, { clearcoat: 0.8, roughness: 0.35 }))));
+mag.add(new THREE.Mesh(new THREE.CylinderGeometry(1.48, 1.48, 0.05, 72).rotateX(Math.PI / 2), frost(0xf8fcff, { roughness: 0.03, thickness: 0.06 })));
+const handle = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(0.15, 1.5, 8, 20), clay(0x8a6440)));
+handle.position.set(1.85, -1.85, 0); handle.rotation.z = Math.PI / 4; mag.add(handle);
+// 放大鏡裡的微觀世界
+const micro = new THREE.Group(); micro.position.z = 0.12; mag.add(micro);
+const h2oGeo = new THREE.CapsuleGeometry(0.055, 0.12, 4, 10).rotateZ(Math.PI / 2);
+const h2oMat = clay(0x9ebfe6, { emissive: 0x6f9fd8, emissiveIntensity: 0.18, roughness: 0.3, clearcoat: 1 });
+const h2o = [];
+for (let row = -5; row <= 5; row++) {
+  for (let col = -6; col <= 6; col++) {
+    const x = col * 0.25 + (row % 2 ? 0.125 : 0), y = row * 0.24;
+    if (Math.hypot(x, y) > 1.32) continue;
+    const m = new THREE.Mesh(h2oGeo, h2oMat); m.position.set(x, y, 0); micro.add(m);
+    h2o.push({ m, x, y, ph: Math.random() * 6.28 });
+  }
+}
+const naMat = glowMat(0x2fd27e), clMat = glowMat(0x3d7dff);
+const naGeo = new THREE.SphereGeometry(0.075, 16, 12), clGeo = new THREE.SphereGeometry(0.095, 16, 12);
+const ions = [];
+for (let i = 0; i < 24; i++) {
+  const na = i % 2 === 0;
+  const m = new THREE.Mesh(na ? naGeo : clGeo, na ? naMat : clMat); m.position.z = 0.06; micro.add(m);
+  const a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * 1.2;
+  ions.push({ m, p: new THREE.Vector2(Math.cos(a) * r, Math.sin(a) * r), v: new THREE.Vector2(rnd(-0.3, 0.3), rnd(-0.3, 0.3)), idx: (i / 2) | 0 });
+}
+const beamMat = new THREE.MeshBasicMaterial({ color: 0xfff1b8, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide });
+const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.95, 1.0, 40, 1, true), beamMat); beam.position.y = 2.55; MIX.group.add(beam);
+const magL = addLabel('mix', '', 'hl', V3(0, 1.95, 0), mag);
+
+function selectCup(k) {
+  MIX.target = k;
+  document.querySelectorAll('[data-cup]').forEach(b => b.classList.toggle('on', b.dataset.cup === k));
+}
+function updateMix(dt) {
+  const tx = CUP_X[MIX.target];
+  MIX.magX += (tx - MIX.magX) * (1 - Math.exp(-dt * 3.2));
+  mag.position.x = MIX.magX; mag.position.y = 4.55 + Math.sin(wall * 1.4) * 0.05;
+  beam.position.x = MIX.magX;
+  const arrive = 1 - smooth(0.05, 1.6, Math.abs(tx - MIX.magX));          // 移動中縮小、抵達後放大
+  micro.scale.setScalar(0.05 + 0.95 * arrive);
+  beamMat.opacity = 0.16 * arrive;
+  for (const w of h2o) {                                                     // 水分子：整齊排列、只在原位輕輕振動
+    w.m.position.x = w.x + Math.sin(wall * 2.3 + w.ph) * 0.012;
+    w.m.position.y = w.y + Math.cos(wall * 2.0 + w.ph) * 0.012;
+    w.m.rotation.z = Math.sin(wall * 1.7 + w.ph) * 0.25;
+  }
+  const isB = MIX.target === 'B', nIon = isB ? MIX.salt * 4 : 0;
+  for (const o of ions) {                                                    // 離子：隨機漂浮、碰到鏡框就反彈
+    o.m.visible = o.idx < nIon;
+    if (!o.m.visible) continue;
+    o.v.x += rnd(-1, 1) * dt * 0.8; o.v.y += rnd(-1, 1) * dt * 0.8;
+    if (o.v.length() > 0.45) o.v.setLength(0.45);
+    o.p.addScaledVector(o.v, dt);
+    if (o.p.length() > 1.25) { o.p.setLength(1.25); o.v.multiplyScalar(-1); }
+    o.m.position.x = o.p.x; o.m.position.y = o.p.y;
+  }
+  setLabel(magL, isB ? `混合物 <small>H₂O ＋ Na⁺ ＋ Cl⁻</small>` : `純物質 <small>只有 H₂O</small>`);
+  $('saltBtn').disabled = !isB;
+  $('saltBtn').textContent = isB ? `🧂 B 杯多加一匙鹽（目前 ${MIX.salt} 匙）` : '🧂 多加鹽（請先看 B 杯）';
+  setCap(isB
+    ? `<small>B 杯：食鹽水</small>水分子之間混著 <b style="color:#16a35f">Na⁺</b> 和 <b style="color:#2a62d9">Cl⁻</b> → <b>混合物</b>，鹽可多可少，<b>比例可以改變</b>`
+    : `<small>A 杯：純水</small>放大後只有一種粒子 H₂O → <b>純物質</b>，組成固定`);
+}
+document.querySelectorAll('[data-cup]').forEach(b => b.addEventListener('click', () => selectCup(b.dataset.cup)));
+$('saltBtn').addEventListener('click', () => { MIX.salt = MIX.salt % 3 + 1; });
+
+/* =========================================================
+   Tab 2：重量百分濃度調配台
+   ========================================================= */
+const PCT = { group: new THREE.Group(), s: 20, w: 80, sD: 20, wD: 80, cubes: [], pour: 0, lastText: '' };
+scene.add(PCT.group); PCT.group.visible = false;
+const P_MAX = 50 / (50 + 20) * 100;                                          // 滑桿範圍內的最高濃度（顏色換算基準）
+// 電子磅秤
+const scaleG = new THREE.Group(); PCT.group.add(scaleG);
+scaleG.add(shadowed(new THREE.Mesh(new RoundedBoxGeometry(3.4, 0.5, 2.8, 4, 0.18), clay(0xf3ece0)))).position.y = 0.25;
+const plate = shadowed(new THREE.Mesh(new RoundedBoxGeometry(3.0, 0.1, 2.4, 3, 0.04), clay(0xd9dde3, { metalness: 0.5, roughness: 0.25, clearcoat: 1 })));
+plate.position.y = 0.55; PCT.group.add(plate);
+const lcdCanvas = document.createElement('canvas'); lcdCanvas.width = 512; lcdCanvas.height = 136;
+const lcdTex = new THREE.CanvasTexture(lcdCanvas); lcdTex.colorSpace = THREE.SRGBColorSpace;
+const lcd = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.42), new THREE.MeshBasicMaterial({ map: lcdTex, toneMapped: false }));
+lcd.position.set(0.55, 0.26, 1.405); PCT.group.add(lcd);
+function drawLcd(text) {
+  const g = lcdCanvas.getContext('2d');
+  g.fillStyle = '#1f2a24'; g.fillRect(0, 0, 512, 136);
+  g.fillStyle = '#9df0c2'; g.shadowColor = '#5be59a'; g.shadowBlur = 18;
+  g.font = '700 88px "Consolas", "Menlo", monospace'; g.textAlign = 'right'; g.textBaseline = 'middle';
+  g.fillText(text, 470, 72);
+  g.shadowBlur = 0; g.font = '700 30px sans-serif'; g.textAlign = 'left'; g.fillStyle = '#6fbf95'; g.fillText('g', 478, 92);
+  lcdTex.needsUpdate = true;
+}
+const tareBtn = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.06, 20).rotateX(Math.PI / 2), clay(0x5b8a72)); tareBtn.position.set(-1.05, 0.26, 1.42); PCT.group.add(tareBtn);
+addLabel('pct', '<small>電子磅秤（已扣除燒杯）</small>', '', V3(-0.6, -0.15, 1.7));
+// 燒杯與溶液
+const BEAKER_R = 1.15, BEAKER_H = 2.7, BASE_Y = 0.6;
+const pBeaker = makeBeaker(BEAKER_R, BEAKER_H); pBeaker.position.y = BASE_Y; PCT.group.add(pBeaker);
+const pLiqMat = liquidMat(0xf2f8ff, { transmission: 0.55, attenuationDistance: 1.4 });
+const pLiq = new THREE.Mesh(new THREE.CylinderGeometry(BEAKER_R - 0.07, BEAKER_R - 0.07, 1, 56), pLiqMat); PCT.group.add(pLiq);
+const C_CLEAR = new THREE.Color(0xf2f8ff), C_ORANGE = new THREE.Color(0xe8650a);
+const levelOf = (s, w) => (w + 0.6 * s) / 260 * 2.4;                         // 液面高度（大約跟體積成正比）
+// 水龍頭與水流
+const tap = new THREE.Group(); tap.position.set(-1.6, 4.6, 0); PCT.group.add(tap);
+tap.add(shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(0.14, 1.2, 8, 20).rotateZ(Math.PI / 2), clay(0xc9ccd2, { metalness: 0.5, roughness: 0.25, clearcoat: 1 }))));
+const nozzle = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(0.12, 0.25, 8, 16), clay(0xc9ccd2, { metalness: 0.5, roughness: 0.25 }))); nozzle.position.set(0.95, -0.22, 0); tap.add(nozzle);
+const streamMat = new THREE.MeshPhysicalMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0, roughness: 0.05, clearcoat: 1, depthWrite: false, emissive: 0x6fc3ff, emissiveIntensity: 0.25 });
+const stream = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 1, 16), streamMat); PCT.group.add(stream);
+const drops = Array.from({ length: 14 }, () => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), streamMat); PCT.group.add(m); return { m, t: Math.random() }; });
+addLabel('pct', '<small>💧 水從這裡注入</small>', '', V3(-1.6, 5.2, 0));
+// 方糖
+const cubeGeo = new RoundedBoxGeometry(0.24, 0.24, 0.24, 2, 0.04);
+const cubeMat = clay(0xfffaf0, { roughness: 0.85, clearcoat: 0, sheen: 0.6, sheenColor: new THREE.Color(0xffffff) });
+function spawnCube() {
+  if (PCT.cubes.length > 40) return;
+  const m = new THREE.Mesh(cubeGeo, cubeMat); m.castShadow = true;
+  m.position.set(rnd(-0.55, 0.55), rnd(5.0, 5.8), rnd(-0.45, 0.45));
+  m.rotation.set(rnd(0, 6), rnd(0, 6), rnd(0, 6));
+  PCT.group.add(m);
+  PCT.cubes.push({ m, vy: 0, life: 0, spin: V3(rnd(-3, 3), rnd(-3, 3), rnd(-3, 3)) });
+}
+const sugarL = addLabel('pct', '<small>🍬 方糖從上方掉入</small>', '', V3(0, 6.15, 0));
+$('sugarS').addEventListener('input', () => {
+  const v = Number($('sugarS').value), d = v - PCT.s;
+  if (d > 0) for (let i = 0; i < Math.min(8, Math.ceil(d / 2)); i++) spawnCube();
+  PCT.s = v; $('sugarV').textContent = v;
+});
+$('waterS').addEventListener('input', () => {
+  const v = Number($('waterS').value);
+  if (v > PCT.w) PCT.pour = 0.7;
+  PCT.w = v; $('waterV').textContent = v;
+});
+function updatePct(dt) {
+  const k = 1 - Math.exp(-dt * 5);
+  PCT.sD += (PCT.s - PCT.sD) * k; PCT.wD += (PCT.w - PCT.wD) * k;
+  if (Math.abs(PCT.s - PCT.sD) < 0.02) PCT.sD = PCT.s;
+  if (Math.abs(PCT.w - PCT.wD) < 0.02) PCT.wD = PCT.w;
+  const s = PCT.sD, w = PCT.wD, total = s + w, P = total > 0 ? s / total * 100 : 0;
+  const h = Math.max(0.02, levelOf(s, w)), top = BASE_Y + 0.03 + h;
+  pLiq.scale.y = h; pLiq.position.y = BASE_Y + 0.03 + h / 2;
+  const c = P / P_MAX;                                                       // 顏色深淺 ∝ 濃度（嚴格線性）
+  pLiqMat.color.copy(C_CLEAR).lerp(C_ORANGE, c);
+  pLiqMat.attenuationColor.copy(C_CLEAR).lerp(C_ORANGE, c);
+  // 水流
+  PCT.pour = Math.max(0, PCT.pour - dt);
+  const pourK = Math.min(1, PCT.pour * 3);
+  const sx = -0.65, sy0 = 4.38;
+  stream.visible = pourK > 0.01;
+  stream.scale.set(1, Math.max(0.01, sy0 - top), 1); stream.position.set(sx, (sy0 + top) / 2, 0);
+  streamMat.opacity = 0.55 * pourK;
+  drops.forEach(d => {
+    d.t = (d.t + dt * 2.2) % 1; d.m.visible = pourK > 0.01;
+    d.m.position.set(sx + Math.sin(d.t * 40) * 0.03, lerp(sy0, top, d.t), Math.cos(d.t * 33) * 0.03);
+  });
+  // 方糖：自由落下 → 入水減速 → 沉到杯底溶解變小
+  for (const cb of PCT.cubes.slice()) {
+    const inWater = cb.m.position.y < top;
+    cb.vy -= (inWater ? 2.0 : 9.8) * dt;
+    if (inWater) cb.vy *= Math.pow(0.05, dt);
+    cb.m.position.y = Math.max(BASE_Y + 0.15, cb.m.position.y + cb.vy * dt);
+    cb.m.rotation.x += cb.spin.x * dt * (inWater ? 0.2 : 1); cb.m.rotation.y += cb.spin.y * dt * (inWater ? 0.2 : 1);
+    if (inWater) cb.life += dt;
+    const sc = 1 - smooth(0.3, 1.6, cb.life);
+    cb.m.scale.setScalar(Math.max(0.001, sc));
+    if (sc <= 0.001) { PCT.group.remove(cb.m); PCT.cubes.splice(PCT.cubes.indexOf(cb), 1); }
+  }
+  // 磅秤與公式
+  const lcdText = total.toFixed(1);
+  if (lcdText !== PCT.lastText) { PCT.lastText = lcdText; drawLcd(lcdText); }
+  const live = Math.abs(PCT.s - PCT.sD) > 0.05 || Math.abs(PCT.w - PCT.wD) > 0.05;
+  $('fxS').textContent = s.toFixed(1); $('fxS2').textContent = s.toFixed(1); $('fxW').textContent = w.toFixed(1);
+  $('fxZ').textContent = total > 0 ? P.toFixed(1) : '—';
+  ['fbS', 'fbS2', 'fbW', 'fbZ'].forEach(id => $(id).classList.toggle('live', live));
+  const wrong = w > 0 ? (s / w * 100).toFixed(1) : '—';
+  const note = `分母是<b>溶液</b> ${total.toFixed(1)} g（糖＋水）。若只除以水：${s.toFixed(1)} ÷ ${w.toFixed(1)} ＝ ${wrong}% ❌`;
+  if ($('fxNote').innerHTML !== note) $('fxNote').innerHTML = note;
+}
+
+/* =========================================================
+   Tab 3：飽和溶液與溫度魔術（硝酸鉀：100 g 水＋110 g 溶質）
+   ========================================================= */
+const KNO3 = [[0, 13.3], [10, 20.9], [20, 31.6], [30, 45.8], [40, 63.9], [50, 85.5], [60, 110], [70, 138], [80, 169], [90, 202], [100, 246]];
+const SOLUTE = 110;
+const solub = T => { for (let i = 0; i < KNO3.length - 1; i++) { const [t0, s0] = KNO3[i], [t1, s1] = KNO3[i + 1]; if (T <= t1) return lerp(s0, s1, (T - t0) / (t1 - t0)); } return 246; };
+const SAT = { group: new THREE.Group(), Tset: 20, T: 20, parts: [], lastStat: '' };
+scene.add(SAT.group); SAT.group.visible = false;
+const BY = 2.18;                                                              // 燒杯底部高度
+// 三腳架、陶瓷纖維網、本生燈
+const metal = clay(0x8f949c, { metalness: 0.6, roughness: 0.35, clearcoat: 0.6 });
+const ringT = new THREE.Mesh(new THREE.TorusGeometry(1.25, 0.05, 10, 60), metal); ringT.rotation.x = Math.PI / 2; ringT.position.y = BY - 0.06; SAT.group.add(ringT);
+for (let i = 0; i < 3; i++) {
+  const a = i / 3 * Math.PI * 2 + 0.5;
+  const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, BY - 0.1, 6, 10), metal);
+  leg.position.set(Math.cos(a) * 1.3, (BY - 0.06) / 2, Math.sin(a) * 1.3); leg.rotation.z = Math.cos(a) * 0.06; leg.rotation.x = -Math.sin(a) * 0.06;
+  SAT.group.add(leg);
+}
+const gauze = new THREE.Mesh(new THREE.CylinderGeometry(1.35, 1.35, 0.04, 4).rotateY(Math.PI / 4), clay(0xd8d4cc, { roughness: 0.9, clearcoat: 0 }));
+gauze.scale.set(1, 1, 1); gauze.position.y = BY - 0.02; SAT.group.add(gauze);
+const burner = new THREE.Group(); SAT.group.add(burner);
+burner.add(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 0.16, 32), clay(0x3a4150, { clearcoat: 0.8 }))).position.y = 0.08;
+const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 1.2, 24), clay(0xc9ccd2, { metalness: 0.5, roughness: 0.25, clearcoat: 1 })); tube.position.y = 0.76; burner.add(tube);
+const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.16, 24), clay(0xb4865a)); collar.position.y = 0.4; burner.add(collar);
+shadowed(burner);
+const flame = new THREE.Group(); flame.position.y = 1.37; SAT.group.add(flame);
+const flameOuterMat = new THREE.MeshBasicMaterial({ color: 0x6fb2ff, transparent: true, opacity: 0.55, depthWrite: false, toneMapped: false });
+const flameInnerMat = new THREE.MeshBasicMaterial({ color: 0x2f5dff, transparent: true, opacity: 0.85, depthWrite: false, toneMapped: false });
+const fOuter = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.7, 24, 1, true), flameOuterMat); fOuter.position.y = 0.35;
+const fInner = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.36, 20, 1, true), flameInnerMat); fInner.position.y = 0.18;
+flame.add(fOuter, fInner);
+const flameLight = new THREE.PointLight(0x6fa8ff, 0, 3); flameLight.position.y = 0.4; flame.add(flameLight);
+// 燒杯與水
+const sBeaker = makeBeaker(1.3, 2.7); sBeaker.position.y = BY; SAT.group.add(sBeaker);
+const sWaterMat = liquidMat(0xeaf6ff, { attenuationDistance: 5 });
+const sWater = new THREE.Mesh(new THREE.CylinderGeometry(1.23, 1.23, 2.0, 56), sWaterMat); sWater.position.y = BY + 1.02; SAT.group.add(sWater);
+// 杯底晶體小山（由下而上排序：上面的先溶解）
+const crystalMat = clay(0xffffff, { roughness: 0.25, clearcoat: 1, emissive: 0xdff4ff, emissiveIntensity: 0.12 });
+const crystalGeos = [new THREE.OctahedronGeometry(0.12), new THREE.IcosahedronGeometry(0.1), new RoundedBoxGeometry(0.17, 0.17, 0.17, 1, 0.03)];
+const crystals = [];
+for (let i = 0; i < 90; i++) {
+  const y = Math.pow(Math.random(), 1.6) * 0.75;
+  const rMax = 1.0 * (1 - y / 0.8), a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * rMax;
+  const m = new THREE.Mesh(crystalGeos[i % 3], crystalMat);
+  m.position.set(Math.cos(a) * r, BY + 0.08 + y, Math.sin(a) * r);
+  m.rotation.set(rnd(0, 6), rnd(0, 6), rnd(0, 6));
+  m.castShadow = true; SAT.group.add(m);
+  crystals.push({ m, y, s: 1, base: rnd(0.85, 1.25) });
+}
+crystals.sort((a, b) => a.y - b.y);
+// 發光粒子池：溶解時從晶體飄散；結晶時往晶體聚集
+const sparkGeo = new THREE.SphereGeometry(0.035, 10, 8), sparkMat = glowMat(0xbff3ff);
+const sparks = Array.from({ length: 260 }, () => { const m = new THREE.Mesh(sparkGeo, sparkMat); m.visible = false; SAT.group.add(m); return { m, on: false }; });
+function emit(from, to, dur) {
+  const s = sparks.find(p => !p.on); if (!s) return;
+  Object.assign(s, { on: true, a: from.clone(), b: to.clone(), t: 0, dur }); s.m.visible = true;
+}
+const randomInWater = () => { const a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * 1.1; return V3(Math.cos(a) * r, BY + rnd(0.3, 1.9), Math.sin(a) * r); };
+// 已溶解的溶質（淡淡發光、在水中漂）
+const solMat = glowMat(0x9fe8ff);
+const solDots = Array.from({ length: 150 }, () => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.026, 8, 6), solMat); const p = randomInWater(); m.position.copy(p); SAT.group.add(m); return { m, p, ph: Math.random() * 6.28 }; });
+const satL = addLabel('sat', '', 'hl', V3(0, BY + 3.2, 0));
+addLabel('sat', '<small>本生燈</small>', '', V3(0.95, 0.5, 0.5));
+$('tempS').addEventListener('input', () => { SAT.Tset = Number($('tempS').value); $('tempV').textContent = SAT.Tset; });
+function updateSat(dt) {
+  const dT = SAT.Tset - SAT.T, step = 28 * dt;
+  SAT.T += Math.abs(dT) < step ? dT : Math.sign(dT) * step;                 // 水溫慢慢跟上設定值
+  const T = SAT.T, S = solub(T), undis = Math.max(0, SOLUTE - S), dissolved = SOLUTE - undis;
+  const f = undis / (SOLUTE - solub(20));                                    // 20 ℃ 時晶體最多（f＝1）
+  const N = crystals.length;
+  crystals.forEach((c, j) => {
+    const target = clamp(f * N - j, 0, 1);
+    const d = target - c.s;
+    if (Math.abs(d) > 0.004) {
+      const p = c.m.position;
+      if (d < 0 && Math.random() < -d * 6) for (let n = 0; n < 2; n++) emit(p, randomInWater(), rnd(1.2, 2.0));   // 溶解：散入水中
+      if (d > 0 && Math.random() < d * 6) for (let n = 0; n < 2; n++) emit(randomInWater(), p, rnd(0.9, 1.4));    // 結晶：聚回小山
+    }
+    c.s += d * (1 - Math.exp(-dt * 6));
+    c.m.scale.setScalar(Math.max(0.001, c.s * c.base));
+    c.m.visible = c.s > 0.01;
+  });
+  for (const s of sparks) {
+    if (!s.on) continue;
+    s.t += dt / s.dur;
+    if (s.t >= 1) { s.on = false; s.m.visible = false; continue; }
+    const e = smooth(0, 1, s.t);
+    s.m.position.lerpVectors(s.a, s.b, e); s.m.position.y += Math.sin(s.t * Math.PI) * 0.25;
+    s.m.scale.setScalar(Math.sin(s.t * Math.PI) * 1.6 + 0.2);
+  }
+  const nSol = Math.round(dissolved / SOLUTE * solDots.length);
+  solDots.forEach((d, i) => {
+    d.m.visible = i < nSol;
+    d.m.position.set(d.p.x + Math.sin(wall * 0.9 + d.ph) * 0.06, d.p.y + Math.cos(wall * 0.7 + d.ph) * 0.05, d.p.z + Math.sin(wall * 0.8 + d.ph * 2) * 0.06);
+  });
+  // 火焰：溫度越高火越大
+  const heat = (SAT.Tset - 20) / 80;
+  flame.visible = heat > 0.01;
+  const flick = 1 + Math.sin(wall * 23) * 0.06 + Math.sin(wall * 37) * 0.04;
+  flame.scale.set(0.7 + heat * 0.6, (0.4 + heat * 0.85) * flick, 0.7 + heat * 0.6);
+  flameLight.intensity = heat * 3;
+  sWaterMat.attenuationColor.setHSL(0.58 - 0.04 * (T - 20) / 80, 0.4, 0.95);
+  // 文字
+  const state = undis > 0.05 ? `<span class="warn">飽和溶液</span>（杯底有沉澱）` : S - SOLUTE < 1 ? `<span class="ok">恰好飽和</span>` : `<span class="ok">未飽和溶液</span>（還能再溶）`;
+  const stat = `溫度：<b>${T.toFixed(0)} ℃</b><br>溶解度：<b>${S.toFixed(1)} g</b> ／ 100 g 水<br>已溶解：<b>${dissolved.toFixed(1)} g</b>｜杯底沉澱：<b>${undis.toFixed(1)} g</b><br>${state}`;
+  if (stat !== SAT.lastStat) { SAT.lastStat = stat; $('satStat').innerHTML = stat; drawSatChart(T, S); }
+  setLabel(satL, undis > 0.05 ? `杯底沉澱 ${undis.toFixed(0)} g` : '晶體全部溶解！');
+  setCap(undis > 0.05
+    ? `<small>飽和溶液與溫度</small>${T.toFixed(0)} ℃ 時 100 g 水最多溶 <b>${S.toFixed(0)} g</b> 硝酸鉀 → 溶不下的 <b>${undis.toFixed(0)} g</b> 沉在杯底（飽和）`
+    : `<small>飽和溶液與溫度</small>${T.toFixed(0)} ℃ 時溶解度 <b>${S.toFixed(0)} g</b> ≥ 110 g → 晶體<b>全部溶解</b>；再降溫就會<b>結晶析出</b>`);
+}
+function drawSatChart(T, S) {
+  const cv = $('satChart'), w = cv.clientWidth, h = cv.clientHeight;
+  if (!w) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  const L = 34, R = 10, Tp = 16, B = 26, pw = w - L - R, ph = h - Tp - B;
+  const X = t => L + t / 100 * pw, Y = s => Tp + ph - s / 250 * ph;
+  g.font = '600 10px "PingFang TC","Microsoft JhengHei",sans-serif'; g.fillStyle = '#8a7c6c'; g.strokeStyle = 'rgba(120,95,70,.14)';
+  for (let t = 0; t <= 100; t += 20) { g.beginPath(); g.moveTo(X(t), Y(0)); g.lineTo(X(t), Y(250)); g.stroke(); g.textAlign = 'center'; g.fillText(t, X(t), Y(0) + 13); }
+  for (let s = 0; s <= 250; s += 50) { g.beginPath(); g.moveTo(X(0), Y(s)); g.lineTo(X(100), Y(s)); g.stroke(); g.textAlign = 'right'; g.fillText(s, X(0) - 4, Y(s) + 3); }
+  g.textAlign = 'left'; g.fillStyle = '#5a4c3e'; g.fillText('溶解度（g/100 g 水）', X(0) + 4, Tp - 4);
+  g.textAlign = 'right'; g.fillText('溫度 ℃', X(100), Y(0) + 24);
+  g.setLineDash([4, 4]); g.strokeStyle = '#c0703f'; g.lineWidth = 1.4;
+  g.beginPath(); g.moveTo(X(0), Y(SOLUTE)); g.lineTo(X(100), Y(SOLUTE)); g.stroke(); g.setLineDash([]);
+  g.fillStyle = '#c0703f'; g.textAlign = 'left'; g.fillText('加入 110 g', X(2), Y(SOLUTE) - 5);
+  g.strokeStyle = '#3d7dff'; g.lineWidth = 2.6; g.beginPath();
+  for (let t = 0; t <= 100; t += 2) { const y = Y(solub(t)); if (t) g.lineTo(X(t), y); else g.moveTo(X(t), y); }
+  g.stroke();
+  g.beginPath(); g.arc(X(T), Y(S), 5, 0, Math.PI * 2); g.fillStyle = '#d0453a'; g.fill(); g.lineWidth = 2; g.strokeStyle = '#fff'; g.stroke();
+}
+
+/* =========================================================
+   Tab 4：百萬分點濃度 ppm（999,999 顆水粒子＋1 顆汙染物）
+   ========================================================= */
+const PPM = { group: new THREE.Group(), state: 'idle', t: 0, reveal: 0, points: null, fly: null, count: 0 };
+scene.add(PPM.group); PPM.group.visible = false;
+const TANK = { cx: 0, cy: 2.95, w: 9, h: 5, d: 5 };
+const RED_P = V3(1.9, 2.35, 0.7);
+const DROPPER = V3(3.2, 7.0, 0.7);
+const stand = shadowed(new THREE.Mesh(new RoundedBoxGeometry(9.8, 0.4, 5.8, 4, 0.15), clay(0xb4865a))); stand.position.y = 0.2; PPM.group.add(stand);
+const tankWater = new THREE.Mesh(new RoundedBoxGeometry(TANK.w - 0.25, TANK.h - 0.4, TANK.d - 0.25, 4, 0.2),
+  new THREE.MeshPhysicalMaterial({ color: 0xbfe3ff, transparent: true, opacity: 0.1, depthWrite: false, roughness: 0.1 }));
+tankWater.position.set(TANK.cx, TANK.cy - 0.12, 0); tankWater.renderOrder = 1; PPM.group.add(tankWater);
+const tankGlass = new THREE.Mesh(new RoundedBoxGeometry(TANK.w, TANK.h, TANK.d, 5, 0.3), glassA({ opacity: 0.13 }));
+tankGlass.position.set(TANK.cx, TANK.cy, 0); tankGlass.renderOrder = 4; PPM.group.add(tankGlass);
+const tankEdge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(TANK.w, TANK.h, TANK.d)), new THREE.LineBasicMaterial({ color: 0x9fc6e8, transparent: true, opacity: 0.5 }));
+tankEdge.position.copy(tankGlass.position); PPM.group.add(tankEdge);
+addLabel('ppm', '<b>1000 公升的水</b><br><small>（約 1000 公斤）</small>', '', V3(-3.2, 5.9, 0));
+// 滴管
+const dropper = new THREE.Group(); dropper.position.copy(DROPPER); PPM.group.add(dropper);
+const dTube = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.05, 1.3, 24), glassA({ opacity: 0.35 })); dTube.renderOrder = 6; dTube.position.y = -0.3; dropper.add(dTube);
+const dLiquid = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.035, 0.6, 16), glowMat(0xff3b30)); dLiquid.position.y = -0.62; dropper.add(dLiquid);
+const bulb = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.28, 28, 20), clay(0xb8473a, { roughness: 0.6 }))); bulb.position.y = 0.55; bulb.scale.set(1, 1.25, 1); dropper.add(bulb);
+const dropLbl = addLabel('ppm', '<small>滴管：1 公克汙染物</small>', '', V3(DROPPER.x + 1.2, DROPPER.y + 0.4, 0.7));
+// 紅色汙染物粒子＋光暈
+const red = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), glowMat(0xff2a1f)); red.visible = false; PPM.group.add(red);
+function haloTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d'), grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, 'rgba(255,90,70,1)'); grd.addColorStop(0.25, 'rgba(255,60,40,.55)'); grd.addColorStop(1, 'rgba(255,40,30,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+}
+const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTexture(), transparent: true, depthWrite: false, toneMapped: false }));
+halo.visible = false; halo.renderOrder = 8; PPM.group.add(halo);
+const splashMat = new THREE.MeshBasicMaterial({ color: 0xff6a5a, transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
+const splash = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.02, 8, 40), splashMat); splash.rotation.x = Math.PI / 2; PPM.group.add(splash);
+const redL = addLabel('ppm', '', 'hl', V3(0, 0.12, 0), red);
+
+/** 999,999 顆水粒子：一個 Points 物件、自訂著色器（一次繪製，效能最好） */
+const N_WATER = 999999;
+const pointsMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false,
+  uniforms: { uTime: { value: 0 }, uReveal: { value: 0 }, uPx: { value: 600 }, uDrop: { value: RED_P.clone() } },
+  vertexShader: `
+    uniform float uTime, uReveal, uPx; uniform vec3 uDrop;
+    attribute float aSeed;
+    varying float vA;
+    void main() {
+      vec3 p = position + 0.008 * vec3(sin(uTime * 1.3 + aSeed * 6.28), cos(uTime * 1.1 + aSeed * 12.0), sin(uTime * 0.9 + aSeed * 20.0));
+      vec4 mv = modelViewMatrix * vec4(p, 1.0);
+      gl_Position = projectionMatrix * mv;
+      float d = distance(position, uDrop);
+      vA = 1.0 - smoothstep(uReveal - 0.8, uReveal, d);
+      gl_PointSize = clamp(uPx * 0.028 / -mv.z, 1.0, 10.0);
+    }`,
+  fragmentShader: `
+    varying float vA;
+    void main() {
+      vec2 c = gl_PointCoord - 0.5; float r = length(c);
+      if (r > 0.5 || vA < 0.01) discard;
+      float a = vA * 0.5 * smoothstep(0.5, 0.15, r);
+      gl_FragColor = vec4(mix(vec3(0.45, 0.72, 1.0), vec3(0.85, 0.95, 1.0), smoothstep(0.3, 0.0, r)), a);
+    }`
+});
+function buildPoints() {
+  if (PPM.points) return;
+  const pos = new Float32Array(N_WATER * 3), seed = new Float32Array(N_WATER);
+  const hw = TANK.w / 2 - 0.25, hh = TANK.h / 2 - 0.3, hd = TANK.d / 2 - 0.25;
+  for (let i = 0; i < N_WATER; i++) {
+    pos[i * 3] = TANK.cx + (Math.random() * 2 - 1) * hw;
+    pos[i * 3 + 1] = TANK.cy - 0.1 + (Math.random() * 2 - 1) * hh;
+    pos[i * 3 + 2] = (Math.random() * 2 - 1) * hd;
+    seed[i] = Math.random();
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1));
+  PPM.points = new THREE.Points(geo, pointsMat);
+  PPM.points.frustumCulled = false; PPM.points.renderOrder = 2;
+  PPM.group.add(PPM.points);
+}
+const PPM_CAM = { pos: [0.4, 6.2, 15.5], target: [0.4, 2.9, 0], fitW: 11.5 };
+function resetPpm() {
+  PPM.state = 'idle'; PPM.t = 0; PPM.reveal = 0; PPM.count = 0; PPM.fly = null;
+  pointsMat.uniforms.uReveal.value = 0;
+  if (PPM.points) PPM.points.visible = false;
+  red.visible = false; halo.visible = false; splashMat.opacity = 0;
+  dLiquid.visible = true; bulb.scale.set(1, 1.25, 1);
+  controls.enabled = true;
+  $('dropBtn').disabled = false;
+  if (tab === 'ppm') goView(PPM_CAM);
+}
+function dropPollutant() {
+  if (PPM.state !== 'idle') return;
+  buildPoints();
+  PPM.state = 'squeeze'; PPM.t = 0;
+  $('dropBtn').disabled = true;
+  goView(PPM_CAM);
+}
+$('dropBtn').addEventListener('click', dropPollutant);
+$('ppmReset').addEventListener('click', resetPpm);
+const tipY = DROPPER.y - 0.95, surfY = TANK.cy + TANK.h / 2 - 0.3;
+function updatePpm(dt) {
+  pointsMat.uniforms.uTime.value = wall;
+  PPM.t += dt;
+  const s = PPM.state;
+  if (s === 'squeeze') {                                                     // 擠壓滴管
+    const k = Math.sin(Math.min(1, PPM.t / 0.5) * Math.PI);
+    bulb.scale.set(1 + 0.25 * k, 1.25 - 0.45 * k, 1 + 0.25 * k);
+    if (PPM.t >= 0.5) { PPM.state = 'fall'; PPM.t = 0; red.visible = true; halo.visible = true; dLiquid.visible = false; }
+  }
+  if (PPM.state === 'fall') {                                                // 自由落下到水面
+    const y = tipY - 0.5 * 9.8 * PPM.t * PPM.t;
+    red.position.set(DROPPER.x, Math.max(y, surfY), DROPPER.z); red.scale.setScalar(0.07);
+    if (y <= surfY) { PPM.state = 'sink'; PPM.t = 0; splash.position.set(DROPPER.x, surfY, DROPPER.z); }
+  }
+  if (PPM.state === 'sink') {                                                // 入水後減速、漂到最終位置、縮小
+    const k = smooth(0, 1, PPM.t / 1.0);
+    red.position.set(lerp(DROPPER.x, RED_P.x, k), lerp(surfY, RED_P.y, k), lerp(DROPPER.z, RED_P.z, k));
+    red.scale.setScalar(lerp(0.07, 0.022, k));
+    if (PPM.t >= 1.0) { PPM.state = 'reveal'; PPM.t = 0; PPM.points.visible = true; }
+  }
+  if (PPM.state === 'reveal') {                                              // 999,999 顆水粒子從汙染物周圍湧現、把它淹沒
+    PPM.reveal = smooth(0, 1, PPM.t / 1.6) * 12;
+    pointsMat.uniforms.uReveal.value = PPM.reveal;
+    PPM.count = Math.round(N_WATER * smooth(0, 1, PPM.t / 1.6));
+    if (PPM.t >= 1.7) { PPM.state = 'fly'; PPM.t = 0; startFly(); }
+  }
+  if (PPM.state === 'fly') {                                                 // 極限 Zoom In：穿越水分子，停在紅色粒子前
+    const k = smooth(0, 1, PPM.t / PPM.fly.dur);
+    PPM.fly.curve.getPointAt(k, camera.position);
+    controls.target.lerpVectors(PPM.fly.t0, RED_P, smooth(0, 0.6, k));
+    if (PPM.t >= PPM.fly.dur) { PPM.state = 'done'; controls.enabled = true; controls.target.copy(RED_P); }
+  }
+  // 水花
+  if (splashMat.opacity > 0 || PPM.state === 'sink') {
+    const a = PPM.state === 'sink' ? 1 - PPM.t : 0;
+    splashMat.opacity = Math.max(0, a) * 0.8; splash.scale.setScalar(1 + (1 - a) * 4);
+  }
+  if (red.visible) {
+    const pulse = 1 + 0.15 * Math.sin(wall * 5);
+    halo.position.copy(red.position);
+    halo.scale.setScalar((PPM.state === 'done' || PPM.state === 'fly' ? 0.2 : 0.55) * pulse);
+  }
+  redL.show = red.visible && (PPM.state === 'done');
+  setLabel(redL, '這 1 顆就是汙染物！');
+  dropLbl.show = PPM.state === 'idle' || PPM.state === 'squeeze';
+  const n = PPM.count.toLocaleString('en-US');
+  const st = PPM.state === 'idle'
+    ? '按下「滴入 1 公克汙染物」開始'
+    : `水粒子：<b>${n}</b> 顆<br>汙染物：<b style="color:#d0453a">1</b> 顆<br>比例：1 ÷ 1,000,000 ＝ <b>1 ppm</b>`;
+  if ($('ppmStat').innerHTML !== st) $('ppmStat').innerHTML = st;
+  setCap(PPM.state === 'done'
+    ? '<small>這就是 1 ppm（百萬分之一）</small>在一百萬顆水分子中，只有<b>一顆</b>汙染物——雖然肉眼看不見，但它<b>確實存在</b>！'
+    : PPM.state === 'idle'
+      ? '<small>百萬分點濃度 ppm</small>1 ppm ＝ 1 mg ÷ 1 kg ＝ <b>百萬分之一</b>。按下按鈕，滴入 1 公克汙染物到 1000 公斤的水裡'
+      : PPM.state === 'fly' ? '<small>極限 Zoom In</small>穿越 999,999 顆水分子……去找那 <b>1 顆</b>紅色汙染物'
+        : '<small>百萬分點濃度 ppm</small>汙染物落入水中，<b>999,999 顆</b>水分子把它淹沒了…');
+  $('cap').classList.toggle('big', PPM.state === 'done');
+}
+function startFly() {
+  controls.enabled = false;
+  const p0 = camera.position.clone();
+  const end = RED_P.clone().add(V3(0.16, 0.12, 0.62));
+  const curve = new THREE.CatmullRomCurve3([
+    p0,
+    V3(RED_P.x + 1.6, RED_P.y + 1.4, TANK.d / 2 + 3.2),
+    V3(RED_P.x + 0.9, RED_P.y + 0.5, TANK.d / 2 - 0.2),
+    V3(RED_P.x + 0.45, RED_P.y + 0.3, RED_P.z + 1.25),
+    end
+  ], false, 'centripetal');
+  PPM.fly = { curve, t0: controls.target.clone(), dur: 5.0 };
+}
+
+/* =========================================================
+   Tab 切換、鏡頭、點擊
+   ========================================================= */
+const TABS = {
+  mix: { group: MIX.group, cam: { pos: [0.3, 4.6, 11.8], target: [0.3, 2.6, 0], fitW: 10.5 }, update: updateMix },
+  pct: { group: PCT.group, cam: { pos: [0, 4.4, 10.5], target: [0, 2.3, 0], fitW: 6.5 }, update: updatePct },
+  sat: { group: SAT.group, cam: { pos: [0, 4.6, 10.2], target: [0, 2.6, 0], fitW: 6.5 }, update: updateSat },
+  ppm: { group: PPM.group, cam: PPM_CAM, update: updatePpm }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  $('cap').hidden = t === 'pct'; $('fxWrap').hidden = t !== 'pct';
+  $('cap').classList.remove('big');
+  if (t === 'sat') { SAT.lastStat = ''; }
+  if (t !== 'ppm' && PPM.state === 'fly') { PPM.state = 'done'; controls.enabled = true; }
+  if (t === 'ppm' && PPM.state === 'idle') resetPpm();
+  controls.enabled = !(t === 'ppm' && PPM.state === 'fly');
+  goView(TABS[t].cam, true);
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (window.MobileView?.isMobile()) return { pos, tgt };
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt);
+  const tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const dockH = $('dock').getBoundingClientRect().height + 18;
+  const sy = (dockH / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y -= sy; tgt.y -= sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant || window.MobileView?.isMobile()) {
+    camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update();
+    window.MobileView?.frame(camera, controls, 1.4);
+    return;
+  }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => { if (tab === 'ppm' && PPM.state === 'done') { PPM.state = 'done'; } goView(TABS[tab].cam, true); });
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+
+// 點擊杯子（拖曳旋轉時不觸發）
+const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
+let downXY = null;
+function pickCup(ev) {
+  if (tab !== 'mix') return null;
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+  const h = raycaster.intersectObjects(cupHits, false)[0];
+  return h ? h.object.userData.cup : null;
+}
+renderer.domElement.addEventListener('pointerdown', ev => { downXY = [ev.clientX, ev.clientY]; });
+renderer.domElement.addEventListener('pointerup', ev => {
+  if (!downXY || Math.hypot(ev.clientX - downXY[0], ev.clientY - downXY[1]) > 6) return;
+  const k = pickCup(ev); if (k) selectCup(k);
+});
+renderer.domElement.addEventListener('pointermove', ev => { if (!ev.buttons) renderer.domElement.style.cursor = pickCup(ev) ? 'pointer' : ''; });
+
+function resize() {
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.fov = 40;
+  camera.updateProjectionMatrix();
+  pointsMat.uniforms.uPx.value = window.innerHeight * renderer.getPixelRatio() / (2 * Math.tan(camera.fov * Math.PI / 360));
+}
+window.addEventListener('resize', () => { resize(); if (!(tab === 'ppm' && PPM.state !== 'idle')) goView(TABS[tab].cam, true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.2);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  if (controls.enabled) controls.update();
+  else camera.lookAt(controls.target);
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, selectCup, dropPollutant, resetPpm, PPM, PCT, SAT, MIX, camera, controls };
+
+resize();
+drawLcd('100.0');
+setTab(TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'mix');
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>

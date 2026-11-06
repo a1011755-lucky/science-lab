@@ -36,7 +36,7 @@
   .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
   .title { font-size: 1.15rem; font-weight: 800; margin-top: 6px; padding-right: 62px; }
 
-  .units { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 12px 0 10px; padding: 4px; border-radius: 18px; background: rgba(120,90,60,.08); }
+  .units { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; padding: 4px; border-radius: 18px; background: rgba(120,90,60,.08); }
   .unit { border: none; cursor: pointer; font: inherit; font-size: .74rem; font-weight: 800; padding: 7px 2px; line-height: 1.3; border-radius: 14px; color: var(--ink-soft); background: transparent; }
   .unit b { display: block; font-size: .66rem; letter-spacing: .06em; opacity: .7; }
   .unit.on { color: #fff; background: var(--accent); box-shadow: 0 6px 16px rgba(192,112,63,.35); }
@@ -46,6 +46,15 @@
   .concept .ct { font-size: 1.05rem; font-weight: 900; color: var(--cc, #5b8a72); }
   .concept .cd { font-size: .9rem; font-weight: 800; margin: 2px 0; line-height: 1.5; }
   .concept small { font-size: .74rem; color: var(--ink-soft); font-weight: 700; }
+  #swRow[hidden] { display: none; }
+  .tk.e1 { background: #ffd21f; box-shadow: 0 0 10px #ffd21f; }
+  .tk.e0 { background: #5a5136; }
+  #cStats { display: grid; gap: 3px; font-size: .78rem; background: rgba(255,255,255,.72); border-radius: 14px; padding: 8px 10px; margin-top: 6px; }
+  #cStats b { font-variant-numeric: tabular-nums; }
+  #cStats small { color: var(--ink-soft); }
+  .lv { display: grid; grid-template-columns: 3.3em 1fr 6.4em; align-items: center; gap: 6px; }
+  .lv .bar { height: 8px; border-radius: 999px; background: #eee3d0; overflow: hidden; }
+  .lv .bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #ffd76a, #ffb020); transition: width .3s; }
   .btn.off { color: #fff !important; background: #6b6e75 !important; box-shadow: none; }
 
   .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin: 4px 0 10px; }
@@ -177,6 +186,7 @@
       <button class="unit on" data-unit="u1"><b>01</b>靜電三部曲</button>
       <button class="unit" data-unit="ut"><b>02</b>電路三劍客</button>
       <button class="unit" data-unit="u2"><b>03</b>歐姆定律測量</button>
+      <button class="unit" data-unit="u4"><b>04</b>串並聯與電能消耗</button>
     </div>
 
     <!-- 模組一 -->
@@ -229,6 +239,27 @@
       </div>
       <div id="chartSlotM"></div>
       <div class="note blue">💡 比喻：電池像<b>水泵</b>，提供推動的壓力（＝電壓）；電流像<b>水流量</b>。<br>電阻是<b>導體材質本身的性質</b>，換材質才會改變，跟你加多少電壓<b>無關</b>。</div>
+    </section>
+
+    <!-- 模組四：串並聯與電能消耗 -->
+    <section class="usec" data-unit="u4" hidden>
+      <div class="tabs">
+        <button class="tab on" data-cm="A">💡<br>A 單一燈泡</button>
+        <button class="tab" data-cm="B">💡💡<br>B 串聯</button>
+        <button class="tab" data-cm="C">🔀<br>C 並聯</button>
+      </div>
+      <div class="legend2">
+        <span><i class="tk e1"></i>金黃發亮＝電子<b>滿載電能</b></span>
+        <span><i class="tk e0"></i>暗淡＝電能已<b>交給燈泡</b>（電子還在！）</span>
+      </div>
+      <div class="concept" id="cConcept" style="margin-top:8px"></div>
+      <div class="row2" id="swRow" hidden>
+        <button class="btn" data-sw="0">開關 1</button>
+        <button class="btn" data-sw="1">開關 2</button>
+      </div>
+      <div id="cStats"></div>
+      <p class="desc" id="cDesc"></p>
+      <div class="note">⚠️ 迷思破解：燈泡消耗的是<b>電能</b>，不是電子！電子像<b>搬運工</b>，一圈又一圈回到電池「裝貨」，數量永遠不變。</div>
     </section>
 
     <button class="btn" id="viewBtn" style="margin-top:10px">重設視角</button>
@@ -1221,6 +1252,413 @@ function tUpdate(dt) {
 }
 
 /* =========================================================
+   模組四：串並聯與電能消耗 — 電子是「電能的搬運工」
+   ---------------------------------------------------------
+   ‧ 電路／水路都描述成「路段圖」：每段有曲線、下一段（可分岔）、所屬支路
+   ‧ 粒子數量從頭到尾不變；改變的只有顏色亮度（＝攜帶的能量）
+     電子：經過燈泡的能量區段就變暗，回到電池（隱藏段）出來時重新點亮
+     水滴：能量＝高度（位能），抽水馬達抬高變亮、經過水車落下變暗
+   ‧ 流速＝電流：A 標準、B 串聯減半、C 並聯主幹＝兩支路相加
+   ========================================================= */
+const u4g = new THREE.Group(); scene.add(u4g); u4g.visible = false;
+const u4StatLabels = [], u4DynLabels = [];
+const U4 = { mode: 'A', sw: [true, true], nets: [], bulbs: [], wheels: [], switches: [], dyn: null, statT: 0, cap: '' };
+const SPEED0 = 1.15;                                   // I = 1 A 時的流速（單位長度／秒）
+const OXW = -3.0, OXC = 3.4, OY = 2.3;                  // 水路、電路的中心
+const U4_CAM = { pos: [0.3, 4.3, 15], target: [0.3, 2.3, 0], fitW: 15.2 };
+
+/* ----- 路段定義（區域座標；電路的方向＝電子行進方向，水路的方向＝水流方向） ----- */
+const C_MAIN = [[-2.6, -0.65], [-2.6, -1.6], [2.6, -1.6], [2.6, 1.6], [-2.6, 1.6], [-2.6, 0.65]];
+const C_BAT = { id: 'T', pts: [[-2.6, 0.65], [-2.6, -0.65]], next: ['M'], battery: true };
+const W_PUMP = { id: 'P', pts: [[-2.6, -1.6], [-2.6, 1.6]], next: ['M'], pump: true };
+const NETS = {
+  A: {
+    circuit: [{ id: 'M', pts: C_MAIN, next: ['T'], e0: 1, bulbs: [{ k: 0, at: [2.6, 0], from: 1, to: 0 }] }, C_BAT],
+    water: [{ id: 'M', pts: [[-2.6, 1.6], [1.6, 1.6], [1.6, -1.6], [-2.6, -1.6]], next: ['P'], wheels: [{ k: 0, at: [1.6, 0] }] }, W_PUMP]
+  },
+  B: {
+    circuit: [{ id: 'M', pts: C_MAIN, next: ['T'], e0: 1,
+      bulbs: [{ k: 0, at: [2.6, 0], from: 1, to: 0.5 }, { k: 1, at: [0.4, 1.6], from: 0.5, to: 0 }],
+      switches: [{ k: 0, at: [2.6, -0.85] }, { k: 1, at: [1.45, 1.6] }] }, C_BAT],
+    water: [{ id: 'M', pts: [[-2.6, 1.6], [-0.2, 1.6], [-0.2, 0], [1.6, 0], [1.6, -1.6], [-2.6, -1.6]], next: ['P'],
+      wheels: [{ k: 0, at: [-0.2, 0.8] }, { k: 1, at: [1.6, -0.8] }],
+      switches: [{ k: 0, at: [-1.3, 1.6] }, { k: 1, at: [0.75, 0] }] }, W_PUMP]
+  },
+  C: {
+    circuit: [
+      { id: 'M', pts: [[-2.6, -0.65], [-2.6, -1.6], [0.2, -1.6]], next: ['B1', 'B2'], e0: 1 },
+      { id: 'B1', branch: 0, pts: [[0.2, -1.6], [2.6, -1.6], [2.6, 1.6], [0.2, 1.6]], next: ['O'], e0: 1,
+        bulbs: [{ k: 0, at: [2.6, 0], from: 1, to: 0 }], switches: [{ k: 0, at: [1.45, -1.6] }] },
+      { id: 'B2', branch: 1, pts: [[0.2, -1.6], [0.2, 1.6]], next: ['O'], e0: 1,
+        bulbs: [{ k: 1, at: [0.2, 0.15], from: 1, to: 0 }], switches: [{ k: 1, at: [0.2, -0.95] }] },
+      { id: 'O', pts: [[0.2, 1.6], [-2.6, 1.6], [-2.6, 0.65]], next: ['T'], e0: 0 },
+      C_BAT],
+    water: [
+      { id: 'M', pts: [[-2.6, 1.6], [-0.2, 1.6]], next: ['B1', 'B2'] },
+      { id: 'B1', branch: 0, pts: [[-0.2, 1.6], [1.6, 1.6], [1.6, -1.6], [-0.2, -1.6]], next: ['O'],
+        wheels: [{ k: 0, at: [1.6, 0] }], switches: [{ k: 0, at: [0.75, 1.6] }] },
+      { id: 'B2', branch: 1, pts: [[-0.2, 1.6], [-0.2, -1.6]], next: ['O'],
+        wheels: [{ k: 1, at: [-0.2, 0] }], switches: [{ k: 1, at: [-0.2, 0.9] }] },
+      { id: 'O', pts: [[-0.2, -1.6], [-2.6, -1.6]], next: ['P'] },
+      W_PUMP]
+  }
+};
+
+/** 折線 → 圓角路徑 → 等距取樣的曲線（getPointAt 依弧長） */
+function pathCurve(pts, ox, oy, z, r = 0.45) {
+  const v = pts.map(p => new THREE.Vector2(p[0] + ox, p[1] + oy));
+  const P = new THREE.Path(); P.moveTo(v[0].x, v[0].y);
+  for (let i = 1; i < v.length; i++) {
+    if (i < v.length - 1) {
+      const a = v[i - 1], b = v[i], c = v[i + 1];
+      const d1 = b.clone().sub(a), d2 = c.clone().sub(b);
+      const rr = Math.min(r, d1.length() / 2, d2.length() / 2);
+      const p1 = b.clone().sub(d1.normalize().multiplyScalar(rr)), p2 = b.clone().add(d2.normalize().multiplyScalar(rr));
+      P.lineTo(p1.x, p1.y); P.quadraticCurveTo(b.x, b.y, p2.x, p2.y);
+    } else P.lineTo(v[i].x, v[i].y);
+  }
+  const n = Math.max(8, Math.ceil(P.getLength() * 30));
+  return new THREE.CatmullRomCurve3(P.getSpacedPoints(n).map(p => V3(p.x, p.y, z)), false, 'centripetal');
+}
+function nearestS(curve, p) {
+  let best = 0, bd = 1e9; const q = V3(0, 0, 0);
+  for (let i = 0; i <= 300; i++) { curve.getPointAt(i / 300, q); const d = q.distanceToSquared(p); if (d < bd) { bd = d; best = i / 300; } }
+  return best * curve.getLength();
+}
+
+/* ----- 粒子：InstancedMesh，每顆的顏色＝能量 ----- */
+const u4eGeo = new THREE.CapsuleGeometry(0.045, 0.14, 4, 10);
+const u4wGeo = new THREE.CapsuleGeometry(0.065, 0.18, 4, 10);
+SHARED_GEO.add(u4eGeo); SHARED_GEO.add(u4wGeo);
+const ENERGY_COL = {
+  circuit: { hi: new THREE.Color(0xffd21f), lo: new THREE.Color(0x4d4637) },   // 滿載：極亮金黃｜卸貨後：暗灰黃
+  water: { hi: new THREE.Color(0x00e5ff), lo: new THREE.Color(0x2b4a5c) }      // 高處：亮螢光藍｜低處：暗藍灰
+};
+const _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _sc = V3(1, 1, 1), _p = V3(0, 0, 0), _t = V3(0, 0, 0), _col = new THREE.Color();
+
+/**
+ * 建立一個流動網路
+ * kind：'circuit'｜'water'；energy(seg, s, y)：回傳 0~1 的能量
+ */
+function buildNet(defs, kind, ox, oy, parent) {
+  const isC = kind === 'circuit';
+  const segs = defs.map(d => { const curve = pathCurve(d.pts, ox, oy, 0); return { ...d, curve, len: curve.getLength() }; });
+  const idx = Object.fromEntries(segs.map((s, i) => [s.id, i]));
+  segs.forEach(s => {
+    s.nextIdx = s.next.map(id => idx[id]);
+    s.zones = (s.bulbs || []).map(b => { const c = nearestS(s.curve, V3(b.at[0] + ox, b.at[1] + oy, 0)); return { s0: c - 0.3, s1: c + 0.3, from: b.from, to: b.to }; });
+  });
+  // 管線（電池段藏在電池裡，不畫）
+  const tubeR = isC ? 0.13 : 0.28;
+  const tubeMat = isC ? clearTube(0xfffaf0, 0xf6d7a8) : clearTube(0xf2fbff, 0x9fe9ff);
+  segs.forEach(s => {
+    if (s.battery) return;
+    const m = new THREE.Mesh(new THREE.TubeGeometry(s.curve, Math.ceil(s.len * 24), tubeR, isC ? 14 : 20, false), tubeMat);
+    m.castShadow = true; parent.add(m);
+    const j = new THREE.Mesh(new THREE.SphereGeometry(tubeR, 20, 14), tubeMat); s.curve.getPointAt(0, j.position); parent.add(j);
+  });
+  // 粒子：依長度平均撒（密度處處相同，數量之後永不增減）
+  const dens = isC ? 9 : 6.5, parts = [];
+  segs.forEach((s, si) => {
+    const n = Math.max(1, Math.round(s.len * dens));
+    for (let j = 0; j < n; j++) {
+      const a = Math.random() * Math.PI * 2, rr = tubeR * 0.5 * Math.sqrt(Math.random());
+      parts.push({ seg: si, s: (j + Math.random() * 0.7) / n * s.len, on: Math.cos(a) * rr, oz: Math.sin(a) * rr, len: 0.75 + Math.random() * 0.6 });
+    }
+  });
+  const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false });
+  const mesh = new THREE.InstancedMesh(isC ? u4eGeo : u4wGeo, mat, parts.length);
+  mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  mesh.frustumCulled = false;
+  parent.add(mesh);
+  const col = ENERGY_COL[kind];
+
+  function energy(seg, s, y) {
+    if (!isC) return clamp((y - oy + 1.6) / 3.2, 0, 1);            // 水：能量＝高度（重力位能）
+    if (seg.battery) return 0;                                    // 電池內部：充電中（藏起來）
+    let e = seg.e0 ?? 0;
+    for (const z of seg.zones) {                                   // 經過燈泡：把能量交出去
+      if (s >= z.s1) e = z.to;
+      else if (s > z.s0) { e = lerp(z.from, z.to, (s - z.s0) / (z.s1 - z.s0)); break; }
+      else break;
+    }
+    return e;
+  }
+  return {
+    kind, segs, parts, mesh,
+    speedOf(seg, cur) { return SPEED0 * (seg.branch == null ? cur.main : cur.br[seg.branch]); },
+    step(dt, cur) {
+      for (let i = 0; i < parts.length; i++) {
+        const p = parts[i];
+        let seg = segs[p.seg];
+        const v = this.speedOf(seg, cur);
+        p.s += v * dt;
+        while (p.s >= seg.len) {                                   // 走到路口：選下一段（並聯時隨機二選一，斷路的支路不能進）
+          const open = seg.nextIdx.filter(k => this.speedOf(segs[k], cur) > 0);
+          if (!open.length) { p.s = seg.len - 1e-4; break; }
+          p.s -= seg.len; p.seg = open[(Math.random() * open.length) | 0]; seg = segs[p.seg];
+        }
+        const u = clamp(p.s / seg.len, 0, 1);
+        seg.curve.getPointAt(u, _p); seg.curve.getTangentAt(u, _t);
+        const e = energy(seg, p.s, _p.y);
+        _p.x += -_t.y * p.on; _p.y += _t.x * p.on; _p.z += p.oz;
+        _q.setFromUnitVectors(UPV, _t);
+        const hide = seg.battery;
+        _sc.set(hide ? 0 : 1, hide ? 0 : p.len * (1 + Math.min(1.2, this.speedOf(seg, cur) * 0.35)), hide ? 0 : 1);
+        mesh.setMatrixAt(i, _m4.compose(_p, _q, _sc));
+        mesh.setColorAt(i, _col.copy(col.lo).lerp(col.hi, e));
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    }
+  };
+}
+
+/* ----- 器材 ----- */
+function makeBulb4(p, tangent) {
+  const g = new THREE.Group(); g.position.copy(p);
+  g.quaternion.setFromUnitVectors(V3(1, 0, 0), tangent);
+  const glassMat = frost(0xfffdf5, { roughness: 0.05, emissive: 0xffd27a, emissiveIntensity: 0 });
+  g.add(new THREE.Mesh(new THREE.SphereGeometry(0.42, 36, 24), glassMat));
+  const pts = [];
+  for (let i = 0; i <= 90; i++) { const s = i / 90, a = s * Math.PI * 2 * 6; pts.push(V3(-0.17 + 0.34 * s, 0.045 * Math.cos(a), 0.045 * Math.sin(a))); }
+  const filMat = new THREE.MeshStandardMaterial({ color: 0x8a6a3a, emissive: 0xffa21f, emissiveIntensity: 0, roughness: 0.4 });
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 160, 0.014, 6, false), filMat));
+  for (const sx of [-1, 1]) {
+    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.14, 24), clay(0xc9a46a, { metalness: 0.5, roughness: 0.3, clearcoat: 1 }));
+    collar.rotation.z = Math.PI / 2; collar.position.x = sx * 0.43; g.add(collar);
+  }
+  const haloMat = new THREE.MeshBasicMaterial({ color: 0xffc23d, transparent: true, opacity: 0, depthWrite: false });
+  const halo = new THREE.Mesh(new THREE.SphereGeometry(0.68, 28, 18), haloMat); halo.renderOrder = 9; g.add(halo);
+  const light = new THREE.PointLight(0xffc46b, 0, 4); g.add(light);
+  g.userData.k = 0;
+  g.userData.set = k => {
+    g.userData.k = k;
+    filMat.emissiveIntensity = k * 4; glassMat.emissiveIntensity = k * 0.85;
+    haloMat.opacity = k * 0.3; halo.visible = k > 0.01; light.intensity = k * 4;
+  };
+  return g;
+}
+function makeWheel4(p) {
+  const g = new THREE.Group(); g.position.set(p.x + 0.5, p.y, p.z);
+  const rot = new THREE.Group(); g.add(rot);
+  rot.add(new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.035, 10, 40), clay(0xb4865a)));
+  rot.add(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.3, 16).rotateX(Math.PI / 2), clay(0x8a6440)));
+  for (let i = 0; i < 8; i++) {
+    const arm = new THREE.Group(); arm.rotation.z = i * Math.PI / 4;
+    const paddle = new THREE.Mesh(new RoundedBoxGeometry(0.3, 0.07, 0.24, 2, 0.03), clay(0xd2a26c));
+    paddle.position.x = 0.32; arm.add(paddle); rot.add(arm);
+  }
+  shadowed(g);
+  g.userData.rot = rot;
+  return g;
+}
+const hitMat = new THREE.MeshBasicMaterial({ visible: false }); hitMat.userData.shared = true;
+const hitGeo = new THREE.SphereGeometry(0.45, 12, 8); SHARED_GEO.add(hitGeo);
+/** 3D 閘刀開關（電路）／閥門（水路）：點一下切換通、斷 */
+function makeSwitch4(p, tangent, k, kind) {
+  const g = new THREE.Group(); g.position.set(p.x, p.y, 0.3);
+  g.rotation.z = Math.atan2(tangent.y, tangent.x);
+  const leverMat = clay(0xc9a46a, { metalness: 0.4, roughness: 0.3, clearcoat: 1 });
+  let pivot;
+  if (kind === 'circuit') {
+    g.add(new THREE.Mesh(new RoundedBoxGeometry(0.66, 0.2, 0.08, 3, 0.04), clay(0xf6efe2)));
+    for (const sx of [-0.25, 0.25]) { const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.14, 12).rotateX(Math.PI / 2), clay(0x8a6a3a)); post.position.set(sx, 0, 0.08); g.add(post); }
+    pivot = new THREE.Group(); pivot.position.set(-0.25, 0, 0.14); g.add(pivot);
+    const lever = new THREE.Mesh(new THREE.CapsuleGeometry(0.035, 0.46, 6, 12), leverMat); lever.rotation.z = Math.PI / 2; lever.position.x = 0.25; pivot.add(lever);
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 12), leverMat); knob.position.x = 0.52; pivot.add(knob);
+  } else {
+    g.position.z = 0.36;
+    pivot = new THREE.Group(); g.add(pivot);
+    pivot.add(new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.035, 10, 28), leverMat));
+    const bar = new THREE.Mesh(new THREE.CapsuleGeometry(0.03, 0.3, 6, 10), leverMat); pivot.add(bar);
+  }
+  const hit = new THREE.Mesh(hitGeo, hitMat); hit.userData.sw = k; g.add(hit);
+  g.userData = { k, kind, pivot, leverMat, hit };
+  return g;
+}
+
+/* ----- 固定器材：電池、抽水馬達 ----- */
+const u4Bat = new THREE.Group(); u4Bat.position.set(OXC - 2.6, OY, 0); u4g.add(u4Bat);
+u4Bat.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.46, 1.25, 12, 32), clay(0x3a4150, { clearcoat: 0.8, roughness: 0.35 })));
+const u4Band = new THREE.Mesh(new THREE.CylinderGeometry(0.475, 0.475, 0.66, 40), clay(0xe5484d, { clearcoat: 0.9, roughness: 0.3, emissive: 0xff5a4a, emissiveIntensity: 0.4 }));
+u4Band.position.y = 0.32; u4Bat.add(u4Band);
+const u4Nub = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.18, 24), clay(0xd9d2c4, { metalness: 0.4, roughness: 0.3 })); u4Nub.position.y = 1.12; u4Bat.add(u4Nub);
+// 負極出口的「充電光圈」：電子從這裡出發時被重新點亮
+const u4Charge = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.04, 10, 32), new THREE.MeshBasicMaterial({ color: 0xffd21f, toneMapped: false }));
+u4Charge.rotation.x = Math.PI / 2; u4Charge.position.y = -1.05; u4Bat.add(u4Charge);
+shadowed(u4Bat);
+const u4Pump = new THREE.Group(); u4Pump.position.set(OXW - 2.6, OY, 0); u4g.add(u4Pump);
+u4Pump.add(new THREE.Mesh(new THREE.CapsuleGeometry(0.62, 1.0, 12, 32), frost(0xf1f9ff, { roughness: 0.1 })));
+const u4Imp = new THREE.Group(); u4Pump.add(u4Imp);
+u4Imp.add(new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 14), clay(0x3a7fc4)));
+for (let i = 0; i < 4; i++) {
+  const blade = new THREE.Mesh(new RoundedBoxGeometry(0.46, 0.14, 0.2, 2, 0.06), clay(0x5aa9e6, { clearcoat: 0.9 }));
+  blade.position.x = 0.28; const arm = new THREE.Group(); arm.rotation.z = i * Math.PI / 2; arm.add(blade); u4Imp.add(arm);
+}
+const u4PumpBase = shadowed(new THREE.Mesh(new RoundedBoxGeometry(1.0, 0.3, 0.9, 3, 0.1), clay(0xb4865a)));
+u4PumpBase.position.set(OXW - 2.6, 0.15, 0); u4g.add(u4PumpBase);
+
+buildLabels = u4StatLabels;
+addLabel('水流模型：位能搬運', 'head', null, V3(OXW - 0.5, OY - 2.6, 0.3));
+addLabel('真實電路：電能搬運', 'head', null, V3(OXC + 1.2, OY - 2.6, 0.3));
+addLabel('<b>抽水馬達</b><br><small>把水抽到高處＝給位能</small>', 'minor', null, V3(OXW - 1.45, OY + 0.35, 0.4));
+addLabel('<b>電池</b><br><small>給電子電能</small>', 'minor', null, V3(OXC - 1.55, OY + 0.35, 0.4));
+addLabel('<span class="cp">＋</span>', 'dir', null, V3(OXC - 2.15, OY + 0.8, 0.5));
+addLabel('<b>－</b>', 'dir', null, V3(OXC - 2.15, OY - 0.8, 0.5));
+buildLabels = null;
+
+/* ----- 依模式重建可變的部分 ----- */
+function currents() {
+  const s = U4.sw;
+  if (U4.mode === 'A') return { main: 1, br: [1, 1] };
+  if (U4.mode === 'B') { const I = s[0] && s[1] ? 0.5 : 0; return { main: I, br: [I, I] }; }
+  const b0 = s[0] ? 1 : 0, b1 = s[1] ? 1 : 0;
+  return { main: b0 + b1, br: [b0, b1] };
+}
+function buildU4(mode) {
+  U4.mode = mode;
+  U4.sw = [true, true];                                  // 換模式時開關全部接通
+  if (U4.dyn) {
+    u4g.remove(U4.dyn);
+    U4.dyn.traverse(o => {
+      if (o.geometry && !SHARED_GEO.has(o.geometry)) o.geometry.dispose();
+      if (o.material && !o.material.userData.shared) o.material.dispose();
+    });
+  }
+  removeLabels(u4DynLabels);
+  U4.dyn = new THREE.Group(); u4g.add(U4.dyn);
+  U4.bulbs = []; U4.wheels = []; U4.switches = []; U4.bulbLabels = []; U4.swLabels = [];
+  const def = NETS[mode];
+  const cNet = buildNet(def.circuit, 'circuit', OXC, OY, U4.dyn);
+  const wNet = buildNet(def.water, 'water', OXW, OY, U4.dyn);
+  U4.nets = [cNet, wNet];
+  buildLabels = u4DynLabels;
+  for (const [net, ox] of [[cNet, OXC], [wNet, OXW]]) {
+    const isC = net.kind === 'circuit';
+    net.segs.forEach(s => {
+      (s.bulbs || []).forEach(b => {
+        const sc = nearestS(s.curve, V3(b.at[0] + ox, b.at[1] + OY, 0)) / s.len;
+        const bulb = makeBulb4(s.curve.getPointAt(sc), s.curve.getTangentAt(sc)); U4.dyn.add(bulb); U4.bulbs[b.k] = bulb;
+        const off = Math.abs(s.curve.getTangentAt(sc).y) > 0.5 ? V3(0.95, 0.35, 0.4) : V3(0, 0.75, 0.4);
+        U4.bulbLabels[b.k] = addLabel('', '', bulb, off);
+      });
+      (s.wheels || []).forEach(w => {
+        const sc = nearestS(s.curve, V3(w.at[0] + ox, w.at[1] + OY, 0)) / s.len;
+        const wheel = makeWheel4(s.curve.getPointAt(sc)); U4.dyn.add(wheel); U4.wheels[w.k] = wheel;
+        addLabel(`<b>水車 ${w.k + 1}</b><br><small>＝燈泡 ${w.k + 1}</small>`, 'minor', wheel, V3(0, -0.72, 0.3));
+      });
+      (s.switches || []).forEach(w => {
+        const sc = nearestS(s.curve, V3(w.at[0] + ox, w.at[1] + OY, 0)) / s.len;
+        const sw = makeSwitch4(s.curve.getPointAt(sc), s.curve.getTangentAt(sc), w.k, net.kind); U4.dyn.add(sw); U4.switches.push(sw);
+        if (isC) { const L = addLabel('', 'minor', sw, V3(0, -0.42, 0.2)); U4.swLabels[w.k] = L; }
+      });
+    });
+  }
+  U4.curLabel = addLabel('', 'meter', null, V3(OXC - 2.6, OY - 2.0 + 0.0, 0.5));
+  buildLabels = null;
+  u4DynLabels.forEach(L => { L.visible = unit === 'u4'; });
+  U4.bulbs.forEach(b => b.userData.set(0));
+  U4.cap = ''; U4.statT = 0;
+  syncU4Panel();
+}
+function setSwitch(k, v) {
+  if (U4.mode === 'A') return;
+  U4.sw[k] = v ?? !U4.sw[k];
+  syncU4Panel();
+}
+
+/* ----- 每一幀 ----- */
+const BULB_TARGET = { A: () => [1], B: c => [c.main > 0 ? 0.32 : 0, c.main > 0 ? 0.32 : 0], C: c => [c.br[0], c.br[1]] };
+function u4Update(dt) {
+  const cur = currents();
+  for (const n of U4.nets) n.step(dt, cur);
+  const tgt = BULB_TARGET[U4.mode](cur);
+  U4.bulbs.forEach((b, k) => { const t = tgt[k] ?? 0; b.userData.set(b.userData.k + (t - b.userData.k) * (1 - Math.exp(-dt * (t > b.userData.k ? 8 : 16)))); });
+  U4.wheels.forEach((w, k) => { w.userData.rot.rotation.z += dt * 3.2 * (U4.mode === 'C' ? cur.br[k] : cur.main); });
+  u4Imp.rotation.z -= dt * 4 * Math.min(2, cur.main);
+  u4Charge.scale.setScalar(1 + 0.15 * Math.sin(wall * 8) * Math.min(1, cur.main));
+  U4.switches.forEach(sw => {
+    const on = U4.sw[sw.userData.k], d = sw.userData;
+    const target = on ? 0 : (d.kind === 'circuit' ? 0.85 : Math.PI / 2);
+    d.pivot.rotation.z += (target - d.pivot.rotation.z) * (1 - Math.exp(-dt * 14));
+    d.leverMat.color.set(on ? 0xc9a46a : 0xe5484d);
+  });
+  U4.statT -= dt;
+  if (U4.statT <= 0) { U4.statT = 0.15; renderU4Stats(cur); }
+}
+
+/* ----- 面板與字幕 ----- */
+const C_INFO = {
+  A: { cc: '#c0703f', t: '單一燈泡', d: '電子把電能從電池「搬」到燈泡', s: '電子數量不變，改變的只有它攜帶的能量',
+       desc: '電子從電池<b>負極</b>出發時<b>滿載電能（極亮金黃）</b>，經過燈泡把電能交出去就<b>變暗</b>，回到電池裡再被<b>重新充飽</b>。左邊的水滴也一樣：被馬達抽到高處（有位能、發亮），經過水車落下就變暗。' },
+  B: { cc: '#7b5bd6', t: '串聯：兩個燈泡排排站', d: '總電阻變大 → 電流變小（流速變慢）', s: '電能分兩次交出，兩顆燈泡都偏暗；斷一個開關，全部停',
+       desc: '電子經過<b>第一顆</b>燈泡只交出<b>一半</b>能量，到<b>第二顆</b>才交完，所以兩顆都<b>偏暗</b>。<br>👆 點 3D 畫面裡的<b>開關</b>（或下方按鈕）把任一處斷開看看。' },
+  C: { cc: '#2f8a5b', t: '並聯：兩條分岔路', d: '每條支路都拿到完整的電壓', s: '兩顆燈泡和單一燈泡一樣亮；主幹電流＝兩支路相加',
+       desc: '電子在路口<b>隨機二選一</b>，每顆都帶著<b>完整能量</b>交給該支路的燈泡，所以兩顆都<b>很亮</b>。主幹要同時供應兩條支路，<b>流速最快</b>。<br>👆 點開關斷開其中一條支路看看。' }
+};
+function syncU4Panel() {
+  const m = U4.mode, c = C_INFO[m];
+  document.querySelectorAll('.tab[data-cm]').forEach(b => b.classList.toggle('on', b.dataset.cm === m));
+  $('cConcept').style.setProperty('--cc', c.cc);
+  $('cConcept').innerHTML = `<div class="ct">${c.t}</div><div class="cd">${c.d}</div><small>${c.s}</small>`;
+  $('cDesc').innerHTML = c.desc;
+  $('swRow').hidden = m === 'A';
+  document.querySelectorAll('#swRow .btn').forEach(b => {
+    const k = Number(b.dataset.sw), on = U4.sw[k];
+    b.textContent = `開關 ${k + 1}：${on ? '接通 ✅' : '斷開 ⛔'}`;
+    b.classList.toggle('off', !on);
+  });
+  U4.statT = 0;
+}
+const lvName = k => (k > 0.8 ? '標準（很亮）' : k > 0.05 ? '偏暗' : '熄滅');
+function renderU4Stats(cur) {
+  const m = U4.mode, n = U4.nets[0].parts.length;
+  const tgt = BULB_TARGET[m](cur);
+  const bars = tgt.map((k, i) => `<div class="lv"><span>燈泡 ${i + 1}</span><span class="bar"><i style="width:${Math.round(k * 100)}%"></i></span><b>${lvName(k)}</b></div>`).join('');
+  const brs = m === 'C' ? `<div>支路電流：<b>${cur.br[0].toFixed(1)} A</b>、<b>${cur.br[1].toFixed(1)} A</b></div>` : '';
+  const html = `<div>電路中的電子：<b>${n} 個</b> <small>（從頭到尾不會減少）</small></div>
+    <div>電池端總電流：<b>${cur.main.toFixed(1)} A</b></div>${brs}${bars}`;
+  if ($('cStats').innerHTML !== html) $('cStats').innerHTML = html;
+  U4.bulbLabels.forEach((L, k) => setLabel(L, `<b>燈泡 ${k + 1}</b><br><small>${lvName(tgt[k] ?? 0)}</small>`));
+  U4.swLabels.forEach((L, k) => L && setLabel(L, `<small>開關 ${k + 1}：${U4.sw[k] ? '接通' : '<span class="cp">斷開</span>'}（點我）</small>`));
+  setLabel(U4.curLabel, `總電流 I ＝ ${cur.main.toFixed(1)} A`);
+  let cap;
+  if (m === 'A') cap = '單一燈泡：電子出發時<b>滿載電能（金黃）</b>，經過燈泡交出電能<b>變暗</b>，回電池再充飽——電子<b>一個都沒少</b>！';
+  else if (m === 'B') cap = cur.main > 0 ? '串聯：總電阻變大 → <b>電流變小、流速變慢</b>；電能分兩次交出，兩顆燈泡都<b>偏暗</b>'
+    : '串聯只有<b>一條路</b>：斷開任何一個開關，<b>整圈電子都停住</b>，所有燈泡一起熄滅！';
+  else cap = cur.main === 2 ? '並聯：每條支路都拿到完整電壓，燈泡<b>一樣亮</b>；主幹電流＝兩支路相加，<b>流速最快</b>'
+    : cur.main === 1 ? '並聯：斷開一條支路，<b>另一條照常發亮</b>；主幹電流變小 → <b>主幹流速變慢</b>'
+    : '兩條支路都斷開：沒有通路，電子全部停住';
+  cap = `<small>串並聯與電能消耗</small>${cap}`;
+  if (unit === 'u4' && cap !== U4.cap) { U4.cap = cap; $('cap').innerHTML = cap; }
+}
+document.querySelectorAll('.tab[data-cm]').forEach(b => b.addEventListener('click', () => { buildU4(b.dataset.cm); }));
+document.querySelectorAll('#swRow .btn').forEach(b => b.addEventListener('click', () => setSwitch(Number(b.dataset.sw))));
+
+/* ----- 點擊 3D 開關（拖曳旋轉視角時不觸發） ----- */
+const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2();
+let downXY = null;
+function pickSwitch(ev) {
+  if (unit !== 'u4' || !U4.switches.length) return null;
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+  const hit = raycaster.intersectObjects(U4.switches.map(s => s.userData.hit), false)[0];
+  return hit ? hit.object.userData.sw : null;
+}
+renderer.domElement.addEventListener('pointerdown', ev => { downXY = [ev.clientX, ev.clientY]; });
+renderer.domElement.addEventListener('pointerup', ev => {
+  if (!downXY || Math.hypot(ev.clientX - downXY[0], ev.clientY - downXY[1]) > 6) return;
+  const k = pickSwitch(ev);
+  if (k != null) setSwitch(k);
+});
+renderer.domElement.addEventListener('pointermove', ev => {
+  if (ev.buttons) return;
+  renderer.domElement.style.cursor = pickSwitch(ev) != null ? 'pointer' : '';
+});
+
+/* =========================================================
    單元切換、視角、版面
    ========================================================= */
 let unit = 'u1';
@@ -1233,10 +1671,12 @@ function setUnit(u) {
   unit = u; camTw = null;
   document.querySelectorAll('.unit').forEach(b => b.classList.toggle('on', b.dataset.unit === u));
   document.querySelectorAll('.usec').forEach(s => { s.hidden = s.dataset.unit !== u; });
-  stage.visible = u === 'u1'; trioG.visible = u === 'ut'; u2g.visible = u === 'u2';
+  stage.visible = u === 'u1'; trioG.visible = u === 'ut'; u2g.visible = u === 'u2'; u4g.visible = u === 'u4';
   u1Labels.forEach(L => { L.visible = u === 'u1'; });
   u2Labels.forEach(L => { L.visible = u === 'u2'; });
   syncTrioLabels();
+  [...u4StatLabels, ...u4DynLabels].forEach(L => { L.visible = u === 'u4'; });
+  if (u === 'u4') U4.cap = '';
   $('monitor').style.display = u === 'u2' ? '' : 'none';
   $('cap').hidden = u === 'u2'; $('fxWrap').hidden = u !== 'u2';
   $('dock').classList.toggle('u1', u !== 'u2');
@@ -1286,13 +1726,13 @@ function goView(c, instant = false) {
   if (instant || window.MobileView?.isMobile()) {
     camTw = null;
     camera.position.copy(pos); controls.target.copy(tgt); controls.update();
-    window.MobileView?.frame(camera, controls, 1.2);
+    window.MobileView?.frame(camera, controls, unit === 'u4' ? 1.9 : 1.2);
     return;
   }
   camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
 }
 controls.addEventListener('start', () => { camTw = null; });
-function camSpec() { return unit === 'u1' ? (sc ? sc.camera : SCEN_CAM0) : unit === 'ut' ? T_CAM[TR.view] : U2_CAM; }
+function camSpec() { return unit === 'u1' ? (sc ? sc.camera : SCEN_CAM0) : unit === 'ut' ? T_CAM[TR.view] : unit === 'u4' ? U4_CAM : U2_CAM; }
 function resetView() { goView(camSpec(), true); }
 const SCEN_CAM0 = { pos: [0, 3.7, 11.2], target: [0, 2.2, 0] };
 $('viewBtn').addEventListener('click', resetView);
@@ -1313,7 +1753,7 @@ const clock = new THREE.Clock();
 let wall = 0;
 function frame(dt) {
   wall += dt;
-  if (unit === 'u1') u1Update(dt, wall); else if (unit === 'ut') tUpdate(dt); else u2Update(dt, wall);
+  if (unit === 'u1') u1Update(dt, wall); else if (unit === 'ut') tUpdate(dt); else if (unit === 'u4') u4Update(dt); else u2Update(dt, wall);
   for (const t of tokens) t.quaternion.copy(camera.quaternion);   // 電荷符號永遠面向鏡頭
   if (camTw) {
     camTw.k = Math.min(1, camTw.k + dt / 1.3);
@@ -1329,13 +1769,15 @@ function frame(dt) {
 }
 function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
 
-window.lab = { camera, controls, setUnit, loadScenario, setV, setMat, setTMode, TR, frame, get tl() { return tl; }, set tl(v) { tl = v; }, u2, get sc() { return sc; } };
+window.lab = { camera, controls, U4, buildU4, setSwitch, setUnit, loadScenario, setV, setMat, setTMode, TR, frame, get tl() { return tl; }, set tl(v) { tl = v; }, u2, get sc() { return sc; } };
 
 resize();
 u2g.visible = false; u2Labels.forEach(L => { L.visible = false; });
 tLabels.forEach(L => { L.visible = false; });
+u4StatLabels.forEach(L => { L.visible = false; });
+buildU4('A');
 loadScenario('A');
-setUnit(location.hash === '#ohm' ? 'u2' : location.hash === '#trio' ? 'ut' : 'u1');
+setUnit({ '#ohm': 'u2', '#trio': 'ut', '#series': 'u4' }[location.hash] || 'u1');
 animate();
 </script>
 
