@@ -317,21 +317,44 @@ function makeCoat(plate) {
   coat.castShadow = true;
   return coat;
 }
+/** 導線：清透玻璃外皮（高透光、低粗糙、略降不透明度）＋細金屬芯，讓內部發光電子完全透出 */
 function makeWire(points, color = 0x3a3f4a) {
   const curve = new THREE.CatmullRomCurve3(points, false, 'centripetal', 0.5);
-  const mesh = new THREE.Mesh(new THREE.TubeGeometry(curve, 160, 0.045, 10, false), clay(color, { roughness: 0.4 }));
-  mesh.castShadow = true;
+  const mesh = new THREE.Group();
+  const sheath = new THREE.Mesh(new THREE.TubeGeometry(curve, 160, 0.09, 14, false), new THREE.MeshPhysicalMaterial({
+    color: 0xfffdf6, transmission: 0.97, roughness: 0.03, thickness: 0.1, ior: 1.15, clearcoat: 1, clearcoatRoughness: 0.05, transparent: true, opacity: 0.88 }));
+  const core = new THREE.Mesh(new THREE.TubeGeometry(curve, 160, 0.02, 8, false), clay(color, { roughness: 0.4 }));
+  sheath.castShadow = true;
+  mesh.add(core, sheath);
   return { mesh, curve };
 }
-const electronGeo = new THREE.SphereGeometry(0.075, 14, 10);
-const electronMat = glow(0xffd23f, 1.0);
+/* ----- 電子 VFX：金黃色高亮膠囊，長軸對齊導線切線，移動時拉長成速度拖影 ----- */
+const UPV = V3(0, 1, 0), tanV = V3(0, 0, 0);
+const electronGeo = new THREE.CapsuleGeometry(0.03, 0.11, 4, 10);
+const electronMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, emissive: 0xffcc00, emissiveIntensity: 1.2, roughness: 0.3, toneMapped: false });
 electronGeo.userData.shared = electronMat.userData.shared = true;
-/** 導線上的電子：沿曲線 u 前進 */
+/** 導線上的電子：沿曲線 u 前進（數量為原本 2 倍，分內外兩層） */
 function makeElectrons(parent, curve, n = 12) {
-  const list = Array.from({ length: n }, (_, i) => { const m = new THREE.Mesh(electronGeo, electronMat); parent.add(m); return { m, u0: i / n }; });
+  n = Math.round(n * 2);
+  const list = Array.from({ length: n }, (_, i) => {
+    const m = new THREE.Mesh(electronGeo, electronMat); parent.add(m);
+    const a = Math.random() * Math.PI * 2, r = (i % 2 ? 0.045 : 0.012) * (0.7 + Math.random() * 0.3);
+    return { m, u0: (i + Math.random() * 0.6) / n, ox: Math.cos(a) * r, oy: Math.sin(a) * r, len: 0.75 + Math.random() * 0.6 };
+  });
   let u = 0;
   const api = {
-    update(du) { u += du; list.forEach(e => curve.getPointAt(((e.u0 + u) % 1 + 1) % 1, e.m.position)); },
+    update(du) {
+      u += du;
+      const st = du ? 0.9 : 0;
+      list.forEach(e => {
+        const t = ((e.u0 + u) % 1 + 1) % 1;
+        curve.getPointAt(t, e.m.position);
+        curve.getTangentAt(t, tanV);
+        e.m.quaternion.setFromUnitVectors(UPV, tanV);
+        e.m.scale.set(1, e.len * (1 + st), 1);
+        e.m.translateX(e.ox); e.m.translateZ(e.oy);
+      });
+    },
     first: list[0].m
   };
   api.update(0);
@@ -406,9 +429,11 @@ const ION = {
   OH: { color: 0x37c6e8, r: 0.09, name: 'OH⁻', k: 0.8 }
 };
 const ionGeo = new THREE.SphereGeometry(1, 22, 16); ionGeo.userData.shared = true;
+const ionCapGeo = new THREE.CapsuleGeometry(1, 1.8, 6, 14); ionCapGeo.userData.shared = true;   // 鹽橋內流動的離子用膠囊
 const ionMats = {};
 for (const [k, v] of Object.entries(ION)) {
-  ionMats[k] = new THREE.MeshPhysicalMaterial({ color: v.color, emissive: v.color, emissiveIntensity: v.k, roughness: 0.2, clearcoat: 1, transmission: 0 });
+  // 高強度自發光；toneMapped:false 讓顏色保持飽和、不被洗白
+  ionMats[k] = new THREE.MeshStandardMaterial({ color: v.color, emissive: v.color, emissiveIntensity: 0.55 + 0.45 * v.k, roughness: 0.25, toneMapped: false });
   ionMats[k].userData.shared = true;
 }
 const legend = kinds => `<div class="legend">${kinds.map(k => `<span style="color:#${ION[k].color.toString(16).padStart(6, '0')}"><i style="background:currentColor"></i><span style="color:#444">${ION[k].name}</span></span>`).join('')}</div>`;
@@ -550,7 +575,7 @@ BUILDERS.daniell = (g) => {
   // 鹽橋（U 型管 + 洋菜膠 + 棉花塞）
   const bridgeCurve = new THREE.CatmullRomCurve3([V3(-1.72, 0.85, -0.5), V3(-1.72, 2.5, -0.5), V3(-1.3, 3.35, -0.5), V3(0, 3.6, -0.5), V3(1.3, 3.35, -0.5), V3(1.72, 2.5, -0.5), V3(1.72, 0.85, -0.5)]);
   const tube = new THREE.Mesh(new THREE.TubeGeometry(bridgeCurve, 120, 0.24, 20, false), glassA()); tube.renderOrder = 6;
-  const gel = new THREE.Mesh(new THREE.TubeGeometry(bridgeCurve, 120, 0.19, 16, false), new THREE.MeshPhysicalMaterial({ color: 0xf4f1ff, transparent: true, opacity: 0.35, depthWrite: false, roughness: 0.3 }));
+  const gel = new THREE.Mesh(new THREE.TubeGeometry(bridgeCurve, 120, 0.19, 16, false), new THREE.MeshPhysicalMaterial({ color: 0xf4f1ff, transparent: true, opacity: 0.14, depthWrite: false, roughness: 0.05, clearcoat: 1 }));
   gel.renderOrder = 5;
   [0, 1].forEach(t => { const c = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 12), clay(0xffffff, { roughness: 0.95 })); bridgeCurve.getPointAt(t, c.position); c.scale.y = 0.7; g.add(c); });
   g.add(tube, gel);
@@ -560,10 +585,10 @@ BUILDERS.daniell = (g) => {
   ions.fill('Cu', NCU, RR); ions.fill('SO4', 9, RR);
   // 鹽橋內的離子：K⁺ 往右杯、NO₃⁻ 往左杯
   const bridgeIons = [];
-  for (let i = 0; i < 16; i++) {
+  for (let i = 0; i < 32; i++) {
     const kind = i % 2 ? 'K' : 'NO3';
-    const m = new THREE.Mesh(ionGeo, ionMats[kind]); m.scale.setScalar(ION[kind].r); g.add(m);
-    bridgeIons.push({ m, kind, s: (i + 0.5) / 16, off: V3(rnd(-0.08, 0.08), rnd(-0.08, 0.08), rnd(-0.08, 0.08)) });
+    const m = new THREE.Mesh(ionCapGeo, ionMats[kind]); m.scale.setScalar(ION[kind].r * 0.62); g.add(m);
+    bridgeIons.push({ m, kind, s: (i + Math.random() * 0.8) / 32, off: V3(rnd(-0.09, 0.09), rnd(-0.09, 0.09), rnd(-0.09, 0.09)) });
   }
   const circ = circuit(g, [V3(L - 0.3, 3.25, 0.12), V3(L - 0.3, 4.2, 0.12), V3(-1.5, 4.85, 0.12), V3(0, 4.92, 0.12), V3(1.5, 4.85, 0.12), V3(R + 0.3, 4.2, 0.12), V3(R + 0.3, 3.25, 0.12)], V3(0, 4.75, 0.12));
   const lZn = addLabel('鋅片 Zn（負極 −）', '', 'color:#5b6270'), lCu = addLabel('銅片 Cu（正極 ＋）', '', 'color:#9a5520');
@@ -596,6 +621,8 @@ BUILDERS.daniell = (g) => {
         if (on) b.s += (b.kind === 'K' ? 1 : -1) * 0.035 * flow;
         b.s = ((b.s % 1) + 1) % 1;
         bridgeCurve.getPointAt(b.s, b.m.position).add(b.off);
+        b.m.quaternion.setFromUnitVectors(UPV, bridgeCurve.getTangentAt(b.s, tanV));
+        b.m.scale.y = ION[b.kind].r * 0.62 * (on ? 1.4 : 1);
       });
       circ.update(dt, on, flow);
     },
