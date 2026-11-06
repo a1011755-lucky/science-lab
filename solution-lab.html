@@ -56,6 +56,13 @@
   .btn.on { outline: 3px solid rgba(91,138,114,.45); color: #fff; background: #5b8a72; }
   .btn:disabled { opacity: .45; cursor: default; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .btn small { display: block; font-size: .66rem; font-weight: 600; opacity: .85; }
+  .lab2 { font-size: .84rem; font-weight: 900; margin: 12px 0 2px; }
+  .fbox.danger { background: #ffe9e7; box-shadow: inset 0 0 0 2.5px #f08a80, 0 0 22px rgba(229,72,77,.45); }
+  .fbox.danger b { color: #d0453a; }
+  .tag.boom { background: #e5484d; color: #fff; font-size: .86rem; }
+  .stat .warn { color: #d0453a; }
   .legend { display: grid; gap: 4px; font-size: .76rem; color: var(--ink-soft); background: rgba(255,255,255,.7); border-radius: 14px; padding: 8px 10px; margin-top: 8px; }
   .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
   .legend i.cap { width: 18px; height: 9px; border-radius: 6px; }
@@ -108,6 +115,7 @@
     .op { font-size: .9rem; } .paren { font-size: 1.2rem; }
     .fxnote { font-size: .66rem; }
     .tag { font-size: .64rem; padding: 3px 7px; }
+    .tag.minor { display: none !important; }
   }
   @media (prefers-reduced-motion: reduce) { .fbox.live b { animation: none; } }
 </style>
@@ -176,11 +184,22 @@
 
     <!-- Tab 4 -->
     <section class="sec" data-tab="ppm" hidden>
-      <div class="concept" style="--cc:#d0453a"><div class="ct">百萬分點濃度 ppm</div><div class="cd">1 ppm ＝ 1 mg ÷ 1 kg ＝ 百萬分之一</div></div>
-      <button class="btn primary" id="dropBtn">💧 滴入 1 公克汙染物</button>
-      <button class="btn" id="ppmReset">↺ 重來</button>
-      <div class="stat" id="ppmStat"></div>
-      <p class="desc">水族箱裝 <b>1000 公升</b>水（約 1000 公斤）。<br>1 公克 ÷ 1000 公斤 ＝ 1 毫克 ÷ 1 公斤 ＝ <b>1 ppm</b>。<br>滴入後，箱內會出現 <b>999,999 顆</b>水粒子，鏡頭會飛進去找那 1 顆紅色汙染物。</p>
+      <div class="concept" style="--cc:#d0453a"><div class="ct">百萬分點濃度 ppm</div><div class="cd">1 ppm ＝ 百萬分之一 ＝ 1 mg ÷ 1 kg<br>1 L 水 ≈ 1 kg ＝ 1,000,000 mg → <u>1 mg/L ＝ 1 ppm</u></div></div>
+      <div class="lab2">🔭 視覺震撼區：1 顆紅色藏在多少顆裡？</div>
+      <div class="row3">
+        <button class="btn on" data-scale="pct">1 %<small>百分之一</small></button>
+        <button class="btn" data-scale="per">1 ‰<small>千分之一</small></button>
+        <button class="btn primary" data-scale="ppm">1 PPM<small>百萬分之一</small></button>
+      </div>
+      <div class="stat" id="visStat"></div>
+      <div class="lab2">🧪 實戰調配區</div>
+      <label class="lab" for="mgS">🔴 溶質：汙染物<b><span id="mgV">5</span> mg</b></label>
+      <input type="range" id="mgS" min="1" max="50" step="1" value="5">
+      <label class="lab" for="lS">💧 溶劑：水量<b><span id="lV">2.0</span> L</b></label>
+      <input type="range" id="lS" min="1" max="10" step="0.5" value="2">
+      <div class="stat" id="labStat"></div>
+      <button class="btn" id="toLab">🧪 鏡頭移到寶特瓶</button>
+      <div class="note">🧪 檢測挑戰：本實驗把「毒性臨界值」設為 <b>5 ppm</b>（模擬數值）。調調看，多少水才能讓 10 mg 汙染物安全？</div>
     </section>
 
     <button class="btn" id="viewBtn" style="margin-top:10px">重設視角</button>
@@ -202,6 +221,16 @@
       <div class="fbox z" id="fbZ"><small>濃度</small><b><span id="fxZ">0</span> %</b></div>
     </div>
     <div class="fxnote" id="fxNote"></div>
+  </div>
+  <div id="fx4Wrap" hidden>
+    <div class="fx">
+      <div class="fbox s" id="fb4X"><small>汙染物 X</small><b><span id="fx4X">0</span> mg</b></div>
+      <span class="op">÷</span>
+      <div class="fbox w" id="fb4Y"><small>水量 Y</small><b><span id="fx4Y">0</span> L</b></div>
+      <span class="op">＝</span>
+      <div class="fbox z" id="fb4Z"><small>濃度 Z</small><b><span id="fx4Z">0</span> ppm</b></div>
+    </div>
+    <div class="fxnote" id="fx4Note"></div>
   </div>
 </div>
 
@@ -244,10 +273,10 @@ sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -8, near: 1, far: 50 });
 sun.shadow.radius = 6;
 scene.add(sun);
-const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.01, 200);
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.01, 400);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.minDistance = 0.05; controls.maxDistance = 40;
+controls.minDistance = 0.05; controls.maxDistance = 160;   // ppm 的百萬矩陣需要拉到很遠
 controls.maxPolarAngle = Math.PI * 0.49;
 
 function woodTexture() {
@@ -313,6 +342,7 @@ function placeLabels() {
 }
 let tab = 'mix', wall = 0;
 const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
 
 /* =========================================================
    Tab 1：微觀粒子透視鏡（純物質 vs 混合物）
@@ -642,177 +672,257 @@ function drawSatChart(T, S) {
 }
 
 /* =========================================================
-   Tab 4：百萬分點濃度 ppm（999,999 顆水粒子＋1 顆汙染物）
+   Tab 4：百萬分點濃度 ppm（極限視覺＋mg/L 實戰）
+   左：空間維度展開 1% → 1‰ → 1 ppm（同一個 InstancedMesh，一百萬顆）
+   右：寶特瓶調配：X mg ÷ Y L ＝ Z ppm（1 L 水 ≈ 1 kg ＝ 1,000,000 mg）
    ========================================================= */
-const PPM = { group: new THREE.Group(), state: 'idle', t: 0, reveal: 0, points: null, fly: null, count: 0 };
-scene.add(PPM.group); PPM.group.visible = false;
-const TANK = { cx: 0, cy: 2.95, w: 9, h: 5, d: 5 };
-const RED_P = V3(1.9, 2.35, 0.7);
-const DROPPER = V3(3.2, 7.0, 0.7);
-const stand = shadowed(new THREE.Mesh(new RoundedBoxGeometry(9.8, 0.4, 5.8, 4, 0.15), clay(0xb4865a))); stand.position.y = 0.2; PPM.group.add(stand);
-const tankWater = new THREE.Mesh(new RoundedBoxGeometry(TANK.w - 0.25, TANK.h - 0.4, TANK.d - 0.25, 4, 0.2),
-  new THREE.MeshPhysicalMaterial({ color: 0xbfe3ff, transparent: true, opacity: 0.1, depthWrite: false, roughness: 0.1 }));
-tankWater.position.set(TANK.cx, TANK.cy - 0.12, 0); tankWater.renderOrder = 1; PPM.group.add(tankWater);
-const tankGlass = new THREE.Mesh(new RoundedBoxGeometry(TANK.w, TANK.h, TANK.d, 5, 0.3), glassA({ opacity: 0.13 }));
-tankGlass.position.set(TANK.cx, TANK.cy, 0); tankGlass.renderOrder = 4; PPM.group.add(tankGlass);
-const tankEdge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(TANK.w, TANK.h, TANK.d)), new THREE.LineBasicMaterial({ color: 0x9fc6e8, transparent: true, opacity: 0.5 }));
-tankEdge.position.copy(tankGlass.position); PPM.group.add(tankEdge);
-addLabel('ppm', '<b>1000 公升的水</b><br><small>（約 1000 公斤）</small>', '', V3(-3.2, 5.9, 0));
-// 滴管
-const dropper = new THREE.Group(); dropper.position.copy(DROPPER); PPM.group.add(dropper);
-const dTube = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.05, 1.3, 24), glassA({ opacity: 0.35 })); dTube.renderOrder = 6; dTube.position.y = -0.3; dropper.add(dTube);
-const dLiquid = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.035, 0.6, 16), glowMat(0xff3b30)); dLiquid.position.y = -0.62; dropper.add(dLiquid);
-const bulb = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.28, 28, 20), clay(0xb8473a, { roughness: 0.6 }))); bulb.position.y = 0.55; bulb.scale.set(1, 1.25, 1); dropper.add(bulb);
-const dropLbl = addLabel('ppm', '<small>滴管：1 公克汙染物</small>', '', V3(DROPPER.x + 1.2, DROPPER.y + 0.4, 0.7));
-// 紅色汙染物粒子＋光暈
-const red = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), glowMat(0xff2a1f)); red.visible = false; PPM.group.add(red);
+const PPM = { group: new THREE.Group(), vis: new THREE.Group(), lab: new THREE.Group(),
+  mode: 'pct', state: 'idle', t: 0, fly: null, orbit: false, orbitA: 0.6, grid: null,
+  X: 5, Y: 2, XD: 5, YD: 2 };
+scene.add(PPM.group); PPM.group.add(PPM.vis, PPM.lab); PPM.group.visible = false;
+const VIS_O = V3(-4.4, 4.0, 0);                                               // 視覺區：10×10 那一層的中心
+PPM.vis.position.copy(VIS_O);
+const SP = 0.35, RED_G = V3(49, 50, 45);                                     // 粒子間距；紅色粒子的格點編號
+const redLocal = V3((RED_G.x - 49.5) * SP, (RED_G.y - 49.5) * SP, 0);
+const redWorld = () => redLocal.clone().add(VIS_O);
+const CUBE_C = () => VIS_O.clone().add(V3(0, 0, -(49.5 - 45) * SP));        // 百萬矩陣的中心
+const SUB_C = () => VIS_O.clone().add(V3(0, 0, -4.5 * SP));                  // 千顆立方體的中心
+
+/** 一百萬顆：InstancedMesh＋看向鏡頭的小方片（每顆只有 2 個三角形）；格點編號存在 instanceMatrix 的平移欄 */
+const gridMat = new THREE.ShaderMaterial({
+  transparent: true, depthWrite: false,
+  uniforms: { uSp: { value: SP }, uZ: { value: 0 }, uSize: { value: 0.24 }, uR: { value: 1e9 }, uAlpha: { value: 0.75 }, uRed: { value: RED_G.clone() } },
+  vertexShader: `
+    uniform float uSp, uZ, uSize, uR, uAlpha; uniform vec3 uRed;
+    varying float vA; varying vec2 vUv;
+    void main() {
+      vec3 g = instanceMatrix[3].xyz;
+      vec3 p = vec3(g.x - 49.5, g.y - 49.5, -(g.z - 45.0) * uZ) * uSp;
+      vec4 wc = modelMatrix * vec4(p, 1.0);
+      bool sub = all(greaterThanEqual(g, vec3(45.0))) && all(lessThan(g, vec3(55.0)));
+      float d = distance(g, uRed);
+      float vis = sub ? 1.0 : 1.0 - step(uR, d);                 // 千顆立方體一直在；其餘從紅點向外「增生」
+      if (d < 0.5) vis = 0.0;                                    // 紅色那顆另外畫
+      vec3 right = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
+      vec3 up = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
+      vec3 wp = wc.xyz + (right * position.x + up * position.y) * uSize * vis;
+      vec4 mv = viewMatrix * vec4(wp, 1.0);
+      gl_Position = projectionMatrix * mv;
+      vA = vis * uAlpha * smoothstep(0.2, 0.8, -mv.z);
+      vUv = uv;
+    }`,
+  fragmentShader: `
+    varying float vA; varying vec2 vUv;
+    void main() {
+      vec2 c = vUv - 0.5; float r = length(c);
+      if (r > 0.5 || vA < 0.004) discard;
+      gl_FragColor = vec4(mix(vec3(0.38, 0.65, 1.0), vec3(0.86, 0.95, 1.0), smoothstep(0.32, 0.0, r)), vA * smoothstep(0.5, 0.18, r));
+    }`
+});
+function ensureGrid() {
+  if (PPM.grid) return;
+  const N = 1000000;
+  const mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), gridMat, N);
+  const a = mesh.instanceMatrix.array; let n = 0;
+  const put = (i, j, k) => { const o = n * 16; a[o + 12] = i; a[o + 13] = j; a[o + 14] = k; a[o + 15] = 1; n++; };
+  for (let j = 45; j < 55; j++) for (let i = 45; i < 55; i++) put(i, j, 45);                         // 前 100 顆：10×10
+  for (let k = 46; k < 55; k++) for (let j = 45; j < 55; j++) for (let i = 45; i < 55; i++) put(i, j, k); // 到 1,000 顆：10×10×10
+  for (let k = 0; k < 100; k++) for (let j = 0; j < 100; j++) for (let i = 0; i < 100; i++) {             // 到 1,000,000 顆：100×100×100
+    if (i >= 45 && i < 55 && j >= 45 && j < 55 && k >= 45 && k < 55) continue;
+    put(i, j, k);
+  }
+  mesh.instanceMatrix.needsUpdate = true;
+  mesh.frustumCulled = false; mesh.renderOrder = 2; mesh.count = 100;
+  PPM.vis.add(mesh); PPM.grid = mesh;
+}
+// 唯一的紅色粒子＋光暈
+const red = new THREE.Mesh(new THREE.SphereGeometry(0.11, 24, 16), glowMat(0xff2a1f)); red.position.copy(redLocal); PPM.vis.add(red);
 function haloTexture() {
   const c = document.createElement('canvas'); c.width = c.height = 128;
   const g = c.getContext('2d'), grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-  grd.addColorStop(0, 'rgba(255,90,70,1)'); grd.addColorStop(0.25, 'rgba(255,60,40,.55)'); grd.addColorStop(1, 'rgba(255,40,30,0)');
+  grd.addColorStop(0, 'rgba(255,80,60,1)'); grd.addColorStop(0.3, 'rgba(255,50,35,.5)'); grd.addColorStop(1, 'rgba(255,40,30,0)');
   g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
   return new THREE.CanvasTexture(c);
 }
 const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTexture(), transparent: true, depthWrite: false, toneMapped: false }));
-halo.visible = false; halo.renderOrder = 8; PPM.group.add(halo);
-const splashMat = new THREE.MeshBasicMaterial({ color: 0xff6a5a, transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
-const splash = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.02, 8, 40), splashMat); splash.rotation.x = Math.PI / 2; PPM.group.add(splash);
-const redL = addLabel('ppm', '', 'hl', V3(0, 0.12, 0), red);
+halo.position.copy(redLocal); halo.renderOrder = 8; PPM.vis.add(halo);
+const redL = addLabel('ppm', '', 'hl', V3(0, 0.32, 0), red);
+const visL = addLabel('ppm', '', '', V3(0, 2.3, 0));
 
-/** 999,999 顆水粒子：一個 Points 物件、自訂著色器（一次繪製，效能最好） */
-const N_WATER = 999999;
-const pointsMat = new THREE.ShaderMaterial({
-  transparent: true, depthWrite: false,
-  uniforms: { uTime: { value: 0 }, uReveal: { value: 0 }, uPx: { value: 600 }, uDrop: { value: RED_P.clone() } },
-  vertexShader: `
-    uniform float uTime, uReveal, uPx; uniform vec3 uDrop;
-    attribute float aSeed;
-    varying float vA;
-    void main() {
-      vec3 p = position + 0.008 * vec3(sin(uTime * 1.3 + aSeed * 6.28), cos(uTime * 1.1 + aSeed * 12.0), sin(uTime * 0.9 + aSeed * 20.0));
-      vec4 mv = modelViewMatrix * vec4(p, 1.0);
-      gl_Position = projectionMatrix * mv;
-      float d = distance(position, uDrop);
-      vA = 1.0 - smoothstep(uReveal - 0.8, uReveal, d);
-      gl_PointSize = clamp(uPx * 0.028 / -mv.z, 1.0, 10.0);
-    }`,
-  fragmentShader: `
-    varying float vA;
-    void main() {
-      vec2 c = gl_PointCoord - 0.5; float r = length(c);
-      if (r > 0.5 || vA < 0.01) discard;
-      float a = vA * 0.5 * smoothstep(0.5, 0.15, r);
-      gl_FragColor = vec4(mix(vec3(0.45, 0.72, 1.0), vec3(0.85, 0.95, 1.0), smoothstep(0.3, 0.0, r)), a);
-    }`
+const SCALE_INFO = {
+  pct: { n: 100, name: '1 %（百分之一）', txt: '10 × 10 ＝ 100 顆裡只有 1 顆紅色' },
+  per: { n: 1000, name: '1 ‰（千分之一）', txt: '10 × 10 × 10 ＝ 1,000 顆裡只有 1 顆紅色' },
+  ppm: { n: 1000000, name: '1 ppm（百萬分之一）', txt: '100 × 100 × 100 ＝ 1,000,000 顆裡只有 1 顆紅色' }
+};
+const V_OVER = { pos: [-0.3, 5.0, 15], target: [-0.3, 3.0, 0], fitW: 14 };
+const V_PCT = () => ({ pos: VIS_O.clone().add(V3(0.4, 0.6, 7.2)).toArray(), target: VIS_O.toArray() });
+const V_LAB = { pos: [3.9, 3.6, 9.5], target: [3.9, 2.3, 0], fitW: 6.5 };
+function showWorld(on) { table.visible = on; PPM.lab.visible = on; }
+function setScale(m) {
+  ensureGrid();
+  PPM.mode = m; PPM.t = 0; PPM.orbit = false; PPM.fly = null; controls.enabled = true;
+  document.querySelectorAll('[data-scale]').forEach(b => b.classList.toggle('on', b.dataset.scale === m));
+  const U = gridMat.uniforms;
+  if (m === 'pct') {
+    showWorld(true); PPM.grid.count = 100; U.uZ.value = 0; U.uR.value = 1e9; U.uAlpha.value = 0.8; U.uSize.value = 0.24;
+    PPM.state = 'idle'; goView(V_PCT());
+  } else if (m === 'per') {
+    showWorld(true); PPM.grid.count = 1000; U.uR.value = 1e9; U.uAlpha.value = 0.7; U.uSize.value = 0.24;
+    PPM.state = 'extend'; PPM.orbit = true; PPM.orbitA = 0.5;               // 陣列向後延伸，鏡頭繞著立方體轉
+    const c = SUB_C();
+    goView({ raw: true, pos: [c.x + Math.sin(0.5) * 12, c.y + 3.4, c.z + Math.cos(0.5) * 12], target: c.toArray() });
+  } else {
+    showWorld(false); PPM.grid.count = 1000000; U.uZ.value = 1; U.uR.value = 0; U.uAlpha.value = 0.34; U.uSize.value = 0.22;
+    PPM.state = 'grow';                                                     // 瘋狂增生 → 拉到極遠 → 穿梭進入
+    const c = CUBE_C();
+    const aim = c.clone().add(V3(-9, 0, 0));                                 // 往左偏一點，讓矩陣出現在面板右邊的空白區
+    goView({ raw: true, pos: aim.clone().add(V3(30, 24, 76)).toArray(), target: aim.toArray() }, false, 2.4);
+  }
+}
+document.querySelectorAll('[data-scale]').forEach(b => b.addEventListener('click', () => setScale(b.dataset.scale)));
+function startFly() {
+  camTw = null; controls.enabled = false;
+  const r = redWorld(), front = CUBE_C().z + 49.5 * SP;
+  const curve = new THREE.CatmullRomCurve3([
+    camera.position.clone(),
+    V3(r.x + 6, r.y + 5, front + 14),
+    V3(r.x + 1.6, r.y + 1.1, front + 1.5),                                   // 從矩陣正面鑽進去
+    V3(r.x + 0.9, r.y + 0.6, r.z + 4.5),
+    r.clone().add(V3(0.55, 0.35, 1.9))
+  ], false, 'centripetal');
+  PPM.fly = { curve, t0: controls.target.clone(), dur: 6.0 };
+}
+
+/* ----- 右：實戰調配區（寶特瓶＋滴管） ----- */
+const BOT = { x: 3.9, r: 0.95, y0: 0.12, hMax: 3.3 };                         // 10 L 時水高 3.3
+PPM.lab.position.set(0, 0, 0);
+{
+  const prof = [[0, 0], [0.8, 0], [0.95, 0.12], [0.95, 3.55], [0.88, 3.85], [0.55, 4.25], [0.36, 4.45], [0.36, 4.8]].map(p => new THREE.Vector2(p[0], p[1]));
+  const bottle = new THREE.Mesh(new THREE.LatheGeometry(prof, 64), glassA({ opacity: 0.2 })); bottle.position.x = BOT.x; bottle.renderOrder = 5; PPM.lab.add(bottle);
+  for (const y of [0.9, 1.9, 2.9]) { const rib = new THREE.Mesh(new THREE.TorusGeometry(0.955, 0.025, 8, 64), glassA({ opacity: 0.35 })); rib.rotation.x = Math.PI / 2; rib.position.set(BOT.x, y, 0); PPM.lab.add(rib); }
+  const cap = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.26, 32), clay(0x3d8bff, { clearcoat: 0.8 }))); cap.position.set(BOT.x - 1.6, 0.13, 0.9); PPM.lab.add(cap);
+  // 刻度（公升）
+  const c = document.createElement('canvas'); c.width = 256; c.height = 1024;
+  const g = c.getContext('2d');
+  for (let L = 1; L <= 10; L++) {
+    const y = 1024 - L / 10 * 1000;
+    g.strokeStyle = '#2b5f9e'; g.lineWidth = 6; g.beginPath(); g.moveTo(10, y); g.lineTo(L % 5 === 0 ? 120 : 80, y); g.stroke();
+    g.fillStyle = '#2b5f9e'; g.font = '700 62px sans-serif'; g.textBaseline = 'middle'; g.fillText(L + ' L', 128, y);
+    if (L < 10) { g.lineWidth = 3; g.beginPath(); g.moveTo(10, y - 50); g.lineTo(45, y - 50); g.stroke(); }
+  }
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+  const scaleP = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 3.3 * 1024 / 1000), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false }));
+  scaleP.position.set(BOT.x + 0.38, BOT.y0 + 3.3 * 0.512 - 0.08, 0.97); scaleP.renderOrder = 7; PPM.lab.add(scaleP);
+}
+const labWaterMat = new THREE.MeshPhysicalMaterial({ color: 0xd8efff, transmission: 0.85, roughness: 0.04, thickness: 1, ior: 1.2, clearcoat: 1,
+  attenuationColor: new THREE.Color(0x9fd8ff), attenuationDistance: 4, emissive: 0xff2a1f, emissiveIntensity: 0 });
+const labWater = new THREE.Mesh(new THREE.CylinderGeometry(BOT.r - 0.05, BOT.r - 0.05, 1, 56), labWaterMat); labWater.position.x = BOT.x; PPM.lab.add(labWater);
+const dangerLight = new THREE.PointLight(0xff3b30, 0, 6); dangerLight.position.set(BOT.x, 1.8, 1.2); PPM.lab.add(dangerLight);
+// 微量滴管
+const pip = new THREE.Group(); pip.position.set(BOT.x, 6.0, 0); PPM.lab.add(pip);
+const pipTube = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.035, 1.2, 20), glassA({ opacity: 0.4 })); pipTube.position.y = -0.3; pipTube.renderOrder = 6; pip.add(pipTube);
+const pipLiq = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.03, 0.55, 14), glowMat(0xff3b30)); pipLiq.position.y = -0.6; pip.add(pipLiq);
+const pipBulb = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.25, 24, 18), clay(0xb8473a, { roughness: 0.6 }))); pipBulb.position.y = 0.5; pipBulb.scale.set(1, 1.25, 1); pip.add(pipBulb);
+const PIP_TIP = 6.0 - 0.9;
+// 汙染物粒子：1 顆 ＝ 1 mg
+const mgGeo = new THREE.SphereGeometry(0.055, 14, 10), mgMat = glowMat(0xff2a1f);
+const mgs = Array.from({ length: 50 }, () => {
+  const m = new THREE.Mesh(mgGeo, mgMat); m.visible = false; PPM.lab.add(m);
+  const a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * 0.75;
+  return { m, on: false, fall: 0, ox: Math.cos(a) * r, oz: Math.sin(a) * r, v: Math.random(), ph: Math.random() * 6.28 };
 });
-function buildPoints() {
-  if (PPM.points) return;
-  const pos = new Float32Array(N_WATER * 3), seed = new Float32Array(N_WATER);
-  const hw = TANK.w / 2 - 0.25, hh = TANK.h / 2 - 0.3, hd = TANK.d / 2 - 0.25;
-  for (let i = 0; i < N_WATER; i++) {
-    pos[i * 3] = TANK.cx + (Math.random() * 2 - 1) * hw;
-    pos[i * 3 + 1] = TANK.cy - 0.1 + (Math.random() * 2 - 1) * hh;
-    pos[i * 3 + 2] = (Math.random() * 2 - 1) * hd;
-    seed[i] = Math.random();
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute('aSeed', new THREE.BufferAttribute(seed, 1));
-  PPM.points = new THREE.Points(geo, pointsMat);
-  PPM.points.frustumCulled = false; PPM.points.renderOrder = 2;
-  PPM.group.add(PPM.points);
+const dangerL = addLabel('ppm', '⚠️ 濃度超過 5 PPM，已達致死劑量！', 'boom', V3(BOT.x, 4.5, 1.0));
+const labL1 = addLabel('ppm', '<small>溶劑：水（1 L ≈ 1 kg）</small>', 'minor', V3(BOT.x, -0.25, 1.4));
+const labL2 = addLabel('ppm', '<small>溶質：汙染物（1 顆 ＝ 1 mg）</small>', 'minor', V3(BOT.x + 1.5, 6.3, 0));
+$('mgS').addEventListener('input', () => { PPM.X = Number($('mgS').value); $('mgV').textContent = PPM.X; toLab(); });
+$('lS').addEventListener('input', () => { PPM.Y = Number($('lS').value); $('lV').textContent = PPM.Y.toFixed(1); toLab(); });
+function toLab() {
+  if (PPM.mode === 'ppm') setScale('per');                                   // 巨大矩陣會擋住調配區 → 先收回成千顆立方體
+  PPM.orbit = false;
+  if (!PPM.atLab) { PPM.atLab = true; goView(V_LAB); }
 }
-const PPM_CAM = { pos: [0.4, 6.2, 15.5], target: [0.4, 2.9, 0], fitW: 11.5 };
-function resetPpm() {
-  PPM.state = 'idle'; PPM.t = 0; PPM.reveal = 0; PPM.count = 0; PPM.fly = null;
-  pointsMat.uniforms.uReveal.value = 0;
-  if (PPM.points) PPM.points.visible = false;
-  red.visible = false; halo.visible = false; splashMat.opacity = 0;
-  dLiquid.visible = true; bulb.scale.set(1, 1.25, 1);
-  controls.enabled = true;
-  $('dropBtn').disabled = false;
-  if (tab === 'ppm') goView(PPM_CAM);
-}
-function dropPollutant() {
-  if (PPM.state !== 'idle') return;
-  buildPoints();
-  PPM.state = 'squeeze'; PPM.t = 0;
-  $('dropBtn').disabled = true;
-  goView(PPM_CAM);
-}
-$('dropBtn').addEventListener('click', dropPollutant);
-$('ppmReset').addEventListener('click', resetPpm);
-const tipY = DROPPER.y - 0.95, surfY = TANK.cy + TANK.h / 2 - 0.3;
+$('toLab').addEventListener('click', () => { PPM.atLab = false; toLab(); });
+controls.addEventListener('start', () => { PPM.orbit = false; });
+
+const PPM_CAM = V_OVER;
+function resetPpm() { PPM.atLab = false; setScale('pct'); goView(V_OVER, true); }
 function updatePpm(dt) {
-  pointsMat.uniforms.uTime.value = wall;
   PPM.t += dt;
-  const s = PPM.state;
-  if (s === 'squeeze') {                                                     // 擠壓滴管
-    const k = Math.sin(Math.min(1, PPM.t / 0.5) * Math.PI);
-    bulb.scale.set(1 + 0.25 * k, 1.25 - 0.45 * k, 1 + 0.25 * k);
-    if (PPM.t >= 0.5) { PPM.state = 'fall'; PPM.t = 0; red.visible = true; halo.visible = true; dLiquid.visible = false; }
+  const U = gridMat.uniforms;
+  // ---- 左：維度展開 ----
+  if (PPM.state === 'extend') {
+    U.uZ.value = smooth(0, 1, PPM.t / 1.2);
+    if (PPM.t > 1.2) PPM.state = 'idle';
   }
-  if (PPM.state === 'fall') {                                                // 自由落下到水面
-    const y = tipY - 0.5 * 9.8 * PPM.t * PPM.t;
-    red.position.set(DROPPER.x, Math.max(y, surfY), DROPPER.z); red.scale.setScalar(0.07);
-    if (y <= surfY) { PPM.state = 'sink'; PPM.t = 0; splash.position.set(DROPPER.x, surfY, DROPPER.z); }
+  if (PPM.orbit && !camTw) {                                                 // 繞著千顆立方體慢慢轉
+    PPM.orbitA += dt * 0.28;
+    const c = SUB_C();
+    camera.position.set(c.x + Math.sin(PPM.orbitA) * 12, c.y + 3.4, c.z + Math.cos(PPM.orbitA) * 12);
+    controls.target.copy(c);
   }
-  if (PPM.state === 'sink') {                                                // 入水後減速、漂到最終位置、縮小
-    const k = smooth(0, 1, PPM.t / 1.0);
-    red.position.set(lerp(DROPPER.x, RED_P.x, k), lerp(surfY, RED_P.y, k), lerp(DROPPER.z, RED_P.z, k));
-    red.scale.setScalar(lerp(0.07, 0.022, k));
-    if (PPM.t >= 1.0) { PPM.state = 'reveal'; PPM.t = 0; PPM.points.visible = true; }
+  if (PPM.state === 'grow') {                                                // 從紅點向外瘋狂增生
+    U.uR.value = 8 + smooth(0, 1, PPM.t / 2.4) * 100;
+    if (PPM.t > 3.2 && !camTw) { PPM.state = 'fly'; PPM.t = 0; startFly(); }   // 鏡頭拉到極遠後才開始穿梭
   }
-  if (PPM.state === 'reveal') {                                              // 999,999 顆水粒子從汙染物周圍湧現、把它淹沒
-    PPM.reveal = smooth(0, 1, PPM.t / 1.6) * 12;
-    pointsMat.uniforms.uReveal.value = PPM.reveal;
-    PPM.count = Math.round(N_WATER * smooth(0, 1, PPM.t / 1.6));
-    if (PPM.t >= 1.7) { PPM.state = 'fly'; PPM.t = 0; startFly(); }
-  }
-  if (PPM.state === 'fly') {                                                 // 極限 Zoom In：穿越水分子，停在紅色粒子前
+  if (PPM.state === 'fly') {                                                 // 極限 Zoom In：穿越矩陣
     const k = smooth(0, 1, PPM.t / PPM.fly.dur);
     PPM.fly.curve.getPointAt(k, camera.position);
-    controls.target.lerpVectors(PPM.fly.t0, RED_P, smooth(0, 0.6, k));
-    if (PPM.t >= PPM.fly.dur) { PPM.state = 'done'; controls.enabled = true; controls.target.copy(RED_P); }
+    controls.target.lerpVectors(PPM.fly.t0, redWorld(), smooth(0, 0.5, k));
+    if (PPM.t >= PPM.fly.dur) { PPM.state = 'done'; controls.enabled = true; controls.target.copy(redWorld()); }
   }
-  // 水花
-  if (splashMat.opacity > 0 || PPM.state === 'sink') {
-    const a = PPM.state === 'sink' ? 1 - PPM.t : 0;
-    splashMat.opacity = Math.max(0, a) * 0.8; splash.scale.setScalar(1 + (1 - a) * 4);
-  }
-  if (red.visible) {
-    const pulse = 1 + 0.15 * Math.sin(wall * 5);
-    halo.position.copy(red.position);
-    halo.scale.setScalar((PPM.state === 'done' || PPM.state === 'fly' ? 0.2 : 0.55) * pulse);
-  }
-  redL.show = red.visible && (PPM.state === 'done');
-  setLabel(redL, '這 1 顆就是汙染物！');
-  dropLbl.show = PPM.state === 'idle' || PPM.state === 'squeeze';
-  const n = PPM.count.toLocaleString('en-US');
-  const st = PPM.state === 'idle'
-    ? '按下「滴入 1 公克汙染物」開始'
-    : `水粒子：<b>${n}</b> 顆<br>汙染物：<b style="color:#d0453a">1</b> 顆<br>比例：1 ÷ 1,000,000 ＝ <b>1 ppm</b>`;
-  if ($('ppmStat').innerHTML !== st) $('ppmStat').innerHTML = st;
-  setCap(PPM.state === 'done'
-    ? '<small>這就是 1 ppm（百萬分之一）</small>在一百萬顆水分子中，只有<b>一顆</b>汙染物——雖然肉眼看不見，但它<b>確實存在</b>！'
-    : PPM.state === 'idle'
-      ? '<small>百萬分點濃度 ppm</small>1 ppm ＝ 1 mg ÷ 1 kg ＝ <b>百萬分之一</b>。按下按鈕，滴入 1 公克汙染物到 1000 公斤的水裡'
-      : PPM.state === 'fly' ? '<small>極限 Zoom In</small>穿越 999,999 顆水分子……去找那 <b>1 顆</b>紅色汙染物'
-        : '<small>百萬分點濃度 ppm</small>汙染物落入水中，<b>999,999 顆</b>水分子把它淹沒了…');
-  $('cap').classList.toggle('big', PPM.state === 'done');
-}
-function startFly() {
-  controls.enabled = false;
-  const p0 = camera.position.clone();
-  const end = RED_P.clone().add(V3(0.16, 0.12, 0.62));
-  const curve = new THREE.CatmullRomCurve3([
-    p0,
-    V3(RED_P.x + 1.6, RED_P.y + 1.4, TANK.d / 2 + 3.2),
-    V3(RED_P.x + 0.9, RED_P.y + 0.5, TANK.d / 2 - 0.2),
-    V3(RED_P.x + 0.45, RED_P.y + 0.3, RED_P.z + 1.25),
-    end
-  ], false, 'centripetal');
-  PPM.fly = { curve, t0: controls.target.clone(), dur: 5.0 };
+  const pulse = 1 + 0.15 * Math.sin(wall * 5);
+  red.scale.setScalar(PPM.mode === 'ppm' ? 0.6 : 1);
+  halo.scale.setScalar((PPM.mode === 'ppm' ? (PPM.state === 'done' || PPM.state === 'fly' ? 0.55 : 6) : 0.9) * pulse);
+  const info = SCALE_INFO[PPM.mode];
+  redL.show = PPM.mode !== 'ppm' || PPM.state === 'done';
+  setLabel(redL, PPM.state === 'done' ? '就是這 1 顆！' : '1 顆紅色');
+  visL.show = PPM.mode !== 'ppm'; visL.pos.copy(VIS_O).add(V3(0, 2.25, 0));
+  setLabel(visL, `<b>${info.name}</b><br><small>${info.txt}</small>`);
+  const shown = PPM.mode === 'ppm' ? Math.round(1000 + 999000 * Math.min(1, Math.pow(U.uR.value / 108, 3))) : info.n;
+  setHTML('visStat', `目前：<b>${info.name}</b><br>紅色 <b style="color:#d0453a">1</b> 顆 ÷ 全部 <b>${shown.toLocaleString('en-US')}</b> 顆`);
+  // ---- 右：實戰調配 ----
+  const k = 1 - Math.exp(-dt * 5);
+  PPM.XD += (PPM.X - PPM.XD) * k; PPM.YD += (PPM.Y - PPM.YD) * k;
+  if (Math.abs(PPM.X - PPM.XD) < 0.01) PPM.XD = PPM.X;
+  if (Math.abs(PPM.Y - PPM.YD) < 0.005) PPM.YD = PPM.Y;
+  const X = PPM.XD, Y = PPM.YD, Z = X / Y, danger = PPM.X / PPM.Y > 5;
+  const h = Y / 10 * BOT.hMax, top = BOT.y0 + h;
+  labWater.scale.y = h; labWater.position.y = BOT.y0 + h / 2;
+  const dk = danger ? 0.55 + 0.45 * Math.sin(wall * 6) : 0;
+  labWaterMat.emissiveIntensity += (dk * 0.9 - labWaterMat.emissiveIntensity) * (1 - Math.exp(-dt * 8));
+  labWaterMat.color.set(danger ? 0xffb3ad : 0xd8efff);
+  dangerLight.intensity = danger ? 3 * (0.6 + 0.4 * Math.sin(wall * 6)) : 0;
+  mgs.forEach((p, i) => {
+    const want = i < PPM.X;
+    if (want && !p.on) { p.on = true; p.fall = 0; p.m.visible = true; p.m.position.set(BOT.x, PIP_TIP, 0); }
+    if (!want && p.on) { p.on = false; p.m.visible = false; }
+    if (!p.on) return;
+    const target = V3(BOT.x + p.ox + Math.sin(wall * 0.8 + p.ph) * 0.05, BOT.y0 + 0.1 + p.v * Math.max(0.05, h - 0.2), p.oz + Math.cos(wall * 0.7 + p.ph) * 0.05);
+    if (p.fall < 1) {                                                        // 從滴管落下，入水後漂到自己的位置
+      p.fall = Math.min(1, p.fall + dt * 1.4);
+      const e = p.fall * p.fall;
+      p.m.position.set(lerp(BOT.x, target.x, smooth(0.5, 1, p.fall)), lerp(PIP_TIP, target.y, e), lerp(0, target.z, smooth(0.5, 1, p.fall)));
+    } else p.m.position.copy(target);
+  });
+  const dripping = mgs.some(p => p.on && p.fall < 0.5);
+  const sq = dripping ? 0.75 + 0.25 * Math.cos(wall * 20) : 1;
+  pipBulb.scale.set(1 + (1 - sq) * 0.6, 1.25 * sq, 1 + (1 - sq) * 0.6);
+  dangerL.show = danger && PPM.lab.visible;
+  labL1.show = labL2.show = PPM.lab.visible;
+  const live = Math.abs(PPM.X - PPM.XD) > 0.02 || Math.abs(PPM.Y - PPM.YD) > 0.01;
+  $('fx4X').textContent = X.toFixed(1); $('fx4Y').textContent = Y.toFixed(2); $('fx4Z').textContent = Z.toFixed(2);
+  ['fb4X', 'fb4Y', 'fb4Z'].forEach(id => $(id).classList.toggle('live', live));
+  $('fb4Z').classList.toggle('danger', danger);
+  setHTML('labStat', `汙染物：<b>${PPM.X} mg</b>｜水：<b>${PPM.Y.toFixed(1)} L</b>（≈ ${(PPM.Y * 1e6).toLocaleString('en-US')} mg）<br>濃度：<b class="${danger ? 'warn' : 'ok'}">${(PPM.X / PPM.Y).toFixed(2)} ppm</b>${danger ? '　⚠️ 超過 5 ppm！' : '　✅ 低於 5 ppm'}`);
+  const note = danger ? '<b style="color:#d0453a">⚠️ 濃度超過 5 PPM，已達致死劑量！</b>（本實驗設定的模擬毒性臨界值）'
+    : '1 L 水 ≈ 1 kg ＝ 1,000,000 mg → <b>每公升溶 1 mg ＝ 1 ppm</b>（臨界值：5 ppm）';
+  setHTML('fx4Note', note);
+  setCap(PPM.mode === 'ppm'
+    ? (PPM.state === 'done' ? '<small>這就是 1 ppm（百萬分之一）</small>在一百萬顆粒子中，只有<b>一顆</b>是紅色——肉眼看不見，但它<b>確實存在</b>！'
+      : PPM.state === 'fly' ? '<small>極限 Zoom In</small>穿越 1,000,000 顆粒子……去找那 <b>1 顆</b>紅色'
+      : '<small>瘋狂增生</small>千顆立方體膨脹成 <b>100 × 100 × 100</b> 的巨大矩陣！')
+    : PPM.mode === 'per' ? '<small>1 ‰（千分之一）</small>10 × 10 × 10 ＝ <b>1,000</b> 顆裡只有 1 顆紅色'
+    : '<small>1 %（百分之一）</small>10 × 10 ＝ <b>100</b> 顆裡只有 1 顆紅色。試試按 <b>1 ‰</b>、<b>1 PPM</b>');
 }
 
 /* =========================================================
@@ -832,10 +942,10 @@ function setTab(t) {
   $('cap').hidden = t === 'pct'; $('fxWrap').hidden = t !== 'pct';
   $('cap').classList.remove('big');
   if (t === 'sat') { SAT.lastStat = ''; }
-  if (t !== 'ppm' && PPM.state === 'fly') { PPM.state = 'done'; controls.enabled = true; }
-  if (t === 'ppm' && PPM.state === 'idle') resetPpm();
-  controls.enabled = !(t === 'ppm' && PPM.state === 'fly');
-  goView(TABS[t].cam, true);
+  $('fx4Wrap').hidden = t !== 'ppm';
+  table.visible = true; PPM.orbit = false; controls.enabled = true;
+  if (t === 'ppm') { resetPpm(); }
+  else goView(TABS[t].cam, true);
   try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
 }
 document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
@@ -849,6 +959,8 @@ function layoutDock() {
 }
 function viewFor(c) {
   const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (c.raw) return { pos, tgt };
+  if (!window.innerWidth || !window.innerHeight || !isFinite(camera.aspect)) return { pos, tgt };   // 視窗尺寸為 0（例如分頁隱藏）時不做平移計算
   if (window.MobileView?.isMobile()) return { pos, tgt };
   const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
   const dist = pos.distanceTo(tgt);
@@ -866,7 +978,7 @@ function viewFor(c) {
   return { pos, tgt };
 }
 let camTw = null;
-function goView(c, instant = false) {
+function goView(c, instant = false, dur = 1.2) {
   layoutDock();
   const { pos, tgt } = viewFor(c);
   if (instant || window.MobileView?.isMobile()) {
@@ -874,10 +986,10 @@ function goView(c, instant = false) {
     window.MobileView?.frame(camera, controls, 1.4);
     return;
   }
-  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0, dur };
 }
 controls.addEventListener('start', () => { camTw = null; });
-$('viewBtn').addEventListener('click', () => { if (tab === 'ppm' && PPM.state === 'done') { PPM.state = 'done'; } goView(TABS[tab].cam, true); });
+$('viewBtn').addEventListener('click', () => { if (tab === 'ppm') { resetPpm(); return; } goView(TABS[tab].cam, true); });
 $('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
 
 // 點擊杯子（拖曳旋轉時不觸發）
@@ -904,16 +1016,15 @@ function resize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.fov = 40;
   camera.updateProjectionMatrix();
-  pointsMat.uniforms.uPx.value = window.innerHeight * renderer.getPixelRatio() / (2 * Math.tan(camera.fov * Math.PI / 360));
 }
-window.addEventListener('resize', () => { resize(); if (!(tab === 'ppm' && PPM.state !== 'idle')) goView(TABS[tab].cam, true); });
+window.addEventListener('resize', () => { resize(); if (!(tab === 'ppm' && PPM.mode !== 'pct')) goView(TABS[tab].cam, true); });
 
 const clock = new THREE.Clock();
 function frame(dt) {
   wall += dt;
   TABS[tab].update(dt);
   if (camTw) {
-    camTw.k = Math.min(1, camTw.k + dt / 1.2);
+    camTw.k = Math.min(1, camTw.k + dt / camTw.dur);
     const s = smooth(0, 1, camTw.k);
     camera.position.lerpVectors(camTw.p0, camTw.p1, s);
     controls.target.lerpVectors(camTw.t0, camTw.t1, s);
@@ -927,7 +1038,7 @@ function frame(dt) {
 }
 function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
 
-window.lab = { frame, setTab, selectCup, dropPollutant, resetPpm, PPM, PCT, SAT, MIX, camera, controls };
+window.lab = { frame, setTab, selectCup, setScale, resetPpm, PPM, gridMat, PCT, SAT, MIX, camera, controls };
 
 resize();
 drawLcd('100.0');
