@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>電化學實驗室</title>
+<style>
+  :root {
+    --bg: #eef0f4;
+    --ink: #1d1d1f;
+    --ink-soft: #6e6e73;
+    --card: rgba(255,255,255,.62);
+    --accent: #3d6fd8;
+    --cu: #b87333; --cu2: #0055ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(22px) saturate(180%); -webkit-backdrop-filter: blur(22px) saturate(180%);
+    border: 1px solid rgba(255,255,255,.8); box-shadow: 0 20px 50px rgba(40,50,90,.12), 0 2px 6px rgba(40,50,90,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 300px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(61,111,216,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.15rem; font-weight: 700; margin-top: 6px; padding-right: 62px; }
+  .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .72rem; font-weight: 700; padding: 8px 2px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.35; }
+  .tab:hover { background: rgba(255,255,255,.9); }
+  .tab.on { color: #fff; background: var(--accent); box-shadow: 0 6px 16px rgba(61,111,216,.3); }
+  .section[hidden] { display: none; }
+  .desc { font-size: .8rem; color: var(--ink-soft); line-height: 1.65; margin-bottom: 6px; }
+  .desc b { color: var(--ink); }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 600; border: 1px solid #dde; border-radius: 12px; padding: 9px 10px; background: #fff; margin: 4px 0 6px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .86rem; font-weight: 700; color: var(--accent); background: rgba(61,111,216,.12);
+    transition: background .2s, transform .1s, opacity .2s;
+  }
+  .btn:hover { background: rgba(61,111,216,.2); }
+  .btn:active { transform: scale(.98); }
+  .btn.primary { color: #fff; background: var(--accent); box-shadow: 0 6px 16px rgba(61,111,216,.3); }
+  .btn.on { outline: 3px solid rgba(61,111,216,.35); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+
+  .monitor { position: absolute; top: 18px; right: 18px; width: 300px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 16px 16px 14px; }
+  .monitor.collapsed { width: auto; min-width: 220px; }
+  .monitor.collapsed .mbody { display: none; }
+  .mtitle { font-size: .92rem; font-weight: 800; padding-right: 62px; }
+  .msub { font-size: .72rem; color: var(--ink-soft); margin-top: 2px; }
+  .mcard { background: rgba(255,255,255,.85); border-radius: 16px; padding: 9px 12px; margin-top: 8px; font-size: .78rem; line-height: 1.6; }
+  .mcard h4 { font-size: .74rem; color: var(--ink-soft); font-weight: 700; margin-bottom: 3px; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 1px 10px; font-variant-numeric: tabular-nums; }
+  .kv b { text-align: right; }
+  .up { color: #c2410c; } .down { color: #2563eb; }
+  .bar { height: 10px; border-radius: 999px; background: #e7e9ef; overflow: hidden; margin-top: 4px; }
+  .bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #6f9bff, #0055ff); transition: width .2s; }
+  .eq { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: .76rem; line-height: 1.7; }
+  .eq .t { font-family: inherit; color: var(--ink-soft); font-size: .7rem; }
+  .note { background: #fff6dc; border: 1.5px solid #f0c75c; color: #6b4b00; font-weight: 700; border-radius: 14px; padding: 8px 11px; margin-top: 8px; font-size: .78rem; line-height: 1.6; }
+  .note.blue { background: #e3edff; border-color: #7aa2ff; color: #173f9c; }
+  .legend { display: flex; flex-wrap: wrap; gap: 3px 10px; font-size: .72rem; color: var(--ink-soft); margin-top: 8px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: -1px; margin-right: 4px; box-shadow: 0 0 6px currentColor; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .72rem; font-weight: 700; padding: 3px 9px; border-radius: 12px; white-space: nowrap;
+    background: rgba(255,255,255,.9); color: var(--ink); box-shadow: 0 4px 12px rgba(0,0,0,.08);
+  }
+  .tag.e { background: #ffd23f; color: #5a4300; padding: 1px 7px; }
+  .banner {
+    position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 9; pointer-events: none; text-align: center;
+    padding: 10px 18px; border-radius: 18px; font-size: .92rem; font-weight: 800; opacity: 0; transition: opacity .3s;
+    background: rgba(255,248,225,.96); border: 1.5px solid #f2c75c; color: #6b4b00; max-width: 60vw;
+  }
+  .banner.show { opacity: 1; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+  @media (max-width: 760px), (max-width: 1100px) and (orientation: portrait) {
+    .tabs { grid-template-columns: repeat(4, 1fr) !important; }
+    .banner { bottom: auto; top: 84px; left: 8px !important; right: 8px; transform: none !important; max-width: none; font-size: .78rem; }
+  }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="scene"></div>
+<div class="banner" id="banner"></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g9">‹ 課程總覽</a>
+  <div class="title">電化學實驗室</div>
+  <div class="body">
+    <div class="tabs">
+      <button class="tab on" data-mode="s1">🔋<br>化學電池</button>
+      <button class="tab" data-mode="s2">⚡<br>電解硫酸銅</button>
+      <button class="tab" data-mode="s3">🔑<br>電鍍</button>
+      <button class="tab" data-mode="s4">💧<br>電解水</button>
+    </div>
+
+    <section class="section" data-mode="s1">
+      <select id="s1Var" aria-label="電池種類">
+        <option value="daniell">鋅銅電池（丹尼爾電池）</option>
+        <option value="volta">伏打電池（稀硫酸）</option>
+        <option value="fruit">水果電池（檸檬）</option>
+        <option value="dry">乾電池（剖面）</option>
+      </select>
+      <p class="desc" id="s1Desc"></p>
+    </section>
+
+    <section class="section" data-mode="s2" hidden>
+      <select id="s2Var" aria-label="電極種類">
+        <option value="carbon">A：碳棒電解</option>
+        <option value="copper">B：銅棒電解</option>
+      </select>
+      <p class="desc" id="s2Desc"></p>
+    </section>
+
+    <section class="section" data-mode="s3" hidden>
+      <p class="desc"><b>以銅鍍鐵鑰匙</b>：正極接<b>厚銅板</b>，負極接<b>鐵鑰匙</b>，一起泡在硫酸銅溶液中。打開電源，看鑰匙怎麼「穿上銅衣」。</p>
+    </section>
+
+    <section class="section" data-mode="s4" hidden>
+      <select id="s4Var" aria-label="電解質">
+        <option value="water_naoh">水 ＋ 少量氫氧化鈉 NaOH</option>
+        <option value="water_h2so4">水 ＋ 少量稀硫酸 H₂SO₄</option>
+      </select>
+      <p class="desc"><b>倒立試管排水集氣</b>：兩根碳棒上各罩一支裝滿水的倒立試管。純水幾乎不導電，所以加入少量<b>電解質</b>幫助導電（電解質本身不會被用掉）。</p>
+    </section>
+
+    <div class="row2">
+      <button class="btn primary" id="runBtn">▶ 啟動</button>
+      <button class="btn" id="resetBtn">↺ 重來</button>
+    </div>
+    <div class="row3" id="speedRow">
+      <button class="btn on" data-s="1">1×</button>
+      <button class="btn" data-s="3">3× 快轉</button>
+      <button class="btn" data-s="6">6× 快轉</button>
+    </div>
+    <button class="btn" id="viewBtn" style="margin-top:12px">重設視角</button>
+  </div>
+</aside>
+
+<aside class="monitor glass" id="monitor">
+  <button class="collapse" id="monCollapse">收合</button>
+  <div class="mtitle">巨觀／微觀監測儀</div>
+  <div class="msub" id="monSub"></div>
+  <div class="mbody" id="monBody"></div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__ecReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = THREE.MathUtils.clamp, lerp = THREE.MathUtils.lerp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const rnd = (a, b) => a + Math.random() * (b - a);
+
+/* =========================================================
+   場景
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+$('scene').appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xeef0f4);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf2f3f7);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.HemisphereLight(0xffffff, 0xd5d9e3, 1.0));
+const sun = new THREE.DirectionalLight(0xfff6ea, 2.0);
+sun.position.set(-5, 13, 9);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -8, near: 1, far: 50 });
+sun.shadow.radius = 5;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 4; controls.maxDistance = 50;
+
+const table = new THREE.Mesh(new RoundedBoxGeometry(16, 0.5, 8, 5, 0.24), new THREE.MeshPhysicalMaterial({ color: 0xdfe2ea, roughness: 0.6, clearcoat: 0.3 }));
+table.position.y = -0.25; table.receiveShadow = true; scene.add(table);
+
+/* ----- 材質 ----- */
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.5, metalness: 0.03, clearcoat: 0.3, ...o });
+const glow = (color, k = 0.8) => clay(color, { emissive: color, emissiveIntensity: k });
+/** 金屬：金屬度不要太高（泡在透射溶液裡時才不會變黑），用清漆層做出光澤 */
+const metal = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.35, metalness: 0.35, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const glassT = (o = {}) => new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.9, roughness: 0.1, thickness: 0.3, ior: 1.5, clearcoat: 1, side: THREE.DoubleSide, ...o });
+const glassA = () => new THREE.MeshPhysicalMaterial({ color: 0xf6fbff, roughness: 0.05, clearcoat: 1, transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide });
+const COPPER = new THREE.Color(0xb87333), CU_ION = new THREE.Color(0x0055ff), WHITE = new THREE.Color(0xffffff);
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+
+/* ----- 標籤 ----- */
+const labels = [];
+let buildLabels = null;                        // 建構實驗站時收集標籤，切換時一併移除
+function addLabel(html = '', cls = '', style = '') {
+  const el = document.createElement('div');
+  el.className = 'tag ' + cls; el.innerHTML = html;
+  if (style) el.style.cssText += style;
+  document.body.appendChild(el);
+  const L = { el, pos: V3(0, 0, 0), visible: true };
+  labels.push(L);
+  if (buildLabels) buildLabels.push(L);
+  return L;
+}
+function removeLabels(arr) { arr.forEach(L => { L.el.remove(); const i = labels.indexOf(L); if (i >= 0) labels.splice(i, 1); }); }
+const tmpV = V3(0, 0, 0);
+function placeLabels() {
+  for (const L of labels) {
+    if (!L.visible) { L.el.style.display = 'none'; continue; }
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * window.innerWidth) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * window.innerHeight) + 'px';
+  }
+}
+function banner(html, ms = 4000) {
+  $('banner').innerHTML = html; $('banner').classList.add('show');
+  clearTimeout(banner.t);
+  if (ms) banner.t = setTimeout(() => $('banner').classList.remove('show'), ms);
+}
+const hideBanner = () => { clearTimeout(banner.t); $('banner').classList.remove('show'); };
+
+/* =========================================================
+   共用器材
+   ========================================================= */
+function makeBeaker(r, h) {
+  const g = new THREE.Group();
+  const wall = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 0.97, h, 56, 1, true), glassA());
+  wall.position.y = h / 2; wall.renderOrder = 5;
+  const bottom = new THREE.Mesh(new THREE.CircleGeometry(r * 0.97, 56), glassA());
+  bottom.rotation.x = -Math.PI / 2; bottom.position.y = 0.01; bottom.renderOrder = 5;
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(r, 0.05, 12, 72), clay(0xffffff, { transparent: true, opacity: 0.8, roughness: 0.1, clearcoat: 1 }));
+  rim.rotation.x = Math.PI / 2; rim.position.y = h; rim.renderOrder = 6;
+  g.add(wall, bottom, rim);
+  return g;
+}
+/** 果凍溶液：transmission 0.9；c = 銅離子濃度（0 無色 → 1 湛藍） */
+function makeSolution(r, h, c = 1) {
+  const mat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.9, roughness: 0.03, thickness: 1.2, ior: 1.2, clearcoat: 1,
+    attenuationColor: new THREE.Color(0xffffff), attenuationDistance: 30 });
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 56), mat);
+  m.position.y = h / 2 + 0.02;
+  m.userData.setConc = k => {
+    // color 會乘到所有「看穿過去」的東西上 → 只淡淡上色，藍色主要靠 attenuation（厚度越厚越藍）
+    mat.color.copy(WHITE).lerp(new THREE.Color(0xc9dcff), k);
+    mat.attenuationColor.copy(WHITE).lerp(new THREE.Color(0x7aa4ff), k);
+    mat.attenuationDistance = lerp(40, 2.2, Math.pow(k, 0.6));
+  };
+  m.userData.setConc(c);
+  return m;
+}
+/** 電極板：浸在溶液中的下段（會變胖／變瘦）+ 露出液面的上段 */
+function makePlate({ w = 0.14, d = 0.85, sub = 1.6, top = 1.4, y0 = 0.25, mat, rod = false }) {
+  const g = new THREE.Group();
+  const geo = (h) => rod ? new THREE.CylinderGeometry(w, w, h, 28) : new RoundedBoxGeometry(w, h, d, 3, Math.min(w, d) * 0.35);
+  const subM = new THREE.Mesh(geo(sub), mat); subM.position.y = y0 + sub / 2;
+  const topM = new THREE.Mesh(geo(top), mat); topM.position.y = y0 + sub + top / 2;
+  const clip = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 12), clay(0xd14b4b));
+  clip.position.y = y0 + sub + top;
+  g.add(subM, topM, clip);
+  g.userData = { subM, topM, w, d, sub, y0, topY: y0 + sub + top, rod };
+  return shadowed(g);
+}
+/** 粗糙紅褐色銅沉積層：包在電極下段外面，thickness 越大越胖 */
+function makeCoat(plate) {
+  const { w, d, sub, y0, rod } = plate.userData;
+  const geo = rod ? new THREE.CylinderGeometry(w, w, sub * 0.96, 40, 12) : new RoundedBoxGeometry(w, sub * 0.96, d, 6, Math.min(w, d) * 0.35);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {      // 表面凹凸 → 粗糙
+    const k = 1 + (Math.random() - 0.5) * 0.18;
+    pos.setX(i, pos.getX(i) * k); pos.setZ(i, pos.getZ(i) * (1 + (Math.random() - 0.5) * 0.06));
+  }
+  geo.computeVertexNormals();
+  const coat = new THREE.Mesh(geo, clay(0xb87333, { roughness: 0.92, metalness: 0.25, clearcoat: 0.05 }));
+  coat.position.y = y0 + sub * 0.48;
+  coat.visible = false;
+  plate.add(coat);
+  coat.userData.set = t => {               // t：厚度
+    coat.visible = t > 0.004;
+    if (rod) coat.scale.set((w + t) / w, 1, (w + t) / w);
+    else coat.scale.set((w + 2 * t) / w, 1, (d + 2 * t * 0.6) / d);
+  };
+  coat.castShadow = true;
+  return coat;
+}
+function makeWire(points, color = 0x3a3f4a) {
+  const curve = new THREE.CatmullRomCurve3(points, false, 'centripetal', 0.5);
+  const mesh = new THREE.Mesh(new THREE.TubeGeometry(curve, 160, 0.045, 10, false), clay(color, { roughness: 0.4 }));
+  mesh.castShadow = true;
+  return { mesh, curve };
+}
+const electronGeo = new THREE.SphereGeometry(0.075, 14, 10);
+const electronMat = glow(0xffd23f, 1.0);
+electronGeo.userData.shared = electronMat.userData.shared = true;
+/** 導線上的電子：沿曲線 u 前進 */
+function makeElectrons(parent, curve, n = 12) {
+  const list = Array.from({ length: n }, (_, i) => { const m = new THREE.Mesh(electronGeo, electronMat); parent.add(m); return { m, u0: i / n }; });
+  let u = 0;
+  const api = {
+    update(du) { u += du; list.forEach(e => curve.getPointAt(((e.u0 + u) % 1 + 1) % 1, e.m.position)); },
+    first: list[0].m
+  };
+  api.update(0);
+  return api;
+}
+function makeBulb() {
+  const g = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, 0.36, 24), metal(0xb9bcc4));
+  base.position.y = 0.18;
+  const glassM = new THREE.Mesh(new THREE.SphereGeometry(0.44, 32, 24), glassT({ thickness: 0.2 }));
+  glassM.position.y = 0.72;
+  const filMat = clay(0xffd27a, { emissive: 0xffb02e, emissiveIntensity: 0.1 });
+  const fil = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.022, 8, 24), filMat);
+  fil.position.y = 0.72;
+  const haloMat = new THREE.MeshBasicMaterial({ color: 0xffd36b, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending });
+  const halo = new THREE.Mesh(new THREE.SphereGeometry(0.62, 24, 16), haloMat);
+  halo.position.y = 0.72; halo.renderOrder = 9;
+  const light = new THREE.PointLight(0xffc560, 0, 7, 1.6); light.position.y = 0.72;
+  g.add(base, glassM, fil, halo, light);
+  shadowed(base);
+  let k = 0;
+  g.userData.set = (target, dt) => {
+    k += (target - k) * Math.min(1, dt * 5);
+    filMat.emissiveIntensity = 0.1 + 2.4 * k;
+    haloMat.opacity = 0.16 * k;
+    light.intensity = 3 * k;
+  };
+  return g;
+}
+function makeBattery() {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 1.7, 10, 28), clay(0x2f3640));
+  body.rotation.z = Math.PI / 2;
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(0.435, 0.435, 0.75, 32), clay(0xf2b84b));
+  band.rotation.z = Math.PI / 2; band.position.x = 0.55;
+  const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.2, 20), metal(0xd7d9de));
+  knob.rotation.z = Math.PI / 2; knob.position.x = 1.33;
+  g.add(body, band, knob);
+  return g;                                   // 不投射陰影：電池正好在燒杯上方，影子會把電極和鑰匙蓋暗
+}
+/** 氣泡（不透明白色小球，才能透過果凍溶液看見） */
+function makeBubbles(parent, max = 70) {
+  const mat = clay(0xffffff, { roughness: 0.12, clearcoat: 1, emissive: 0xffffff, emissiveIntensity: 0.25 });
+  const pool = Array.from({ length: max }, () => { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), mat); m.visible = false; parent.add(m); return { m, on: false }; });
+  return {
+    spawn(p, topY, size = rnd(0.04, 0.09)) {
+      const b = pool.find(b => !b.on); if (!b) return;
+      Object.assign(b, { on: true, topY, s: size, ph: Math.random() * 6, x0: p.x });
+      b.m.position.copy(p); b.m.scale.setScalar(size); b.m.visible = true;
+    },
+    update(dt) {
+      pool.forEach(b => {
+        if (!b.on) return;
+        b.m.position.y += (0.55 + b.s * 6) * dt;
+        b.ph += dt * 6; b.m.position.x = b.x0 + Math.sin(b.ph) * 0.04;
+        if (b.m.position.y > (typeof b.topY === 'function' ? b.topY() : b.topY)) { b.on = false; b.m.visible = false; }
+      });
+    },
+    clear() { pool.forEach(b => { b.on = false; b.m.visible = false; }); }
+  };
+}
+
+/* ----- 3D 離子發光球 ----- */
+const ION = {
+  Zn: { color: 0xe6e9ff, r: 0.12, name: 'Zn²⁺', k: 0.9 },
+  Cu: { color: 0x0055ff, r: 0.12, name: 'Cu²⁺', k: 1.1 },
+  SO4: { color: 0xffa94d, r: 0.1, name: 'SO₄²⁻', k: 0.7 },
+  K: { color: 0xb06cff, r: 0.095, name: 'K⁺', k: 0.9 },
+  NO3: { color: 0x2fc98a, r: 0.09, name: 'NO₃⁻', k: 0.8 },
+  H: { color: 0xff5d8f, r: 0.07, name: 'H⁺', k: 0.9 },
+  Na: { color: 0x8fd14f, r: 0.1, name: 'Na⁺', k: 0.8 },
+  OH: { color: 0x37c6e8, r: 0.09, name: 'OH⁻', k: 0.8 }
+};
+const ionGeo = new THREE.SphereGeometry(1, 22, 16); ionGeo.userData.shared = true;
+const ionMats = {};
+for (const [k, v] of Object.entries(ION)) {
+  ionMats[k] = new THREE.MeshPhysicalMaterial({ color: v.color, emissive: v.color, emissiveIntensity: v.k, roughness: 0.2, clearcoat: 1, transmission: 0 });
+  ionMats[k].userData.shared = true;
+}
+const legend = kinds => `<div class="legend">${kinds.map(k => `<span style="color:#${ION[k].color.toString(16).padStart(6, '0')}"><i style="background:currentColor"></i><span style="color:#444">${ION[k].name}</span></span>`).join('')}</div>`;
+
+/** 離子系統：free 布朗運動｜seek 游向目標｜drift 漂移並淡出 */
+function makeIons(parent) {
+  const list = [], tmp = V3(0, 0, 0);
+  const api = {
+    list,
+    add(kind, p, region, v) {
+      const m = new THREE.Mesh(ionGeo, ionMats[kind]);
+      m.scale.setScalar(ION[kind].r);
+      parent.add(m);
+      const o = { kind, m, p: p.clone(), v: v ? v.clone() : V3(rnd(-0.2, 0.2), rnd(-0.2, 0.2), rnd(-0.2, 0.2)), mode: 'free', region };
+      m.position.copy(o.p);
+      list.push(o); return o;
+    },
+    remove(o) { const i = list.indexOf(o); if (i >= 0) list.splice(i, 1); parent.remove(o.m); },
+    randomIn(R) { const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * R.r; return V3(R.x + Math.cos(a) * r, rnd(R.y0, R.y1), R.z + Math.sin(a) * r); },
+    fill(kind, n, R) { for (let i = 0; i < n; i++) api.add(kind, api.randomIn(R), R); },
+    nearestFree(kind, R, target) {
+      let best = null, bd = 1e9;
+      for (const o of list) if (o.kind === kind && o.region === R && o.mode === 'free') { const d = o.p.distanceToSquared(target); if (d < bd) { bd = d; best = o; } }
+      return best;
+    },
+    count(kind, R) { return list.filter(o => o.kind === kind && (!R || o.region === R)).length; },
+    seek(o, target, cb, speed = 1.2) { o.mode = 'seek'; o.target = target.clone(); o.cb = cb; o.speed = speed; },
+    /** dt：真實時間（布朗運動）；flow：反應時間（游向電極、只有通電才前進） */
+    update(dt, flow) {
+      for (const o of list.slice()) {
+        if (o.mode === 'seek') {
+          if (flow > 0) {
+            tmp.copy(o.target).sub(o.p);
+            const d = tmp.length(), step = o.speed * flow;
+            if (d <= step) { o.p.copy(o.target); o.mode = 'done'; if (o.cb) o.cb(o); continue; }
+            o.p.addScaledVector(tmp, step / d);
+            o.p.y += Math.sin(performance.now() / 300 + o.p.x * 5) * 0.004;
+          }
+        } else if (o.mode === 'drift') {
+          o.p.addScaledVector(o.v, dt);
+          o.ttl -= dt;
+          o.m.scale.setScalar(ION[o.kind].r * clamp(o.ttl / 0.6, 0, 1));
+          if (o.ttl <= 0) { api.remove(o); continue; }
+        } else if (o.mode === 'free') {
+          const R = o.region;
+          o.v.x += (Math.random() - 0.5) * 2.2 * dt; o.v.y += (Math.random() - 0.5) * 2.2 * dt; o.v.z += (Math.random() - 0.5) * 2.2 * dt;
+          o.v.multiplyScalar(Math.pow(0.55, dt));
+          if (o.v.length() > 0.5) o.v.setLength(0.5);
+          o.p.addScaledVector(o.v, dt);
+          if (R) {
+            const dx = o.p.x - R.x, dz = o.p.z - R.z, rr = Math.hypot(dx, dz);
+            if (rr > R.r) { o.p.x = R.x + dx / rr * R.r; o.p.z = R.z + dz / rr * R.r; const vn = (o.v.x * dx + o.v.z * dz) / rr; if (vn > 0) { o.v.x -= 2 * vn * dx / rr; o.v.z -= 2 * vn * dz / rr; } }
+            if (o.p.y < R.y0) { o.p.y = R.y0; o.v.y = Math.abs(o.v.y); }
+            if (o.p.y > R.y1) { o.p.y = R.y1; o.v.y = -Math.abs(o.v.y); }
+          }
+        }
+        o.m.position.copy(o.p);
+      }
+    }
+  };
+  return api;
+}
+/** 電極板表面上的一點（朝向 from 的那一面） */
+function plateSurface(plate, from, R) {
+  const { w, d, sub, y0, rod } = plate.userData;
+  const P = plate.position;
+  const y = rnd(y0 + 0.15, y0 + Math.min(sub, R ? R.y1 - y0 : sub) - 0.1);
+  if (rod) { const a = Math.atan2(from.z - P.z, from.x - P.x) + rnd(-0.6, 0.6); return V3(P.x + Math.cos(a) * (w + 0.06), y, P.z + Math.sin(a) * (w + 0.06)); }
+  const side = from.x >= P.x ? 1 : -1;
+  return V3(P.x + side * (w / 2 + 0.07), y, P.z + rnd(-d * 0.42, d * 0.42));
+}
+
+/* =========================================================
+   實驗站框架：每個實驗（含下拉選單的細項）各自建構，切換時整組清除（dispose）
+   ========================================================= */
+const root = new THREE.Group(); scene.add(root);
+let cur = null;                       // 目前的實驗物件
+function disposeGroup(g) {
+  g.traverse(o => {
+    if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose();
+    if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (!m.userData.shared) { m.map?.dispose(); m.dispose(); } });
+  });
+}
+function build(key) {
+  if (cur) { root.remove(cur.group); disposeGroup(cur.group); removeLabels(cur.labels); }
+  const group = new THREE.Group(); root.add(group);
+  buildLabels = [];
+  const exp = BUILDERS[key](group);
+  exp.group = group; exp.labels = buildLabels; exp.key = key;
+  buildLabels = null;
+  cur = exp;
+  running = false; simT = 0;
+  $('runBtn').textContent = '▶ 啟動';
+  hideBanner();
+  if (exp.intro) banner(exp.intro, 5000);
+  resetView();
+}
+
+/* ---------- 共用：電池站的導線 + 燈泡 + 電子 ---------- */
+function circuit(group, pts, bulbPos, bulbK = 1) {
+  const wire = makeWire(pts);
+  group.add(wire.mesh);
+  const bulb = makeBulb(); bulb.position.copy(bulbPos); group.add(bulb);
+  const el = makeElectrons(group, wire.curve, 16);
+  const lE = addLabel('e⁻', 'e');
+  return {
+    update(dt, on, flow) {
+      el.update(on ? flow * 0.09 : 0);
+      bulb.userData.set(on ? bulbK : 0, dt);
+      lE.visible = true; lE.pos.copy(el.first.position).add(V3(0, 0.22, 0));
+    }
+  };
+}
+const fmt = (x, n = 2) => x.toFixed(n);
+const delta = (x, x0) => { const d = x - x0; return Math.abs(d) < 0.005 ? '' : `<span class="${d > 0 ? 'up' : 'down'}">（${d > 0 ? '+' : ''}${d.toFixed(2)}）</span>`; };
+
+/* =========================================================
+   模組一：化學電池
+   ========================================================= */
+const BUILDERS = {};
+const DESC1 = {
+  daniell: '左杯<b>鋅片</b>泡硫酸鋅、右杯<b>銅片</b>泡硫酸銅，中間用<b>鹽橋</b>連接。鋅比銅活潑 → 鋅失去電子當<b>負極</b>。',
+  volta: '鋅片與銅片泡在同一杯<b>稀硫酸</b>裡。鋅失去電子；電子到銅片上交給 <b>H⁺</b>，冒出<b>氫氣</b>。',
+  fruit: '檸檬汁含有酸（H⁺），插入鋅片與銅片就是一顆電池！電壓很小，只能讓燈泡微微發亮。',
+  dry: '乾電池剖面：外殼是<b>鋅（負極）</b>，中間是<b>碳棒（正極）</b>，中間填滿二氧化錳與氯化銨糊狀物。'
+};
+
+BUILDERS.daniell = (g) => {
+  const L = -2.3, R = 2.3, BR = 1.25, BH = 2.6, LH = 1.9, T = 40, XMAX = 0.05, NCU = 22;
+  const bL = makeBeaker(BR, BH); bL.position.x = L;
+  const bR = makeBeaker(BR, BH); bR.position.x = R;
+  const sL = makeSolution(BR - 0.07, LH, 0); sL.position.x = L;
+  const sR = makeSolution(BR - 0.07, LH, 1); sR.position.x = R;
+  g.add(bL, bR, sL, sR);
+  const zn = makePlate({ mat: metal(0xa9adb5, { roughness: 0.45 }) }); zn.position.set(L - 0.3, 0, 0.12);
+  const cu = makePlate({ mat: metal(0xb87333, { roughness: 0.4 }) }); cu.position.set(R + 0.3, 0, 0.12);
+  const coat = makeCoat(cu);
+  g.add(zn, cu);
+  // 鹽橋（U 型管 + 洋菜膠 + 棉花塞）
+  const bridgeCurve = new THREE.CatmullRomCurve3([V3(-1.72, 0.85, -0.5), V3(-1.72, 2.5, -0.5), V3(-1.3, 3.35, -0.5), V3(0, 3.6, -0.5), V3(1.3, 3.35, -0.5), V3(1.72, 2.5, -0.5), V3(1.72, 0.85, -0.5)]);
+  const tube = new THREE.Mesh(new THREE.TubeGeometry(bridgeCurve, 120, 0.24, 20, false), glassA()); tube.renderOrder = 6;
+  const gel = new THREE.Mesh(new THREE.TubeGeometry(bridgeCurve, 120, 0.19, 16, false), new THREE.MeshPhysicalMaterial({ color: 0xf4f1ff, transparent: true, opacity: 0.35, depthWrite: false, roughness: 0.3 }));
+  gel.renderOrder = 5;
+  [0, 1].forEach(t => { const c = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 12), clay(0xffffff, { roughness: 0.95 })); bridgeCurve.getPointAt(t, c.position); c.scale.y = 0.7; g.add(c); });
+  g.add(tube, gel);
+  const ions = makeIons(g);
+  const RL = { x: L + 0.1, z: 0, r: 1.0, y0: 0.35, y1: LH - 0.12 }, RR = { x: R - 0.1, z: 0, r: 1.0, y0: 0.35, y1: LH - 0.12 };
+  ions.fill('Zn', 5, RL); ions.fill('SO4', 6, RL);
+  ions.fill('Cu', NCU, RR); ions.fill('SO4', 9, RR);
+  // 鹽橋內的離子：K⁺ 往右杯、NO₃⁻ 往左杯
+  const bridgeIons = [];
+  for (let i = 0; i < 16; i++) {
+    const kind = i % 2 ? 'K' : 'NO3';
+    const m = new THREE.Mesh(ionGeo, ionMats[kind]); m.scale.setScalar(ION[kind].r); g.add(m);
+    bridgeIons.push({ m, kind, s: (i + 0.5) / 16, off: V3(rnd(-0.08, 0.08), rnd(-0.08, 0.08), rnd(-0.08, 0.08)) });
+  }
+  const circ = circuit(g, [V3(L - 0.3, 3.25, 0.12), V3(L - 0.3, 4.2, 0.12), V3(-1.5, 4.85, 0.12), V3(0, 4.92, 0.12), V3(1.5, 4.85, 0.12), V3(R + 0.3, 4.2, 0.12), V3(R + 0.3, 3.25, 0.12)], V3(0, 4.75, 0.12));
+  const lZn = addLabel('鋅片 Zn（負極 −）', '', 'color:#5b6270'), lCu = addLabel('銅片 Cu（正極 ＋）', '', 'color:#9a5520');
+  const lSL = addLabel('ZnSO₄ 溶液'), lSR = addLabel('CuSO₄ 溶液', '', 'color:#0047d6'), lBr = addLabel('鹽橋（KNO₃）', '', 'color:#7a4fd0');
+  lZn.pos.set(L - 0.3, 3.6, 0.12); lCu.pos.set(R + 0.3, 3.6, 0.12); lSL.pos.set(L, -0.05, 1.4); lSR.pos.set(R, -0.05, 1.4); lBr.pos.set(0, 3.95, -0.5);
+  let xi = 0, nCu = 0, nZn = 0, dead = false;
+  return {
+    camera: { pos: [0, 4.2, 13.5], target: [0, 2.4, 0] },
+    update(dt, flow) {
+      if (flow > 0 && xi < XMAX) xi = Math.min(XMAX, xi + XMAX / T * flow);
+      const f = xi / XMAX, on = flow > 0 && xi < XMAX;
+      if (xi >= XMAX && !dead) { dead = true; banner('🔋 右杯的 Cu²⁺ 用完了：電池沒電、燈泡熄滅。右杯溶液也褪成無色！', 0); }
+      const target = Math.floor(f * NCU + 1e-9);
+      while (nCu < target) {                       // 正極：Cu²⁺ + 2e⁻ → Cu（游向銅片並附著）
+        nCu++;
+        const o = ions.nearestFree('Cu', RR, cu.position.clone().setY(1));
+        if (o) ions.seek(o, plateSurface(cu, o.p, RR), ion => ions.remove(ion), 1.0);
+      }
+      while (nZn < target) {                       // 負極：Zn → Zn²⁺ + 2e⁻（鋅片釋出 Zn²⁺）
+        nZn++;
+        const p = plateSurface(zn, V3(L + 1, 1, 0), RL);
+        ions.add('Zn', p, RL, V3(0.55, rnd(-0.1, 0.1), rnd(-0.2, 0.2)));
+      }
+      ions.update(dt, flow);
+      zn.userData.subM.scale.set(1 - 0.6 * f, 1, 1 - 0.22 * f);           // 鋅片變瘦
+      coat.userData.set(0.11 * f);                                        // 銅片變胖
+      const remain = ions.count('Cu', RR) - ions.list.filter(o => o.kind === 'Cu' && o.mode === 'seek').length * 0.5;
+      sR.userData.setConc(clamp(remain / NCU, 0, 1));                       // 右杯藍色漸褪
+      bridgeIons.forEach(b => {
+        if (on) b.s += (b.kind === 'K' ? 1 : -1) * 0.035 * flow;
+        b.s = ((b.s % 1) + 1) % 1;
+        bridgeCurve.getPointAt(b.s, b.m.position).add(b.off);
+      });
+      circ.update(dt, on, flow);
+    },
+    monitor() {
+      const mZn = 10 - 65.4 * xi, mCu = 10 + 63.5 * xi;
+      return {
+        sub: '鋅銅電池（化學能 → 電能）',
+        rows: [['鋅片 Zn（負極）', `${fmt(mZn)} g ${delta(mZn, 10)}`], ['銅片 Cu（正極）', `${fmt(mCu)} g ${delta(mCu, 10)}`], ['流過的電子', `${fmt(2 * xi, 3)} mol`]],
+        conc: ['右杯 Cu²⁺ 濃度（藍色深淺）', 1 - xi / XMAX],
+        eq: [['負極（氧化）', 'Zn → Zn²⁺ + 2e⁻'], ['正極（還原）', 'Cu²⁺ + 2e⁻ → Cu'], ['全反應', 'Zn + Cu²⁺ → Zn²⁺ + Cu']],
+        note: '鋅片變瘦、銅片變胖；電子由鋅經導線流向銅。鹽橋：K⁺ → 右杯、NO₃⁻ → 左杯，維持電中性。',
+        legend: ['Zn', 'Cu', 'SO4', 'K', 'NO3']
+      };
+    }
+  };
+};
+
+BUILDERS.volta = (g) => {
+  const BR = 1.75, BH = 2.7, LH = 2.0, T = 60, XMAX = 0.03, NH = 26;
+  const b = makeBeaker(BR, BH); const s = makeSolution(BR - 0.07, LH, 0);
+  s.material.color.set(0xf9fbff);
+  g.add(b, s);
+  const zn = makePlate({ mat: metal(0xa9adb5, { roughness: 0.45 }) }); zn.position.set(-0.8, 0, 0);
+  const cu = makePlate({ mat: metal(0xb87333, { roughness: 0.4 }) }); cu.position.set(0.8, 0, 0);
+  g.add(zn, cu);
+  const ions = makeIons(g), bub = makeBubbles(g);
+  const RG = { x: 0, z: 0, r: 1.45, y0: 0.35, y1: LH - 0.12 };
+  ions.fill('H', NH, RG); ions.fill('SO4', 13, RG);
+  const circ = circuit(g, [V3(-0.8, 3.25, 0), V3(-0.8, 4.3, 0), V3(-0.3, 4.85, 0), V3(0, 4.92, 0), V3(0.3, 4.85, 0), V3(0.8, 4.3, 0), V3(0.8, 3.25, 0)], V3(0, 4.75, 0), 0.7);
+  const lZn = addLabel('鋅片 Zn（負極 −）', '', 'color:#5b6270'), lCu = addLabel('銅片 Cu（正極 ＋）', '', 'color:#9a5520'), lS = addLabel('稀硫酸 H₂SO₄');
+  lZn.pos.set(-1.9, 3.3, 0); lCu.pos.set(1.9, 3.3, 0); lS.pos.set(0, -0.05, 2.0);
+  let xi = 0, nH = 0, dead = false;
+  return {
+    camera: { pos: [0, 4.2, 12], target: [0, 2.3, 0] },
+    update(dt, flow) {
+      if (flow > 0 && xi < XMAX) xi = Math.min(XMAX, xi + XMAX / T * flow);
+      const f = xi / XMAX, on = flow > 0 && xi < XMAX;
+      if (xi >= XMAX && !dead) { dead = true; banner('H⁺ 消耗完，電池停止放電。', 0); }
+      const target = Math.floor(f * NH);
+      while (nH < target) {
+        nH++;
+        const o = ions.nearestFree('H', RG, cu.position.clone().setY(1));
+        if (o) ions.seek(o, plateSurface(cu, o.p, RG), ion => { bub.spawn(ion.p.clone(), LH, rnd(0.05, 0.1)); ions.remove(ion); }, 1.0);
+        if (nH % 2 === 0) ions.add('Zn', plateSurface(zn, V3(1, 1, 0), RG), RG, V3(0.5, 0, rnd(-0.2, 0.2)));
+      }
+      if (on && Math.random() < 3 * flow) bub.spawn(plateSurface(cu, V3(-1, 1, 0), RG), LH);
+      ions.update(dt, flow); bub.update(dt);
+      zn.userData.subM.scale.set(1 - 0.5 * f, 1, 1 - 0.18 * f);
+      circ.update(dt, on, flow);
+    },
+    monitor() {
+      const mZn = 10 - 65.4 * xi;
+      return {
+        sub: '伏打電池（化學能 → 電能）',
+        rows: [['鋅片 Zn（負極）', `${fmt(mZn)} g ${delta(mZn, 10)}`], ['銅片 Cu（正極）', `10.00 g（不變）`], ['產生氫氣', `${fmt(xi * 24500, 0)} mL`]],
+        conc: ['H⁺ 濃度', 1 - xi / XMAX],
+        eq: [['負極（氧化）', 'Zn → Zn²⁺ + 2e⁻'], ['正極（還原）', '2H⁺ + 2e⁻ → H₂↑'], ['全反應', 'Zn + 2H⁺ → Zn²⁺ + H₂']],
+        note: '銅片本身不反應（質量不變），只是讓電子把 H⁺ 變成氫氣的地方，所以銅片表面冒泡。',
+        legend: ['Zn', 'H', 'SO4']
+      };
+    }
+  };
+};
+
+BUILDERS.fruit = (g) => {
+  const T = 60, XMAX = 0.002, NH = 18;
+  const lemon = new THREE.Mesh(new THREE.SphereGeometry(1, 64, 40), new THREE.MeshPhysicalMaterial({
+    color: 0xfff2a0, transmission: 0.9, roughness: 0.12, thickness: 2.4, ior: 1.36, clearcoat: 1, attenuationColor: new THREE.Color(0xf2c200), attenuationDistance: 2.4 }));
+  lemon.scale.set(2.3, 1.35, 1.55); lemon.position.y = 1.4;
+  const tipMat = clay(0xf2cf2e, { roughness: 0.4 });
+  [-1, 1].forEach(s => { const t = new THREE.Mesh(new THREE.SphereGeometry(0.22, 20, 14), tipMat); t.scale.set(1.3, 0.8, 0.8); t.position.set(s * 2.3, 1.4, 0); g.add(t); });
+  const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.4, 20, 12), clay(0x6fb46a)); leaf.scale.set(1.2, 0.12, 0.5); leaf.position.set(-1.6, 2.35, -0.2); leaf.rotation.z = 0.5;
+  g.add(lemon, leaf);
+  const zn = makePlate({ sub: 1.4, top: 1.6, y0: 0.55, mat: metal(0xa9adb5, { roughness: 0.45 }) }); zn.position.set(-0.85, 0, 0);
+  const cu = makePlate({ sub: 1.4, top: 1.6, y0: 0.55, mat: metal(0xb87333, { roughness: 0.4 }) }); cu.position.set(0.85, 0, 0);
+  g.add(zn, cu);
+  const ions = makeIons(g), bub = makeBubbles(g, 30);
+  const RG = { x: 0, z: 0, r: 1.15, y0: 0.75, y1: 2.05 };
+  ions.fill('H', NH, RG);
+  const circ = circuit(g, [V3(-0.85, 3.55, 0), V3(-0.85, 4.35, 0), V3(-0.3, 4.85, 0), V3(0, 4.92, 0), V3(0.3, 4.85, 0), V3(0.85, 4.35, 0), V3(0.85, 3.55, 0)], V3(0, 4.75, 0), 0.28);
+  const lZn = addLabel('鋅片 Zn（負極 −）', '', 'color:#5b6270'), lCu = addLabel('銅片 Cu（正極 ＋）', '', 'color:#9a5520'), lS = addLabel('🍋 檸檬汁（含酸 H⁺）', '', 'color:#8a6a00');
+  lZn.pos.set(-1.95, 3.5, 0); lCu.pos.set(1.95, 3.5, 0); lS.pos.set(0, -0.1, 1.7);
+  let xi = 0, nH = 0;
+  return {
+    camera: { pos: [0, 4, 11.5], target: [0, 2.3, 0] },
+    update(dt, flow) {
+      if (flow > 0 && xi < XMAX) xi = Math.min(XMAX, xi + XMAX / T * flow);
+      const f = xi / XMAX, on = flow > 0 && xi < XMAX;
+      const target = Math.floor(f * NH);
+      while (nH < target) {
+        nH++;
+        const o = ions.nearestFree('H', RG, cu.position.clone().setY(1.3));
+        if (o) ions.seek(o, plateSurface(cu, o.p, RG), ion => { bub.spawn(ion.p.clone(), 2.1, 0.04); ions.remove(ion); ions.add('H', ions.randomIn(RG), RG); }, 0.8);
+        if (nH % 2 === 0) { const z = ions.add('Zn', plateSurface(zn, V3(1, 1, 0), RG), RG, V3(0.4, 0, 0)); }
+      }
+      ions.update(dt, flow); bub.update(dt);
+      zn.userData.subM.scale.set(1 - 0.15 * f, 1, 1);
+      circ.update(dt, on, flow);
+    },
+    monitor() {
+      const mZn = 5 - 65.4 * xi;
+      return {
+        sub: '水果電池（化學能 → 電能）',
+        rows: [['鋅片 Zn（負極）', `${fmt(mZn, 3)} g`], ['銅片 Cu（正極）', '5.000 g（不變）'], ['電壓', '約 0.9 V（很小）']],
+        conc: null,
+        eq: [['負極（氧化）', 'Zn → Zn²⁺ + 2e⁻'], ['正極（還原）', '2H⁺ + 2e⁻ → H₂↑']],
+        note: '水果本身不是電，是「兩種活性不同的金屬 + 電解質（果汁）」組成電池。串聯多顆檸檬，燈泡才會更亮。',
+        legend: ['Zn', 'H']
+      };
+    }
+  };
+};
+
+BUILDERS.dry = (g) => {
+  const H = 3.0, RO = 1.3, T = 50, XMAX = 0.03;
+  const PH0 = Math.PI / 2, PL = Math.PI * 1.5;           // 前右方切掉 1/4，看得到內部
+  const canMat = metal(0xb4b8c0, { roughness: 0.4, side: THREE.DoubleSide });
+  const canGeo = ri => new THREE.LatheGeometry([new THREE.Vector2(ri, 0), new THREE.Vector2(RO, 0), new THREE.Vector2(RO, H), new THREE.Vector2(ri, H), new THREE.Vector2(ri, 0)], 72, PH0, PL);
+  let ri = 1.16;
+  const can = new THREE.Mesh(canGeo(ri), canMat); can.castShadow = true;
+  const RP = 1.14;
+  const pasteMat = clay(0x2f2a33, { roughness: 0.9, side: THREE.DoubleSide });
+  const paste = new THREE.Mesh(new THREE.CylinderGeometry(RP, RP, H - 0.25, 72, 1, false, PH0, PL), pasteMat);
+  paste.position.y = H / 2;
+  const cut1 = new THREE.Mesh(new THREE.PlaneGeometry(RP, H - 0.25), pasteMat); cut1.position.set(RP / 2, H / 2, 0);
+  const cut2 = new THREE.Mesh(new THREE.PlaneGeometry(RP, H - 0.25), pasteMat); cut2.rotation.y = -Math.PI / 2; cut2.position.set(0, H / 2, RP / 2);
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, H + 0.25, 28), clay(0x3c3d44, { roughness: 0.7 })); rod.position.y = H / 2 + 0.1;
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.22, 28), metal(0xd8b25a)); cap.position.y = H + 0.3;
+  const seal = new THREE.Mesh(new THREE.CylinderGeometry(RO, RO, 0.14, 72, 1, false, PH0, PL), clay(0x9a3b3b)); seal.position.y = H - 0.05;
+  g.add(can, paste, cut1, cut2, rod, cap, seal);
+  shadowed(g);
+  const ions = makeIons(g);
+  const circ = circuit(g, [V3(-1.32, 0.6, 0), V3(-2.4, 0.75, 0), V3(-2.5, 2.6, 0), V3(-2.2, 4.3, 0), V3(-1.0, 4.95, 0), V3(-0.1, 4.4, 0), V3(0, 3.42, 0)], V3(-1.0, 4.78, 0), 0.9);
+  const lZn = addLabel('鋅殼 Zn（負極 −）', '', 'color:#5b6270'), lC = addLabel('碳棒 C（正極 ＋）', '', 'color:#333'), lP = addLabel('MnO₂ + NH₄Cl 糊狀物', '', 'color:#6b4b6e');
+  lZn.pos.set(1.55, 0.6, 0.6); lC.pos.set(0.6, 3.7, 0.4); lP.pos.set(0.65, 1.6, 0.9);
+  let xi = 0, nZ = 0, lastRi = ri;
+  return {
+    camera: { pos: [4.2, 4.4, 11.5], target: [0, 2.1, 0] },
+    update(dt, flow) {
+      if (flow > 0 && xi < XMAX) xi = Math.min(XMAX, xi + XMAX / T * flow);
+      const f = xi / XMAX, on = flow > 0 && xi < XMAX;
+      // 鋅殼由內側被消耗 → 變薄
+      ri = 1.16 + 0.1 * f;
+      if (Math.abs(ri - lastRi) > 0.004) { can.geometry.dispose(); can.geometry = canGeo(ri); lastRi = ri; }
+      if (on && Math.random() < 4 * flow) {   // Zn²⁺ 從鋅殼內側進入糊狀物（在剖面上看得到）
+        nZ++;
+        const y = rnd(0.3, H - 0.4);
+        const o = nZ % 2 ? ions.add('Zn', V3(RP - 0.05, y, 0.05), null, V3(-0.35, 0, 0)) : ions.add('Zn', V3(0.05, y, RP - 0.05), null, V3(0, 0, -0.35));
+        o.mode = 'drift'; o.ttl = 2.2;
+      }
+      ions.update(dt, flow);
+      circ.update(dt, on, flow);
+    },
+    monitor() {
+      const mZn = 8 - 65.4 * xi;
+      return {
+        sub: '乾電池（碳鋅電池）剖面',
+        rows: [['鋅殼 Zn（負極）', `${fmt(mZn)} g ${delta(mZn, 8)}`], ['碳棒（正極）', '不參與反應'], ['電壓', '約 1.5 V']],
+        conc: ['剩餘電量', 1 - xi / XMAX],
+        eq: [['負極（氧化）', 'Zn → Zn²⁺ + 2e⁻'], ['正極（還原）', '2MnO₂ + 2NH₄⁺ + 2e⁻ → Mn₂O₃ + 2NH₃ + H₂O']],
+        note: '電解質做成糊狀，不會流出來，所以叫「乾」電池。用久了鋅殼變薄，甚至會漏液。',
+        legend: ['Zn']
+      };
+    }
+  };
+};
+
+/* =========================================================
+   模組二／三：電解槽（電池 + 大燒杯 + 兩電極）
+   左電極接電池負極（陰極：還原）；右電極接電池正極（陽極：氧化）
+   ========================================================= */
+function electroCell(g, { cathode, anode, cathodeName, anodeName }) {
+  const BR = 2.0, BH = 3.0, LH = 2.3;
+  const b = makeBeaker(BR, BH), s = makeSolution(BR - 0.08, LH, 1);
+  g.add(b, s);
+  cathode.position.set(-1.05, 0, 0); anode.position.set(1.05, 0, 0);
+  g.add(cathode, anode);
+  const bat = makeBattery(); bat.position.set(0, 5.35, 0); g.add(bat);
+  const cTop = cathode.userData.topY ?? 4.0, aTop = anode.userData.topY ?? 4.0;
+  const w1 = makeWire([V3(-1.28, 5.35, 0), V3(-1.75, 5.2, 0), V3(-1.05, 4.6, 0), V3(-1.05, cTop, 0)], 0x2b3a67);
+  const w2 = makeWire([V3(1.05, aTop, 0), V3(1.05, 4.6, 0), V3(1.8, 5.2, 0), V3(1.45, 5.35, 0)], 0xb03a3a);
+  g.add(w1.mesh, w2.mesh);
+  const e1 = makeElectrons(g, w1.curve, 7), e2 = makeElectrons(g, w2.curve, 7);
+  const lE = addLabel('e⁻', 'e');
+  const lNeg = addLabel('－ 負極', '', 'color:#2b3a67;font-size:.8rem'), lPos = addLabel('＋ 正極', '', 'color:#b03a3a;font-size:.8rem');
+  lNeg.pos.set(-1.75, 5.85, 0); lPos.pos.set(1.6, 5.85, 0);
+  const lC = addLabel(cathodeName, '', 'color:#2b3a67'), lA = addLabel(anodeName, '', 'color:#b03a3a');
+  lC.pos.set(-2.6, 3.4, 0); lA.pos.set(2.6, 3.4, 0);
+  const lS = addLabel('CuSO₄ 溶液', '', 'color:#0047d6'); lS.pos.set(0, -0.05, 2.2);
+  const RG = { x: 0, z: 0, r: 1.75, y0: 0.35, y1: LH - 0.12 };
+  return {
+    s, RG, LH,
+    update(dt, on, flow) {
+      e1.update(on ? flow * 0.12 : 0); e2.update(on ? flow * 0.12 : 0);
+      lE.pos.copy(e1.first.position).add(V3(0, 0.22, 0));
+    }
+  };
+}
+
+BUILDERS.carbon = (g) => {
+  const T = 45, XMAX = 0.045, NCU = 30;
+  const rodMat = () => clay(0x45464d, { roughness: 0.75 });
+  const cathode = makePlate({ rod: true, w: 0.18, sub: 1.9, top: 1.75, mat: rodMat() });
+  const anode = makePlate({ rod: true, w: 0.18, sub: 1.9, top: 1.75, mat: rodMat() });
+  const coat = makeCoat(cathode);
+  const cell = electroCell(g, { cathode, anode, cathodeName: '碳棒（陰極，接負極）', anodeName: '碳棒（陽極，接正極）' });
+  const ions = makeIons(g), bub = makeBubbles(g, 90);
+  ions.fill('Cu', NCU, cell.RG); ions.fill('SO4', 16, cell.RG);
+  let xi = 0, nCu = 0, hAcc = 0;
+  return {
+    intro: '碳棒電解：注意<b>陰極長出紅褐色的銅</b>、<b>陽極冒出氧氣</b>，以及溶液的<b>藍色</b>。',
+    camera: { pos: [0, 4.3, 12.5], target: [0, 2.7, 0] },
+    update(dt, flow) {
+      if (flow > 0 && xi < XMAX) xi = Math.min(XMAX, xi + XMAX / T * flow);
+      const f = xi / XMAX, on = flow > 0 && xi < XMAX;
+      while (nCu < Math.floor(f * NCU * 0.9)) {
+        nCu++;
+        const o = ions.nearestFree('Cu', cell.RG, cathode.position.clone().setY(1.2));
+        if (o) ions.seek(o, plateSurface(cathode, o.p, cell.RG), ion => ions.remove(ion), 1.1);
+      }
+      if (on) {                                    // 陽極：2H₂O → O₂ + 4H⁺ + 4e⁻
+        hAcc += 9 * flow;
+        while (hAcc > 1) { hAcc--; bub.spawn(plateSurface(anode, V3(rnd(-1, 1), 1, rnd(-1, 1)), cell.RG), cell.LH); }
+        if (Math.random() < 1.2 * flow && ions.count('H') < 18) ions.add('H', plateSurface(anode, V3(0, 1, 0), cell.RG), cell.RG, V3(-0.3, 0, rnd(-0.3, 0.3)));
+      }
+      ions.update(dt, flow); bub.update(dt);
+      coat.userData.set(0.1 * f);
+      const remain = ions.count('Cu') - ions.list.filter(o => o.kind === 'Cu' && o.mode === 'seek').length * 0.5;
+      cell.s.userData.setConc(clamp(remain / NCU, 0, 1));
+      cell.update(dt, on, flow);
+    },
+    monitor() {
+      const dm = 63.5 * xi;
+      return {
+        sub: 'A：碳棒電解硫酸銅（電能 → 化學能）',
+        rows: [['陰極碳棒', `${fmt(5 + dm)} g ${delta(5 + dm, 5)}`], ['陽極碳棒', '5.00 g（粗細不變）'], ['產生氧氣', `${fmt(xi / 2 * 24500, 0)} mL`]],
+        conc: ['Cu²⁺ 濃度（藍色深淺）', 1 - 0.9 * xi / XMAX],
+        eq: [['陰極（還原）', 'Cu²⁺ + 2e⁻ → Cu'], ['陽極（氧化）', '2H₂O → O₂↑ + 4H⁺ + 4e⁻']],
+        note: 'Cu²⁺ 只被消耗、沒有補充 → <b>溶液藍色逐漸變淡</b>，而且 H⁺ 變多，溶液變酸。',
+        legend: ['Cu', 'SO4', 'H']
+      };
+    }
+  };
+};
+
+BUILDERS.copper = (g) => {
+  const RATE = 0.05 / 45, N0 = 26;
+  const cathode = makePlate({ sub: 1.9, top: 1.75, mat: metal(0xb87333, { roughness: 0.4 }) });
+  const anode = makePlate({ sub: 1.9, top: 1.75, mat: metal(0xb87333, { roughness: 0.4 }) });
+  const coat = makeCoat(cathode);
+  const cell = electroCell(g, { cathode, anode, cathodeName: '銅棒（陰極，接負極）', anodeName: '銅棒（陽極，接正極）' });
+  const ions = makeIons(g);
+  ions.fill('Cu', N0, cell.RG); ions.fill('SO4', 14, cell.RG);
+  const Q = 0.05 / 30;                                     // 每一顆離子代表的莫耳數
+  let xi = 0, n = 0, done = false;
+  const XEND = 6 / 63.5;                                   // 陽極剩 4 g 時停止
+  return {
+    intro: '銅棒電解：<b>陽極溶解補充多少 Cu²⁺，陰極就消耗多少</b> → 溶液顏色維持湛藍！',
+    camera: { pos: [0, 4.3, 12.5], target: [0, 2.7, 0] },
+    update(dt, flow) {
+      if (flow > 0 && xi < XEND) xi = Math.min(XEND, xi + RATE * flow);
+      const on = flow > 0 && xi < XEND;
+      if (xi >= XEND && !done) { done = true; banner('陽極銅棒快溶完了，實驗結束。溶液從頭到尾都保持湛藍色！', 0); }
+      while (n < Math.floor(xi / Q)) {
+        n++;
+        // 陽極：Cu → Cu²⁺ + 2e⁻（新的 Cu²⁺ 從銅棒溶出）
+        ions.add('Cu', plateSurface(anode, V3(0, 1, 0), cell.RG), cell.RG, V3(-0.5, rnd(-0.1, 0.1), rnd(-0.2, 0.2)));
+        // 陰極：Cu²⁺ + 2e⁻ → Cu（同時有一顆 Cu²⁺ 附著）
+        const o = ions.nearestFree('Cu', cell.RG, cathode.position.clone().setY(1.2));
+        if (o) ions.seek(o, plateSurface(cathode, o.p, cell.RG), ion => ions.remove(ion), 1.1);
+      }
+      ions.update(dt, flow);
+      const f = xi / XEND;
+      anode.userData.subM.scale.set(1 - 0.62 * f, 1, 1 - 0.25 * f);        // 陽極變瘦
+      coat.userData.set(0.13 * f);                                         // 陰極變胖
+      cell.s.userData.setConc(1);                                          // 顏色不變
+      cell.update(dt, on, flow);
+    },
+    monitor() {
+      const dm = 63.5 * xi;
+      return {
+        sub: 'B：銅棒電解硫酸銅（電能 → 化學能）',
+        rows: [['陰極銅棒', `${fmt(10 + dm)} g ${delta(10 + dm, 10)}`], ['陽極銅棒', `${fmt(10 - dm)} g ${delta(10 - dm, 10)}`], ['兩極質量變化', '一增一減，大小相等']],
+        conc: ['Cu²⁺ 濃度（藍色深淺）', 1],
+        eq: [['陰極（還原）', 'Cu²⁺ + 2e⁻ → Cu'], ['陽極（氧化）', 'Cu → Cu²⁺ + 2e⁻']],
+        note: '⭐ 溶液顏色保持湛藍、<b>絕對不褪色</b>！<br>陽極溶出的 Cu²⁺ 速率 ＝ 陰極消耗的 Cu²⁺ 速率。',
+        blue: true,
+        legend: ['Cu', 'SO4']
+      };
+    }
+  };
+};
+
+/* =========================================================
+   模組三：電鍍（以銅鍍鐵鑰匙）
+   ========================================================= */
+BUILDERS.plating = (g) => {
+  const RATE = 0.05 / 45, Q = 0.05 / 30, XFULL = 0.025, XEND = 10 / 63.5;
+  const IRON = new THREE.Color(0xa9adb3);
+  const keyMat = new THREE.MeshPhysicalMaterial({ color: IRON.clone(), metalness: 0.35, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.15 });
+  // 3D 鐵鑰匙（圓潤）：鑰匙頭圓環 + 鑰匙桿 + 齒
+  const key = new THREE.Group();
+  const bow = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.11, 18, 40), keyMat); bow.position.y = 1.85;
+  const shaft = new THREE.Mesh(new RoundedBoxGeometry(0.2, 1.35, 0.12, 4, 0.05), keyMat); shaft.position.y = 0.95;
+  const teeth = [[0.18, 0.42, 0.22], [0.14, 0.62, 0.16], [0.2, 0.82, 0.12]].map(([w, y, h]) => { const t = new THREE.Mesh(new RoundedBoxGeometry(w, h, 0.12, 3, 0.04), keyMat); t.position.set(0.1 + w / 2, y, 0); return t; });
+  key.add(bow, shaft, ...teeth);
+  const hang = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.85, 8), clay(0x6b6f78)); hang.position.y = 3.1;
+  const clip = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 12), clay(0xd14b4b)); clip.position.y = 4.0;
+  const cathode = new THREE.Group(); cathode.add(key, hang, clip); cathode.userData.topY = 4.0;
+  key.position.y = 0.05; shadowed(key);
+  const anode = makePlate({ w: 0.42, d: 1.0, sub: 1.9, top: 1.75, mat: metal(0xb87333, { roughness: 0.38 }) });
+  const cell = electroCell(g, { cathode, anode, cathodeName: '鐵鑰匙（陰極，接負極）', anodeName: '厚銅板（陽極，接正極）' });
+  const ions = makeIons(g);
+  ions.fill('Cu', 26, cell.RG); ions.fill('SO4', 14, cell.RG);
+  const keyPts = () => {                                   // 鑰匙表面的隨機點（離子落點）
+    const r = Math.random(), P = cathode.position;
+    if (r < 0.35) { const a = rnd(0, Math.PI * 2); return V3(P.x + Math.cos(a) * 0.34, 1.9 + Math.sin(a) * 0.34, 0.14); }
+    if (r < 0.8) return V3(P.x + rnd(-0.1, 0.1), rnd(0.35, 1.55), 0.1);
+    return V3(P.x + rnd(0.15, 0.32), rnd(0.35, 0.9), 0.1);
+  };
+  let xi = 0, n = 0, done = false, sparkle = 0;
+  return {
+    intro: '開啟電源後盯著鑰匙看：銀灰色的鐵，會慢慢「穿上」一層紅褐色的銅！',
+    camera: { pos: [0, 4.0, 11.5], target: [0, 2.6, 0] },
+    update(dt, flow) {
+      if (flow > 0 && xi < XEND) xi = Math.min(XEND, xi + RATE * flow);
+      const on = flow > 0 && xi < XEND;
+      if (xi >= XEND && !done) { done = true; banner('銅板快溶完了。鑰匙已經完全鍍上一層銅！', 0); }
+      while (n < Math.floor(xi / Q)) {
+        n++;
+        ions.add('Cu', plateSurface(anode, V3(0, 1, 0), cell.RG), cell.RG, V3(-0.5, rnd(-0.1, 0.1), rnd(-0.2, 0.2)));
+        const o = ions.nearestFree('Cu', cell.RG, V3(-1.05, 1.2, 0));
+        if (o) ions.seek(o, keyPts(), ion => { ions.remove(ion); sparkle = 1; }, 1.1);
+      }
+      ions.update(dt, flow);
+      // 材質漸變：鐵的銀灰 → 閃亮的銅紅褐
+      const p = smooth(0, 1, xi / XFULL);
+      keyMat.color.copy(IRON).lerp(COPPER, p);
+      keyMat.metalness = lerp(0.35, 0.45, p);
+      keyMat.roughness = lerp(0.32, 0.2, p);
+      sparkle = Math.max(0, sparkle - dt * 3);
+      keyMat.emissive.copy(COPPER); keyMat.emissiveIntensity = 0.4 * p + 0.3 * sparkle;
+      key.scale.setScalar(1 + 0.04 * clamp(xi / XEND, 0, 1));
+      const f = xi / XEND;
+      anode.userData.subM.scale.set(1 - 0.7 * f, 1, 1 - 0.2 * f);          // 銅板溶解變薄
+      cell.s.userData.setConc(1);
+      cell.update(dt, on, flow);
+    },
+    monitor() {
+      const dm = 63.5 * xi, p = clamp(xi / XFULL, 0, 1);
+      return {
+        sub: '電鍍：以銅鍍鐵鑰匙',
+        rows: [['鐵鑰匙（陰極）', `${fmt(8 + dm)} g ${delta(8 + dm, 8)}`], ['厚銅板（陽極）', `${fmt(15 - dm)} g ${delta(15 - dm, 15)}`], ['鍍層覆蓋率', `${(p * 100).toFixed(0)} %`]],
+        conc: ['Cu²⁺ 濃度（藍色深淺）', 1],
+        eq: [['陰極（鑰匙）', 'Cu²⁺ + 2e⁻ → Cu'], ['陽極（銅板）', 'Cu → Cu²⁺ + 2e⁻']],
+        note: '電鍍三原則：<b>被鍍物接負極</b>、<b>鍍上去的金屬接正極</b>、<b>電解液含鍍層金屬的離子</b>。溶液顏色不變。',
+        blue: true,
+        legend: ['Cu', 'SO4']
+      };
+    }
+  };
+};
+
+/* =========================================================
+   模組四：電解水（倒立試管排水集氣法）
+   兩支試管半徑相同 → 收集的氣體體積 ∝ 水面下降的高度
+   負極（H₂）水面下降速度 = 正極（O₂）的 2 倍；氣泡產生速率也是 2 倍
+   ========================================================= */
+function waterBuilder(electrolyte) {
+  return (g) => {
+    const TR = 2.4, TH = 2.4, LH = 1.8, TUBE_R = 0.42, Y_MOUTH = 0.75, Y_TOP = 3.75, XS = 1.1;
+    const RATE = 0.1;                 // 負極試管水面下降速度（單位／秒）；正極恰為一半
+    const DMAX = 2.6;                 // 負極最多排開的高度
+    const ML = 20;                    // 1 單位高度 = 20 mL（兩支試管截面積相同）
+    const BUB = 7;                    // 正極每秒氣泡數；負極 = 2 × BUB
+    const tank = makeBeaker(TR, TH), sol = makeSolution(TR - 0.08, LH, 0);
+    sol.material.color.set(0xeef8ff);
+    g.add(tank, sol);
+
+    // 碳棒（從水槽底部的橡皮塞往上伸）
+    const rod = x => {
+      const grp = new THREE.Group();
+      const rmat = clay(0x45464d, { roughness: 0.75 });
+      const r = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 1.2, 24), rmat); r.position.y = 0.2 + 0.6;
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.13, 20, 12), rmat); cap.position.y = 1.4;
+      const stopper = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.16, 28), clay(0x6b4f3a, { roughness: 0.85 })); stopper.position.y = 0.09;
+      grp.add(r, cap, stopper); grp.position.x = x;
+      return shadowed(grp);
+    };
+    g.add(rod(-XS), rod(XS));
+
+    // 倒立試管：透射玻璃（不寫入深度，管內的水柱、氣體與氣泡才看得到）
+    const tubeWaterMat = new THREE.MeshPhysicalMaterial({ color: 0x5aaee8, roughness: 0.08, clearcoat: 1, transparent: true, opacity: 0.6, depthWrite: false, emissive: 0x6fb8e0, emissiveIntensity: 0.12 });
+    const meniscusMat = new THREE.MeshPhysicalMaterial({ color: 0xd6f1ff, roughness: 0.05, clearcoat: 1, transparent: true, opacity: 0.75, depthWrite: false, side: THREE.DoubleSide, emissive: 0x9fd8f5, emissiveIntensity: 0.3 });
+    const tube = (x, gasColor) => {
+      const grp = new THREE.Group(); grp.position.x = x;
+      const R = TUBE_R, t = 0.045;
+      const prof = [new THREE.Vector2(R + t, Y_MOUTH), new THREE.Vector2(R + t, Y_TOP - 0.06), new THREE.Vector2(R + t - 0.02, Y_TOP + 0.015),
+        new THREE.Vector2(R - 0.06, Y_TOP + t), new THREE.Vector2(0, Y_TOP + t)];
+      const glassM = new THREE.Mesh(new THREE.LatheGeometry(prof, 56), glassT({ thickness: 0.08, roughness: 0.06, depthWrite: false }));
+      glassM.renderOrder = 7;
+      const lip = new THREE.Mesh(new THREE.TorusGeometry(R + t, 0.03, 10, 48), glassT({ depthWrite: false }));
+      lip.rotation.x = Math.PI / 2; lip.position.y = Y_MOUTH; lip.renderOrder = 7;
+      const water = new THREE.Mesh(new THREE.CylinderGeometry(R - 0.005, R - 0.005, 1, 48, 1, true), tubeWaterMat); water.renderOrder = 8;
+      const men = new THREE.Mesh(new THREE.CircleGeometry(R - 0.005, 48), meniscusMat); men.rotation.x = -Math.PI / 2; men.renderOrder = 9;
+      const gas = new THREE.Mesh(new THREE.CylinderGeometry(R - 0.01, R - 0.01, 1, 48), new THREE.MeshBasicMaterial({ color: gasColor, transparent: true, opacity: 0.35, depthWrite: false }));
+      gas.renderOrder = 6;
+      // 刻度：每 0.25 單位 = 5 mL
+      const tickMat = clay(0x5b6170);
+      for (let i = 1; i <= 11; i++) {
+        const big = i % 2 === 0;
+        const tk = new THREE.Mesh(new THREE.TorusGeometry(R + t + 0.004, big ? 0.011 : 0.006, 4, 40, Math.PI * (big ? 0.55 : 0.32)), tickMat);
+        tk.rotation.set(Math.PI / 2, 0, Math.PI / 2 - Math.PI * (big ? 0.275 : 0.16));
+        tk.position.y = Y_TOP - i * 0.25;
+        grp.add(tk);
+      }
+      // 水面亮環：一眼看出水位
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(R - 0.01, 0.025, 10, 48), glow(0x2f8fe0, 0.9));
+      ring.rotation.x = Math.PI / 2;
+      grp.add(glassM, lip, water, men, gas, ring);
+      let level = Y_TOP;
+      grp.userData = {
+        get level() { return level; },
+        set(lv) {
+          level = lv;
+          water.scale.y = lv - Y_MOUTH; water.position.y = (lv + Y_MOUTH) / 2;
+          men.position.y = lv; ring.position.y = lv;
+          const h = Y_TOP - lv;
+          gas.visible = h > 0.01; gas.scale.y = Math.max(h, 0.001); gas.position.y = Y_TOP - h / 2;
+        }
+      };
+      grp.userData.set(Y_TOP);
+      return grp;
+    };
+    const tH = tube(-XS, 0xfff4cc), tO = tube(XS, 0xfff4cc);
+    g.add(tH, tO);
+
+    // 電池放在水槽後方桌面上，導線從水槽底部接到碳棒（不擋住試管）
+    const bat = makeBattery(); bat.position.set(0, 0.42, -3.4); g.add(bat);
+    const wNeg = makeWire([V3(-1.28, 0.42, -3.4), V3(-1.8, 0.28, -3.15), V3(-1.55, 0.07, -2.1), V3(-1.15, 0.07, -0.7), V3(-XS, 0.1, -0.25)], 0x2b3a67);
+    const wPos = makeWire([V3(XS, 0.1, -0.25), V3(1.15, 0.07, -0.7), V3(1.55, 0.07, -2.1), V3(1.9, 0.28, -3.15), V3(1.45, 0.42, -3.4)], 0xb03a3a);
+    g.add(wNeg.mesh, wPos.mesh);
+    const e1 = makeElectrons(g, wNeg.curve, 7), e2 = makeElectrons(g, wPos.curve, 7);
+    const lE = addLabel('e⁻', 'e');
+    const lBN = addLabel('－', '', 'color:#2b3a67;font-size:.9rem'), lBP = addLabel('＋', '', 'color:#b03a3a;font-size:.9rem');
+    lBN.pos.set(-1.0, 1.05, -3.4); lBP.pos.set(1.0, 1.05, -3.4);
+    const lN = addLabel('負極（接電池 −）', '', 'color:#2b3a67'), lP = addLabel('正極（接電池 ＋）', '', 'color:#b03a3a');
+    lN.pos.set(-XS - 0.2, -0.15, 2.55); lP.pos.set(XS + 0.2, -0.15, 2.55);
+    const lGH = addLabel('', '', 'color:#8a6a00;font-size:.8rem'), lGO = addLabel('', '', 'color:#1f5fa8;font-size:.8rem');
+    const lSol = addLabel(electrolyte === 'naoh' ? '水 ＋ 少量 NaOH（幫助導電）' : '水 ＋ 少量 H₂SO₄（幫助導電）', '', 'color:#3d6fd8');
+    lSol.pos.set(0, 1.0, 2.5);
+
+    const ions = makeIons(g), bub = makeBubbles(g, 120);
+    const RG = { x: 0, z: 0, r: 2.05, y0: 0.35, y1: LH - 0.12 };
+    if (electrolyte === 'naoh') { ions.fill('Na', 7, RG); ions.fill('OH', 7, RG); } else { ions.fill('H', 10, RG); ions.fill('SO4', 5, RG); }
+    const levelH = () => tH.userData.level, levelO = () => tO.userData.level;
+    const rodPoint = x => { const a = rnd(0, Math.PI * 2); return V3(x + Math.cos(a) * 0.15, rnd(0.45, 1.4), Math.sin(a) * 0.15); };
+
+    let dH = 0, hAcc = 0, oAcc = 0, nH = 0, nO = 0, done = false;
+    return {
+      intro: '純水幾乎不導電，所以加入少量電解質。按「啟動」，比一比兩支試管收集到的氣體！',
+      camera: { pos: [0, 4.2, 11.5], target: [0, 2.1, 0] },
+      update(dt, flow) {
+        if (flow > 0 && dH < DMAX) dH = Math.min(DMAX, dH + RATE * flow);
+        const dO = dH / 2;                                   // 正極下降量恰為負極的一半
+        const on = flow > 0 && dH < DMAX;
+        if (dH >= DMAX && !done) { done = true; banner(`收集完成：氫氣 ${fmt(dH * ML, 0)} mL ： 氧氣 ${fmt(dO * ML, 0)} mL ＝ <b>2 ： 1</b>`, 0); }
+        if (on) {
+          hAcc += 2 * BUB * flow; oAcc += BUB * flow;       // 負極氣泡產生速率 = 正極的 2 倍
+          while (hAcc >= 1) { hAcc--; nH++; bub.spawn(rodPoint(-XS), levelH, 0.06); }
+          while (oAcc >= 1) { oAcc--; nO++; bub.spawn(rodPoint(XS), levelO, 0.06); }
+        }
+        tH.userData.set(Y_TOP - dH);
+        tO.userData.set(Y_TOP - dO);
+        bub.update(dt); ions.update(dt, flow);
+        e1.update(on ? flow * 0.12 : 0); e2.update(on ? flow * 0.12 : 0);
+        lE.pos.copy(e1.first.position).add(V3(0, 0.22, 0));
+        lGH.visible = lGO.visible = dH > 0.02;
+        lGH.pos.set(-XS - 0.95, Y_TOP - dH / 2, 0); lGH.el.innerHTML = `H₂ 氫氣<br>${fmt(dH * ML, 1)} mL`;
+        lGO.pos.set(XS + 0.95, Y_TOP - dO / 2, 0); lGO.el.innerHTML = `O₂ 氧氣<br>${fmt(dO * ML, 1)} mL`;
+      },
+      monitor() {
+        const dO = dH / 2;
+        return {
+          sub: `電解水（${electrolyte === 'naoh' ? '加少量 NaOH' : '加少量 H₂SO₄'}，排水集氣法）`,
+          rows: [['負極試管：氫氣 H₂', `${fmt(dH * ML, 1)} mL`], ['正極試管：氧氣 O₂', `${fmt(dO * ML, 1)} mL`],
+            ['體積比 H₂ : O₂', dO > 0.005 ? `<span class="up">${(dH / dO).toFixed(1)} : 1</span>` : '—'], ['氣泡數 負極 : 正極', `${nH} : ${nO}`]],
+          conc: ['負極試管已排開的水', dH / DMAX],
+          eq: [['全反應', '2H₂O → 2H₂↑ + O₂↑'], ['負極（陰極）產生氫氣', '4H₂O + 4e⁻ → 2H₂ + 4OH⁻'], ['正極（陽極）產生氧氣', '2H₂O → O₂ + 4H⁺ + 4e⁻']],
+          note: '🧠 必背口訣：<b>負氫正氧（父親正癢）</b><br>體積比 氫 ： 氧 ＝ <b>2 ： 1</b>',
+          note2: `純水難導電，需加入少量${electrolyte === 'naoh' ? ' NaOH' : ' H₂SO₄'} 等電解質幫助導電；電解質本身不會被消耗。`,
+          legend: electrolyte === 'naoh' ? ['Na', 'OH'] : ['H', 'SO4']
+        };
+      }
+    };
+  };
+}
+BUILDERS.water_naoh = waterBuilder('naoh');
+BUILDERS.water_h2so4 = waterBuilder('h2so4');
+
+/* =========================================================
+   監測儀
+   ========================================================= */
+let monT = 0;
+function renderMonitor() {
+  const m = cur.monitor();
+  $('monSub').textContent = m.sub;
+  $('monBody').innerHTML = `
+    <div class="mcard"><h4>巨觀：電極質量</h4><div class="kv">${m.rows.map(([k, v]) => `<span>${k}</span><b>${v}</b>`).join('')}</div></div>
+    ${m.conc ? `<div class="mcard"><h4>${m.conc[0]}：${(m.conc[1] * 100).toFixed(0)} %</h4><div class="bar"><i style="width:${(m.conc[1] * 100).toFixed(1)}%"></i></div></div>` : ''}
+    <div class="mcard"><h4>微觀：反應式</h4><div class="eq">${m.eq.map(([t, e]) => `<div><span class="t">${t}</span><br>${e}</div>`).join('')}</div>${legend(m.legend)}</div>
+    <div class="note ${m.blue ? 'blue' : ''}">${m.note}</div>${m.note2 ? `<div class="note blue">${m.note2}</div>` : ''}`;
+}
+
+/* =========================================================
+   切換、控制與主迴圈
+   ========================================================= */
+let station = 's1', running = false, simT = 0, speed = 1;
+function variantOf(s) { return s === 's1' ? $('s1Var').value : s === 's2' ? $('s2Var').value : s === 's4' ? $('s4Var').value : 'plating'; }
+function setStation(s) {
+  station = s;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.mode === s));
+  document.querySelectorAll('.section').forEach(x => { x.hidden = x.dataset.mode !== s; });
+  build(variantOf(s));
+  updateDesc();
+}
+function updateDesc() {
+  $('s1Desc').innerHTML = DESC1[$('s1Var').value];
+  $('s2Desc').innerHTML = $('s2Var').value === 'carbon'
+    ? '兩根<b>碳棒</b>（不參與反應）。陰極：Cu²⁺ 得到電子變成銅；陽極：<b>水</b>失去電子產生氧氣。'
+    : '兩根<b>銅棒</b>。陰極：Cu²⁺ 變成銅（變胖）；陽極：銅失去電子變成 Cu²⁺（變瘦）。';
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setStation(b.dataset.mode)));
+$('s1Var').addEventListener('change', () => { build(variantOf('s1')); updateDesc(); });
+$('s2Var').addEventListener('change', () => { build(variantOf('s2')); updateDesc(); });
+$('s4Var').addEventListener('change', () => build(variantOf('s4')));
+$('runBtn').addEventListener('click', () => { running = !running; $('runBtn').textContent = running ? '⏸ 暫停' : '▶ 繼續'; });
+$('resetBtn').addEventListener('click', () => build(cur.key));
+document.querySelectorAll('#speedRow .btn').forEach(b => b.addEventListener('click', () => {
+  speed = Number(b.dataset.s);
+  document.querySelectorAll('#speedRow .btn').forEach(x => x.classList.toggle('on', x === b));
+}));
+$('viewBtn').addEventListener('click', resetView);
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; });
+$('monCollapse').addEventListener('click', () => { const c = $('monitor').classList.toggle('collapsed'); $('monCollapse').textContent = c ? '展開' : '收合'; });
+
+function resetView() {
+  if (!cur) return;
+  const c = cur.camera;
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.MobileView?.isMobile()) {
+    const visW = 2 * pos.distanceTo(tgt) * Math.tan(camera.fov * Math.PI / 360) * camera.aspect;
+    const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+    const right = $('monitor').classList.contains('collapsed') ? 0 : window.innerWidth - $('monitor').getBoundingClientRect().left;
+    const shift = -((left - right) / 2) / window.innerWidth * visW;
+    pos.x += shift; tgt.x += shift;
+  }
+  camera.position.copy(pos); controls.target.copy(tgt); controls.update();
+  window.MobileView?.frame(camera, controls, 1.35);
+}
+function resize() {
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.fov = 40;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  const flow = running ? dt * speed : 0;
+  if (running) simT += flow;
+  cur.update(dt, flow);
+  monT -= dt;
+  if (monT <= 0) { monT = 0.12; renderMonitor(); }
+  controls.update();
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.ec = { setStation, build, frame, get cur() { return cur; }, run: v => { running = v; }, setSpeed: v => { speed = v; } };
+
+resize();
+setStation('s1');
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__ecReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>
