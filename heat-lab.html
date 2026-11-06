@@ -692,114 +692,161 @@ const M2 = (() => {
 })();
 
 /* =========================================================
-   模組三：海風與陸風（Soft 3D 地景 + 風痕環流）
+   模組三：海風與陸風（圓潤漂浮小島 + 流動光帶）
    陸地（沙子，比熱小）溫度變化快；海水（比熱大）溫度變化慢
    熱處空氣上升、冷處下沉 → 地面風由冷處吹向熱處
    ========================================================= */
 const M3 = (() => {
   const group = new THREE.Group();
   const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-  const BASE_Y = -1.25;
-  const base = new THREE.Mesh(new RoundedBoxGeometry(14.6, 0.7, 6.4, 5, 0.3), clay(0x9b8574));
-  base.position.y = BASE_Y - 0.35; base.receiveShadow = true; group.add(base);
+  const BG_DAY = new THREE.Color(0xf9f6f0), BG_DARK = new THREE.Color(0x2e3350);
+  const AX = 6.6, AZ = 4.1, TOP = -0.45;                     // 小島橢圓半徑、島面高度
 
-  /** 圓潤地景：平面頂點升降，四周邊緣平滑地垂到底座（像一塊捏出來的黏土） */
-  function makeTerrain(w, d, sx, sz, heightFn, mat, edge = 0.55) {
-    const geo = new THREE.PlaneGeometry(w, d, sx, sz);
+  /* ----- 漂浮小島：圓角剖面旋轉成形，再壓成橢圓（沒有任何銳角）----- */
+  const prof = new THREE.SplineCurve([
+    new THREE.Vector2(0, TOP), new THREE.Vector2(3.5, TOP), new THREE.Vector2(6.0, TOP - 0.02), new THREE.Vector2(6.5, TOP - 0.22),
+    new THREE.Vector2(6.6, TOP - 0.6), new THREE.Vector2(6.25, TOP - 1.1), new THREE.Vector2(5.0, TOP - 1.7),
+    new THREE.Vector2(2.8, TOP - 2.15), new THREE.Vector2(0, TOP - 2.3)
+  ]).getPoints(90);
+  const island = new THREE.Mesh(new THREE.LatheGeometry(prof, 128), clay(0xe3cfac, { roughness: 0.85, clearcoat: 0.1 }));
+  island.scale.z = AZ / AX;
+  island.castShadow = true; island.receiveShadow = true;
+  group.add(island);
+  // 島的底部加一圈較深的土層，像微縮模型的剖面
+  const soil = new THREE.Mesh(new THREE.LatheGeometry(prof.slice(40).map(p => new THREE.Vector2(p.x * 0.995, p.y - 0.01)), 128), clay(0xb89a78, { roughness: 0.9 }));
+  soil.scale.z = AZ / AX; group.add(soil);
+
+  /** 地景平面：頂點在橢圓內抬升，越靠島緣越平滑地收回島面；橢圓外的頂點收到島緣上 */
+  function makeTerrain(cx, w, d, seg, heightFn, mat, extraFall = () => 1) {
+    const geo = new THREE.PlaneGeometry(w, d, seg, seg);
     geo.rotateX(-Math.PI / 2);
     const pos = geo.attributes.position;
     const rest = new Float32Array(pos.count), fall = new Float32Array(pos.count);
     for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i), z = pos.getZ(i);
-      const dEdge = Math.min(w / 2 - Math.abs(x), d / 2 - Math.abs(z));
-      const f = smooth(0, edge, dEdge);
+      let x = pos.getX(i) + cx, z = pos.getZ(i);
+      const r = Math.hypot(x / AX, z / AZ);
+      if (r > 0.985) { x *= 0.985 / r; z *= 0.985 / r; }
+      const f = smooth(0.985, 0.8, Math.min(r, 0.985)) * extraFall(x, z);
       rest[i] = heightFn(x, z); fall[i] = f;
-      pos.setY(i, lerp(BASE_Y, rest[i], f));
+      pos.setXYZ(i, x - cx, lerp(TOP, rest[i], f), z);
     }
     geo.computeVertexNormals();
     const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.x = cx;
     mesh.userData = { rest, fall };
     return mesh;
   }
 
-  // 右側：黃色黏土沙灘（海岸緩坡 + 沙丘起伏 + 小山丘）
-  const SX = 3.6;                                             // 沙灘中心 x
-  const hill = (wx, z) => 1.05 * Math.exp(-(((wx - 5.6) ** 2) / 1.3 + ((z + 1.5) ** 2) / 1.6));
-  const sandH = (lx, z) => {
-    const wx = SX + lx;
-    return -0.45 + 0.75 * smooth(-0.2, 2.2, wx) + 0.07 * Math.sin(wx * 2.3 + z * 1.1) * smooth(0.8, 2.5, wx) + hill(wx, z);
-  };
-  const landMat = clay(0xe8cf9a, { roughness: 0.8, clearcoat: 0.15 });
-  const land = makeTerrain(7.2, 5.8, 72, 58, sandH, landMat);
-  land.position.x = SX; land.castShadow = true; land.receiveShadow = true;
+  // 陸地：溫暖淺沙色黏土，微微起伏 + 小山丘
+  const hill = (x, z) => 1.15 * Math.exp(-(((x - 4.3) ** 2) / 1.5 + ((z + 1.4) ** 2) / 1.9));
+  const sandH = (x, z) => -0.8 + 1.05 * smooth(-0.8, 2.2, x) + 0.06 * Math.sin(x * 2.2 + z * 1.3) * smooth(0.6, 2.5, x) + 0.04 * Math.sin(z * 3.1 - x) + hill(x, z);
+  const landMat = new THREE.MeshPhysicalMaterial({ color: 0xf0dcb4, roughness: 0.9, metalness: 0, clearcoat: 0.08 });
+  const land = makeTerrain(2.7, 8.2, 8.6, 110, sandH, landMat);
+  land.castShadow = true; land.receiveShadow = true;
   group.add(land);
 
-  // 左側：果凍海洋（PlaneGeometry 頂點以 Math.sin 波動）
-  const seaMatJ = new THREE.MeshPhysicalMaterial({ color: 0x3f8fd0, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.08,
-    transparent: true, opacity: 0.78, depthWrite: false, side: THREE.DoubleSide, emissive: 0x1d5f9a, emissiveIntensity: 0.18 });
-  const SEA_X = -3.25;
-  const sea = makeTerrain(7.6, 5.8, 76, 58, () => 0, seaMatJ, 0.45);
-  sea.position.x = SEA_X; sea.renderOrder = 4;
+  // 海洋：高透光果凍（transmission 0.9），頂點緩慢起伏
+  const seaMatJ = new THREE.MeshPhysicalMaterial({
+    color: 0xa6e6ee, transmission: 0.9, roughness: 0.06, thickness: 1.4, ior: 1.33, clearcoat: 1, clearcoatRoughness: 0.05,
+    attenuationColor: new THREE.Color(0x3fb0cf), attenuationDistance: 1.5, side: THREE.DoubleSide
+  });
+  const sea = makeTerrain(-2.9, 7.8, 8.6, 96, () => 0, seaMatJ, x => smooth(0.95, 0.45, x));
+  sea.receiveShadow = true;
   group.add(sea);
-  const seaBed = makeTerrain(7.4, 5.6, 30, 24, (x, z) => -0.95 + 0.06 * Math.sin(x * 1.7 + z), clay(0xcdb488, { roughness: 0.9 }), 0.3);
-  seaBed.position.x = SEA_X; seaBed.receiveShadow = true; group.add(seaBed);
 
-  // 椰子樹（種在小山丘旁）
+  // 椰子樹與小石頭
   const palm = new THREE.Group();
-  const trunkMat = clay(0x9b6b43);
-  for (let i = 0; i < 6; i++) {
-    const seg = new THREE.Mesh(new THREE.SphereGeometry(0.16 - i * 0.008, 16, 10), trunkMat);
-    seg.scale.y = 1.35; seg.position.set(i * 0.05, 0.15 + i * 0.3, 0); palm.add(seg);
-  }
-  const leafMat = clay(0x5aa469);
+  const trunkMat = clay(0xa87650, { roughness: 0.8 });
   for (let i = 0; i < 7; i++) {
-    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.5, 18, 10), leafMat);
-    leaf.scale.set(1.35, 0.14, 0.42);
+    const seg = new THREE.Mesh(new THREE.SphereGeometry(0.15 - i * 0.007, 18, 12), trunkMat);
+    seg.scale.y = 1.4; seg.position.set(i * i * 0.012, 0.14 + i * 0.27, 0); palm.add(seg);
+  }
+  const leafMat = clay(0x7dbb7a, { roughness: 0.7 });
+  for (let i = 0; i < 7; i++) {
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 12), leafMat);
+    leaf.scale.set(1.35, 0.13, 0.42);
     const a = i / 7 * Math.PI * 2;
-    leaf.position.set(0.3 + Math.cos(a) * 0.55, 1.85 - 0.1 * Math.abs(Math.cos(a)), Math.sin(a) * 0.55);
+    leaf.position.set(0.58 + Math.cos(a) * 0.55, 1.95 - 0.12 * Math.abs(Math.cos(a)), Math.sin(a) * 0.55);
     leaf.rotation.set(0, -a, -0.38);
     palm.add(leaf);
   }
-  [[0.42, 0.12], [0.22, -0.12]].forEach(([x, z]) => { const c = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 8), clay(0x7a5232)); c.position.set(x, 1.7, z); palm.add(c); });
-  palm.position.set(4.2, sandH(4.2 - SX, -1.6), -1.6); group.add(palm);
-  // 小沙堡與海邊石頭點綴
-  const rock = new THREE.Mesh(new THREE.SphereGeometry(0.35, 18, 12), clay(0x9a948c));
-  rock.scale.set(1.2, 0.6, 1); rock.position.set(1.4, sandH(1.4 - SX, 1.6) + 0.05, 1.6); group.add(rock);
-  shadowed(palm); rock.castShadow = true;
+  [[0.7, 0.12], [0.5, -0.12]].forEach(([x, z]) => { const c = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 10), clay(0x8a5a36)); c.position.set(x, 1.8, z); palm.add(c); });
+  palm.position.set(3.4, sandH(3.4, -2.0), -2.0); palm.scale.setScalar(0.95);
+  const rock = new THREE.Mesh(new THREE.SphereGeometry(0.32, 24, 16), clay(0xbfb5a8, { roughness: 0.8 }));
+  rock.scale.set(1.3, 0.6, 1); rock.position.set(1.6, sandH(1.6, 1.9) + 0.04, 1.9);
+  const rock2 = rock.clone(); rock2.scale.set(0.7, 0.4, 0.6); rock2.position.set(2.1, sandH(2.1, 2.2) + 0.02, 2.2);
+  group.add(shadowed(palm), shadowed(rock), shadowed(rock2));
 
-  // 太陽與月亮
-  const sunBall = new THREE.Mesh(new THREE.SphereGeometry(0.7, 32, 20), glow(0xffc93c, 1.0));
-  const moon = new THREE.Mesh(new THREE.SphereGeometry(0.55, 32, 20), glow(0xe9edf7, 0.6));
+  // 太陽／月亮（小小的黏土球，位置也是光源方向）
+  const sunBall = new THREE.Mesh(new THREE.SphereGeometry(0.6, 32, 20), glow(0xffcf6b, 0.9));
+  const moon = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 20), glow(0xeef1fa, 0.55));
   group.add(sunBall, moon);
 
-  /* ----- 對流迴圈：CatmullRomCurve3（u 增加 = 白天海風方向：底部 海→陸、陸地上升、高空 陸→海、海上下沉）----- */
-  function loop(z, s = 1) {
-    const P = [[-4.6, 0.75], [-2, 0.62], [0.6, 0.62], [3.0, 0.85], [4.6, 1.7], [4.75, 3.1], [3.6, 4.2], [0, 4.5], [-3.6, 4.2], [-4.9, 3.1], [-5.0, 1.7]];
-    return new THREE.CatmullRomCurve3(P.map(([x, y]) => V3(x * s, 0.6 + (y - 0.6) * s, z)), true, 'centripetal');
+  /* ----- 流動光帶：橢圓環流 CatmullRomCurve3 + 5 條平行 TubeGeometry ----- */
+  // u 增加的方向 = 白天海風：底部 海 → 陸、陸地上空上升、高空 陸 → 海、海面上空下沉
+  function loopCurve(z, k) {
+    const pts = [];
+    const N = 24, cx = 0, cy = 2.75, ax = 5.0 * k, ay = 2.15 * k;
+    for (let i = 0; i < N; i++) {
+      const th = -Math.PI + i / N * Math.PI * 2;                  // 從左側開始，先走下半圈（左 → 右）
+      const s = Math.sin(th);
+      const y = cy + ay * (s < 0 ? s * 0.92 : s);                // 下緣稍微壓平，貼著海面與沙灘
+      pts.push(V3(cx + ax * Math.cos(th), y, z));
+    }
+    return new THREE.CatmullRomCurve3(pts, true, 'centripetal');
   }
-  const LOOPS = [loop(-1.25, 1), loop(1.25, 0.9)];
-  // 迴圈的淡淡軌跡（讓學生看出「一圈」）
-  const ghostMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.13, depthWrite: false });
-  LOOPS.forEach(c => { const t = new THREE.Mesh(new THREE.TubeGeometry(c, 160, 0.05, 8, true), ghostMat); t.renderOrder = 6; group.add(t); });
+  // 光帶紋理：柔和的「彗星狀」煙痕（亮頭 + 漸層尾巴），左右無縫重複
+  function streakTexture() {
+    const c = document.createElement('canvas'); c.width = 512; c.height = 32;
+    const g = c.getContext('2d');
+    g.fillStyle = 'rgba(255,255,255,0.16)'; g.fillRect(0, 0, 512, 32);
+    for (const [x0, w] of [[0, 210], [256, 160]]) {
+      const gr = g.createLinearGradient(x0, 0, x0 + w, 0);
+      gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.85, 'rgba(255,255,255,0.85)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.fillRect(x0, 0, w, 32);
+    }
+    // 上下邊緣柔化
+    const v = g.createLinearGradient(0, 0, 0, 32);
+    v.addColorStop(0, 'rgba(0,0,0,1)'); v.addColorStop(0.5, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,1)');
+    g.globalCompositeOperation = 'destination-out'; g.globalAlpha = 0.35; g.fillStyle = v; g.fillRect(0, 0, 512, 32);
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.ClampToEdgeWrapping;
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 4;
+    return t;
+  }
+  const COOL = new THREE.Color(0x8cc4ff), WARM = new THREE.Color(0xffa58a), NEUT = new THREE.Color(0xffffff);
+  const bands = [-0.6, -0.3, 0, 0.3, 0.6].map((z, i) => {
+    const k = 1 + (i - 2) * 0.045;                                  // 一束平行、大小略有差異的氣流
+    const curve = loopCurve(z, k);
+    const geo = new THREE.TubeGeometry(curve, 360, 0.07, 12, true);
+    const pos = geo.attributes.position;
+    const day = new Float32Array(pos.count * 3), night = new Float32Array(pos.count * 3), cur = new Float32Array(pos.count * 3);
+    const c = new THREE.Color();
+    for (let j = 0; j < pos.count; j++) {
+      const x = pos.getX(j);
+      // 白天：海面上（左）是冷空氣、到陸地上（右）被加熱；夜晚相反
+      c.copy(COOL).lerp(NEUT, 0.15).lerp(WARM, smooth(-1.5, 4.2, x)); c.toArray(day, j * 3);
+      c.copy(COOL).lerp(NEUT, 0.15).lerp(WARM, smooth(1.5, -4.2, x)); c.toArray(night, j * 3);
+    }
+    cur.set(day);
+    geo.setAttribute('color', new THREE.BufferAttribute(cur, 3));
+    const map = streakTexture();
+    map.repeat.set(5 + i % 2, 1);
+    map.offset.x = i * 0.21;
+    const mat = new THREE.MeshBasicMaterial({ map, vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.renderOrder = 6;
+    group.add(mesh);
+    return { mesh, map, day, night, cur, attr: geo.attributes.color, speed: 0.95 + i * 0.07 };
+  });
 
-  // 風痕：細長半透明膠囊，沿迴圈流動
-  const N = 90;
-  const trailMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.62, depthWrite: false });
-  const trails = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.045, 1, 4, 10), trailMat, N);
-  trails.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  trails.renderOrder = 7;
-  const tu = Array.from({ length: N }, (_, i) => ({ c: i % 2, u: Math.random(), k: 0.75 + Math.random() * 0.5, off: V3((Math.random() - 0.5) * 0.35, (Math.random() - 0.5) * 0.35, (Math.random() - 0.5) * 0.9), len: 0.35 + Math.random() * 0.4 }));
-  for (let i = 0; i < N; i++) trails.setColorAt(i, new THREE.Color(0xffffff));
-  group.add(trails);
-
-  const lWind = addLabel('m3', '', 'font-size:.9rem;color:#14766f');
-  const lUp = addLabel('m3', '熱空氣上升 ↑', 'color:#d02d36'), lDown = addLabel('m3', '冷空氣下沉 ↓', 'color:#2f62c9');
+  const lWind = addLabel('m3', '', 'font-size:.88rem;color:#14766f');
+  const lUp = addLabel('m3', '', 'color:#c2410c'), lDown = addLabel('m3', '', 'color:#2f62c9');
   const lLand = addLabel('m3', ''), lSea = addLabel('m3', '');
 
-  let night = false, TL = 24, TS = 24, nightK = 0;
-  const dummy = new THREE.Object3D(), pp = V3(0, 0, 0), tg = V3(0, 0, 0);
-  const cWarm = new THREE.Color(0xff7d6b), cCool = new THREE.Color(0x76a8ff), cTmp = new THREE.Color();
-  const LAND_C = [[8, 0x4f86e8], [24, 0xe8cf9a], [42, 0xe8573a]];
+  let night = false, TL = 24, TS = 24, nightK = 0, colorK = -1, flowDir = 1;
+  const LAND_C = [[8, 0xa9c2e8], [24, 0xf0dcb4], [42, 0xf2a072]];
   function landColor(T, out) {
     if (T <= LAND_C[1][0]) return out.setHex(LAND_C[0][1]).lerp(new THREE.Color(LAND_C[1][1]), clamp((T - LAND_C[0][0]) / (LAND_C[1][0] - LAND_C[0][0]), 0, 1));
     return out.setHex(LAND_C[1][1]).lerp(new THREE.Color(LAND_C[2][1]), clamp((T - LAND_C[1][0]) / (LAND_C[2][0] - LAND_C[1][0]), 0, 1));
@@ -811,9 +858,10 @@ const M3 = (() => {
   }
   $('m3Day').addEventListener('click', () => setNight(false));
   $('m3Night').addEventListener('click', () => setNight(true));
-  function reset() { night = false; TL = TS = 24; nightK = 0; $('m3Day').classList.add('on'); $('m3Night').classList.remove('on'); }
+  function reset() { night = false; TL = TS = 24; nightK = 0; colorK = -1; $('m3Day').classList.add('on'); $('m3Night').classList.remove('on'); }
 
   const seaPos = sea.geometry.attributes.position;
+  const SUN_DAY = V3(5.5, 9, 6), SUN_NIGHT = V3(-5.5, 8, 6);
   function update(dt) {
     const now = performance.now() / 1000;
     // 比熱小 → 時間常數短（升降溫快）
@@ -821,58 +869,54 @@ const M3 = (() => {
     TL += (tl - TL) * Math.min(1, dt / 1.2);
     TS += (ts - TS) * Math.min(1, dt / 14);
     nightK += ((night ? 1 : 0) - nightK) * Math.min(1, dt * 2);
-    scene.background.copy(BG).lerp(BG_NIGHT, nightK);
-    sun.intensity = lerp(2.0, 0.75, nightK); sun.color.setHex(0xffffff).lerp(new THREE.Color(0x9fb4ff), nightK);
-    hemi.intensity = lerp(1.0, 0.6, nightK);
-    sunBall.position.set(4.8, lerp(6.6, 2, nightK), -2.6); sunBall.scale.setScalar(1 - nightK * 0.99);
-    moon.position.set(-4.8, lerp(2, 6.6, nightK), -2.6); moon.scale.setScalar(0.01 + nightK * 0.99);
-    landColor(TL, landMat.color);
-    seaMatJ.color.setHex(0x2f78c4).lerp(new THREE.Color(0x5cb0e4), clamp((TS - 18) / 12, 0, 1));
 
-    // 果凍海浪：頂點 y = 多個 sin 疊加（四周邊緣維持垂到底座）
+    // 乾淨純色背景 + 一盞暖色平行光（太陽／月亮方向），柔和陰影
+    scene.background.copy(BG_DAY).lerp(BG_DARK, nightK);
+    sun.position.lerpVectors(SUN_DAY, SUN_NIGHT, nightK);
+    sun.color.setHex(0xffe9cc).lerp(new THREE.Color(0xc4d2ff), nightK);
+    sun.intensity = lerp(2.3, 0.9, nightK);
+    hemi.intensity = lerp(1.05, 0.55, nightK);
+    sunBall.position.copy(SUN_DAY).multiplyScalar(0.62); sunBall.scale.setScalar(Math.max(0.001, 1 - nightK));
+    moon.position.copy(SUN_NIGHT).multiplyScalar(0.62); moon.scale.setScalar(Math.max(0.001, nightK));
+    landColor(TL, landMat.color);
+    seaMatJ.attenuationColor.setHex(0x2f98c4).lerp(new THREE.Color(0x52c0d8), clamp((TS - 18) / 12, 0, 1));
+
+    // 海面：柔和、緩慢的波浪（只動島內的頂點）
     const { rest, fall } = sea.userData;
     for (let i = 0; i < seaPos.count; i++) {
-      const x = seaPos.getX(i), z = seaPos.getZ(i);
-      const wave = 0.07 * Math.sin(x * 1.6 + now * 1.8) + 0.045 * Math.sin(z * 2.2 - now * 1.3 + x * 0.5) + 0.025 * Math.sin((x + z) * 3.1 + now * 2.6);
-      seaPos.setY(i, lerp(BASE_Y, rest[i] + wave, fall[i]));
+      const x = seaPos.getX(i) - 2.9, z = seaPos.getZ(i);
+      const wave = 0.045 * Math.sin(x * 1.3 + now * 1.1) + 0.03 * Math.sin(z * 1.9 - now * 0.8 + x * 0.4) + 0.012 * Math.sin((x - z) * 3.3 + now * 1.7);
+      seaPos.setY(i, lerp(TOP, rest[i] + wave, fall[i]));
     }
     seaPos.needsUpdate = true;
     sea.geometry.computeVertexNormals();
 
-    // 對流：方向由「陸 − 海」溫差決定（白天 +：海風；夜晚 −：陸風）
-    const dT = TL - TS, dir = Math.sign(dT), s = clamp(Math.abs(dT) / 12, 0, 1);
-    const hotX = dir >= 0 ? 4.7 : -4.9;
-    for (let i = 0; i < N; i++) {
-      const p = tu[i], curve = LOOPS[p.c];
-      p.u = ((p.u + dir * s * 0.075 * p.k * dt) % 1 + 1) % 1;
-      curve.getPointAt(p.u, pp);
-      curve.getTangentAt(p.u, tg);
-      if (dir < 0) tg.negate();
-      dummy.position.copy(pp).add(p.off);
-      dummy.quaternion.setFromUnitVectors(UP, tg);
-      const vis = s > 0.03 ? 1 : 0.001;
-      dummy.scale.set(vis, vis * p.len * (0.5 + 1.1 * s), vis);   // 風越強，風痕越長
-      dummy.updateMatrix();
-      trails.setMatrixAt(i, dummy.matrix);
-      // 靠近熱的一側 → 微紅（熱氣流）；靠近冷的一側 → 微藍（冷氣流）
-      const f = clamp(1 - Math.abs(pp.x - hotX) / 9.6, 0, 1);
-      cTmp.copy(cCool).lerp(cWarm, smooth(0.25, 0.75, f));
-      trails.setColorAt(i, cTmp);
-    }
-    trails.instanceMatrix.needsUpdate = true;
-    trails.instanceColor.needsUpdate = true;
+    // 環流：方向由「陸 − 海」溫差決定；以紋理偏移產生連續流動
+    const dT = TL - TS, s = clamp(Math.abs(dT) / 12, 0, 1);
+    if (Math.abs(dT) > 0.3) flowDir = Math.sign(dT);
+    const ck = flowDir > 0 ? 0 : 1;
+    if (colorK < 0) colorK = ck; else colorK += (ck - colorK) * Math.min(1, dt * 1.5);   // 光帶顏色平滑轉換
+    bands.forEach(b => {
+      b.map.repeat.x = Math.abs(b.map.repeat.x) * flowDir;      // 夜晚：彗星頭朝反方向
+      b.map.offset.x -= flowDir * b.speed * (0.06 + 0.42 * s) * dt;
+      b.mesh.material.opacity = 0.25 + 0.7 * s;
+      for (let j = 0; j < b.cur.length; j++) b.cur[j] = b.day[j] + (b.night[j] - b.day[j]) * colorK;
+      b.attr.needsUpdate = true;
+    });
 
-    lWind.visible = s > 0.04; lWind.pos.set(0, 0.25, 3.1);
-    lWind.el.innerHTML = dir >= 0 ? '🌊 → 🏖　海風（由海吹向陸地）' : '🌊 ← 🏖　陸風（由陸地吹向海）';
-    lUp.visible = lDown.visible = s > 0.04;
-    lUp.pos.set(dir >= 0 ? 5.6 : -5.9, 2.6, 1.6); lDown.pos.set(dir >= 0 ? -5.9 : 5.6, 2.6, 1.6);
-    lLand.pos.set(3.4, -0.9, 3.0); lLand.el.innerHTML = `🏖 沙灘 ${TL.toFixed(1)}℃`;
-    lSea.pos.set(-3.3, -0.9, 3.0); lSea.el.innerHTML = `🌊 海水 ${TS.toFixed(1)}℃`;
+    const on = s > 0.05;
+    lWind.visible = on; lWind.pos.set(0, 0.2, AZ + 0.2);
+    lWind.el.innerHTML = flowDir > 0 ? '🌊 ⟶ 🏖　海風（由海吹向陸地）' : '🌊 ⟵ 🏖　陸風（由陸地吹向海）';
+    lUp.visible = lDown.visible = on;
+    lUp.el.textContent = '熱空氣上升'; lDown.el.textContent = '冷空氣下沉';
+    lUp.pos.set(flowDir > 0 ? 5.6 : -5.6, 2.4, 0); lDown.pos.set(flowDir > 0 ? -5.6 : 5.6, 2.4, 0);
+    lLand.pos.set(3.6, -1.6, AZ * 0.75); lLand.el.innerHTML = `🏖 沙灘 ${TL.toFixed(1)}℃`;
+    lSea.pos.set(-3.6, -1.6, AZ * 0.75); lSea.el.innerHTML = `🌊 海水 ${TS.toFixed(1)}℃`;
     $('m3Read').innerHTML = `<div class="kv"><span>時段</span><b>${night ? '🌙 夜晚' : '☀ 白天'}</b><span>沙灘溫度（比熱小）</span><b>${TL.toFixed(1)} ℃</b>
-      <span>海水溫度（比熱大）</span><b>${TS.toFixed(1)} ℃</b><span>地面風向</span><b>${s < 0.04 ? '無風' : dir > 0 ? '海風 →' : '← 陸風'}</b></div>`;
+      <span>海水溫度（比熱大）</span><b>${TS.toFixed(1)} ℃</b><span>地面風向</span><b>${!on ? '無風' : flowDir > 0 ? '海風 →' : '← 陸風'}</b></div>`;
   }
-  return { group, update, enter: reset, camera: { pos: [0, 5.4, 16.5], target: [0, 1.5, 0] }, extra: 1.5,
-    setNight, get state() { return { night, TL, TS, trail0: tu[0].u }; } };
+  return { group, update, enter: reset, camera: { pos: [0, 3.6, 17.5], target: [0, 1.6, 0] }, extra: 1.2,
+    setNight, get state() { return { night, TL, TS, flowDir, offset: bands[0].map.offset.x, colorK }; } };
 })();
 
 /* =========================================================
@@ -1104,7 +1148,7 @@ function setMode(m) {
   $('chartBox').style.display = m === 'm4' ? '' : 'none';
   hideBanner();
   // 還原共用的燈光與背景（海陸風會調暗）
-  scene.background.copy(BG); sun.intensity = 2.0; sun.color.setHex(0xffffff); hemi.intensity = 1.0;
+  scene.background.copy(BG); sun.intensity = 2.0; sun.color.setHex(0xffffff); sun.position.set(-6, 14, 10); hemi.intensity = 1.0;
   renderer.domElement.style.cursor = '';
   MODES[m].enter();
   resetView();
