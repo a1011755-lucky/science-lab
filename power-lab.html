@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>電流的熱效應與功率實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #3b3127;
+    --ink-soft: #7a6e60;
+    --card: rgba(255,252,245,.62);
+    --accent: #c0703f;
+    --ok: #2f8a5b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(22px) saturate(160%); -webkit-backdrop-filter: blur(22px) saturate(160%);
+    border: 1px solid rgba(255,255,255,.85); box-shadow: 0 20px 50px rgba(90,60,30,.12), 0 2px 6px rgba(90,60,30,.06);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 316px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(192,112,63,.13); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.62); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.92); }
+  .tab.on { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(91,138,114,.35); }
+  .sec[hidden] { display: none; }
+  .concept { background: #fff; border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(90,60,30,.08); border-left: 5px solid var(--cc, #5b8a72); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #5b8a72); }
+  .concept .cd { font-size: .84rem; font-weight: 800; margin-top: 2px; line-height: 1.55; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .7rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e4d9c6; border-radius: 12px; padding: 9px 10px; background: #fffdf8; color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--accent); background: rgba(192,112,63,.13);
+    transition: background .2s, transform .1s, opacity .2s, box-shadow .2s;
+  }
+  .btn:hover { background: rgba(192,112,63,.22); }
+  .btn:active { transform: scale(.98); }
+  .btn.primary { color: #fff; background: var(--accent); box-shadow: 0 6px 16px rgba(192,112,63,.3); font-size: .95rem; padding: 12px 6px; }
+  .btn.primary.live { background: #e0a400; box-shadow: 0 0 0 4px rgba(255,200,60,.3), 0 0 26px rgba(255,190,40,.65); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c0392b; } .stat .g { color: var(--ok); } .stat .o { color: #b45309; } .stat .b { color: #1d4ed8; }
+  .stat hr { border: none; border-top: 1px dashed #e4d9c6; margin: 4px 0; }
+  .note { background: #fff4d8; border: 1.5px solid #ecc46a; color: #6b4b00; font-weight: 600; border-radius: 14px; padding: 8px 11px; margin-top: 10px; font-size: .77rem; line-height: 1.6; }
+  .note b { color: #9a3b00; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 20px; text-align: center;
+          width: max-content; max-width: min(860px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .95rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .08em; }
+  .cap b { color: #9a3b00; }
+  .cap .huge { display: block; font-size: clamp(1.15rem, 2.2vw, 1.85rem); font-weight: 900; color: #1f6b43; line-height: 1.35; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .mid { display: block; font-size: clamp(.98rem, 1.6vw, 1.25rem); font-weight: 900; line-height: 1.45; font-variant-numeric: tabular-nums; }
+  .cap .red { color: #d0453a; } .cap .blue { color: #1d6fd8; }
+  .cap .blank { display: inline-block; min-width: 5.5em; border-bottom: 3px solid #9fd8b6; padding: 0 6px; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,253,248,.92); color: var(--ink); box-shadow: 0 4px 12px rgba(90,60,30,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag small { font-size: .66rem; color: var(--ink-soft); font-weight: 700; }
+  .tag.hl { background: #5b8a72; color: #fff; }
+  .tag.ser { background: #c0703f; color: #fff; } .tag.par { background: #3f7fc0; color: #fff; }
+  .tag.warn { background: #e5484d; color: #fff; }
+  /* 燈泡上方的懸浮儀表 */
+  .tag.meter {
+    transform: translate(-50%, -100%); min-width: 124px; padding: 6px 10px 7px; border-radius: 14px; text-align: left;
+    background: rgba(255,253,248,.66); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1.5px solid rgba(255,255,255,.95); transition: box-shadow .3s, border-color .3s;
+  }
+  .meter .mh { font-size: .7rem; font-weight: 800; color: var(--ink-soft); }
+  .meter .mp { font-size: 1.05rem; font-weight: 900; }
+  .meter .mp b { font-size: 1.35rem; }
+  .meter .mvi { font-size: .7rem; font-weight: 800; color: var(--ink-soft); }
+  .meter .bar { height: 5px; border-radius: 3px; background: rgba(120,90,60,.15); margin-top: 4px; overflow: hidden; }
+  .meter .bar i { display: block; height: 100%; border-radius: 3px; }
+  .meter.red .mp { color: #d0453a; } .meter.red .bar i { background: linear-gradient(90deg, #ff9a7a, #e5484d); }
+  .meter.blue .mp { color: #1d6fd8; } .meter.blue .bar i { background: linear-gradient(90deg, #8cc4ff, #2f7fe8); }
+  .meter.lit.red { border-color: #ffb3a3; box-shadow: 0 0 22px rgba(255,90,60,.45); }
+  .meter.lit.blue { border-color: #a9d2ff; box-shadow: 0 0 22px rgba(60,140,255,.45); }
+  .meter.roll .mp b { animation: shake .09s infinite; }
+  @keyframes shake { 0% { transform: translateY(0); } 50% { transform: translateY(-1px); } 100% { transform: translateY(1px); } }
+  .meter b { display: inline-block; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 760px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .78rem; }
+    .cap .huge { font-size: 1rem; } .cap .mid { font-size: .88rem; }
+    .tag.meter { min-width: 0; padding: 3px 7px !important; }
+    .meter .mp { font-size: .8rem; } .meter .mp b { font-size: .95rem; }
+    .meter .mvi { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .meter.roll .mp b { animation: none; } }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g9">‹ 課程總覽</a>
+  <div class="title">電流的熱效應與功率實驗室</div>
+  <div class="body">
+    <div class="tabs">
+      <button class="tab on" data-tab="arena">💡 亮度競技場<small>串聯 vs 並聯</small></button>
+      <button class="tab" data-tab="dryer">🔥 吹風機熱能廠<small>E ＝ P × t</small></button>
+    </div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="arena">
+      <div class="concept" style="--cc:#c0703f"><div class="ct">電功率 P 決定亮度</div><div class="cd">串聯（I 相同）：P ＝ I²R → <span style="color:#d0453a">R 大較亮</span><br>並聯（V 相同）：P ＝ V²／R → <span style="color:#1d6fd8">R 小較亮</span></div></div>
+      <p class="desc">用滑鼠把桌子前方的燈泡<b>拖進底座的插座</b>：<br>🔴 高電阻燈泡 R ＝ 10 Ω（紅色燈絲）<br>🔵 低電阻燈泡 R ＝ 2 Ω（藍色燈絲）<br>兩個底座都接 <b>12 V</b> 電池。</p>
+      <button class="btn primary" id="powerBtn">⚡ 通電</button>
+      <div class="row2">
+        <button class="btn" id="autoBtn">✨ 一鍵擺好</button>
+        <button class="btn" id="clearBtn">↺ 全部收回</button>
+      </div>
+      <div class="stat" id="arenaStat"></div>
+      <p class="desc">金色小球＝流動的電子；越密集代表電流越大。串聯只要少一顆燈泡就會<b>斷路</b>。</p>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="dryer" hidden>
+      <div class="concept" style="--cc:#d0453a"><div class="ct">電能 → 熱能</div><div class="cd">P ＝ V²／R　　E ＝ P × t<br>功率越大，同樣時間放出的熱越多</div></div>
+      <label class="lab" for="dV">🔌 電壓 V<b><span id="dVV">220</span> V</b></label>
+      <input type="range" id="dV" min="110" max="220" step="110" value="220">
+      <div class="ticks"><span>110 V</span><span>220 V</span></div>
+      <label class="lab" for="dR">🌀 電阻絲更換</label>
+      <select id="dR">
+        <option value="thick">粗線（小電阻 R ＝ 22 Ω）</option>
+        <option value="thin">細線（大電阻 R ＝ 44 Ω）</option>
+      </select>
+      <button class="btn primary" id="dryBtn">⏻ 開機</button>
+      <div class="row2">
+        <button class="btn" id="dryReset">↺ 溫度歸零</button>
+        <select id="dSpeed" style="margin-top:6px">
+          <option value="1">⏱ 時間 ×1</option>
+          <option value="5">⏩ 時間 ×5</option>
+          <option value="10">⏩ 時間 ×10</option>
+        </select>
+      </div>
+      <div class="stat" id="dryStat"></div>
+      <div class="stat" id="recStat"></div>
+      <div class="note">示意模型：假設電熱絲放出的熱<b>全部</b>被溫度計吸收、不散失，所以溫度上升量 ∝ 熱能 E。更換電壓或電阻絲時，計時會重新開始。</div>
+    </section>
+
+    <button class="btn" id="viewBtn">🔭 回到預設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const ease = (dt, k) => 1 - Math.exp(-dt * k);
+const fmt = (x, d) => x.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+/* =========================================================
+   場景、燈光、原木桌面、Bloom 發光後製
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.HemisphereLight(0xfffaf0, 0xd8c3a0, 1.0));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.75);
+sun.position.set(-6, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 12, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 6;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 2; controls.maxDistance = 90;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+// 選擇性 Bloom：只有放在 BLOOM 圖層的燈絲、電子、電熱絲會發出光暈，米色背景與桌面不受影響
+const BLOOM = 1;
+const glowLayer = o => { o.layers.enable(BLOOM); return o; };
+const bloomComposer = new EffectComposer(renderer);
+bloomComposer.renderToScreen = false;
+bloomComposer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth || 1, window.innerHeight || 1), 0.9, 0.4, 0.0);
+bloomComposer.addPass(bloom);
+// 主畫面照原本方式直接畫（保留米色質感），再把光暈「加」上去
+const overlay = new FullScreenQuad(new THREE.ShaderMaterial({
+  uniforms: { tBloom: { value: bloomComposer.renderTarget2.texture }, uGain: { value: 0.9 } },
+  vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+  // 米色背景很亮，單純「相加」只會變白；改成依光暈的顏色去「染色」，紅光、藍光才看得出顏色
+  fragmentShader: 'uniform sampler2D tBloom; uniform float uGain; varying vec2 vUv; void main() { vec3 c = texture2D(tBloom, vUv).rgb; float m = max(max(c.r, c.g), c.b); vec3 col = m > 1e-4 ? pow(c / m, vec3(0.4545)) : vec3(0.0); gl_FragColor = vec4(col, 1.0 - exp(-m * uGain)); }',
+  blending: THREE.NormalBlending, depthTest: false, depthWrite: false, transparent: true
+}));
+const BLACK = new THREE.Color(0x000000);
+function renderAll(dt) {
+  if (bloom.enabled) {
+    bloom.strength = tab === 'dryer' ? 0.5 : 0.9;              // 吹風機的電熱絲面積大，光暈收斂一點才看得到螺旋
+    const bg = scene.background, env = scene.environment;
+    scene.background = BLACK; scene.environment = null;
+    camera.layers.set(BLOOM);
+    bloomComposer.render(dt);
+    camera.layers.set(0);
+    scene.background = bg; scene.environment = env;
+  }
+  renderer.setRenderTarget(null);
+  renderer.render(scene, camera);
+  if (bloom.enabled) { renderer.autoClear = false; overlay.render(renderer); renderer.autoClear = true; }
+}
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(30, 0.6, 15, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.72, clearcoat: 0.25, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1.2); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.55, metalness: 0, clearcoat: 0.35, clearcoatRoughness: 0.4, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const glassA = (o = {}) => new THREE.MeshPhysicalMaterial({ color: 0xf6fbff, roughness: 0.04, clearcoat: 1, transparent: true, opacity: 0.2, depthWrite: false, side: THREE.DoubleSide, ...o });
+const glowM = (color, k = 1.6) => new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: k, roughness: 0.3, toneMapped: false });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+function seg(a, b, r, mat) {                         // 兩點之間的圓柱（導線）
+  const d = b.clone().sub(a);
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, d.length(), 14), mat);
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  m.quaternion.setFromUnitVectors(V3(0, 1, 0), d.normalize());
+  return m;
+}
+function glowTexture() {                              // 柔和的光暈貼圖
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, 'rgba(255,255,255,1)'); grd.addColorStop(0.25, 'rgba(255,255,255,.55)'); grd.addColorStop(0.6, 'rgba(255,255,255,.12)'); grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const GLOW_TEX = glowTexture();
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'arena', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+/* =========================================================
+   Tab 1：電功率亮度競技場（串聯 vs 並聯）
+   ========================================================= */
+const VB = 12;                                         // 兩個底座的電池電壓
+const BT = {
+  hi: { R: 10, col: 0xff4a32, off: 0x8a3a30, name: '高電阻', emoji: '🔴', cls: 'red' },
+  lo: { R: 2, col: 0x3d9bff, off: 0x2c4f8a, name: '低電阻', emoji: '🔵', cls: 'blue' }
+};
+const P_MAX = VB * VB / 2;                             // 72 W：本實驗可能出現的最大功率
+const ARENA = { group: new THREE.Group(), on: false };
+scene.add(ARENA.group);
+const BX = 5.3, BZ = -0.6, WY = 0.56, SOCK_Y = 0.78;
+const wireMat = clay(0xd98b4a, { metalness: 0.4, roughness: 0.32, clearcoat: 0.9 });
+
+function mkPath(pts2, ox) {
+  const pts = pts2.map(([x, z]) => V3(x + ox, WY + 0.02, z + BZ));
+  const segs = []; let L = 0;
+  for (let i = 1; i < pts.length; i++) { const l = pts[i].distanceTo(pts[i - 1]); segs.push({ a: pts[i - 1], b: pts[i], l, s: L }); L += l; }
+  return { pts, segs, L };
+}
+function atDist(p, d, out) {
+  for (const s of p.segs) if (d <= s.s + s.l) return out.lerpVectors(s.a, s.b, (d - s.s) / s.l);
+  return out.copy(p.pts[p.pts.length - 1]);
+}
+function wireLine(g, pts2) {
+  const pts = pts2.map(([x, z]) => V3(x, WY, z));
+  for (let i = 1; i < pts.length; i++) g.add(seg(pts[i - 1], pts[i], 0.07, wireMat));
+  for (const p of pts) { const j = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 8), wireMat); j.position.copy(p); g.add(j); }
+}
+function makeBase(kind) {
+  const ser = kind === 'ser';
+  const ox = ser ? -BX : BX;
+  const g = new THREE.Group(); g.position.set(ox, 0, BZ); ARENA.group.add(g);
+  const board = new THREE.Mesh(new RoundedBoxGeometry(9, 0.4, 5.2, 4, 0.18), clay(ser ? 0xf2d6b8 : 0xcfe4dd));
+  board.position.set(0, 0.2, -0.25); g.add(board);
+  // 電池（橫躺，+ 極在右）
+  const bat = new THREE.Group(); bat.position.set(-2, 0.4 + 0.42, 1.4); g.add(bat);
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 1.8, 32).rotateZ(Math.PI / 2), clay(0x3b4a5a, { clearcoat: 0.8 }));
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(0.43, 0.43, 0.5, 32).rotateZ(Math.PI / 2), clay(0xe0913f, { clearcoat: 0.8 }));
+  band.position.x = 0.6;
+  const nub = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 0.14, 20).rotateZ(Math.PI / 2), metal());
+  nub.position.x = 0.96; bat.add(body, band, nub);
+  // 導線
+  if (ser) wireLine(g, [[-1.1, 1.4], [3.6, 1.4], [3.6, -1.2], [-3.6, -1.2], [-3.6, 1.4], [-2.9, 1.4]]);
+  else {
+    wireLine(g, [[-2.9, 1.4], [-3.6, 1.4], [-3.6, -2.0], [1.6, -2.0]]);
+    wireLine(g, [[-1.6, -2.0], [-1.6, -0.4]]); wireLine(g, [[1.6, -2.0], [1.6, -0.4]]);
+    wireLine(g, [[-1.6, -0.4], [3.6, -0.4], [3.6, 1.4], [-1.1, 1.4]]);
+  }
+  // 插座
+  const sockets = [-1.6, 1.6].map((x, i) => {
+    const s = new THREE.Group(); s.position.set(x, 0.4, -1.2); g.add(s);
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.56, 0.4, 32), clay(0xf6efe4)); cup.position.y = 0.2; s.add(cup);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.05, 10, 32).rotateX(Math.PI / 2), metal(0xd7b36a)); ring.position.y = 0.4; s.add(ring);
+    const hl = new THREE.Mesh(new THREE.TorusGeometry(0.66, 0.06, 10, 40).rotateX(Math.PI / 2), glowM(0x5be59a, 1.4));
+    hl.position.y = 0.43; hl.visible = false; s.add(glowLayer(hl));
+    return { kind, i, g: s, hl, world: V3(ox + x, SOCK_Y, BZ - 1.2), bulb: null };
+  });
+  // 指示燈
+  const led = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 10), new THREE.MeshStandardMaterial({ color: 0x9aa39c, emissive: 0x000000, toneMapped: false }));
+  led.position.set(3.95, 0.48, 1.85); g.add(glowLayer(led));
+  shadowed(g);
+  // 電子（金色小球）
+  const eMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.075, 10, 8), glowM(0xffc23d, 1.0), 520);
+  eMesh.count = 0; eMesh.frustumCulled = false; ARENA.group.add(glowLayer(eMesh));
+  const paths = ser
+    ? [mkPath([[-2.9, 1.4], [-3.6, 1.4], [-3.6, -1.2], [3.6, -1.2], [3.6, 1.4], [-1.1, 1.4]], ox)]
+    : [-1.6, 1.6].map(xk => mkPath([[-2.9, 1.4], [-3.6, 1.4], [-3.6, -2.0], [xk, -2.0], [xk, -0.4], [3.6, -0.4], [3.6, 1.4], [-1.1, 1.4]], ox));
+  const sign = addLabel('arena', ser ? '⛓️ 串聯底座 <small style="color:#fff">｜電流 I 處處相同</small>' : '🔀 並聯底座 <small style="color:#fff">｜每顆電壓 V 相同</small>',
+    ser ? 'ser' : 'par', V3(ox, 0.5, BZ - 3.3));
+  const bat12 = addLabel('arena', '🔋 12 V', '', V3(ox - 2, 1.75, BZ + 1.4));
+  const warn = addLabel('arena', '', 'warn', V3(ox, 2.0, BZ + 0.2));
+  return { kind, g, sockets, led, eMesh, paths, sign, bat12, warn, I: 0, ok: false };
+}
+const SER = makeBase('ser'), PAR = makeBase('par');
+const SOCKETS = [...SER.sockets, ...PAR.sockets];
+
+// 前方的燈泡托盤
+const tray = shadowed(new THREE.Mesh(new RoundedBoxGeometry(10.4, 0.3, 2.0, 4, 0.13), clay(0xf3ece0)));
+tray.position.set(0, 0.15, 4.6); ARENA.group.add(tray);
+addLabel('arena', '👇 拖曳燈泡到底座的插座', 'hl', V3(0, 0.4, 6.0));
+
+function makeBulb(type, home) {
+  const T = BT[type];
+  const g = new THREE.Group(); ARENA.group.add(g);
+  // 螺旋燈頭
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.24, 0.46, 28), metal()); base.position.y = 0.23; g.add(base);
+  for (let k = 0; k < 3; k++) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.035, 8, 28).rotateX(Math.PI / 2), metal(0xb8bcc4)); r.position.y = 0.08 + k * 0.13; g.add(r); }
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 8), metal(0xd7b36a)); tip.position.y = 0.0; g.add(tip);
+  // 玻璃泡
+  const prof = [[0.27, 0.44], [0.3, 0.6], [0.46, 0.9], [0.6, 1.25], [0.64, 1.55], [0.56, 1.88], [0.38, 2.1], [0.16, 2.2], [0, 2.22]].map(([r, y]) => new THREE.Vector2(r, y));
+  const glass = new THREE.Mesh(new THREE.LatheGeometry(prof, 40), glassA({ opacity: 0.24, emissive: T.col, emissiveIntensity: 0 }));
+  glass.renderOrder = 3; g.add(glowLayer(glass));
+  // 支撐線與燈絲
+  const wm = metal(0x9aa0a8, { roughness: 0.4 });
+  g.add(seg(V3(-0.2, 0.46, 0), V3(-0.2, 1.33, 0), 0.018, wm), seg(V3(0.2, 0.46, 0), V3(0.2, 1.33, 0), 0.018, wm));
+  const helix = new (class extends THREE.Curve {
+    getPoint(t, o = new THREE.Vector3()) { const a = t * Math.PI * 2 * 9; return o.set(-0.2 + 0.4 * t, 1.36 + Math.sin(t * Math.PI) * 0.06 + Math.sin(a) * 0.065, Math.cos(a) * 0.065); }
+  })();
+  const filMat = new THREE.MeshStandardMaterial({ color: T.off, emissive: T.col, emissiveIntensity: 0, roughness: 0.4, toneMapped: false });
+  const fil = new THREE.Mesh(new THREE.TubeGeometry(helix, 160, 0.022, 8), filMat); g.add(glowLayer(fil));
+  // 光暈 + 點光源
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW_TEX, color: T.col, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
+  halo.position.y = 1.4; halo.renderOrder = 4; g.add(halo);
+  const core = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW_TEX, color: 0xfff6e8, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+  core.position.y = 1.38; core.renderOrder = 5; g.add(glowLayer(core));
+  const light = new THREE.PointLight(T.col, 0, 9, 2); light.position.y = 1.4; g.add(light);
+  const hit = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 2.4, 12), new THREE.MeshBasicMaterial({ visible: false })); hit.position.y = 1.15; g.add(hit);
+  g.traverse(o => { if (o.isMesh && o !== glass && o !== hit) { o.castShadow = true; } });
+  g.position.copy(home); g.scale.setScalar(1.2);
+  const b = { type, R: T.R, T, g, glass, fil, halo, core, light, hit, home: home.clone(), target: home.clone(), socket: null, P: 0, V: 0, I: 0, Pshow: 0, roll: 0, key: '', tilt: 0 };
+  hit.userData.bulb = b;
+  b.meter = addLabel('arena', '', 'meter ' + T.cls, V3(0, 3.35, 0), g);
+  // 托盤上的小座
+  const holder = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.07, 10, 28).rotateX(Math.PI / 2), clay(0xe4d6c0)); holder.position.set(home.x, 0.32, home.z); ARENA.group.add(holder);
+  return b;
+}
+const HOME_Y = 0.34;
+const BULBS = [
+  makeBulb('hi', V3(-3.6, HOME_Y, 4.6)), makeBulb('lo', V3(-1.2, HOME_Y, 4.6)),
+  makeBulb('hi', V3(1.2, HOME_Y, 4.6)), makeBulb('lo', V3(3.6, HOME_Y, 4.6))
+];
+
+function placeBulb(b, s) {
+  if (b.socket) { b.socket.bulb = null; b.socket = null; }
+  if (s) {
+    if (s.bulb && s.bulb !== b) sendHome(s.bulb);
+    s.bulb = b; b.socket = s; b.target.copy(s.world);
+  } else b.target.copy(b.home);
+}
+function sendHome(b) { if (b.socket) { b.socket.bulb = null; b.socket = null; } b.target.copy(b.home); }
+
+// 計算每顆燈泡的 V、I、P
+function solveArena() {
+  for (const b of BULBS) { b.P = b.V = b.I = 0; }
+  const sb = SER.sockets.map(s => s.bulb);
+  SER.ok = !!(sb[0] && sb[1]);
+  SER.I = SER.ok ? VB / (sb[0].R + sb[1].R) : 0;
+  if (ARENA.on && SER.ok) for (const b of sb) { b.I = SER.I; b.V = SER.I * b.R; b.P = SER.I * SER.I * b.R; }
+  PAR.I = 0; PAR.ok = PAR.sockets.some(s => s.bulb);
+  for (const s of PAR.sockets) if (s.bulb) {
+    const b = s.bulb; PAR.I += VB / b.R;
+    if (ARENA.on) { b.V = VB; b.I = VB / b.R; b.P = VB * VB / b.R; }
+  }
+}
+
+function meterHTML(b) {
+  const T = b.T;
+  if (!b.socket) return `<div class="mh">${T.emoji} ${T.name}燈泡</div><div class="mp"><b>${T.R}</b> Ω</div>`;
+  if (!ARENA.on || b.P === 0) {
+    const why = !ARENA.on ? '尚未通電' : '斷路，電流 ＝ 0';
+    return `<div class="mh">${T.emoji} R ＝ ${T.R} Ω</div><div class="mp">P <b>0</b> W</div><div class="mvi">${why}</div><div class="bar"><i style="width:0%"></i></div>`;
+  }
+  let P = b.P, V = b.V, I = b.I;
+  if (b.roll > 0) {                                     // 剛通電：數字瘋狂跳動後才定格
+    const k = 0.4 + Math.random() * 1.2;
+    P = b.P * k; V = b.V * (0.4 + Math.random() * 1.2); I = b.I * (0.4 + Math.random() * 1.2);
+  }
+  return `<div class="mh">${T.emoji} R ＝ ${T.R} Ω</div><div class="mp">P <b>${fmt(P, 1)}</b> W</div>` +
+    `<div class="mvi">V ${fmt(V, 1)} V ｜ I ${fmt(I, 2)} A</div><div class="bar"><i style="width:${Math.min(100, P / P_MAX * 100).toFixed(0)}%"></i></div>`;
+}
+
+// 燈泡亮度：emissive、光暈、點光源都由「目前功率」決定
+function applyBulb(b) {
+  const P = b.Pshow;
+  const on = P > 0.02;
+  const g = 1 - Math.exp(-Math.pow(P / 8, 1.6));        // 玻璃泡的飽和亮度（像眼睛一樣，太亮會「滿」）
+  b.fil.material.emissiveIntensity = on ? 0.32 * Math.pow(P, 0.78) : 0;   // 燈絲：隨功率一路變亮
+  b.fil.material.color.setHex(on ? 0xffffff : b.T.off);
+  b.glass.material.emissiveIntensity = on ? 2.4 * g : 0;
+  b.glass.material.opacity = 0.24 + 0.5 * g;
+  b.halo.material.opacity = on ? 0.12 + 0.68 * g : 0;
+  b.halo.scale.setScalar(0.8 + 0.36 * Math.sqrt(P));
+  const hot = smooth(4, 60, P);                         // 白熱核心：功率越大越刺眼
+  b.core.material.opacity = on ? 0.1 + 0.9 * hot : 0;
+  b.core.scale.setScalar(0.3 + 1.6 * hot);
+  b.light.intensity = P * 0.5;
+}
+
+// 拖曳
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+const LIFT = SOCK_Y + 0.75;                            // 拖曳時燈泡浮起的高度
+const dragPlane = new THREE.Plane(V3(0, 1, 0), -SOCK_Y); // 游標對應「插座高度」的位置，放開時才對得準
+const hitP = V3(0, 0, 0);
+let drag = null;
+
+function setNdc(e) {
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+}
+function pickBulb(e) { setNdc(e); const h = ray.intersectObjects(BULBS.map(b => b.hit), false)[0]; return h ? h.object.userData.bulb : null; }
+function nearSocket(p) {
+  let best = null, bd = 1.5;
+  for (const s of SOCKETS) { const d = Math.hypot(s.world.x - p.x, s.world.z - p.z); if (d < bd) { bd = d; best = s; } }
+  return best;
+}
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (tab !== 'arena' || e.button > 0) return;
+  const b = pickBulb(e); if (!b) return;
+  if (b.socket) { b.socket.bulb = null; b.socket = null; }
+  drag = { b, s: null, id: e.pointerId };
+  controls.enabled = false;
+  renderer.domElement.setPointerCapture(e.pointerId);
+  b.target.set(b.g.position.x, LIFT, b.g.position.z);
+  document.body.style.cursor = 'grabbing';
+});
+renderer.domElement.addEventListener('pointermove', e => {
+  if (tab !== 'arena') return;
+  if (!drag) { document.body.style.cursor = pickBulb(e) ? 'grab' : ''; return; }
+  setNdc(e);
+  if (ray.ray.intersectPlane(dragPlane, hitP)) {
+    drag.b.target.set(clamp(hitP.x, -10.5, 10.5), LIFT, clamp(hitP.z, -4, 6.5));
+    drag.s = nearSocket(hitP);
+  }
+});
+function endDrag() {
+  if (!drag) return;
+  placeBulb(drag.b, drag.s);
+  drag = null; controls.enabled = true; document.body.style.cursor = '';
+}
+renderer.domElement.addEventListener('pointerup', endDrag);
+renderer.domElement.addEventListener('pointercancel', endDrag);
+
+function setPower(on) {
+  ARENA.on = on;
+  $('powerBtn').textContent = on ? '⏻ 斷電' : '⚡ 通電';
+  $('powerBtn').classList.toggle('live', on);
+  if (on) for (const b of BULBS) b.key = '';             // 讓數字重新跳動
+}
+$('powerBtn').addEventListener('click', () => setPower(!ARENA.on));
+$('autoBtn').addEventListener('click', () => {
+  placeBulb(BULBS[0], SER.sockets[0]); placeBulb(BULBS[1], SER.sockets[1]);
+  placeBulb(BULBS[2], PAR.sockets[0]); placeBulb(BULBS[3], PAR.sockets[1]);
+});
+$('clearBtn').addEventListener('click', () => { BULBS.forEach(sendHome); setPower(false); });
+
+const eTmp = V3(0, 0, 0), eMat = new THREE.Matrix4();
+function updateElectrons(base, flows) {
+  let n = 0;
+  for (const { path, I } of flows) {
+    const sp = clamp(0.9 / I, 0.13, 2), v = 1.6;
+    const ph = (wall * v) % sp;
+    for (let d = ph; d < path.L && n < base.eMesh.instanceMatrix.count; d += sp) {
+      atDist(path, d, eTmp); eMat.makeTranslation(eTmp.x, eTmp.y, eTmp.z); base.eMesh.setMatrixAt(n++, eMat);
+    }
+  }
+  base.eMesh.count = n; base.eMesh.instanceMatrix.needsUpdate = true;
+}
+
+function updateArena(dt) {
+  solveArena();
+  for (const b of BULBS) {
+    const prevX = b.g.position.x;
+    b.g.position.lerp(b.target, ease(dt, 14));
+    const vx = (b.g.position.x - prevX) / Math.max(dt, 1e-3);
+    b.tilt += (clamp(-vx * 0.05, -0.45, 0.45) - b.tilt) * ease(dt, 10);
+    b.g.rotation.z = b.tilt;
+    b.Pshow += (b.P - b.Pshow) * ease(dt, 6);            // 燈絲加熱需要一點點時間
+    if (b.P < 0.01 && b.Pshow < 0.03) b.Pshow = 0;
+    applyBulb(b);
+    const key = b.P.toFixed(3) + (b.socket ? b.socket.kind : '-');
+    if (key !== b.key) { b.key = key; if (b.P > 0) b.roll = 0.85; }
+    if (b.roll > 0) b.roll -= dt;
+    const lit = b.P > 0;
+    setLabel(b.meter, meterHTML(b), `meter ${b.T.cls}${lit ? ' lit' : ''}${b.roll > 0 ? ' roll' : ''}`);
+  }
+  for (const s of SOCKETS) s.hl.visible = !!(drag && drag.s === s);
+  // 電子流動
+  updateElectrons(SER, ARENA.on && SER.ok ? [{ path: SER.paths[0], I: SER.I }] : []);
+  updateElectrons(PAR, ARENA.on ? PAR.sockets.map((s, i) => s.bulb ? { path: PAR.paths[i], I: VB / s.bulb.R } : null).filter(Boolean) : []);
+  for (const B of [SER, PAR]) {
+    const live = ARENA.on && B.ok;
+    B.led.material.color.setHex(live ? 0x3ddc84 : (ARENA.on ? 0xe5484d : 0x9aa39c));
+    B.led.material.emissive.setHex(live ? 0x3ddc84 : (ARENA.on ? 0xe5484d : 0x000000));
+    B.led.material.emissiveIntensity = ARENA.on ? 2.2 : 0;
+  }
+  const n = SER.sockets.filter(s => s.bulb).length;
+  SER.warn.show = ARENA.on && !SER.ok && n > 0;
+  setLabel(SER.warn, '⚠️ 少一顆燈泡 → 斷路！電流 ＝ 0');
+  PAR.warn.show = false;
+  // 上方公式列與面板
+  const sb = SER.sockets.map(s => s.bulb), pb = PAR.sockets.map(s => s.bulb).filter(Boolean);
+  const nm = b => `<span class="${b.T.cls}">${b.T.emoji} ${fmt(b.P, 1)} W</span>`;
+  const brightest = list => list.reduce((a, b) => (b.P > a.P ? b : a));
+  let serTxt, parTxt;
+  if (!SER.ok) serTxt = n ? '⛓️ 串聯：只有一顆燈泡，電路沒接通 → <b>斷路</b>' : '⛓️ 串聯：插座是空的';
+  else if (!ARENA.on) serTxt = '⛓️ 串聯：燈泡已就位，等待通電';
+  else serTxt = `⛓️ 串聯：I 都 ＝ ${fmt(SER.I, 2)} A，P ＝ I²R → ${sb.map(nm).join('　')}`;
+  if (!pb.length) parTxt = '🔀 並聯：插座是空的';
+  else if (!ARENA.on) parTxt = '🔀 並聯：燈泡已就位，等待通電';
+  else parTxt = `🔀 並聯：V 都 ＝ ${VB} V，P ＝ V²／R → ${pb.map(nm).join('　')}`;
+  let head = '<small>電功率亮度競技場</small>';
+  if (!ARENA.on) head += '<span class="mid">把燈泡拖進兩個底座，再按【⚡ 通電】</span>';
+  else {
+    const sWin = SER.ok && sb[0].R !== sb[1].R ? brightest(sb) : null;
+    const pWin = pb.length === 2 && pb[0].R !== pb[1].R ? brightest(pb) : null;
+    const parts = [];
+    if (sWin) parts.push(`串聯 <span class="red">R 大的 ${sWin.T.emoji} 較亮</span>`);
+    if (pWin) parts.push(`並聯 <span class="blue">R 小的 ${pWin.T.emoji} 較亮</span>`);
+    head += `<span class="mid">${parts.length ? parts.join('　｜　') : '亮度由電功率 P 決定'}</span>`;
+  }
+  setCap(`${head}${serTxt}<br>${parTxt}`);
+  // 面板統計
+  const row = (b) => `${b.T.emoji} ${b.T.R} Ω：V <b>${fmt(b.V, 1)}</b> V、I <b>${fmt(b.I, 2)}</b> A、P <b class="${b.T.cls === 'red' ? 'r' : 'b'}">${fmt(b.P, 1)}</b> W`;
+  let st = `<b class="o">⛓️ 串聯</b>　R總 ＝ ${SER.ok ? sb[0].R + sb[1].R + ' Ω' : '—'}　I ＝ ${ARENA.on ? fmt(SER.I, 2) : '0.00'} A<br>`;
+  st += SER.ok ? sb.map(row).join('<br>') : '<span style="color:#7a6e60">（兩個插座都要放燈泡）</span>';
+  st += `<hr><b class="b">🔀 並聯</b>　總電流 I ＝ ${ARENA.on ? fmt(PAR.I, 2) : '0.00'} A<br>`;
+  st += pb.length ? pb.map(row).join('<br>') : '<span style="color:#7a6e60">（放入燈泡）</span>';
+  const red = BULBS.filter(b => b.type === 'hi' && b.socket && b.P > 0);
+  if (ARENA.on && red.some(b => b.socket.kind === 'ser') && red.some(b => b.socket.kind === 'par'))
+    st += '<hr>💡 仔細看：紅燈在並聯（14.4 W）其實比在串聯（10 W）<b>還亮一點</b>，只是旁邊的藍燈（72 W）亮太多，相比之下才顯得暗。';
+  setHTML('arenaStat', st);
+}
+
+/* =========================================================
+   Tab 2：吹風機熱能轉換廠（E ＝ P × t）
+   ========================================================= */
+const DRY = { group: new THREE.Group(), on: false, V: 220, wire: 'thick', t: 0, E: 0, T: 25, Tshow: 25, speed: 1, fan: 0, glowI: 0, rec: [], hit60: false, cool: 0, msg: '' };
+scene.add(DRY.group);
+const R_OPT = { thick: { R: 22, tube: 0.085, name: '粗線（小電阻）' }, thin: { R: 44, tube: 0.038, name: '細線（大電阻）' } };
+const P_TOP = 220 * 220 / 22;                         // 2200 W：最大功率
+const T0 = 25, T_MAX = 110;
+const K_T = 75 / (P_TOP * 12);                        // 溫度上升 ∝ 熱能：2200 W 約 12 秒升到 100 °C
+const DY = 3.5, DX = -3.4;                            // 吹風機中心
+const Pdry = () => DRY.V * DRY.V / R_OPT[DRY.wire].R;
+{
+  const g = DRY.group;
+  const coral = clay(0xf29b8f, { clearcoat: 0.7 }), cream = clay(0xf3ece0);
+  // 透明外殼
+  const shell = new THREE.Mesh(new THREE.CylinderGeometry(1.12, 1.12, 3.4, 56, 1, true).rotateZ(Math.PI / 2), glassA({ opacity: 0.16 }));
+  shell.position.set(DX, DY, 0); shell.renderOrder = 3; g.add(shell);
+  const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 1.06, 1.1, 48, 1, true).rotateZ(-Math.PI / 2), glassA({ opacity: 0.18 }));
+  nozzle.position.set(DX + 1.7 + 0.55, DY, 0); nozzle.renderOrder = 3; g.add(nozzle);
+  const grille = [];
+  for (const [x, r] of [[DX - 1.7, 1.12], [DX + 1.7, 1.1], [DX + 2.8, 0.72]]) {
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(r, 0.09, 12, 48).rotateY(Math.PI / 2), coral); rim.position.set(x, DY, 0); g.add(rim); grille.push(rim);
+  }
+  // 後方進風網
+  for (const r of [0.75, 0.42]) { const t = new THREE.Mesh(new THREE.TorusGeometry(r, 0.04, 8, 40).rotateY(Math.PI / 2), cream); t.position.set(DX - 1.72, DY, 0); g.add(t); grille.push(t); }
+  for (let k = 0; k < 6; k++) {
+    const a = k / 6 * Math.PI;
+    g.add(seg(V3(DX - 1.72, DY + Math.cos(a) * 1.08, Math.sin(a) * 1.08), V3(DX - 1.72, DY - Math.cos(a) * 1.08, -Math.sin(a) * 1.08), 0.03, cream));
+  }
+  // 把手與底座
+  const handle = new THREE.Mesh(new RoundedBoxGeometry(0.8, 2.9, 0.66, 4, 0.3), coral);
+  handle.position.set(DX - 0.5, 1.85, 0); handle.rotation.z = 0.16; g.add(handle);
+  const foot = new THREE.Mesh(new RoundedBoxGeometry(2.4, 0.34, 1.8, 4, 0.14), cream); foot.position.set(DX - 0.3, 0.17, 0); g.add(foot);
+  DRY.led = new THREE.Mesh(new THREE.CapsuleGeometry(0.09, 0.22, 6, 12), new THREE.MeshStandardMaterial({ color: 0x9aa39c, toneMapped: false }));
+  DRY.led.position.set(DX - 0.2, 2.6, 0.36); g.add(glowLayer(DRY.led));
+  // 雲母支架（十字）
+  const mica = clay(0xf7f1e6, { transparent: true, opacity: 0.85 });
+  for (const geo of [new THREE.BoxGeometry(2.3, 1.0, 0.03), new THREE.BoxGeometry(2.3, 0.03, 1.0)]) {
+    const m = new THREE.Mesh(geo, mica); m.position.set(DX + 0.2, DY, 0); g.add(m);
+  }
+  // 風扇
+  DRY.fanG = new THREE.Group(); DRY.fanG.position.set(DX - 1.3, DY, 0); g.add(DRY.fanG);
+  const fanM = clay(0x8fb4c9, { clearcoat: 0.8 });
+  DRY.fanG.add(new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 12), clay(0x5d7f94)));
+  for (let k = 0; k < 5; k++) {
+    const blade = new THREE.Mesh(new RoundedBoxGeometry(0.06, 0.78, 0.34, 2, 0.03), fanM);
+    const holder = new THREE.Group(); holder.rotation.x = k / 5 * Math.PI * 2;
+    blade.position.y = 0.5; blade.rotation.y = 0.5; holder.add(blade); DRY.fanG.add(holder);
+  }
+  // 馬達
+  const motor = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.5, 24).rotateZ(Math.PI / 2), metal(0x9aa0a8));
+  motor.position.set(DX - 1.6, DY, 0); g.add(motor);
+  shadowed(g); shell.castShadow = nozzle.castShadow = false; grille.forEach(t => { t.castShadow = false; });
+  // 螺旋電熱絲
+  DRY.coilMat = new THREE.MeshStandardMaterial({ color: 0x5a3a2e, emissive: 0x000000, emissiveIntensity: 0, roughness: 0.45, metalness: 0.3, toneMapped: false });
+  DRY.coil = new THREE.Mesh(new THREE.BufferGeometry(), DRY.coilMat); DRY.coil.position.set(DX + 0.2, DY, 0); g.add(glowLayer(DRY.coil));
+  DRY.light = new THREE.PointLight(0xff8a3d, 0, 8, 2); DRY.light.position.set(DX + 0.2, DY, 0); g.add(DRY.light);
+  DRY.halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW_TEX, color: 0xff8a3d, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+  DRY.halo.position.set(DX + 0.2, DY, 0); DRY.halo.scale.set(3.2, 2.2, 1); DRY.halo.renderOrder = 4; g.add(DRY.halo);
+}
+function buildCoil() {
+  const tube = R_OPT[DRY.wire].tube;
+  const helix = new (class extends THREE.Curve {
+    getPoint(t, o = new THREE.Vector3()) { const a = t * Math.PI * 2 * 10; return o.set(-1.05 + 2.1 * t, Math.cos(a) * 0.62, Math.sin(a) * 0.62); }
+  })();
+  DRY.coil.geometry.dispose();
+  DRY.coil.geometry = new THREE.TubeGeometry(helix, 600, tube, 10);
+}
+buildCoil();
+
+// 巨大溫度計
+const TX = 4.6, TB = 1.15, TY0 = 2.0, TH = 6.2;        // 液柱 0 °C 在 TY0，110 °C 在 TY0+TH
+const yOfT = T => TY0 + T / T_MAX * TH;
+{
+  const g = DRY.group;
+  const foot = shadowed(new THREE.Mesh(new RoundedBoxGeometry(2.2, 0.36, 1.7, 4, 0.15), clay(0xf3ece0))); foot.position.set(TX, 0.18, 0); g.add(foot);
+  const board = shadowed(new THREE.Mesh(new RoundedBoxGeometry(2.0, TH + 1.6, 0.22, 4, 0.1), clay(0xfffaf0))); board.position.set(TX, TY0 + TH / 2 + 0.3, -0.55); g.add(board);
+  // 刻度
+  const c = document.createElement('canvas'); c.width = 256; c.height = 1024;
+  const x = c.getContext('2d');
+  const planeH = TH + 1.6, top = TY0 + TH / 2 + 0.3 + planeH / 2;
+  const cy = y => (top - y) / planeH * 1024;
+  x.strokeStyle = '#7a6e60'; x.fillStyle = '#3b3127'; x.font = '800 34px sans-serif'; x.textBaseline = 'middle';
+  for (let T = 0; T <= T_MAX; T += 5) {
+    const yy = cy(yOfT(T)), big = T % 10 === 0;
+    x.lineWidth = big ? 5 : 3; x.beginPath(); x.moveTo(big ? 40 : 60, yy); x.lineTo(96, yy); x.moveTo(160, yy); x.lineTo(big ? 216 : 196, yy); x.stroke();
+    if (big && T % 20 === 0) { x.textAlign = 'left'; x.fillText(T, 168 + (T >= 100 ? -2 : 8), yy - 22); }
+  }
+  x.font = '900 40px sans-serif'; x.textAlign = 'center'; x.fillStyle = '#d0453a'; x.fillText('°C', 128, 40);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(2.0, planeH), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+  plane.position.set(TX, top - planeH / 2, -0.43); g.add(plane);
+  // 玻璃管與玻璃泡
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, TH + 1.2, 32, 1, true), glassA({ opacity: 0.22 }));
+  tube.position.set(TX, TB + 0.4 + (TH + 1.2) / 2, 0); tube.renderOrder = 3; g.add(tube);
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), glassA({ opacity: 0.22 }));
+  cap.position.set(TX, TB + 0.4 + TH + 1.2, 0); cap.renderOrder = 3; g.add(cap);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.62, 32, 20), glassA({ opacity: 0.22 })); bulb.position.set(TX, TB, 0); bulb.renderOrder = 3; g.add(bulb);
+  const redM = clay(0xe5484d, { emissive: 0xe5484d, emissiveIntensity: 0.25, clearcoat: 1, roughness: 0.25 });
+  const redBulb = new THREE.Mesh(new THREE.SphereGeometry(0.5, 28, 18), redM); redBulb.position.set(TX, TB, 0); g.add(redBulb);
+  DRY.col = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 1, 24).translate(0, 0.5, 0), redM);
+  DRY.col.position.set(TX, TB + 0.3, 0); g.add(DRY.col);
+  DRY.colTop = new THREE.Object3D(); g.add(DRY.colTop);
+}
+// 熱風粒子
+const AIR_N = 120;
+const airMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4, depthWrite: false, toneMapped: false });
+const air = new THREE.InstancedMesh(new THREE.SphereGeometry(0.055, 8, 6), airMat, AIR_N); air.frustumCulled = false; air.count = 0; DRY.group.add(air);
+const AIR = Array.from({ length: AIR_N }, () => ({ s: Math.random(), r: Math.sqrt(Math.random()) * 0.85, a: Math.random() * Math.PI * 2, k: 0.7 + Math.random() * 0.6 }));
+const AX0 = DX - 1.6, AX1 = TX - 0.4;
+
+addLabel('dryer', '🌀 風扇', '', V3(DX - 1.3, DY + 1.55, 0));
+const coilLab = addLabel('dryer', '', '', V3(DX + 0.2, DY + 1.55, 0));
+const thermoLab = addLabel('dryer', '', 'hl', V3(0, 0.75, 0), null);
+addLabel('dryer', '🔌 透明外殼吹風機', '', V3(DX - 0.4, 0.75, 1.2));
+
+// 電熱絲顏色：暗紅 → 紅 → 橙 → 黃白 → 亮白（依功率比例）
+const HEAT_STOPS = [[0, [0.28, 0.03, 0.02]], [0.125, [0.55, 0.05, 0.02]], [0.25, [1, 0.16, 0.04]], [0.5, [1, 0.5, 0.1]], [0.75, [1, 0.78, 0.4]], [1, [1, 0.93, 0.74]]];
+const heatCol = new THREE.Color();
+function heatColor(f) {
+  for (let i = 1; i < HEAT_STOPS.length; i++) {
+    const [f1, c1] = HEAT_STOPS[i], [f0, c0] = HEAT_STOPS[i - 1];
+    if (f <= f1) { const k = (f - f0) / (f1 - f0); return heatCol.setRGB(c0[0] + (c1[0] - c0[0]) * k, c0[1] + (c1[1] - c0[1]) * k, c0[2] + (c1[2] - c0[2]) * k); }
+  }
+  return heatCol.setRGB(1, 0.93, 0.74);
+}
+function setDryOn(on) {
+  DRY.on = on;
+  $('dryBtn').textContent = on ? '⏻ 關機' : '⏻ 開機';
+  $('dryBtn').classList.toggle('live', on);
+  if (on) {
+    DRY.msg = '';
+    if (DRY.T >= T_MAX - 0.01) resetRun();
+  }
+}
+function resetRun() {
+  if (DRY.t > 0 || DRY.T > T0) DRY.cool = 1;           // 溫度計平滑降回 25 °C
+  DRY.t = 0; DRY.E = 0; DRY.T = T0; DRY.hit60 = false;
+}
+$('dryBtn').addEventListener('click', () => setDryOn(!DRY.on));
+$('dryReset').addEventListener('click', () => { resetRun(); DRY.msg = ''; });
+$('dV').addEventListener('input', () => { DRY.V = +$('dV').value; $('dVV').textContent = DRY.V; resetRun(); });
+$('dR').addEventListener('change', () => { DRY.wire = $('dR').value; buildCoil(); resetRun(); });
+$('dSpeed').addEventListener('change', () => { DRY.speed = +$('dSpeed').value; });
+
+const aTmp = new THREE.Matrix4(), aPos = V3(0, 0, 0), aQ = new THREE.Quaternion(), aS = V3(1, 1, 1);
+function updateDryer(dt) {
+  const P = Pdry(), f = P / P_TOP, R = R_OPT[DRY.wire].R;
+  // 計時與發熱
+  if (DRY.on) {
+    const ds = dt * DRY.speed;
+    DRY.t += ds; DRY.E += P * ds;
+    DRY.T = T0 + DRY.E * K_T;
+    if (!DRY.hit60 && DRY.T >= 60) {
+      DRY.hit60 = true;
+      DRY.rec = DRY.rec.filter(r => r.P !== P); DRY.rec.push({ P, V: DRY.V, R, t: DRY.t - (DRY.T - 60) / (P * K_T) });
+      if (DRY.rec.length > 4) DRY.rec.shift();
+    }
+    if (DRY.T >= T_MAX) {
+      const over = (DRY.T - T_MAX) / (P * K_T);       // 剛好到頂的那一刻
+      DRY.t -= over; DRY.E = P * DRY.t; DRY.T = T_MAX;
+      setDryOn(false); DRY.msg = '🌡️ 溫度計到頂了，自動關機！按「溫度歸零」再測一次。';
+    }
+  }
+  if (DRY.cool > 0) { DRY.cool = Math.max(0, DRY.cool - dt / 0.9); DRY.Tshow += (DRY.T - DRY.Tshow) * ease(dt, 6); }
+  else DRY.Tshow += (DRY.T - DRY.Tshow) * ease(dt, 18);
+  const hY = yOfT(DRY.Tshow) - (TB + 0.3);
+  DRY.col.scale.y = Math.max(0.01, hY);
+  DRY.colTop.position.set(TX + 1.55, yOfT(DRY.Tshow), 0);
+  // 電熱絲：發光強度 ∝ P
+  const GL = 1.7;                                        // 發光強度 ＝ GL × (P ÷ 2200 W)，與功率成正比
+  const target = DRY.on ? GL * f : 0;
+  DRY.glowI += (target - DRY.glowI) * ease(dt, 5);
+  if (!DRY.on && DRY.glowI < 0.01) DRY.glowI = 0;
+  const fNow = DRY.glowI / GL;
+  heatColor(fNow);
+  DRY.coilMat.emissive.copy(heatCol);
+  DRY.coilMat.emissiveIntensity = DRY.glowI;
+  DRY.coilMat.color.setHex(0x4a2e26);                      // 金屬本色維持深色，亮度完全來自 emissive
+  DRY.light.color.copy(heatCol); DRY.light.intensity = DRY.glowI * 12;
+  DRY.halo.material.color.copy(heatCol); DRY.halo.material.opacity = Math.min(0.5, fNow * 0.5);
+  DRY.led.material.color.setHex(DRY.on ? 0x3ddc84 : 0x9aa39c);
+  DRY.led.material.emissive = DRY.led.material.emissive || new THREE.Color();
+  DRY.led.material.emissive.setHex(DRY.on ? 0x3ddc84 : 0x000000); DRY.led.material.emissiveIntensity = DRY.on ? 2 : 0;
+  // 風扇
+  DRY.fan += ((DRY.on ? (DRY.V === 220 ? 30 : 20) : 0) - DRY.fan) * ease(dt, 2.2);
+  DRY.fanG.rotation.x += DRY.fan * dt;
+  // 熱風粒子
+  const flow = DRY.fan / 30;
+  if (flow > 0.03) {
+    const cool = [0.55, 0.72, 0.95];
+    airMat.color.setRGB(cool[0] + (heatCol.r - cool[0]) * Math.min(1, fNow * 3), cool[1] + (heatCol.g - cool[1]) * Math.min(1, fNow * 3), cool[2] + (heatCol.b - cool[2]) * Math.min(1, fNow * 3));
+    airMat.opacity = 0.18 + 0.3 * flow;
+    for (let i = 0; i < AIR_N; i++) {
+      const p = AIR[i];
+      p.s += dt * flow * 0.42 * p.k; if (p.s > 1) { p.s -= 1; p.a = Math.random() * Math.PI * 2; }
+      const x = AX0 + (AX1 - AX0) * p.s;
+      const out = x > DX + 2.8;
+      let rr = out ? p.r * 0.66 + (x - (DX + 2.8)) * 0.07 : (x > DX + 1.7 ? p.r * (0.95 - (x - DX - 1.7) / 1.1 * 0.3) : p.r * 0.95);
+      const a = p.a + x * 0.6;
+      aPos.set(x, DY + Math.cos(a) * rr - (out ? (x - DX - 2.8) * 0.0 : 0), Math.sin(a) * rr);
+      const fade = smooth(0, 0.06, p.s) * (1 - smooth(0.9, 1, p.s));
+      aS.set(1.4 + flow * 1.8, 1, 1).multiplyScalar(0.3 + 0.8 * fade);
+      aTmp.compose(aPos, aQ, aS); air.setMatrixAt(i, aTmp);
+    }
+    air.count = AIR_N; air.instanceMatrix.needsUpdate = true;
+  } else air.count = 0;
+  // 標籤
+  setLabel(coilLab, DRY.on ? `🔥 螺旋電熱絲　發光強度 ∝ P ＝ ${fmt(P, 0)} W` : `🔥 螺旋電熱絲（${R_OPT[DRY.wire].name}）`);
+  thermoLab.follow = DRY.colTop;
+  setLabel(thermoLab, `🌡️ ${fmt(DRY.Tshow, 1)} °C`);
+  // 公式列
+  const Etxt = DRY.t > 0 ? fmt(Math.round(DRY.E), 0) : '<span class="blank">　</span>';
+  setCap(`<small>吹風機熱能轉換廠</small>` +
+    `<span class="mid">P ＝ V² ÷ R ＝ ${DRY.V}² ÷ ${R} ＝ <b>${fmt(P, 0)} W</b></span>` +
+    `<span class="huge">總消耗電能 E ＝ P × t ＝ ${fmt(P, 0)} W × ${fmt(DRY.t, 1)} s ＝ ${Etxt} 焦耳</span>` +
+    (DRY.msg || (DRY.on ? '電能不斷轉換成熱能，溫度計液柱持續上升…' : '按【⏻ 開機】開始計時'))
+  );
+  // 面板
+  setHTML('dryStat',
+    `電壓 V ＝ <b>${DRY.V}</b> V　電阻 R ＝ <b>${R}</b> Ω<br>` +
+    `電流 I ＝ V ÷ R ＝ <b>${fmt(DRY.V / R, 1)}</b> A<br>` +
+    `電功率 P ＝ <b class="r">${fmt(P, 0)}</b> W（最大值的 ${fmt(f * 100, 1)}%）<br>` +
+    `時間 t ＝ <b>${fmt(DRY.t, 1)}</b> s　電能 E ＝ <b class="g">${fmt(DRY.E / 1000, 2)}</b> kJ<br>` +
+    `溫度 ＝ <b class="o">${fmt(DRY.Tshow, 1)}</b> °C`);
+  setHTML('recStat', '<b>⏱️ 從 25 °C 升到 60 °C 花了多久？</b><br>' + (DRY.rec.length
+    ? DRY.rec.slice().sort((a, b) => b.P - a.P).map(r => `${r.V} V／${r.R} Ω　P ＝ ${fmt(r.P, 0)} W → <b>${fmt(r.t, 1)} s</b>`).join('<br>') + (DRY.rec.length > 1 ? '<br><span style="color:#7a6e60">功率 P 越大，花的時間 t 越短；P × t（熱能 E）都相同</span>' : '')
+    : '<span style="color:#7a6e60">換不同的電壓、電阻絲各測一次，比較看看</span>'));
+}
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  arena: { group: ARENA.group, cam: { pos: [0, 6.8, 17], target: [0, 1.7, 0.6], fitW: 21 }, update: updateArena },
+  dryer: { group: DRY.group, cam: { pos: [0.3, 5.4, 15], target: [0.3, 3.8, 0], fitW: 14 }, update: updateDryer }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  document.body.style.cursor = '';
+  goView(TABS[t].cam);
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {                  // 手機：依場景寬度把鏡頭拉遠，左右不被切掉
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 0.9 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;   // 公式列在上方 → 畫面主體往下移
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant || window.MobileView?.isMobile()) {
+    camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update();
+    return;
+  }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  const pr = Math.min(window.devicePixelRatio, 2);
+  renderer.setPixelRatio(pr); renderer.setSize(w, h);
+  bloomComposer.setPixelRatio(pr); bloomComposer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.fov = 40;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam, true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderAll(dt);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { overlay, frame, setTab, ARENA, SER, PAR, BULBS, placeBulb, setPower, DRY, setDryOn, bloom, camera, controls };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'arena';
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+tab = first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam, true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>
