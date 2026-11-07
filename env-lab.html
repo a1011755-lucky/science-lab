@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>全球環境變遷實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+  .tabs.three .tab { font-size: .74rem; padding: 9px 2px; }
+  .blink { animation: blink 0.9s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+  .btn.ebtn[data-e="0"].on { background: #1e6aa8; } .btn.ebtn[data-e="1"].on { background: #c62828; }
+  .sst { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+  .sst div { background: rgba(255,255,255,.8); border-radius: 14px; padding: 8px 10px; text-align: center; }
+  .sst small { display: block; font-size: .7rem; font-weight: 700; color: var(--ink-soft); }
+  .sst b { font-size: 1.3rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .checks { display: grid; gap: 4px; background: rgba(255,255,255,.8); border-radius: 14px; padding: 8px 12px; margin-top: 8px; font-size: .84rem; font-weight: 800; }
+  .aqibar { display: grid; grid-template-columns: repeat(4, 1fr); height: 8px; border-radius: 99px; overflow: hidden; margin-top: 2px; }
+  .aqi { display: flex; align-items: baseline; gap: 10px; justify-content: center; border-radius: 16px; padding: 10px; margin-top: 8px; color: #fff; transition: background .3s; }
+  .aqi b { font-size: 2.2rem; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+  .aqi span { font-size: .95rem; font-weight: 800; }
+  .stat hr { border: none; border-top: 1px dashed #e4d9c6; margin: 4px 0; }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g9">‹ 課程總覽</a>
+  <div class="title">全球環境變遷實驗室</div>
+  <div class="body">
+    <div class="tabs three">
+      <button class="tab on" data-tab="enso">🌊 聖嬰現象<small>海溫監測站</small></button>
+      <button class="tab" data-tab="debris">⛰️ 土石流<small>連鎖反應</small></button>
+      <button class="tab" data-tab="aqi">😷 空氣品質<small>AQI 觀測箱</small></button>
+    </div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="enso">
+      <div class="concept" style="--cc:#d35400"><div class="ct">聖嬰現象</div><div class="cd">常在<b>冬季</b>最明顯：<br>赤道<b>東太平洋</b>海溫異常升高</div></div>
+      <div class="row2">
+        <button class="btn ebtn on" data-e="0">🔵 正常年份</button>
+        <button class="btn ebtn" data-e="1">🔴 聖嬰現象</button>
+      </div>
+      <div class="sst">
+        <div><small>西太平洋海溫</small><b id="sstW">29.0℃</b></div>
+        <div><small>東太平洋海溫</small><b id="sstE">20.0℃</b></div>
+      </div>
+      <div class="stat" id="ensoStat"></div>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="debris" hidden>
+      <div class="concept" style="--cc:#8d6e63"><div class="ct">土石流的兩個條件</div><div class="cd">① 土石<b>鬆動</b>（例如地震後）<br>② <b>充足的雨水</b>（像潤滑劑）</div></div>
+      <div class="row2">
+        <button class="btn" id="quakeBtn">💥 發生地震</button>
+        <button class="btn" id="rainBtn">🌧️ 降下大雨</button>
+      </div>
+      <button class="btn" id="resetDebris">↺ 重置山坡</button>
+      <div class="checks">
+        <div id="ckLoose">⬜ 土石鬆動</div>
+        <div id="ckWater">⬜ 充足雨水</div>
+        <div id="ckFlow">→ 土石流？</div>
+      </div>
+      <div class="stat" id="debrisStat"></div>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="sec" data-tab="aqi" hidden>
+      <div class="concept" style="--cc:#5b8a72"><div class="ct">空氣品質指標 AQI</div><div class="cd">由多種汙染物算出，<br><b>數值越大，空氣越差</b></div></div>
+      <label class="lab" for="pol">汙染物</label>
+      <select id="pol">
+        <option value="pm25">PM2.5（細懸浮微粒）</option>
+        <option value="pm10">PM10（懸浮微粒）</option>
+        <option value="o3">O₃（臭氧）</option>
+        <option value="co">CO（一氧化碳）</option>
+        <option value="so2">SO₂（二氧化硫）</option>
+      </select>
+      <label class="lab" for="lvl">濃度等級<b id="lvlV">20</b></label>
+      <input class="big" type="range" id="lvl" min="0" max="200" step="1" value="20">
+      <div class="aqibar"><i style="background:#3fb950"></i><i style="background:#f2cc3d"></i><i style="background:#f08a24"></i><i style="background:#e5484d"></i></div>
+      <div class="ticks"><span>0</span><span>50</span><span>100</span><span>150</span><span>200</span></div>
+      <div class="aqi" id="aqiBadge"><b id="aqiV">20</b><span id="aqiTxt">良好</span></div>
+      <div class="stat" id="aqiStat"></div>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'enso', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+const sm = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+const lerp = THREE.MathUtils.lerp;
+const GY = 0.4;
+function profileGeo(lo, hi, x0, x1, depth, N = 100) {
+  const sh = new THREE.Shape();
+  for (let i = 0; i <= N; i++) { const x = x0 + (x1 - x0) * i / N; i ? sh.lineTo(x, lo(x)) : sh.moveTo(x, lo(x)); }
+  for (let i = N; i >= 0; i--) { const x = x0 + (x1 - x0) * i / N; sh.lineTo(x, Math.max(lo(x) + 0.002, hi(x))); }
+  const g = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: false, curveSegments: 1 });
+  g.translate(0, 0, -depth / 2); return g;
+}
+const cloudW = clay(0xffffff, { roughness: 1, clearcoat: 0 }), cloudG = clay(0x8e969c, { roughness: 1, clearcoat: 0 });
+function makeCloud(w, h, d, mat = cloudW, n = 9) {
+  const g = new THREE.Group();
+  for (let i = 0; i < n; i++) { const r = (0.35 + Math.random() * 0.25) * Math.min(w, h * 2); const m = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), mat); m.position.set((Math.random() - 0.5) * w, (Math.random() - 0.3) * h * 0.6, (Math.random() - 0.5) * d); g.add(m); }
+  return g;
+}
+function makePts(group, N, tex, size) {
+  const pos = new Float32Array(N * 3); for (let i = 0; i < N; i++) pos[i * 3 + 1] = -50;
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const p = new THREE.Points(geo, new THREE.PointsMaterial({ size, map: tex, transparent: true, depthWrite: false, alphaTest: 0.03 }));
+  p.frustumCulled = false; p.renderOrder = 6; group.add(p);
+  return { p, pos, geo, N };
+}
+
+/* =========================================================
+   Tab 1：聖嬰現象 ─ 太平洋赤道剖面
+   ---------------------------------------------------------
+   x：西（−）→ 東（＋）。海面略微彎曲（地球曲面）。
+   正常年份：信風強，暖水被吹到西邊，東邊冷水湧升 → 東太平洋冷。
+   聖嬰：信風減弱，湧升流變弱，暖水回流到東邊 → 東太平洋異常變暖。
+   ========================================================= */
+const EN = { group: new THREE.Group(), k: 0, target: 0, t: 0 };
+scene.add(EN.group);
+const OX = 11, OZ = 3, OB = 1.0;
+const ySurf = x => 5.0 - 0.012 * x * x;
+const surfT = (x, k) => lerp(29 - 9 * sm(-4, 10, x), 29 - 2.6 * sm(-4, 10, x), k);
+const thermo = (x, k) => lerp(lerp(3.0, 0.45, sm(-OX, OX, x)), lerp(2.1, 1.7, sm(-OX, OX, x)), k);
+const TSTOPS = [[12, 0x1a3f8a], [18, 0x2563b8], [21, 0x3f8fd0], [24, 0x7cc3c8], [26.5, 0xf2c14e], [28, 0xf08a24], [29.5, 0xe0452f]];
+const cA = new THREE.Color(), cB = new THREE.Color();
+function tempColor(T, out) {
+  if (T <= TSTOPS[0][0]) return out.setHex(TSTOPS[0][1]);
+  for (let i = 1; i < TSTOPS.length; i++) if (T <= TSTOPS[i][0]) { const [t0, c0] = TSTOPS[i - 1], [t1, c1] = TSTOPS[i]; return out.copy(cA.setHex(c0)).lerp(cB.setHex(c1), (T - t0) / (t1 - t0)); }
+  return out.setHex(TSTOPS[TSTOPS.length - 1][1]);
+}
+const NXo = 120, NYo = 30, NZo = 10;
+// 海面
+const seaTop = new THREE.PlaneGeometry(OX * 2, OZ * 2, NXo, NZo); seaTop.rotateX(-Math.PI / 2);
+seaTop.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(seaTop.attributes.position.count * 3), 3));
+const seaTopM = new THREE.Mesh(seaTop, new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.25, clearcoat: 1 }));
+seaTopM.receiveShadow = true; EN.group.add(seaTopM);
+// 正面剖面（看得到溫躍層）
+const seaFront = new THREE.PlaneGeometry(OX * 2, 1, NXo, NYo);
+seaFront.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(seaFront.attributes.position.count * 3), 3));
+const seaFrontM = new THREE.Mesh(seaFront, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6 }));
+seaFrontM.position.z = OZ; EN.group.add(seaFrontM);
+{
+  const back = new THREE.Mesh(profileGeo(() => OB, x => ySurf(x) - 0.3, -OX, OX, OZ * 2 - 0.06, 60), clay(0x234e8c, { roughness: 0.6 }));
+  EN.group.add(back);
+  add(EN.group, shadowed(new THREE.Mesh(new RoundedBoxGeometry(OX * 2 + 6.4, OB, OZ * 2 + 0.6, 3, 0.12), clay(0xb9a07a))), 0, OB / 2, 0);
+  // 西：亞洲／澳洲（綠色島嶼）；東：南美洲（安地斯山）
+  const west = shadowed(new THREE.Mesh(new RoundedBoxGeometry(2.8, 4.6, OZ * 2, 4, 0.4), clay(0x8fb36b))); add(EN.group, west, -OX - 1.5, OB + 2.1, 0);
+  for (let i = 0; i < 4; i++) add(EN.group, shadowed(new THREE.Mesh(new THREE.ConeGeometry(0.4, 1.0, 10), clay(0x5f9f6e))), -OX - 1.5 + (i % 2 - 0.5) * 1.2, OB + 4.9, (i - 1.5) * 1.2);
+  const east = shadowed(new THREE.Mesh(new RoundedBoxGeometry(2.8, 4.6, OZ * 2, 4, 0.4), clay(0xc9a77c))); add(EN.group, east, OX + 1.5, OB + 2.1, 0);
+  for (let i = 0; i < 3; i++) add(EN.group, shadowed(new THREE.Mesh(new THREE.ConeGeometry(0.9, 2.0, 6), clay(0x9c8a74, { flatShading: true }))), OX + 1.5, OB + 5.2, (i - 1) * 1.8);
+}
+// 湧升流粒子、信風箭頭、雲雨
+const upw = makePts(EN.group, 220, dotTexture('#5aa7f0', 'rgba(20,70,140,.9)'), 0.24);
+const upU = new Float32Array(upw.N), upX = new Float32Array(upw.N), upZ = new Float32Array(upw.N);
+for (let i = 0; i < upw.N; i++) { upU[i] = Math.random(); upX[i] = 4.5 + Math.random() * 6; upZ[i] = OZ - 0.05 - Math.random() * 0.4; }
+const winds = [0, 1, 2, 3, 4].map(i => {
+  const g = new THREE.Group(); const m = clay(0x5d8fc0, { emissive: 0x5d8fc0, emissiveIntensity: 0.25 });
+  add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.2, 10), m), 0, 0, 0).rotation.z = Math.PI / 2;
+  const h = add(g, new THREE.Mesh(new THREE.ConeGeometry(0.25, 0.6, 12), m), -1.35, 0, 0); h.rotation.z = Math.PI / 2;
+  g.position.set(8 - i * 4, 8.2, (i % 2 ? -1 : 1) * 0.8); EN.group.add(g); g.userData.m = m; return g;
+});
+const cloudWest = new THREE.Group(); EN.group.add(cloudWest);
+for (let i = 0; i < 3; i++) { const c = makeCloud(2.6, 1.2, 2.2, i ? cloudW : cloudG); c.position.set(i * 1.6 - 1.6, (i % 2) * 0.4, 0); cloudWest.add(c); }
+cloudWest.position.set(-8.5, 9.6, 0);
+const cloudEast = cloudWest.clone(); cloudEast.position.set(8.5, 9.6, 0); EN.group.add(cloudEast);
+const rainW = makePts(EN.group, 220, dotTexture('#6fb6ee', 'rgba(30,90,160,.8)'), 0.13), rainE = makePts(EN.group, 220, dotTexture('#6fb6ee', 'rgba(30,90,160,.8)'), 0.13);
+function rainStep(R, x0, x1, top, k, dt) {
+  const n = Math.floor(R.N * k);
+  for (let i = 0; i < R.N; i++) {
+    const j = i * 3;
+    if (i >= n) { R.pos[j + 1] = -50; continue; }
+    R.pos[j + 1] -= dt * 7;
+    if (R.pos[j + 1] < ySurf(R.pos[j]) || R.pos[j + 1] > top + 1) R.pos.set([lerp(x0, x1, Math.random()), top - Math.random() * (R.pos[j + 1] < -40 ? top - 5 : 0.3), (Math.random() - 0.5) * 4], j);
+  }
+  R.geo.attributes.position.needsUpdate = true;
+}
+const lbW = addLabel('enso', '🌏 西太平洋<br><small>（亞洲／澳洲）</small>', '', V3(-OX - 1.5, OB + 6.4, 0));
+const lbE = addLabel('enso', '🌎 東太平洋<br><small>（中南美洲）</small>', '', V3(OX + 1.5, OB + 7.2, 0));
+const lbTW = addLabel('enso', '', 'red', V3(-8, 5.6, OZ));
+const lbTE = addLabel('enso', '', 'lam', V3(8, 5.6, OZ));
+const lbUp = addLabel('enso', '⬆ 湧升流（深層冷水上升）', 'lam small', V3(7.6, 2.4, OZ + 0.2));
+const lbWind = addLabel('enso', '', 'small', V3(0, 9.0, 0));
+const lbThermo = addLabel('enso', '溫躍層（暖水與冷水的分界）', 'small', V3(-3, 2.5, OZ + 0.2));
+const lbRainW = addLabel('enso', '', 'small', V3(-8.5, 11, 0));
+const lbRainE = addLabel('enso', '', 'small', V3(8.5, 11, 0));
+document.querySelectorAll('.ebtn').forEach(b => b.addEventListener('click', () => {
+  EN.target = Number(b.dataset.e);
+  document.querySelectorAll('.ebtn').forEach(x => x.classList.toggle('on', x === b));
+}));
+function updateEnso(dt) {
+  EN.t += dt;
+  EN.k += (EN.target - EN.k) * (1 - Math.exp(-dt * 1.2));
+  const k = EN.k;
+  // 海面顏色與起伏
+  const pt = seaTop.attributes.position, ct = seaTop.attributes.color;
+  for (let i = 0; i < pt.count; i++) {
+    const x = pt.getX(i), z = pt.getZ(i);
+    pt.setY(i, ySurf(x) + 0.05 * Math.sin(x * 1.3 + EN.t * 1.5 + z) + 0.03 * Math.sin(z * 2 + EN.t));
+    tempColor(surfT(x, k), tmpC); ct.setXYZ(i, tmpC.r, tmpC.g, tmpC.b);
+  }
+  pt.needsUpdate = true; ct.needsUpdate = true; seaTop.computeVertexNormals();
+  const pf = seaFront.attributes.position, cf = seaFront.attributes.color;
+  for (let i = 0; i < pf.count; i++) {
+    const x = pf.getX(i), v = (i / (NXo + 1) | 0) / NYo;          // 0 ＝ 上、1 ＝ 下
+    const top = ySurf(x), y = lerp(top, OB, v), depth = top - y, th = thermo(x, k);
+    pf.setY(i, y);
+    const T = depth < th ? surfT(x, k) : lerp(surfT(x, k) - 6, 12, sm(th, th + 1.6, depth));
+    tempColor(T, tmpC); cf.setXYZ(i, tmpC.r, tmpC.g, tmpC.b);
+  }
+  pf.needsUpdate = true; cf.needsUpdate = true;
+  // 湧升流
+  const up = 1 - k;
+  for (let i = 0; i < upw.N; i++) {
+    const j = i * 3;
+    if (i >= upw.N * up) { upw.pos[j + 1] = -50; continue; }
+    upU[i] += dt * 0.25; if (upU[i] > 1) upU[i] -= 1;
+    const u = upU[i], x = upX[i] - (u > 0.75 ? (u - 0.75) * 10 : 0);
+    upw.pos.set([x, lerp(OB + 0.3, ySurf(x) - 0.15, Math.min(1, u / 0.75)), upZ[i]], j);
+  }
+  upw.geo.attributes.position.needsUpdate = true;
+  lbUp.show = up > 0.4;
+  // 信風
+  winds.forEach((w, i) => { const s = 1 - 0.75 * k; w.scale.set(s, Math.max(0.3, s), Math.max(0.3, s)); w.position.x = 8 - i * 4 - ((EN.t * 2 * s) % 1.5); w.userData.m.color.setHex(k > 0.5 ? 0xa9bccd : 0x5d8fc0); });
+  setLabel(lbWind, k < 0.5 ? '⬅ 信風強（東 → 西），把暖水吹到西邊' : '⬅ 信風減弱，暖水回流到東邊');
+  // 雲雨：正常年份在西邊，聖嬰時移到東邊
+  cloudWest.scale.setScalar(Math.max(0.01, 1 - 0.8 * k)); cloudEast.scale.setScalar(Math.max(0.01, k));
+  rainStep(rainW, -11, -6, 9.2, 1 - k, dt); rainStep(rainE, 6, 11, 9.2, k, dt);
+  lbRainW.show = k < 0.5; lbRainE.show = k > 0.5;
+  setLabel(lbRainW, '🌧️ 多雨'); setLabel(lbRainE, '🌧️ 異常豪雨');
+  const tw = surfT(-9, k), te = surfT(9, k);
+  setLabel(lbTW, `🌡️ ${tw.toFixed(1)}℃`); setLabel(lbTE, `🌡️ ${te.toFixed(1)}℃`, te > 24 ? 'red' : 'lam');
+  $('sstW').textContent = tw.toFixed(1) + '℃'; $('sstE').textContent = te.toFixed(1) + '℃';
+  $('sstE').style.color = te > 24 ? '#c62828' : '#1e6aa8';
+  if (EN.target === 1) setCap(`<small>🔴 聖嬰現象（常在冬季最明顯）</small><span class="huge red">聖嬰現象特徵：赤道東太平洋海溫異常升高，造成全球氣候異常！</span>信風減弱 → 湧升流變弱 → 暖水往東擴散`);
+  else setCap(`<small>🔵 正常年份</small><span class="huge blu">信風把暖水吹向西太平洋，東太平洋有冷水湧升</span>所以東太平洋海溫較低，西太平洋較暖、多雨`);
+  setHTML('ensoStat', EN.target === 1
+    ? `<b class="r">聖嬰年的影響</b><br>・南美西岸：異常<b>豪雨</b>、漁獲<b>減少</b>（湧升流帶來的養分變少）<br>・印尼、澳洲：降雨減少、<b>乾旱</b>、森林火災<br>・全球許多地區氣候異常`
+    : `<b class="b">正常年份</b><br>・東太平洋：冷水湧升，帶來豐富養分 → 秘魯漁場<br>・西太平洋：海水溫暖，空氣上升、多雨<br>・信風由東向西吹`);
+}
+const tmpC = new THREE.Color();
+
+/* =========================================================
+   Tab 2：土石流連鎖反應
+   ---------------------------------------------------------
+   坡面上鋪滿黏土球。只有「鬆動」＋「充足雨水」同時成立才會爆發土石流。
+   ========================================================= */
+const DB = { group: new THREE.Group(), loose: 0, quakeT: -1, rainT: -1, water: 0, flow: false, flowT: 0, t: 0, runoff: 0 };
+scene.add(DB.group);
+const DX0 = -11, DX1 = 13, DZ = 3;
+const yTer = x => GY + 0.4 + 8.4 * (1 - sm(-8.5, 6.5, x));
+// 沿坡面的弧長表：s ↔ x
+const ARC = []; { let s = 0, px = DX0, py = yTer(DX0); for (let x = DX0; x <= DX1 + 1e-6; x += 0.05) { s += Math.hypot(x - px, yTer(x) - py); ARC.push([s, x]); px = x; py = yTer(x); } }
+const S_MAX = ARC[ARC.length - 1][0];
+function xAtS(s) { if (s <= 0) return DX0; let lo = 0, hi = ARC.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (ARC[m][0] <= s) lo = m; else hi = m; } const a = ARC[lo], b = ARC[hi]; return a[1] + (b[1] - a[1]) * (s - a[0]) / (b[0] - a[0] || 1); }
+const sAtX = x => { for (const [s, xx] of ARC) if (xx >= x) return s; return S_MAX; };
+const slopeN = x => { const d = (yTer(x + 0.05) - yTer(x - 0.05)) / 0.1; return V3(-d, 1, 0).normalize(); };
+const mountain = new THREE.Mesh(profileGeo(() => GY, yTer, DX0, DX1, DZ * 2, 160), clay(0xa1887f, { roughness: 0.95 }));
+mountain.castShadow = mountain.receiveShadow = true;
+const mtn = new THREE.Group(); mtn.add(mountain); DB.group.add(mtn);
+add(mtn, new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.06, DZ * 2), clay(0x8fb36b)), DX0 + 1.2, yTer(DX0) + 0.02, 0);
+for (let i = 0; i < 5; i++) add(mtn, shadowed(new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.0, 10), clay(0x5f9f6e))), DX0 + 0.6 + (i % 2) * 1.0, yTer(DX0) + 0.5, -2.4 + i * 1.2);
+// 黏土球
+const B_R = 0.27, SB0 = sAtX(-8.2), SB1 = sAtX(5.4);
+const BALLS = [];
+for (let L = 0; L < 2; L++) for (let s = SB0; s < SB1; s += 0.5) for (let z = -DZ + 0.35; z < DZ - 0.3; z += 0.52) BALLS.push({ s: s + (L ? 0.25 : 0), z: z + (L ? 0.26 : 0), L, js: (Math.random() - 0.5) * 0.06, jz: (Math.random() - 0.5) * 0.06, ls: (Math.random() - 0.5) * 0.5, lz: (Math.random() - 0.5) * 0.4, v: 0, x: 0, y: 0, pz: 0, rot: Math.random() * 6, seed: Math.random(), done: false });
+const ballIM = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(B_R, 1), clay(0xffffff, { roughness: 0.85, flatShading: true }), BALLS.length);
+ballIM.castShadow = ballIM.receiveShadow = true; DB.group.add(ballIM);
+BALLS.forEach((b, i) => ballIM.setColorAt(i, new THREE.Color().setHSL(0.06 + Math.random() * 0.04, 0.4 + Math.random() * 0.2, 0.26 + Math.random() * 0.12)));
+// 裂縫
+const cracks = [];
+for (let i = 0; i < 7; i++) {
+  const x = lerp(-7, 3, Math.random()), n = slopeN(x);
+  const m = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.05, 1.4 + Math.random() * 1.6), new THREE.MeshBasicMaterial({ color: 0x3e2a20 }));
+  m.position.set(x, yTer(x) + 0.62, (Math.random() - 0.5) * 3); m.quaternion.setFromUnitVectors(YUP, n); m.rotateY(Math.random() * 0.6 - 0.3); m.visible = false; mtn.add(m); cracks.push(m);
+}
+// 房子（在坡面上）
+const HX = -4.6, HS = sAtX(HX);
+const house = new THREE.Group(); DB.group.add(house);
+add(house, new THREE.Mesh(new RoundedBoxGeometry(1.3, 0.9, 1.1, 2, 0.06), clay(0xfaf3e0)), 0, 0.45, 0);
+const roofH = add(house, new THREE.Mesh(new THREE.ConeGeometry(1.0, 0.7, 4), clay(0xc0634f)), 0, 1.25, 0); roofH.rotation.y = Math.PI / 4;
+add(house, new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 0.04), clay(0x8d6e63)), 0.2, 0.25, 0.56);
+shadowed(house);
+const HOUSE = { s: HS, v: 0, rot: 0, z: -0.6 };
+// 雨與水流
+const drRain = makePts(DB.group, 420, dotTexture('#6fb6ee', 'rgba(30,90,160,.8)'), 0.14);
+const runoff = makePts(DB.group, 260, dotTexture('#4fa3e8', 'rgba(20,80,160,.85)'), 0.2);
+const roS = new Float32Array(runoff.N), roZ = new Float32Array(runoff.N);
+for (let i = 0; i < runoff.N; i++) { roS[i] = Math.random() * S_MAX; roZ[i] = (Math.random() - 0.5) * 5; }
+const lbHouse = addLabel('debris', '🏠', '', V3(0, 1.9, 0), house);
+const lbState = addLabel('debris', '', 'small', V3(-2, 10.6, 0));
+const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpS = V3(1, 1, 1), tmpP = V3(0, 0, 0), tmpE = new THREE.Euler();
+$('quakeBtn').addEventListener('click', () => { if (!DB.flow) DB.quakeT = 0; });
+$('rainBtn').addEventListener('click', () => { DB.rainT = 0; });
+$('resetDebris').addEventListener('click', () => {
+  Object.assign(DB, { loose: 0, quakeT: -1, rainT: -1, water: 0, flow: false, flowT: 0, runoff: 0 });
+  BALLS.forEach(b => { b.v = 0; b.done = false; b.s0 = undefined; });
+  Object.assign(HOUSE, { s: HS, v: 0, rot: 0 });
+  cracks.forEach(c => { c.visible = false; });
+});
+function surfPoint(s, z, lift, out) { const x = xAtS(s), n = slopeN(x); return out.set(x, yTer(x), z).addScaledVector(n, lift); }
+function updateDebris(dt) {
+  DB.t += dt;
+  // 地震：晃動 2 秒，之後土石變鬆動
+  let shake = 0;
+  if (DB.quakeT >= 0) {
+    DB.quakeT += dt;
+    if (DB.quakeT < 2.2) shake = 0.18 * (1 - DB.quakeT / 2.2);
+    DB.loose = Math.min(1, DB.loose + dt * 0.8);
+    cracks.forEach((c, i) => { c.visible = DB.loose > 0.2 + i * 0.08; });
+  }
+  mtn.position.set(shake * Math.sin(DB.t * 47), shake * 0.4 * Math.sin(DB.t * 61), shake * 0.6 * Math.cos(DB.t * 53));
+  // 雨
+  const raining = DB.rainT >= 0 && DB.rainT < 6;
+  if (DB.rainT >= 0) DB.rainT += dt;
+  for (let i = 0; i < drRain.N; i++) {
+    const j = i * 3;
+    if (!raining) { drRain.pos[j + 1] = -50; continue; }
+    drRain.pos[j + 1] -= dt * 9;
+    if (drRain.pos[j + 1] < yTer(drRain.pos[j]) + 0.5) drRain.pos.set([lerp(-10, 6, Math.random()), 13 + Math.random() * (drRain.pos[j + 1] < -40 ? 2 : 0.3), (Math.random() - 0.5) * 5.5], j);
+  }
+  drRain.geo.attributes.position.needsUpdate = true;
+  if (raining) {
+    if (DB.loose > 0.9) DB.water = Math.min(1, DB.water + dt * 0.45);
+    else DB.runoff = Math.min(1, DB.runoff + dt);
+  } else DB.runoff = Math.max(0, DB.runoff - dt * 0.4);
+  if (!DB.flow && DB.loose > 0.9 && DB.water >= 1) { DB.flow = true; DB.flowT = 0; }
+  // 沒鬆動時：水沿坡面排走
+  for (let i = 0; i < runoff.N; i++) {
+    const j = i * 3;
+    const on = (DB.loose > 0.9 ? DB.water * (DB.flow ? 0 : 1) : DB.runoff) * runoff.N > i;
+    if (!on) { runoff.pos[j + 1] = -50; continue; }
+    if (DB.loose > 0.9) { surfPoint(SB0 + (i * 7.31 % 1) * (SB1 - SB0), roZ[i] * 0.95, 0.55 + 0.1 * Math.sin(DB.t * 3 + i), tmpP); }
+    else { roS[i] += dt * 6; if (roS[i] > S_MAX) roS[i] = sAtX(-9); surfPoint(roS[i], roZ[i], 0.62, tmpP); }
+    runoff.pos.set(tmpP.toArray(), j);
+  }
+  runoff.geo.attributes.position.needsUpdate = true;
+  // 黏土球
+  if (DB.flow) DB.flowT += dt;
+  BALLS.forEach((b, i) => {
+    let p;
+    if (DB.flow && !b.done) {
+      const delay = (SB1 - b.s) * 0.06 + b.seed * 0.3;            // 下方的先崩
+      if (DB.flowT > delay) { b.v += dt * (b.s < sAtX(7) ? 9 : -6); b.v = Math.max(0, Math.min(b.v, 11)); b.s += b.v * dt; b.rot += b.v * dt * 3; if (b.s > sAtX(7) && b.v <= 0.01) b.done = true; }
+    }
+    const ls = b.s + b.js + DB.loose * b.ls, lz = b.z + b.jz + DB.loose * b.lz;
+    const pile = b.s > sAtX(6.8) ? (b.L * 0.4 + b.seed * 0.5) : 0;
+    surfPoint(ls, clamp(lz + (b.s > sAtX(6.8) ? (b.seed - 0.5) * 1.5 : 0), -DZ + 0.2, DZ - 0.2), B_R + b.L * 0.42 + DB.loose * 0.08 * b.seed + pile, tmpP);
+    tmpP.add(mtn.position);
+    tmpQ.setFromEuler(tmpE.set(b.rot, b.rot * 0.7, 0)); tmpS.setScalar(1);
+    ballIM.setMatrixAt(i, tmpM.compose(tmpP, tmpQ, tmpS));
+  });
+  ballIM.instanceMatrix.needsUpdate = true;
+  // 房子
+  if (DB.flow && DB.flowT > 0.9) { HOUSE.v = Math.min(9, HOUSE.v + dt * 7); if (HOUSE.s < sAtX(8.5)) { HOUSE.s += HOUSE.v * dt; HOUSE.rot += HOUSE.v * dt * 0.5; } }
+  surfPoint(HOUSE.s, HOUSE.z, 0.9, tmpP); house.position.copy(tmpP).add(mtn.position);
+  house.rotation.set(0.2 * Math.sin(HOUSE.rot), 0, -Math.min(1.3, HOUSE.rot * 0.35));
+  // UI
+  const L = DB.loose > 0.9, W = DB.loose > 0.9 ? DB.water >= 1 : false;
+  $('ckLoose').textContent = (L ? '✅' : '⬜') + ' 土石鬆動'; $('ckWater').textContent = (W || (raining && L) ? '✅' : '⬜') + ' 充足雨水';
+  $('ckFlow').innerHTML = DB.flow ? '→ <b style="color:#c62828">土石流爆發！</b>' : '→ 土石流？';
+  setLabel(lbState, '');
+  lbState.show = false;
+  if (DB.flow) setCap(`<small>⚠️ 土石流</small><span class="huge red blink">危險！土石鬆動 ＋ 充足雨水 ＝ 土石流爆發！</span>泥水像潤滑劑，大量土石沿著陡坡崩塌、沖毀房屋`);
+  else if (raining && L) setCap(`<small>🌧️ 下大雨中…含水量 ${Math.round(DB.water * 100)}%</small><span class="huge">雨水滲進鬆動的土石縫隙…</span>`);
+  else if (raining) setCap(`<small>🌧️ 下大雨（土石還很穩固）</small><span class="huge blu">雨水沿著坡面正常排走</span>土石沒有鬆動，所以沒有發生土石流`);
+  else if (DB.quakeT >= 0 && DB.quakeT < 2.2) setCap(`<small>💥 地震！</small><span class="huge">山坡劇烈搖晃…</span>`);
+  else if (L) setCap(`<small>地震過後</small><span class="huge org">土石已鬆動，但缺乏水做潤滑。</span>表面出現裂縫、土石排列變鬆散，但<b>還不會</b>發生土石流`);
+  else setCap(`<small>陡坡山體</small>試試看：先「<b>🌧️ 降下大雨</b>」，再「<b>💥 發生地震</b>」後下雨，比較兩次的差別`);
+  setHTML('debrisStat', `土石狀態：<b class="${L ? 'o' : 'g'}">${L ? '鬆動' : '穩固'}</b><br>土石含水量：<b class="b">${Math.round(DB.water * 100)}%</b><br>${DB.flow ? '<b class="r">土石流發生！</b>' : '尚未發生土石流'}<br><small>防災：山坡地避免過度開發、注意土石流警戒、豪雨時提早撤離</small>`);
+}
+
+/* =========================================================
+   Tab 3：空氣品質 AQI 觀測箱
+   ---------------------------------------------------------
+   AQI 分級（台灣環境部）：0–50 良好、51–100 普通、101–150 對敏感族群不健康、151–200 對所有族群不健康。
+   濃度換算採各汙染物的 AQI 分段濃度（線性內插）。
+   ========================================================= */
+const AQ = { group: new THREE.Group(), pol: 'pm25', lvl: 20, show: 20, t: 0 };
+scene.add(AQ.group);
+const BOX = { w: 9, h: 5.6, d: 5.4 };
+{
+  add(AQ.group, shadowed(new THREE.Mesh(new RoundedBoxGeometry(BOX.w + 0.8, 0.4, BOX.d + 0.8, 3, 0.12), clay(0xc49a6c))), 0, GY + 0.2 - 0.4, 0);
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(BOX.w, BOX.h, BOX.d), new THREE.MeshPhysicalMaterial({ color: 0xeaf6f8, roughness: 0.04, clearcoat: 1, transparent: true, opacity: 0.12, depthWrite: false }));
+  glass.position.y = GY + BOX.h / 2; glass.renderOrder = 9; AQ.group.add(glass);
+  const fr = new THREE.LineSegments(new THREE.EdgesGeometry(glass.geometry), new THREE.LineBasicMaterial({ color: 0x8aa6ad }));
+  fr.position.copy(glass.position); AQ.group.add(fr);
+  add(AQ.group, new THREE.Mesh(new THREE.BoxGeometry(BOX.w - 0.1, 0.08, BOX.d - 0.1), clay(0x8fb36b)), 0, GY + 0.04, 0);
+  // 小城市
+  [[-3, -1.5, 0.9, 2.2], [-1.8, -1.6, 0.8, 1.5], [-0.6, -1.7, 1.0, 2.8], [2.2, -1.6, 0.9, 1.9], [3.4, -1.4, 0.8, 2.4]].forEach(([x, z, w, h]) => add(AQ.group, shadowed(new THREE.Mesh(new RoundedBoxGeometry(w, h, w, 2, 0.06), clay([0xe9dcc4, 0xd9c9a3, 0xc9b79c][Math.floor(Math.abs(x)) % 3]))), x, GY + h / 2, z));
+  for (const x of [-2.6, 1.0, 3.6]) { const t = new THREE.Group(); t.position.set(x, GY, 1.4); AQ.group.add(t); add(t, new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 8), clay(0x8d6e63)), 0, 0.25, 0); add(t, new THREE.Mesh(new THREE.SphereGeometry(0.35, 14, 10), clay(0x6f9f6a)), 0, 0.7, 0); shadowed(t); }
+  const kid = new THREE.Group(); kid.position.set(0.6, GY, 1.6); AQ.group.add(kid);
+  add(kid, new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.32, 6, 10), clay(0x5b8a72)), 0, 0.3, 0);
+  add(kid, new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 10), clay(0xf0c8a0)), 0, 0.7, 0);
+  shadowed(kid);
+}
+const POL = {
+  pm25: { name: 'PM2.5', full: '細懸浮微粒', unit: 'μg/m³', bp: [[0, 15.4], [15.5, 35.4], [35.5, 54.4], [54.5, 150.4]], N: 1800, size: 0.06, tex: dotTexture('#4b4b4b', 'rgba(30,30,30,.9)'), src: '燃燒、汽機車排放、工廠、境外移入', note: '粒徑 ≤ 2.5 微米，能深入肺泡、進入血液' },
+  pm10: { name: 'PM10', full: '懸浮微粒', unit: 'μg/m³', bp: [[0, 54], [55, 125], [126, 254], [255, 354]], N: 650, size: 0.15, tex: dotTexture('#a07a52', 'rgba(90,60,30,.9)'), src: '道路揚塵、營建工地、沙塵暴', note: '顆粒較大，會慢慢沉降' },
+  o3: { name: 'O₃', full: '臭氧', unit: 'ppb', bp: [[0, 54], [55, 70], [71, 85], [86, 105]], N: 220, size: 0.9, tex: glowTexture('140,150,230'), src: '汽機車、工廠排放的氮氧化物在陽光下反應產生', note: '高空臭氧保護我們，但地面臭氧對呼吸道有害' },
+  co: { name: 'CO', full: '一氧化碳', unit: 'ppm', bp: [[0, 4.4], [4.5, 9.4], [9.5, 12.4], [12.5, 15.4]], N: 500, size: 0.14, tex: dotTexture('#9aa0a6', 'rgba(70,80,90,.8)'), src: '燃燒不完全（汽機車、熱水器）', note: '無色無味，會和血紅素結合，造成缺氧' },
+  so2: { name: 'SO₂', full: '二氧化硫', unit: 'ppb', bp: [[0, 20], [21, 75], [76, 185], [186, 304]], N: 500, size: 0.16, tex: dotTexture('#e6c229', 'rgba(150,110,0,.9)'), src: '燃燒含硫的煤、石油（發電廠、工廠）', note: '有刺激性臭味，也是形成酸雨的原因之一' }
+};
+const AQI_LV = [[50, '良好', '#3fb950', '可以正常戶外活動'], [100, '普通', '#f2cc3d', '極特殊敏感族群建議減少戶外活動'], [150, '對敏感族群不健康', '#f08a24', '老人、小孩、心肺疾病者應減少戶外活動'], [200, '對所有族群不健康', '#e5484d', '所有人都應減少戶外活動，外出戴口罩']];
+const aqiLevel = v => AQI_LV.find(l => v <= l[0]) || AQI_LV[3];
+function concFromAqi(p, v) {
+  const seg = Math.min(3, Math.max(0, Math.ceil(v / 50) - 1)), lo = seg * 50 + (seg ? 1 : 0), hi = (seg + 1) * 50;
+  const [c0, c1] = POL[p].bp[seg];
+  return c0 + (c1 - c0) * clamp((v - lo) / (hi - lo), 0, 1);
+}
+const pSys = {};
+for (const [k, P] of Object.entries(POL)) {
+  const s = makePts(AQ.group, P.N, P.tex, P.size);
+  s.v = Array.from({ length: P.N }, () => V3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(0.6));
+  for (let i = 0; i < P.N; i++) s.pos.set([(Math.random() - 0.5) * (BOX.w - 0.4), GY + 0.2 + Math.random() * (BOX.h - 0.4), (Math.random() - 0.5) * (BOX.d - 0.4)], i * 3);
+  s.p.visible = false; if (k === 'o3') s.p.material.opacity = 0.55;
+  pSys[k] = s;
+}
+const haze = new THREE.Mesh(new THREE.BoxGeometry(BOX.w - 0.05, BOX.h - 0.05, BOX.d - 0.05), new THREE.MeshBasicMaterial({ color: 0x8a8070, transparent: true, opacity: 0, depthWrite: false }));
+haze.position.y = GY + BOX.h / 2; haze.renderOrder = 8; AQ.group.add(haze);
+const BG_CLEAN = new THREE.Color(0xf5f1e7), BG_DIRTY = new THREE.Color(0x8f8a82);
+const lbBox = addLabel('aqi', '', '', V3(0, GY + BOX.h + 0.7, 0));
+$('pol').addEventListener('change', e => { AQ.pol = e.target.value; });
+$('lvl').addEventListener('input', e => { AQ.lvl = Number(e.target.value); });
+function setSmog(dirt) {
+  scene.background.copy(BG_CLEAN).lerp(BG_DIRTY, dirt);
+  ambient.intensity = 1.1 * (1 - 0.45 * dirt); sun.intensity = 1.7 * (1 - 0.6 * dirt);
+  sun.color.setHex(0xfff1dc).lerp(cA.setHex(0xb8a98c), dirt);
+}
+function updateAqi(dt) {
+  AQ.t += dt;
+  AQ.show += (AQ.lvl - AQ.show) * (1 - Math.exp(-dt * 6));
+  const v = AQ.show, P = POL[AQ.pol], lv = aqiLevel(Math.round(v));
+  for (const [k, s] of Object.entries(pSys)) {
+    s.p.visible = k === AQ.pol;
+    if (k !== AQ.pol) continue;
+    const n = Math.round(s.N * v / 200);
+    s.geo.setDrawRange(0, n);
+    for (let i = 0; i < n; i++) {
+      const j = i * 3, w = s.v[i];
+      w.x += (Math.random() - 0.5) * dt * 1.5; w.y += (Math.random() - 0.5) * dt * 1.5 - (k === 'pm10' ? dt * 0.3 : 0); w.z += (Math.random() - 0.5) * dt * 1.5;
+      w.clampLength(0, k === 'o3' ? 0.35 : 0.8);
+      s.pos[j] += w.x * dt; s.pos[j + 1] += w.y * dt; s.pos[j + 2] += w.z * dt;
+      if (Math.abs(s.pos[j]) > BOX.w / 2 - 0.2) { w.x *= -1; s.pos[j] = clamp(s.pos[j], -BOX.w / 2 + 0.2, BOX.w / 2 - 0.2); }
+      if (Math.abs(s.pos[j + 2]) > BOX.d / 2 - 0.2) { w.z *= -1; s.pos[j + 2] = clamp(s.pos[j + 2], -BOX.d / 2 + 0.2, BOX.d / 2 - 0.2); }
+      if (s.pos[j + 1] < GY + 0.15 || s.pos[j + 1] > GY + BOX.h - 0.15) { if (k === 'pm10' && s.pos[j + 1] < GY + 0.15) s.pos[j + 1] = GY + BOX.h - 0.3; else { w.y *= -1; s.pos[j + 1] = clamp(s.pos[j + 1], GY + 0.15, GY + BOX.h - 0.15); } }
+    }
+    s.geo.attributes.position.needsUpdate = true;
+  }
+  const dirt = sm(20, 200, v);
+  haze.material.opacity = 0.32 * dirt;
+  haze.material.color.setHex(AQ.pol === 'o3' ? 0x8a8fb8 : AQ.pol === 'so2' ? 0xb0a060 : AQ.pol === 'pm10' ? 0xa08a6a : 0x7c776e);
+  setSmog(dirt * 0.85);
+  const V = Math.round(v), conc = concFromAqi(AQ.pol, V);
+  $('lvlV').textContent = AQ.lvl; $('aqiV').textContent = V; $('aqiTxt').textContent = lv[1];
+  $('aqiBadge').style.background = lv[2]; $('aqiBadge').style.color = V > 50 && V <= 100 ? '#5d4037' : '#fff';
+  setLabel(lbBox, `<b style="color:${lv[2]}">AQI ${V}</b>　${lv[1]}`);
+  setCap(`<small>${P.name}（${P.full}）・濃度約 ${conc < 10 ? conc.toFixed(1) : Math.round(conc)} ${P.unit}</small><span class="huge" style="color:${lv[2] === '#f2cc3d' ? '#b7860b' : lv[2]}">AQI ${V}：${lv[1]}</span>AQI 數值越大，代表空氣品質越差，不適合戶外活動！`);
+  setHTML('aqiStat', `<b>${P.name} ${P.full}</b><br>來源：${P.src}<br>${P.note}<br><hr>建議：<b>${lv[3]}</b>`);
+}
+const ambient = scene.children.find(o => o.isAmbientLight);
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  enso: { group: EN.group, cam: () => ({ pos: [0, 11, 24], target: [0, 4.6, 0], fitW: 29 }), update: updateEnso },
+  debris: { group: DB.group, cam: () => ({ pos: [4, 9, 22], target: [0, 4.4, 0], fitW: 26 }), update: updateDebris },
+  aqi: { group: AQ.group, cam: () => ({ pos: [3, 7.5, 15], target: [0, 3.0, 0], fitW: 13 }), update: updateAqi }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  if (t !== 'aqi') setSmog(0);
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, EN, DB, AQ, camera, controls };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'enso';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>

@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>天球與太陽視運動實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+  .tabs.three .tab { font-size: .74rem; padding: 9px 2px; }
+  .seasons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+  .seasons .btn { padding: 8px 2px; font-size: .78rem; }
+  .quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+  .quick .btn { padding: 7px 2px; font-size: .74rem; margin-top: 2px; }
+  .chk { display: flex; gap: 8px; align-items: center; font-size: .8rem; font-weight: 700; margin-top: 8px; cursor: pointer; }
+  .chk input { width: 18px; height: 18px; accent-color: var(--accent); }
+  details.learn { background: rgba(255,255,255,.78); border-radius: 14px; padding: 8px 11px; margin-top: 8px; font-size: .78rem; line-height: 1.7; }
+  details.learn summary { font-weight: 800; cursor: pointer; }
+  details.learn p { margin-top: 5px; }
+  details.learn .tiny { font-size: .68rem; color: var(--ink-soft); }
+  .blink { animation: blink 1s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g9">‹ 課程總覽</a>
+  <div class="title">天球與太陽視運動實驗室</div>
+  <div class="body">
+    <div class="tabs three">
+      <button class="tab on" data-tab="sphere">🔮 天球<small>立體透視鏡</small></button>
+      <button class="tab" data-tab="sun">☀️ 太陽軌跡<small>四季與周日運動</small></button>
+      <button class="tab" data-tab="lat">🧭 緯度時光機<small>極晝與北極星</small></button>
+    </div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="sphere">
+      <div class="concept" style="--cc:#1e6aa8"><div class="ct">天球：假想的透明大球</div><div class="cd">地軸延長 → 天球北極（北極星附近）<br>地球赤道擴大 → 天球赤道</div></div>
+      <button class="btn" id="spinBtn">🌍 地球自轉（周日運動）</button>
+      <button class="btn" id="eclBtn">☀️ 顯示太陽一年的路徑（黃道）</button>
+      <div class="stat" id="sphStat">滑鼠拖曳可以 360° 翻轉天球；滾輪縮放。</div>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="sun" hidden>
+      <div class="concept" style="--cc:#d35400"><div class="ct">太陽東升西落（周日運動）</div><div class="cd">地球由西向東自轉 → 太陽看起來由東向西<br>觀察地點：台灣（北緯 23.5°）</div></div>
+      <div class="seasons">
+        <button class="btn sz" data-dec="0">🌸 春分<small>3/20</small></button>
+        <button class="btn sz" data-dec="23.5">☀️ 夏至<small>6/21</small></button>
+        <button class="btn sz" data-dec="0" data-name="秋分">🍂 秋分<small>9/23</small></button>
+        <button class="btn sz" data-dec="-23.5">❄️ 冬至<small>12/22</small></button>
+      </div>
+      <label class="lab" for="hour">🕒 時間（太陽時）<b id="hourV">09:00</b></label>
+      <input class="big" type="range" id="hour" min="0" max="24" step="0.05" value="9">
+      <div class="quick">
+        <button class="btn" data-jump="rise">日出</button><button class="btn" data-jump="noon">正午</button><button class="btn" data-jump="set">日落</button><button class="btn" data-jump="mid">半夜</button>
+      </div>
+      <div class="row2">
+        <button class="btn" id="playSun">⏸ 暫停</button>
+        <button class="btn" id="speedSun">1.5 小時／秒</button>
+      </div>
+      <label class="lab">視角</label>
+      <div class="row2">
+        <button class="btn on" data-view="out">🔭 從外面看</button>
+        <button class="btn" data-view="in">🧍 站在地上看</button>
+      </div>
+      <label class="chk"><input type="checkbox" id="allPaths" checked> 比較四季的太陽路徑</label>
+      <label class="chk"><input type="checkbox" id="showStars"> 顯示星星和北極星（假裝沒有陽光）</label>
+      <label class="chk"><input type="checkbox" id="showMoon"> 顯示月亮</label>
+      <div id="moonBox" hidden>
+        <label class="lab" for="lunar">🌙 農曆日期<b id="lunarV">初八</b></label>
+        <input type="range" id="lunar" min="1" max="29" step="1" value="8">
+      </div>
+      <div class="stat" id="sunStat"></div>
+      <details class="learn"><summary>📘 學習重點</summary>
+        <p>太陽、月亮和星星每天都<b>東升西落</b>，這叫做<b>周日運動</b>，原因是地球<b>由西向東自轉</b>。</p>
+        <p>在台灣，太陽<b>中午</b>在南方天空最高，這時竿影最短，影子指向<b>北方</b>。</p>
+        <p><b>夏至</b>從東偏北升起、路徑高、白天長；<b>冬至</b>從東偏南升起、路徑低、白天短；<b>春分、秋分</b>正東升、正西落。</p>
+        <p>月亮每天大約<b>晚 50 分鐘</b>升起，形狀（月相）也跟著改變。</p>
+        <p class="tiny">時間用「太陽時」：太陽在正南方最高時算中午 12 點。圖中大小沒有照真實比例。</p>
+      </details>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="sec" data-tab="lat" hidden>
+      <div class="concept" style="--cc:#5b8a72"><div class="ct">北極星仰角 ＝ 觀察者緯度</div><div class="cd">固定看「夏至」的太陽，<br>把觀察者搬到不同緯度</div></div>
+      <label class="lab" for="latR">🧭 觀察者緯度<b>北緯 <span id="latV">23.5</span>°</b></label>
+      <input class="big" type="range" id="latR" min="0" max="90" step="0.5" value="23.5">
+      <div class="quick">
+        <button class="btn" data-lat="0">赤道 0°</button><button class="btn" data-lat="23.5">台灣 23.5°</button><button class="btn" data-lat="66.5">北極圈 66.5°</button><button class="btn" data-lat="90">北極 90°</button>
+      </div>
+      <button class="btn" id="playLat">⏸ 暫停</button>
+      <div class="stat" id="latStat"></div>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'sphere', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+const DEG = Math.PI / 180;
+const fmtH = h => { h = ((h % 24) + 24) % 24; const m = Math.round(h * 60); return String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+/** 觀察者地平座標：X ＝ 東、Y ＝ 上（天頂）、−Z ＝ 北。H ＝ 時角（0 ＝ 正午，正值 ＝ 下午） */
+function skyDir(lat, dec, H) {
+  const p = lat * DEG, d = dec * DEG;
+  const east = -Math.cos(d) * Math.sin(H);
+  const north = Math.cos(p) * Math.sin(d) - Math.sin(p) * Math.cos(d) * Math.cos(H);
+  const up = Math.sin(p) * Math.sin(d) + Math.cos(p) * Math.cos(d) * Math.cos(H);
+  return V3(east, up, -north);
+}
+const hourToH = h => (h - 12) * 15 * DEG;
+/** 日出時角（小時）；永晝回傳 12、永夜回傳 0 */
+function halfDay(lat, dec) {
+  const c = -Math.tan(lat * DEG) * Math.tan(dec * DEG);
+  if (lat >= 89.99) return dec > 0 ? 12 : dec < 0 ? 0 : 6;
+  return c <= -1 ? 12 : c >= 1 ? 0 : Math.acos(c) / DEG / 15;
+}
+/** 方位描述：東偏北 27° 等 */
+function dirText(v) {
+  const e = v.x, n = -v.z, az = (Math.atan2(e, n) / DEG + 360) % 360;
+  const near = (a, b) => Math.abs(((a - b + 540) % 360) - 180);
+  for (const [a, t] of [[0, '正北'], [90, '正東'], [180, '正南'], [270, '正西']]) if (near(az, a) < 0.6) return t;
+  if (az < 90) return az < 45 ? `北偏東 ${az.toFixed(0)}°` : `東偏北 ${(90 - az).toFixed(1)}°`;
+  if (az < 180) return az < 135 ? `東偏南 ${(az - 90).toFixed(1)}°` : `南偏東 ${(180 - az).toFixed(0)}°`;
+  if (az < 270) return az < 225 ? `南偏西 ${(az - 180).toFixed(0)}°` : `西偏南 ${(270 - az).toFixed(1)}°`;
+  return az < 315 ? `西偏北 ${(az - 270).toFixed(1)}°` : `北偏西 ${(360 - az).toFixed(0)}°`;
+}
+function earthTexture() {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  g.fillStyle = '#5b9fc9'; g.fillRect(0, 0, 1024, 512);
+  const blob = (x, y, r, col) => { g.fillStyle = col; g.beginPath(); for (let a = 0; a <= TAU + 0.01; a += 0.2) { const rr = r * (0.7 + 0.3 * Math.sin(a * 3 + x) * Math.cos(a * 2 + y)); a ? g.lineTo(x + Math.cos(a) * rr * 1.4, y + Math.sin(a) * rr) : g.moveTo(x + rr * 1.4, y); } g.fill(); };
+  [[180, 170, 70], [240, 300, 55], [520, 160, 90], [560, 300, 60], [760, 190, 85], [820, 330, 40], [420, 230, 30], [900, 120, 35]].forEach(([x, y, r]) => { blob(x, y, r, '#8fb36b'); blob(x + 10, y - 5, r * 0.55, '#b9a46a'); });
+  g.fillStyle = '#f4f8fb'; g.fillRect(0, 0, 1024, 30); g.fillRect(0, 482, 1024, 30);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const starTex = glowTexture('255,215,90');
+function starField(n, R, color = '#fff6d8') {
+  const pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { const v = V3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalize().multiplyScalar(R); pos.set(v.toArray(), i * 3); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const p = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.16, map: dotTexture(color, 'rgba(160,120,40,.8)'), transparent: true, depthWrite: false, alphaTest: 0.05 }));
+  p.frustumCulled = false; return p;
+}
+
+/* =========================================================
+   Tab 1：天球立體空間透視鏡
+   ========================================================= */
+const SP = { group: new THREE.Group(), spin: false, ecl: false, t: 0, lam: 0 };
+scene.add(SP.group);
+const RS = 7.0, EPS = 23.5 * DEG;
+const cRoot = new THREE.Group(); cRoot.position.set(0, 8.2, 0); cRoot.rotation.z = -0.35; SP.group.add(cRoot);
+add(SP.group, shadowed(new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.6, 0.4, 48), clay(0xc49a6c))), 0, 0.2, 0);
+add(SP.group, shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.45, 1.0, 20), clay(0xb98a5e))), 0, 0.9, 0);
+// 天球（半透明、邊緣發光）
+const skyIn = new THREE.Mesh(new THREE.SphereGeometry(RS, 64, 40), new THREE.MeshBasicMaterial({ color: 0xcfe6ff, transparent: true, opacity: 0.12, side: THREE.BackSide, depthWrite: false }));
+const skyOut = new THREE.Mesh(new THREE.SphereGeometry(RS, 64, 40), new THREE.MeshPhysicalMaterial({ color: 0xeaf4ff, roughness: 0.05, clearcoat: 1, transparent: true, opacity: 0.1, depthWrite: false }));
+skyOut.renderOrder = 9; cRoot.add(skyIn, skyOut);
+patchRim(skyOut.material);
+{
+  const pts = [];
+  for (let la = -60; la <= 60; la += 30) for (let lo = 0; lo < 360; lo += 5) {
+    const a = la * DEG, b = lo * DEG, b2 = (lo + 5) * DEG, r = RS * 1.001;
+    pts.push(V3(r * Math.cos(a) * Math.cos(b), r * Math.sin(a), r * Math.cos(a) * Math.sin(b)), V3(r * Math.cos(a) * Math.cos(b2), r * Math.sin(a), r * Math.cos(a) * Math.sin(b2)));
+  }
+  for (let lo = 0; lo < 180; lo += 30) for (let la = -90; la < 90; la += 5) {
+    const b = lo * DEG, a = la * DEG, a2 = (la + 5) * DEG, r = RS * 1.001;
+    for (const s of [1, -1]) pts.push(V3(s * r * Math.cos(a) * Math.cos(b), r * Math.sin(a), s * r * Math.cos(a) * Math.sin(b)), V3(s * r * Math.cos(a2) * Math.cos(b), r * Math.sin(a2), s * r * Math.cos(a2) * Math.sin(b)));
+  }
+  cRoot.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x9fb8d0, transparent: true, opacity: 0.35 })));
+}
+cRoot.add(starField(420, RS * 0.995));
+// 地球
+const earthSpin = new THREE.Group(); cRoot.add(earthSpin);
+const earthM = new THREE.Mesh(new THREE.SphereGeometry(1.5, 64, 40), new THREE.MeshPhysicalMaterial({ map: earthTexture(), roughness: 0.6, clearcoat: 0.3 }));
+earthM.castShadow = true; earthSpin.add(earthM);
+const pin = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.32, 12), clay(0xe53935, { emissive: 0xe53935, emissiveIntensity: 0.4 }));
+{ const a = 23.5 * DEG; pin.position.set(1.5 * Math.cos(a) * 0, 1.5 * Math.sin(a), 1.5 * Math.cos(a)); pin.lookAt(pin.position.clone().multiplyScalar(2)); pin.rotateX(Math.PI / 2); pin.position.multiplyScalar(1.07); }
+earthSpin.add(pin);
+// 天球赤道、地球赤道
+const eqRing = new THREE.Mesh(new THREE.TorusGeometry(RS, 0.06, 10, 160), clay(0xe76f51, { emissive: 0xe76f51, emissiveIntensity: 0.35 }));
+eqRing.rotation.x = Math.PI / 2; cRoot.add(eqRing);
+const eqSmall = new THREE.Mesh(new THREE.TorusGeometry(1.53, 0.03, 8, 80), clay(0xe76f51)); eqSmall.rotation.x = Math.PI / 2; earthSpin.add(eqSmall);
+// 地軸延長線、北極星
+const axisM = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, RS * 2, 10), clay(0x5d4037)); cRoot.add(axisM);
+const polaris = new THREE.Group(); polaris.position.y = RS; cRoot.add(polaris);
+polaris.add(new THREE.Mesh(new THREE.OctahedronGeometry(0.22), new THREE.MeshBasicMaterial({ color: 0xffd23f, toneMapped: false })));
+const polGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: starTex, transparent: true, depthWrite: false })); polGlow.scale.setScalar(1.8); polaris.add(polGlow);
+// 黃道與太陽
+const eclPts = []; for (let i = 0; i <= 180; i++) { const l = i / 180 * TAU; eclPts.push(V3(Math.cos(l), Math.sin(l) * Math.sin(EPS), Math.sin(l) * Math.cos(EPS)).multiplyScalar(RS * 0.985)); }
+const ecl = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(eclPts, true), 240, 0.04, 8, true), clay(0xe9a23b, { emissive: 0xe9a23b, emissiveIntensity: 0.3 }));
+cRoot.add(ecl);
+const eclSun = new THREE.Mesh(new THREE.SphereGeometry(0.32, 24, 16), new THREE.MeshBasicMaterial({ color: 0xffc93c, toneMapped: false }));
+const eclGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('255,190,60'), transparent: true, depthWrite: false })); eclGlow.scale.setScalar(2.2); eclSun.add(eclGlow);
+cRoot.add(eclSun);
+const eclAt = l => V3(Math.cos(l), Math.sin(l) * Math.sin(EPS), Math.sin(l) * Math.cos(EPS)).multiplyScalar(RS * 0.985);
+const lbPol = addLabel('sphere', '⭐ 天球北極（北極星）', 'yel', V3(0, 0.75, 0), polaris);
+const lbSPole = addLabel('sphere', '天球南極', 'small', V3(0, 0, 0));
+const lbEq = addLabel('sphere', '天球赤道', 'red', V3(0, 0, 0));
+const lbAxis = addLabel('sphere', '地軸延長線', 'small', V3(0, 0, 0));
+const lbEarth = addLabel('sphere', '🌍 地球', '', V3(0, 0, 0));
+const lbEcl = addLabel('sphere', '黃道（太陽一年在天球上走的路）', 'yel small', V3(0, 0, 0));
+const lbSeason = ['春分', '夏至', '秋分', '冬至'].map(t => addLabel('sphere', t, 'small', V3(0, 0, 0)));
+const lbEclSun = addLabel('sphere', '', 'energy', V3(0, 0.7, 0), eclSun);
+function patchRim(mat) {
+  mat.onBeforeCompile = sh => {
+    sh.fragmentShader = sh.fragmentShader.replace('#include <opaque_fragment>', `
+      { float f = 1.0 - abs(dot(normalize(normal), normalize(vViewPosition)));
+        f = smoothstep(0.35, 1.0, f);
+        outgoingLight = mix(outgoingLight, vec3(0.45, 0.68, 0.95), f * 0.85);
+        diffuseColor.a = min(1.0, diffuseColor.a + f * 0.55); }
+      #include <opaque_fragment>`);
+  };
+}
+$('spinBtn').addEventListener('click', () => { SP.spin = !SP.spin; $('spinBtn').classList.toggle('on', SP.spin); });
+$('eclBtn').addEventListener('click', () => { SP.ecl = !SP.ecl; $('eclBtn').classList.toggle('on', SP.ecl); });
+const wp = (v, out) => out.copy(v).applyMatrix4(cRoot.matrixWorld);
+function updateSphere(dt) {
+  SP.t += dt;
+  if (SP.spin) earthSpin.rotation.y += dt * 1.1;            // 從北極上方看：逆時針（由西向東）
+  polaris.children[0].rotation.y += dt;
+  polGlow.scale.setScalar(1.5 + 0.5 * Math.abs(Math.sin(SP.t * 3)));
+  ecl.visible = eclSun.visible = SP.ecl;
+  if (SP.ecl) { SP.lam += dt * 0.35; eclSun.position.copy(eclAt(SP.lam)); }
+  cRoot.updateMatrixWorld();
+  wp(V3(0, -RS - 0.5, 0), lbSPole.pos); wp(V3(RS * 0.72, 0, RS * 0.72), lbEq.pos); wp(V3(0, RS * 0.62, 0), lbAxis.pos); lbAxis.pos.x += 0.9;
+  wp(V3(0, -2.0, 1.2), lbEarth.pos);
+  lbEcl.show = SP.ecl; wp(eclAt(Math.PI * 0.62), lbEcl.pos);
+  lbSeason.forEach((L, i) => { L.show = SP.ecl; wp(eclAt(i * Math.PI / 2).multiplyScalar(1), L.pos); });
+  lbEclSun.show = SP.ecl;
+  if (SP.ecl) { const dec = Math.asin(Math.sin(SP.lam) * Math.sin(EPS)) / DEG; setLabel(lbEclSun, `☀️ 太陽赤緯 ${dec >= 0 ? '+' : ''}${dec.toFixed(1)}°`); }
+  setCap(SP.spin
+    ? `<small>地球由西向東自轉（從北極上方看是逆時針）</small><span class="huge">所以天上的星星、太陽看起來<b>由東向西</b>繞著北極星轉</span>這就是<b>周日運動</b>；北極星在地軸延長線上，所以幾乎不動`
+    : `<small>🔮 天球</small><span class="huge">天球是假想的透明球體，星星與太陽彷彿都投影在這個球面上！</span>拖曳畫面可以 360° 翻轉天球`);
+  setHTML('sphStat', `🔴 天球赤道：地球赤道往外擴大到天球<br>⭐ 天球北極：地軸往北延長，北極星就在附近<br>${SP.ecl ? '🟡 黃道：太陽一年中在天球上走的路，和天球赤道夾 23.5°<br>' : ''}<small>滑鼠拖曳可以 360° 翻轉天球；滾輪縮放。</small>`);
+}
+
+/* =========================================================
+   觀察者場景（Tab 2、Tab 3 共用）
+   ---------------------------------------------------------
+   綠色地平面＋透明天空半球。太陽位置用「緯度、赤緯、時角」算出：
+   高度角 sin h ＝ sinφ sinδ ＋ cosφ cosδ cosH
+   ========================================================= */
+const SEASON_C = { '23.5': 0xe76f51, '0': 0xe9a23b, '-23.5': 0x1e88e5 };
+function makeObs(tabKey) {
+  const O = { tab: tabKey, group: new THREE.Group(), lat: 23.5, dec: 0, hour: 9, play: true, speed: 1.5, key: '', R: 7.4, GY: 0.4, SH: 1.4, paths: [23.5, 0, -23.5], showAll: true, stars: false, moon: false, lunar: 8 };
+  scene.add(O.group);
+  const C = V3(0, O.GY, 0);
+  O.C = C;
+  const ground = new THREE.Mesh(new THREE.CylinderGeometry(O.R + 1.0, O.R + 1.2, O.GY, 96), clay(0x8fb36b, { roughness: 0.9 }));
+  ground.position.y = O.GY / 2; ground.receiveShadow = true; O.group.add(ground);
+  // 十字方位線
+  for (const [w, d] of [[0.12, O.R * 2], [O.R * 2, 0.12]]) add(O.group, new THREE.Mesh(new THREE.BoxGeometry(w, 0.02, d), clay(0xf6eedc)), 0, O.GY + 0.01, 0);
+  const nArrow = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.8, 16), clay(0xc62828)); nArrow.rotation.x = -Math.PI / 2; add(O.group, nArrow, 0, O.GY + 0.2, -O.R - 0.3);
+  // 透明天空半球、地平圈
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(O.R, 64, 24, 0, TAU, 0, Math.PI / 2), new THREE.MeshPhysicalMaterial({ color: 0xdcefff, roughness: 0.05, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false }));
+  dome.position.copy(C); dome.renderOrder = 9; O.group.add(dome);
+  const hz = new THREE.Mesh(new THREE.TorusGeometry(O.R, 0.04, 8, 120), clay(0x5d4037)); hz.rotation.x = Math.PI / 2; hz.position.copy(C); O.group.add(hz);
+  // 竿子與觀察者
+  add(O.group, shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, O.SH, 12), clay(0x8d6e63))), 0, O.GY + O.SH / 2, 0);
+  add(O.group, new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.08, 20), clay(0x6d4c41)), 0, O.GY + 0.04, 0);
+  const person = new THREE.Group(); person.position.set(0.9, O.GY, 0.7); O.group.add(person);
+  add(person, new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.5, 6, 12), clay(0x5b8a72)), 0, 0.45, 0);
+  add(person, new THREE.Mesh(new THREE.SphereGeometry(0.19, 16, 12), clay(0xf0c8a0)), 0, 1.05, 0);
+  shadowed(person);
+  // 竿影
+  const shadow = new THREE.Mesh(new THREE.BoxGeometry(1, 0.02, 0.12), new THREE.MeshBasicMaterial({ color: 0x3e2f25, transparent: true, opacity: 0.55, depthWrite: false }));
+  shadow.renderOrder = 3; O.group.add(shadow);
+  // 太陽
+  const sunM = new THREE.Mesh(new THREE.SphereGeometry(0.42, 24, 16), new THREE.MeshBasicMaterial({ color: 0xffc93c, toneMapped: false }));
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('255,190,60'), transparent: true, depthWrite: false })); glow.scale.setScalar(2.6); sunM.add(glow);
+  const plight = new THREE.PointLight(0xffe2a0, 0, 30, 1.2); sunM.add(plight);
+  O.group.add(sunM);
+  // 月亮（亮面朝向太陽）
+  const moonMat = new THREE.ShaderMaterial({
+    uniforms: { uSun: { value: V3(0, 1, 0) } },
+    vertexShader: 'varying vec3 vN; void main(){ vN = normalize(mat3(modelMatrix) * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: 'uniform vec3 uSun; varying vec3 vN; void main(){ float l = smoothstep(-0.06, 0.06, dot(vN, uSun)); gl_FragColor = vec4(mix(vec3(0.33,0.33,0.38), vec3(1.0,0.97,0.85), l), 1.0); }'
+  });
+  const moonM = new THREE.Mesh(new THREE.SphereGeometry(0.36, 32, 20), moonMat); O.group.add(moonM);
+  // 天球座標框架：X ＝ 正午赤道方向 Q、Y ＝ 天球北極 P、Z ＝ 西 W
+  const frame = new THREE.Group(); frame.position.copy(C); O.group.add(frame);
+  const eq = new THREE.Mesh(new THREE.TorusGeometry(O.R, 0.035, 8, 160), new THREE.MeshBasicMaterial({ color: 0xe76f51, transparent: true, opacity: 0.45, depthWrite: false }));
+  eq.rotation.x = Math.PI / 2; frame.add(eq);
+  const poleAxis = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, O.R, 8), clay(0x5d4037)); poleAxis.position.y = O.R / 2; frame.add(poleAxis);
+  const star = new THREE.Group(); star.position.y = O.R; frame.add(star);
+  star.add(new THREE.Mesh(new THREE.OctahedronGeometry(0.2), new THREE.MeshBasicMaterial({ color: 0xffd23f, toneMapped: false })));
+  const sGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: starTex, transparent: true, depthWrite: false })); sGlow.scale.setScalar(1.6); star.add(sGlow);
+  const starSpin = new THREE.Group(); frame.add(starSpin);
+  const stars = starField(260, O.R * 0.99); starSpin.add(stars);
+  const pathG = new THREE.Group(); O.group.add(pathG);
+  const draw = Drawer(O.group);
+  const L = {
+    N: addLabel(tabKey, '北', 'red', V3(0, O.GY + 0.6, -O.R - 1.3)), S: addLabel(tabKey, '南', '', V3(0, O.GY + 0.6, O.R + 1.3)),
+    E: addLabel(tabKey, '東', '', V3(O.R + 1.3, O.GY + 0.6, 0)), W: addLabel(tabKey, '西', '', V3(-O.R - 1.3, O.GY + 0.6, 0)),
+    zen: addLabel(tabKey, '天頂', 'small', V3(0, O.GY + O.R + 0.5, 0)),
+    pol: addLabel(tabKey, '', 'yel', V3(0, 0.7, 0), star),
+    sun: addLabel(tabKey, '', 'energy', V3(0, 0.85, 0), sunM),
+    rise: addLabel(tabKey, '', 'small', V3(0, 0, 0)), set: addLabel(tabKey, '', 'small', V3(0, 0, 0)),
+    shadow: addLabel(tabKey, '', 'small', V3(0, 0, 0)), moon: addLabel(tabKey, '🌙', 'small', V3(0, 0.6, 0), moonM),
+    ang: addLabel(tabKey, '', 'lam small', V3(0, 0, 0))
+  };
+  O.L = L;
+  function rebuild() {
+    pathG.children.slice().forEach(m => { pathG.remove(m); m.geometry.dispose(); });
+    for (const d of O.paths) {
+      const sel = Math.abs(d - O.dec) < 0.01;
+      if (!sel && !O.showAll) continue;
+      const col = SEASON_C[String(d)] ?? 0xe9a23b;
+      let run = [], above = null;
+      const flush = () => {
+        if (run.length > 1) {
+          const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(run), run.length * 2, above ? (sel ? 0.07 : 0.04) : 0.025, 8, false),
+            new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: above ? (sel ? 0.95 : 0.4) : (sel ? 0.3 : 0.12), depthWrite: false, toneMapped: false }));
+          m.renderOrder = 5; pathG.add(m);
+        }
+      };
+      for (let i = 0; i <= 360; i += 2) {
+        const v = skyDir(O.lat, d, (i - 180) * DEG), up = v.y > -0.002;
+        const p = v.multiplyScalar(O.R).add(C);
+        if (above === null) above = up;
+        if (up !== above) { run.push(p.clone()); flush(); run = [p.clone()]; above = up; } else run.push(p);
+      }
+      flush();
+    }
+    // 天球框架
+    const P = skyDir(O.lat, 90, 0), Q = skyDir(O.lat, 0, 0), Wv = skyDir(O.lat, 0, Math.PI / 2);
+    frame.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(Q, P, Wv));
+  }
+  O.rebuild = rebuild;
+  O.update = dt => {
+    const key = [O.lat, O.dec, O.showAll].join('|');
+    if (key !== O.key) { O.key = key; rebuild(); }
+    if (O.play) O.hour = (O.hour + dt * O.speed) % 24;
+    const H = hourToH(O.hour), v = skyDir(O.lat, O.dec, H), alt = Math.asin(clamp(v.y, -1, 1)) / DEG;
+    sunM.position.copy(v).multiplyScalar(O.R).add(C);
+    sunM.material.color.setHex(alt > 0 ? 0xffc93c : 0xd8b86a);
+    glow.visible = alt > -2; plight.intensity = alt > 0 ? 3 : 0;
+    // 星星跟著天球轉（太陽時 ≈ 恆星時，示意）
+    starSpin.rotation.y = -H; stars.visible = O.stars; star.visible = true;
+    sGlow.scale.setScalar(1.3 + 0.4 * Math.abs(Math.sin(wall * 3)));
+    // 竿影
+    draw.begin();
+    let shadowLen = null;
+    if (alt > 0.3) {
+      const hv = V3(-v.x, 0, -v.z); const hl = hv.length();
+      const len = Math.min(9, O.SH / Math.tan(alt * DEG));
+      shadowLen = O.SH / Math.tan(alt * DEG);
+      shadow.visible = len > 0.02;
+      if (hl > 1e-4 && len > 0.02) {
+        hv.divideScalar(hl);
+        const tip = C.clone().addScaledVector(hv, len);
+        shadow.position.copy(C).add(tip).multiplyScalar(0.5).setY(O.GY + 0.015);
+        shadow.scale.set(len, 1, 1); shadow.rotation.y = -Math.atan2(hv.z, hv.x);
+        L.shadow.show = true; L.shadow.pos.copy(tip).setY(O.GY + 0.3); setLabel(L.shadow, '竿影');
+      } else L.shadow.show = false;
+    } else { shadow.visible = false; L.shadow.show = false; }
+    // 太陽到竿頂的光線
+    if (alt > 0.3) draw.dash(sunM.position, V3(0, O.GY + O.SH, 0), 0xffb020, { r: 0.02, opacity: 0.5 });
+    // 日出、日落點
+    const hd = halfDay(O.lat, O.dec);
+    const hasRise = hd > 0 && hd < 12;
+    L.rise.show = L.set.show = hasRise;
+    let riseV = null, setV = null;
+    if (hasRise) {
+      riseV = skyDir(O.lat, O.dec, -hd * 15 * DEG); setV = skyDir(O.lat, O.dec, hd * 15 * DEG);
+      L.rise.pos.copy(riseV).setY(0).normalize().multiplyScalar(O.R + 0.4).add(C).setY(O.GY + 0.5); setLabel(L.rise, `🌅 日出：${dirText(riseV)}`);
+      L.set.pos.copy(setV).setY(0).normalize().multiplyScalar(O.R + 0.4).add(C).setY(O.GY + 0.5); setLabel(L.set, `🌇 日落：${dirText(setV)}`);
+    }
+    // 北極星仰角弧線
+    const pa = O.lat;
+    const arc = []; for (let i = 0; i <= 30; i++) { const a = pa * DEG * i / 30; arc.push(V3(0, Math.sin(a) * 2.2, -Math.cos(a) * 2.2).add(C)); }
+    for (let i = 1; i < arc.length; i++) draw.line(arc[i - 1], arc[i], 0x1e6aa8, 0.035);
+    draw.line(C, C.clone().add(V3(0, 0, -2.6)), 0x1e6aa8, 0.025, 0.7);
+    L.ang.show = O.tab === 'lat' || O.stars; L.ang.pos.copy(C).add(V3(0.6, Math.sin(pa * DEG / 2) * 2.6, -Math.cos(pa * DEG / 2) * 2.6)); setLabel(L.ang, `仰角 ${pa.toFixed(1)}°`);
+    draw.end();
+    setLabel(L.pol, O.tab === 'lat' || O.stars ? `⭐ 北極星（仰角 ${O.lat.toFixed(1)}°）` : '⭐ 北極星');
+    L.pol.show = O.tab === 'lat' || O.stars;
+    star.visible = L.pol.show; poleAxis.visible = L.pol.show; eq.visible = O.tab === 'lat' || O.stars;
+    setLabel(L.sun, `☀️ ${fmtH(O.hour)}　仰角 ${alt.toFixed(1)}°`);
+    // 月亮
+    moonM.visible = L.moon.show = O.moon;
+    if (O.moon) {
+      const e = (O.lunar - 1) / 29.5 * TAU, lamS = { '0': 0, '23.5': Math.PI / 2, '-23.5': Math.PI * 1.5 }[String(O.dec)] + (O.season === '秋分' ? Math.PI : 0);
+      const md = Math.asin(Math.sin(EPS) * Math.sin(lamS + e)) / DEG;
+      const mv = skyDir(O.lat, md, H - e);
+      moonM.position.copy(mv).multiplyScalar(O.R * 0.93).add(C);
+      moonMat.uniforms.uSun.value.copy(sunM.position).sub(moonM.position).normalize();
+    }
+    return { v, alt, hd, riseV, setV, shadowLen };
+  };
+  return O;
+}
+
+/* =========================================================
+   Tab 2：四季太陽軌跡（台灣北緯 23.5°）＋原本的周日運動
+   ========================================================= */
+const SUN = makeObs('sun');
+SUN.season = '春分';
+const LUNAR = ['初一', '初二', '初三', '初四', '初五', '初六', '初七', '初八', '初九', '初十', '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十', '廿一', '廿二', '廿三', '廿四', '廿五', '廿六', '廿七', '廿八', '廿九'];
+function setSeason(btn) {
+  SUN.dec = Number(btn.dataset.dec); SUN.season = btn.dataset.name || btn.textContent.replace(/[^一-鿿]/g, '').slice(0, 2);
+  document.querySelectorAll('.sz').forEach(b => b.classList.toggle('on', b === btn));
+}
+document.querySelectorAll('.sz').forEach(b => b.addEventListener('click', () => setSeason(b)));
+setSeason(document.querySelector('.sz'));
+$('hour').addEventListener('input', e => { SUN.hour = Number(e.target.value); SUN.play = false; $('playSun').textContent = '▶ 播放'; });
+$('playSun').addEventListener('click', () => { SUN.play = !SUN.play; $('playSun').textContent = SUN.play ? '⏸ 暫停' : '▶ 播放'; });
+const SPEEDS = [0.5, 1.5, 3];
+$('speedSun').addEventListener('click', () => { SUN.speed = SPEEDS[(SPEEDS.indexOf(SUN.speed) + 1) % SPEEDS.length]; $('speedSun').textContent = SUN.speed + ' 小時／秒'; });
+document.querySelectorAll('[data-jump]').forEach(b => b.addEventListener('click', () => {
+  const hd = halfDay(SUN.lat, SUN.dec);
+  SUN.hour = { rise: 12 - hd, noon: 12, set: 12 + hd, mid: 0 }[b.dataset.jump];
+  SUN.play = false; $('playSun').textContent = '▶ 播放';
+}));
+let sunView = 'out';
+document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => {
+  sunView = b.dataset.view; document.querySelectorAll('[data-view]').forEach(x => x.classList.toggle('on', x === b));
+  controls.minDistance = sunView === 'in' ? 0.5 : 3;
+  goView(TABS.sun.cam());
+}));
+$('allPaths').addEventListener('change', e => { SUN.showAll = e.target.checked; });
+$('showStars').addEventListener('change', e => { SUN.stars = e.target.checked; });
+$('showMoon').addEventListener('change', e => { SUN.moon = e.target.checked; $('moonBox').hidden = !e.target.checked; });
+$('lunar').addEventListener('input', e => { SUN.lunar = Number(e.target.value); $('lunarV').textContent = LUNAR[SUN.lunar - 1]; });
+function updateSun(dt) {
+  const r = SUN.update(dt);
+  $('hour').value = SUN.hour; $('hourV').textContent = fmtH(SUN.hour);
+  const noonAlt = 90 - Math.abs(SUN.lat - SUN.dec), nearNoon = Math.abs(SUN.hour - 12) < 0.35;
+  const s = SUN.season;
+  if (r.alt < 0) setCap(`<small>${s}・${fmtH(SUN.hour)}</small><span class="huge">🌙 太陽在地平線下，現在是晚上</span>地球繼續自轉，太陽會從東方再升起`);
+  else if (nearNoon && SUN.dec > 0) setCap(`<small>夏至・正午</small><span class="huge red">太陽在天頂（正上方），竿子沒有影子！</span>北緯 23.5° 的夏至正午，陽光<b>直射</b>`);
+  else if (nearNoon && SUN.dec < 0) setCap(`<small>冬至・正午</small><span class="huge blu">正午仰角只有 ${noonAlt.toFixed(1)}°，竿影一年中最長</span>太陽從東偏南升起、在南方低空走一小段就落下`);
+  else if (nearNoon) setCap(`<small>${s}・正午</small><span class="huge">太陽在正南方最高（仰角 ${noonAlt.toFixed(1)}°）</span>竿影最短，影子指向<b>正北</b>`);
+  else setCap(`<small>${s}・${fmtH(SUN.hour)}（太陽赤緯 ${SUN.dec > 0 ? '+' : ''}${SUN.dec}°）</small>太陽從<b>${dirText(r.riseV)}</b>升起 → 正午在南方最高 → 從<b>${dirText(r.setV)}</b>落下`);
+  const day = 2 * r.hd;
+  setHTML('sunStat', `${s}：太陽赤緯 <b>${SUN.dec > 0 ? '+' : ''}${SUN.dec}°</b><br>日出 <b class="o">${fmtH(12 - r.hd)}</b>（${dirText(r.riseV)}）<br>日落 <b class="o">${fmtH(12 + r.hd)}</b>（${dirText(r.setV)}）<br>白天長 <b>${Math.floor(day)} 小時 ${Math.round((day % 1) * 60)} 分</b><br>正午仰角 ＝ 90° − 23.5° ${SUN.dec >= 0 ? '+' : '−'} ${Math.abs(SUN.dec)}° ＝ <b class="r">${noonAlt.toFixed(1)}°</b><br>現在仰角 <b>${r.alt.toFixed(1)}°</b>　${r.shadowLen !== null ? `竿影長 ＝ 竿高 × <b>${r.shadowLen < 0.02 ? '0（沒有影子）' : r.shadowLen.toFixed(2)}</b>` : '沒有竿影'}${SUN.moon ? `<br>🌙 農曆${LUNAR[SUN.lunar - 1]}：月亮大約比太陽晚 <b>${((SUN.lunar - 1) * 50 / 60).toFixed(1)}</b> 小時升起` : ''}`);
+}
+
+/* =========================================================
+   Tab 3：全球緯度時光機（固定夏至）
+   ========================================================= */
+const LT = makeObs('lat');
+LT.dec = 23.5; LT.paths = [23.5]; LT.speed = 2;
+$('latR').addEventListener('input', e => { LT.lat = Number(e.target.value); $('latV').textContent = LT.lat.toFixed(1); });
+document.querySelectorAll('[data-lat]').forEach(b => b.addEventListener('click', () => { LT.lat = Number(b.dataset.lat); $('latR').value = LT.lat; $('latV').textContent = LT.lat.toFixed(1); }));
+$('playLat').addEventListener('click', () => { LT.play = !LT.play; $('playLat').textContent = LT.play ? '⏸ 暫停' : '▶ 播放'; });
+function updateLat(dt) {
+  const r = LT.update(dt), lat = LT.lat;
+  const polarDay = r.hd >= 12;
+  if (lat >= 89.9) setCap(`<small>北緯 90°（北極點）・夏至</small><span class="huge red blink">永晝現象出現！太陽繞著地平線平移！</span>北極星在<b>天頂</b>（仰角 90°），太陽整天在仰角 23.5° 的高度繞圈`);
+  else if (polarDay) setCap(`<small>北緯 ${lat.toFixed(1)}°（北極圈內）・夏至</small><span class="huge red">永晝：太陽整天都不會落到地平線下</span>半夜的太陽也還在北方低空（午夜太陽）`);
+  else if (lat < 0.6) setCap(`<small>赤道・夏至</small><span class="huge">北極星貼在正北方的地平線上（仰角 0°）</span>太陽軌跡<b>垂直</b>地平線，直上直下；白天、晚上一樣長`);
+  else if (Math.abs(lat - 23.5) < 0.6) setCap(`<small>北緯 23.5°（台灣，北回歸線）・夏至</small><span class="huge">北極星仰角 23.5°，夏至正午太陽經過天頂</span>`);
+  else setCap(`<small>北緯 ${lat.toFixed(1)}°・夏至</small><span class="huge">北極星仰角 ＝ 觀察者緯度 ＝ <span class="blu">${lat.toFixed(1)}°</span></span>緯度越高，天球傾斜得越厲害，太陽軌跡越斜`);
+  const day = 2 * r.hd;
+  setHTML('latStat', `觀察者緯度：<b>北緯 ${lat.toFixed(1)}°</b><br>北極星仰角：<b class="b">${lat.toFixed(1)}°</b>（＝ 緯度）<br>夏至正午太陽仰角：<b class="r">${(90 - Math.abs(lat - 23.5)).toFixed(1)}°</b>${lat < 23.5 ? '（太陽在天頂偏北）' : ''}<br>白天長：<b>${polarDay ? '24 小時（永晝）' : Math.floor(day) + ' 小時 ' + Math.round((day % 1) * 60) + ' 分'}</b>`);
+}
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  sphere: { group: SP.group, cam: () => ({ pos: [14, 13, 24], target: [0, 8.0, 0], fitW: 27 }), update: updateSphere },
+  sun: { group: SUN.group, cam: () => sunView === 'in' ? { pos: [0, 1.9, -1.5], target: [0, 2.8, 5] } : { pos: [13, 11, 19], target: [0, 3.2, 0], fitW: 24 }, update: updateSun },
+  lat: { group: LT.group, cam: () => ({ pos: [13, 11, 19], target: [0, 3.2, 0], fitW: 24 }), update: updateLat }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  controls.maxPolarAngle = t === 'sphere' || (t === 'sun' && sunView === 'in') ? Math.PI : Math.PI * 0.49;
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, SP, SUN, LT, skyDir, halfDay, camera, controls };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'sphere';
+tab = first;
+controls.maxPolarAngle = first === 'sphere' ? Math.PI : Math.PI * 0.49;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>

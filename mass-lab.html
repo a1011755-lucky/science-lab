@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>質量守恆定律實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+  .tabs.three .tab { font-size: .74rem; padding: 9px 2px; }
+  .blink { animation: blink 0.9s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+  .btn.ebtn[data-e="0"].on { background: #1e6aa8; } .btn.ebtn[data-e="1"].on { background: #c62828; }
+  .sst { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+  .sst div { background: rgba(255,255,255,.8); border-radius: 14px; padding: 8px 10px; text-align: center; }
+  .sst small { display: block; font-size: .7rem; font-weight: 700; color: var(--ink-soft); }
+  .sst b { font-size: 1.3rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .checks { display: grid; gap: 4px; background: rgba(255,255,255,.8); border-radius: 14px; padding: 8px 12px; margin-top: 8px; font-size: .84rem; font-weight: 800; }
+  .aqibar { display: grid; grid-template-columns: repeat(4, 1fr); height: 8px; border-radius: 99px; overflow: hidden; margin-top: 2px; }
+  .aqi { display: flex; align-items: baseline; gap: 10px; justify-content: center; border-radius: 16px; padding: 10px; margin-top: 8px; color: #fff; transition: background .3s; }
+  .aqi b { font-size: 2.2rem; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+  .aqi span { font-size: .95rem; font-weight: 800; }
+  .eq { background: rgba(255,255,255,.85); border-radius: 12px; padding: 8px; text-align: center; font-weight: 900; font-size: .9rem; margin: 4px 0; }
+  .cnt { width: 100%; border-collapse: collapse; font-size: .8rem; background: rgba(255,255,255,.8); border-radius: 12px; overflow: hidden; margin-top: 6px; }
+  .cnt th, .cnt td { padding: 4px 6px; text-align: center; border-bottom: 1px solid #efe4d2; }
+  .cnt .okc { color: #2f8452; font-weight: 900; } .cnt .bad { color: #c62828; font-weight: 900; }
+  .btn.sys.on { background: #a1674a; }
+  .stat hr { border: none; border-top: 1px dashed #e4d9c6; margin: 4px 0; }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g8">‹ 課程總覽</a>
+  <div class="title">質量守恆定律實驗室</div>
+  <div class="body">
+    <div class="tabs three">
+      <button class="tab on" data-tab="atom">⚖️ 原子不滅<small>樂高天平</small></button>
+      <button class="tab" data-tab="gas">🎈 氣體逸散<small>開放 vs 密閉</small></button>
+      <button class="tab" data-tab="ppt">🧪 沉澱反應<small>巨觀天平</small></button>
+    </div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="atom">
+      <div class="concept" style="--cc:#5b8a72"><div class="ct">化學反應 ＝ 原子重新排列</div><div class="cd">原子的<b>種類</b>與<b>數目</b>都不變（拉瓦節）</div></div>
+      <div class="eq">Na₂CO₃ ＋ CaCl₂ → CaCO₃ ＋ 2NaCl</div>
+      <p class="desc">從下方「原子積木庫」把原子<b>拖曳</b>到<b>右盤</b>，組出生成物。拖回桌面就能拿掉。</p>
+      <table class="cnt"><thead><tr><th>原子</th><th>左盤（反應物）</th><th>右盤（生成物）</th></tr></thead><tbody id="cntBody"></tbody></table>
+      <div class="row2">
+        <button class="btn" id="hintBtn">💡 提示</button>
+        <button class="btn" id="clearBtn">↺ 清空右盤</button>
+      </div>
+      <div class="stat" id="atomStat"></div>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="gas" hidden>
+      <div class="concept" style="--cc:#d35400"><div class="ct">大理石 ＋ 鹽酸 → 產生 CO₂</div><div class="cd">CaCO₃ ＋ 2HCl → CaCl₂ ＋ H₂O ＋ CO₂↑</div></div>
+      <label class="lab">容器狀態</label>
+      <div class="row2">
+        <button class="btn sys on" data-sys="open">🫙 開放系統<small>無蓋</small></button>
+        <button class="btn sys" data-sys="closed">🎈 密閉系統<small>套上氣球</small></button>
+      </div>
+      <button class="btn primary" id="reactBtn">▶ 開始反應</button>
+      <button class="btn" id="gasReset">↺ 重新準備</button>
+      <div class="stat" id="gasStat"></div>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="sec" data-tab="ppt" hidden>
+      <div class="concept" style="--cc:#1e6aa8"><div class="ct">沉澱反應</div><div class="cd">Na₂CO₃ ＋ CaCl₂ → CaCO₃↓（白色沉澱）＋ 2NaCl</div></div>
+      <button class="btn primary" id="pourBtn">🫗 傾倒混合</button>
+      <button class="btn" id="pptReset">↺ 重新準備</button>
+      <div class="stat" id="pptStat"></div>
+      <p class="desc">兩個燒杯和倒水用的小升降臂<b>都放在同一台天平上</b>，所以倒的過程中天平秤的一直是「全部的東西」。</p>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'atom', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+const sm = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+const lerp = THREE.MathUtils.lerp;
+const ray = new THREE.Raycaster(), ndc = V2(0, 0);
+function setNdc(ev) { const r = renderer.domElement.getBoundingClientRect(); ndc.set((ev.clientX - r.left) / r.width * 2 - 1, -(ev.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ndc, camera); }
+function makePts(group, N, tex, size) {
+  const pos = new Float32Array(N * 3); for (let i = 0; i < N; i++) pos[i * 3 + 1] = -50;
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const p = new THREE.Points(geo, new THREE.PointsMaterial({ size, map: tex, transparent: true, depthWrite: false, alphaTest: 0.05 }));
+  p.frustumCulled = false; p.renderOrder = 7; group.add(p);
+  return { p, pos, geo, N };
+}
+const glassMat = () => new THREE.MeshPhysicalMaterial({ color: 0xeef7fa, roughness: 0.04, clearcoat: 1, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false });
+/** 電子天平（含液晶螢幕） */
+function makeScale(group, x, w, d) {
+  const g = new THREE.Group(); g.position.x = x; group.add(g);
+  add(g, shadowed(new THREE.Mesh(new RoundedBoxGeometry(w, 0.7, d, 4, 0.18), clay(0xeeeae2, { clearcoat: 0.6 }))), 0, 0.35, 0);
+  add(g, shadowed(new THREE.Mesh(new RoundedBoxGeometry(w - 0.8, 0.12, d - 0.9, 3, 0.05), metal(0xc9ccd2))), 0, 0.76, -0.2);
+  const c = document.createElement('canvas'); c.width = 512; c.height = 128;
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const lcd = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.55), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+  lcd.position.set(0, 0.36, d / 2 + 0.01); g.add(lcd);
+  let last = '';
+  const set = s => {
+    if (s === last) return; last = s;
+    const x2 = c.getContext('2d');
+    x2.fillStyle = '#c4d6b0'; x2.fillRect(0, 0, 512, 128);
+    x2.fillStyle = '#1c2a1c'; x2.font = '700 92px "Consolas","Courier New",monospace'; x2.textAlign = 'right'; x2.textBaseline = 'middle';
+    x2.fillText(s, 440, 68); x2.font = '700 46px sans-serif'; x2.fillText('g', 494, 80);
+    tex.needsUpdate = true;
+  };
+  return { g, top: 0.82, set };
+}
+
+/* =========================================================
+   Tab 1：原子不滅樂高天平
+   ---------------------------------------------------------
+   上皿天平（羅伯威爾式）：秤盤永遠保持水平，只會上下移動。
+   左盤固定：Na₂CO₃ ＋ CaCl₂（Na 2、C 1、O 3、Ca 1、Cl 2，共 217）。
+   ========================================================= */
+const ATOMS = {
+  Na: { color: 0x9b6dd6, r: 0.3, m: 23, name: '鈉' }, C: { color: 0x4a4a4a, r: 0.27, m: 12, name: '碳' },
+  O: { color: 0xe5484d, r: 0.25, m: 16, name: '氧' }, Ca: { color: 0x5bb06a, r: 0.36, m: 40, name: '鈣' },
+  Cl: { color: 0xb7d43f, r: 0.32, m: 35.5, name: '氯' }
+};
+const EL = Object.keys(ATOMS);
+const LEFT = { Na: 2, C: 1, O: 3, Ca: 1, Cl: 2 };
+const AT = { group: new THREE.Group(), theta: 0, w: 0, right: [], drag: null, glow: 0, t: 0, ok: false, hint: false };
+scene.add(AT.group);
+const atomMat = {}; EL.forEach(e => { atomMat[e] = clay(ATOMS[e].color, { clearcoat: 0.8, roughness: 0.35, emissive: ATOMS[e].color, emissiveIntensity: 0.08 }); });
+const atomGeo = new THREE.SphereGeometry(1, 28, 20);
+function atomMesh(e) { const m = new THREE.Mesh(atomGeo, atomMat[e]); m.scale.setScalar(ATOMS[e].r); m.castShadow = true; m.userData.el = e; return m; }
+const BAL = { L: 3.2, PY: 3.05, PR: 1.55 };
+{
+  add(AT.group, shadowed(new THREE.Mesh(new RoundedBoxGeometry(7.8, 0.5, 2.6, 4, 0.18), clay(0xb98a5e))), 0, 0.25, 0);
+  add(AT.group, shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, 1.9, 20), metal(0xc9ccd2))), 0, 1.4, 0);
+  // 指針刻度
+  const c = document.createElement('canvas'); c.width = 256; c.height = 96; const g = c.getContext('2d');
+  g.fillStyle = '#fffaf0'; g.fillRect(0, 0, 256, 96); g.fillStyle = '#5d4037';
+  for (let i = -5; i <= 5; i++) g.fillRect(128 + i * 20 - 1, 10, 3, i === 0 ? 50 : 30);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  add(AT.group, new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.52), new THREE.MeshBasicMaterial({ map: t })), 0, 0.85, 1.31);
+}
+const beam = new THREE.Group(); beam.position.set(0, 2.45, 0); AT.group.add(beam);
+add(beam, shadowed(new THREE.Mesh(new RoundedBoxGeometry(BAL.L * 2 + 0.4, 0.16, 0.3, 2, 0.06), metal(0xb4bac4))), 0, 0, 0);
+const needle = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.5, 0.03), clay(0xc62828)); needle.geometry.translate(0, -0.75, 0); needle.position.z = 1.33; beam.add(needle);
+needle.position.y = 0;
+function makePan(side) {
+  const g = new THREE.Group(); AT.group.add(g);
+  add(g, shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.55, 12), metal())), 0, -0.3, 0);
+  const plate = add(g, shadowed(new THREE.Mesh(new THREE.CylinderGeometry(BAL.PR, BAL.PR - 0.1, 0.1, 48), metal(0xdfe2e6, { emissive: 0x4fd18b, emissiveIntensity: 0 }))), 0, 0, 0);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(BAL.PR + 0.05, 0.05, 8, 64), new THREE.MeshBasicMaterial({ color: 0x4fd18b, transparent: true, opacity: 0, toneMapped: false }));
+  ring.rotation.x = Math.PI / 2; g.add(ring);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('80,210,140'), transparent: true, opacity: 0, depthWrite: false })); glow.scale.set(5, 3, 1); glow.position.y = 0.8; g.add(glow);
+  return { g, plate, ring, glow, side };
+}
+const panL = makePan(-1), panR = makePan(1);
+const panHit = new THREE.Mesh(new THREE.CylinderGeometry(BAL.PR + 0.4, BAL.PR + 0.4, 2.4, 24), new THREE.MeshBasicMaterial({ visible: false })); panHit.position.y = 1.0; panR.g.add(panHit);
+// 左盤的分子模型
+function molecule(parts) { const g = new THREE.Group(); parts.forEach(([e, x, y, z]) => { const m = atomMesh(e); m.position.set(x, y, z); g.add(m); }); return g; }
+const molA = molecule([['C', 0, 0.32, 0], ['O', 0.42, 0.32, 0.18], ['O', -0.42, 0.32, 0.18], ['O', 0, 0.32, -0.46], ['Na', 0.85, 0.36, -0.35], ['Na', -0.85, 0.36, -0.35]]);
+molA.position.set(0, 0.06, -0.45); panL.g.add(molA);
+const molB = molecule([['Ca', 0, 0.42, 0], ['Cl', 0.62, 0.38, 0], ['Cl', -0.62, 0.38, 0]]);
+molB.position.set(0, 0.06, 0.65); panL.g.add(molB);
+// 原子積木庫
+const bins = [];
+EL.forEach((e, i) => {
+  const g = new THREE.Group(); g.position.set(-4 + i * 2, 0, 3.6); AT.group.add(g);
+  const dish = add(g, shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.65, 0.22, 32), clay(0xe9dcc4))), 0, 0.11, 0);
+  dish.userData.bin = e;
+  for (let k = 0; k < 3; k++) { const m = atomMesh(e); m.position.set((k - 1) * 0.42, 0.22 + ATOMS[e].r, (k % 2) * 0.15); m.userData.bin = e; g.add(m); }
+  bins.push(g);
+  addLabel('atom', `<b style="color:#${ATOMS[e].color.toString(16).padStart(6, '0')}">${e}</b> ${ATOMS[e].name}<br><small>原子量 ${ATOMS[e].m}</small>`, 'small', V3(-4 + i * 2, 1.3, 4.3));
+});
+const binHits = []; bins.forEach(g => g.traverse(o => { if (o.isMesh && o.userData.bin) binHits.push(o); }));
+addLabel('atom', '🧱 原子積木庫（拖曳到右盤）', 'yel', V3(0, 0.1, 5.1));
+const lbL = addLabel('atom', '', '', V3(0, 0, 0)), lbR = addLabel('atom', '', '', V3(0, 0, 0));
+const SLOTS = []; for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) SLOTS.push(V3(-0.93 + c * 0.62, 0, -0.93 + r * 0.62));
+const PRODUCT = [['Ca', -0.55, 0.42, 0.1], ['C', -0.55, 0.42, -0.62], ['O', -0.15, 0.32, -0.9], ['O', -0.95, 0.32, -0.9], ['O', -0.55, 0.32, -0.18],
+  ['Na', 0.55, 0.36, -0.55], ['Cl', 1.1, 0.38, -0.55], ['Na', 0.55, 0.36, 0.65], ['Cl', 1.1, 0.38, 0.65]];
+function counts(list) { const c = {}; EL.forEach(e => { c[e] = 0; }); list.forEach(a => { c[a.el]++; }); return c; }
+const massOf = c => EL.reduce((s, e) => s + c[e] * ATOMS[e].m, 0);
+const M_LEFT = massOf(LEFT);
+function refreshTable() {
+  const c = counts(AT.right);
+  $('cntBody').innerHTML = EL.map(e => `<tr><td><b style="color:#${ATOMS[e].color.toString(16).padStart(6, '0')}">${e}</b></td><td>${LEFT[e]}</td><td class="${c[e] === LEFT[e] ? 'okc' : c[e] > LEFT[e] ? 'bad' : ''}">${c[e]}${c[e] === LEFT[e] ? ' ✔' : ''}</td></tr>`).join('');
+}
+refreshTable();
+const dragPlane = new THREE.Plane(V3(0, 1, 0), -3.7), hitP = V3(0, 0, 0), tmpW2 = V3(0, 0, 0);
+renderer.domElement.addEventListener('pointerdown', ev => {
+  if (tab !== 'atom') return;
+  setNdc(ev);
+  const rightMeshes = AT.right.map(a => a.mesh);
+  const hR = ray.intersectObjects(rightMeshes)[0];
+  const hB = ray.intersectObjects(binHits)[0];
+  if (!hR && !hB) return;
+  let mesh, el;
+  if (hR && (!hB || hR.distance < hB.distance)) {
+    const a = AT.right.find(x => x.mesh === hR.object);
+    AT.right = AT.right.filter(x => x !== a);
+    mesh = a.mesh; el = a.el; mesh.getWorldPosition(tmpW2); panR.g.remove(mesh); AT.group.add(mesh); mesh.position.copy(tmpW2);
+  } else { el = hB.object.userData.bin; mesh = atomMesh(el); AT.group.add(mesh); hB.object.getWorldPosition(mesh.position); }
+  AT.drag = { mesh, el };
+  controls.enabled = false;
+  renderer.domElement.setPointerCapture(ev.pointerId);
+  refreshTable();
+});
+renderer.domElement.addEventListener('pointermove', ev => {
+  if (tab !== 'atom') return;
+  setNdc(ev);
+  if (AT.drag) { if (ray.ray.intersectPlane(dragPlane, hitP)) AT.drag.mesh.position.lerp(hitP, 0.6); return; }
+  if (!ev.buttons) renderer.domElement.style.cursor = ray.intersectObjects(binHits.concat(AT.right.map(a => a.mesh))).length ? 'grab' : '';
+});
+const overRight = p => { panR.g.getWorldPosition(tmpW2); return Math.hypot(p.x - tmpW2.x, p.z - tmpW2.z) < BAL.PR + 0.35; };
+renderer.domElement.addEventListener('pointerup', ev => {
+  if (!AT.drag) return;
+  setNdc(ev);
+  const onPan = ray.intersectObject(panHit).length > 0;
+  if (ray.ray.intersectPlane(dragPlane, hitP)) AT.drag.mesh.position.copy(hitP);
+  const { mesh, el } = AT.drag; AT.drag = null; controls.enabled = true;
+  if ((onPan || overRight(mesh.position)) && AT.right.length < SLOTS.length) {
+    mesh.getWorldPosition(tmpW2); AT.group.remove(mesh); panR.g.add(mesh); panR.g.worldToLocal(mesh.position.copy(tmpW2));
+    AT.right.push({ el, mesh });
+  } else AT.group.remove(mesh);
+  refreshTable();
+});
+$('clearBtn').addEventListener('click', () => { AT.right.forEach(a => panR.g.remove(a.mesh)); AT.right = []; refreshTable(); });
+$('hintBtn').addEventListener('click', () => { AT.hint = !AT.hint; $('hintBtn').classList.toggle('on', AT.hint); });
+function updateAtom(dt) {
+  AT.t += dt;
+  const cR = counts(AT.right), mR = massOf(cR);
+  AT.ok = EL.every(e => cR[e] === LEFT[e]);
+  const target = -0.2 * Math.tanh((mR - M_LEFT) / 45);
+  AT.w += ((target - AT.theta) * 30 - AT.w * 6) * dt; AT.theta += AT.w * dt;
+  beam.rotation.z = AT.theta;
+  for (const P of [panL, panR]) P.g.position.set(P.side * BAL.L, BAL.PY + P.side * BAL.L * Math.sin(AT.theta), 0);
+  // 右盤原子位置：完成後自動排成 CaCO₃ ＋ 2NaCl
+  const used = {}; const prod = PRODUCT.map(p => p.slice());
+  AT.right.forEach((a, i) => {
+    let tgt;
+    if (AT.ok) { const j = prod.findIndex(p => p[0] === a.el && !used[prod.indexOf(p)]); used[j] = true; tgt = V3(prod[j][1], prod[j][2] + 0.06, prod[j][3]); }
+    else { const s = SLOTS[i]; tgt = V3(s.x, 0.06 + ATOMS[a.el].r, s.z); }
+    a.mesh.position.lerp(tgt, 1 - Math.exp(-dt * 8));
+  });
+  AT.glow += ((AT.ok ? 1 : 0) - AT.glow) * (1 - Math.exp(-dt * 3));
+  const pulse = 0.7 + 0.3 * Math.sin(AT.t * 4);
+  for (const P of [panL, panR]) { P.plate.material.emissiveIntensity = 0.55 * AT.glow; P.ring.material.opacity = AT.glow * pulse; P.glow.material.opacity = 0.8 * AT.glow * pulse; }
+  panL.g.getWorldPosition(lbL.pos).add(V3(0, 1.6, 0)); panR.g.getWorldPosition(lbR.pos).add(V3(0, 1.6, 0));
+  setLabel(lbL, `左盤（反應前）<br><b>原子量總和 ${M_LEFT}</b>`); setLabel(lbR, `右盤（反應後）<br><b>原子量總和 ${mR}</b>`, AT.ok ? 'energy' : '');
+  const need = EL.filter(e => cR[e] < LEFT[e]).map(e => `${e} × ${LEFT[e] - cR[e]}`), extra = EL.filter(e => cR[e] > LEFT[e]).map(e => `${e} × ${cR[e] - LEFT[e]}`);
+  if (AT.ok) setCap(`<small>✅ 右盤：CaCO₃ ＋ 2NaCl</small><span class="huge grn pop">原子不滅！反應前後原子不會被消滅，也不會被製造。</span>原子只是<b>重新排列</b>組合，所以總質量不變`);
+  else if (!AT.right.length) setCap(`<small>左盤：Na₂CO₃ ＋ CaCl₂</small>從下方「<b>原子積木庫</b>」拖曳原子到<b>右盤</b>，組出生成物 CaCO₃ ＋ 2NaCl`);
+  else setCap(`<small>右盤目前 ${AT.right.length} 顆原子</small><span class="huge">天平還沒平衡…</span>${extra.length ? `多了：<b class="red">${extra.join('、')}</b>　` : ''}${AT.hint && need.length ? `還差：<b>${need.join('、')}</b>` : '（按「💡 提示」看還差什麼）'}`);
+  setHTML('atomStat', `左盤原子量總和：<b>${M_LEFT}</b><br>右盤原子量總和：<b class="${AT.ok ? 'g' : 'r'}">${mR}</b><br><small>Na 23、C 12、O 16、Ca 40、Cl 35.5</small>`);
+}
+
+/* =========================================================
+   Tab 2：氣體逸散與密閉系統
+   ---------------------------------------------------------
+   反應會產生 1.50 g 的 CO₂。開放：CO₂ 飛走 → 讀數下降；
+   密閉：CO₂ 被氣球留住 → 讀數不變。（忽略氣球的浮力）
+   ========================================================= */
+const GS = { group: new THREE.Group(), sys: 'open', run: false, p: 0, esc: 0, t: 0, M0: 150, CO2: 1.5 };
+scene.add(GS.group);
+const sc2 = makeScale(GS.group, 0, 4.2, 3.4);
+const flask = new THREE.Group(); flask.position.set(0, sc2.top, -0.2); GS.group.add(flask);
+const FP = [[0, 0], [1.25, 0], [1.35, 0.1], [1.35, 0.28], [0.42, 2.0], [0.42, 2.75], [0.5, 2.82]];
+const flaskGlass = new THREE.Mesh(new THREE.LatheGeometry(FP.map(([r, y]) => V2(r, y)), 64), glassMat()); flaskGlass.renderOrder = 9; flask.add(flaskGlass);
+const LIQ_H = 0.8, rAt = y => y < 0.28 ? 1.28 : lerp(1.28, 0.36, (y - 0.28) / 1.72);
+const flaskLiq = new THREE.Mesh(new THREE.LatheGeometry([V2(0, 0.06), V2(1.22, 0.06), V2(1.27, 0.2), V2(rAt(LIQ_H), LIQ_H), V2(0, LIQ_H)], 56),
+  new THREE.MeshPhysicalMaterial({ color: 0xd9eef8, roughness: 0.1, transparent: true, opacity: 0.4, depthWrite: false }));
+flaskLiq.renderOrder = 5; flask.add(flaskLiq); enhanceLiquid(flaskLiq, { edges: false });
+const chips = [];
+for (let i = 0; i < 7; i++) { const m = new THREE.Mesh(new THREE.DodecahedronGeometry(0.17 + Math.random() * 0.06, 0), clay(0xf0ede6, { roughness: 0.6, flatShading: true })); const a = i / 7 * TAU; m.position.set(Math.cos(a) * 0.55, 0.16, Math.sin(a) * 0.5); m.rotation.set(Math.random() * 3, Math.random() * 3, 0); flask.add(m); chips.push(m); }
+// 氣球
+const BP = []; for (let i = 0; i <= 24; i++) { const t = i / 24; const y = t * 1.9; const r = t < 0.12 ? 0.44 : 0.44 + 0.55 * Math.sin(Math.PI * (t - 0.12) / 0.88) ** 0.8 * (1 - 0.15 * t); BP.push(V2(Math.max(0.02, t > 0.98 ? 0.05 : r), y)); }
+const balloon = new THREE.Mesh(new THREE.LatheGeometry(BP, 40), new THREE.MeshPhysicalMaterial({ color: 0xe85d75, roughness: 0.3, clearcoat: 1, transparent: true, opacity: 0.72, side: THREE.DoubleSide, depthWrite: false }));
+balloon.renderOrder = 10; balloon.position.y = 2.7; flask.add(balloon);
+const bub = makePts(flask, 260, dotTexture('#ffffff', 'rgba(110,140,170,.85)'), 0.11);
+const bubS = new Uint8Array(bub.N), bubT = new Float32Array(bub.N), bubV = Array.from({ length: bub.N }, () => V3(0, 0, 0));   // 0 閒置、1 液中上升、2 飛出、3 在氣球裡
+const co2Lb = addLabel('gas', 'CO₂ 飛走了 ↑', 'small', V3(0, 0, 0));
+const lbBal = addLabel('gas', '🎈 CO₂ 被氣球留住', 'small', V3(0, 0, 0));
+addLabel('gas', '大理石（CaCO₃）＋ 稀鹽酸', 'small', V3(1.9, sc2.top + 0.5, 0.9));
+const lbRead = addLabel('gas', '', 'yel', V3(0, 0.95, 2.1));
+document.querySelectorAll('.sys').forEach(b => b.addEventListener('click', () => { GS.sys = b.dataset.sys; document.querySelectorAll('.sys').forEach(x => x.classList.toggle('on', x === b)); gasReset(); }));
+function gasReset() { GS.p = 0; GS.esc = 0; GS.run = false; bubS.fill(0); for (let i = 0; i < bub.N; i++) bub.pos[i * 3 + 1] = -50; $('reactBtn').disabled = false; }
+$('gasReset').addEventListener('click', gasReset);
+$('reactBtn').addEventListener('click', () => { if (GS.p > 0) gasReset(); GS.run = true; $('reactBtn').disabled = true; });
+let bubAcc = 0;
+function updateGas(dt) {
+  GS.t += dt;
+  const closed = GS.sys === 'closed';
+  if (GS.run) { GS.p = Math.min(1, GS.p + dt / 9); if (GS.p >= 1) { GS.run = false; $('reactBtn').disabled = false; } }
+  const p = GS.p;
+  chips.forEach(c => c.scale.setScalar(1 - 0.6 * p));
+  balloon.visible = closed;
+  balloon.scale.set(lerp(0.32, 1.0, sm(0, 1, p)), lerp(0.25, 1.0, sm(0, 1, p)), lerp(0.32, 1.0, sm(0, 1, p)));
+  balloon.rotation.z = lerp(0.9, 0, sm(0, 0.35, p));
+  // 氣泡
+  if (GS.run) { bubAcc += dt * 70 * Math.sqrt(1 - p + 0.05); }
+  while (bubAcc > 1) { bubAcc--; const i = bubS.findIndex(s => s === 0); if (i < 0) break; const c = chips[i % chips.length]; bubS[i] = 1; bubT[i] = 0; bub.pos.set([c.position.x + (Math.random() - 0.5) * 0.2, 0.25, c.position.z + (Math.random() - 0.5) * 0.2], i * 3); }
+  const bScale = balloon.scale.x;
+  for (let i = 0; i < bub.N; i++) {
+    const k = i * 3, s = bubS[i];
+    if (s === 0) continue;
+    bubT[i] += dt;
+    if (s === 1) {
+      bub.pos[k + 1] += dt * 1.2; bub.pos[k] *= 1 - dt * 0.3; bub.pos[k + 2] *= 1 - dt * 0.3;
+      if (bub.pos[k + 1] > LIQ_H) { bubS[i] = closed ? 3 : 2; bubV[i].set((Math.random() - 0.5) * 0.3, 1.4 + Math.random() * 0.6, (Math.random() - 0.5) * 0.3); }
+    } else if (s === 2) {                                    // 從瓶口飛走
+      const y = bub.pos[k + 1];
+      if (y < 2.8) { bub.pos[k] *= 1 - dt * 3; bub.pos[k + 2] *= 1 - dt * 3; }
+      else { bubV[i].x += (Math.random() - 0.5) * dt * 3; bubV[i].z += (Math.random() - 0.5) * dt * 3; }
+      bub.pos[k] += bubV[i].x * dt; bub.pos[k + 1] += bubV[i].y * dt; bub.pos[k + 2] += bubV[i].z * dt;
+      if (bub.pos[k + 1] > 7) { bubS[i] = 0; bub.pos[k + 1] = -50; }
+    } else {                                                 // 在氣球裡打轉
+      const a = bubT[i] * 1.5 + i, r = 0.55 * bScale * (0.3 + 0.7 * ((i * 0.37) % 1));
+      const ty = Math.min(2.7 + 1.9 * bScale * (0.25 + 0.6 * ((i * 0.61) % 1)), bub.pos[k + 1] + dt * 2);
+      bub.pos.set([Math.cos(a) * (bub.pos[k + 1] > 2.7 ? r : 0.2), ty, Math.sin(a) * (bub.pos[k + 1] > 2.7 ? r : 0.2)], k);
+    }
+  }
+  bub.geo.attributes.position.needsUpdate = true;
+  // 讀數
+  if (!closed) { GS.esc += (p - GS.esc) * (1 - Math.exp(-dt * 1.6)); if (p >= 1 && 1 - GS.esc < 0.003) GS.esc = 1; }
+  const reading = closed ? GS.M0 : GS.M0 - GS.CO2 * GS.esc;
+  sc2.set(reading.toFixed(2));
+  setLabel(lbRead, `⚖️ ${reading.toFixed(2)} g`);
+  co2Lb.show = !closed && p > 0.05; flask.localToWorld(co2Lb.pos.set(0.6, 4.2, 0));
+  lbBal.show = closed && p > 0.2; flask.localToWorld(lbBal.pos.set(1.3, 3.8, 0));
+  const lost = GS.M0 - reading;
+  if (p === 0) setCap(`<small>${closed ? '🎈 密閉系統（瓶口套上氣球）' : '🫙 開放系統（瓶口沒有蓋子）'}</small>按「<b>▶ 開始反應</b>」，看電子天平的數字怎麼變`);
+  else if (closed) setCap(`<small>密閉系統・讀數 ${reading.toFixed(2)} g</small><span class="huge grn">CO₂ 被氣球留住，天平讀數完全不變！</span>反應前後總質量相等`);
+  else setCap(`<small>開放系統・讀數 ${reading.toFixed(2)} g（少了 ${lost.toFixed(2)} g）</small><span class="huge org">氣體散失導致測量質量減輕，但把飛走的氣體算進去，依然遵守質量守恆定律！</span>`);
+  setHTML('gasStat', `反應前：<b>${GS.M0.toFixed(2)} g</b><br>現在讀數：<b class="${lost > 0.005 ? 'r' : 'g'}">${reading.toFixed(2)} g</b><br>${closed ? `CO₂ 在氣球裡：<b>${(GS.CO2 * p).toFixed(2)} g</b>（還在秤上）` : `飛走的 CO₂：<b class="o">${lost.toFixed(2)} g</b><br>${reading.toFixed(2)} ＋ ${lost.toFixed(2)} ＝ <b class="g">${GS.M0.toFixed(2)} g</b> ✔`}`);
+}
+
+/* =========================================================
+   Tab 3：沉澱反應（巨觀）
+   ---------------------------------------------------------
+   兩個燒杯和升降臂都在同一台天平上，所以讀數從頭到尾都不變。
+   ========================================================= */
+const PP = { group: new THREE.Group(), t: -1, levelA: 1.0, levelB: 1.0, cloud: 0, M: 286.40 };
+scene.add(PP.group);
+const sc3 = makeScale(PP.group, 0, 7.2, 3.6);
+sc3.set(PP.M.toFixed(2));
+const BR = 0.85, BH = 2.0;
+function makeBeaker(color) {
+  const g = new THREE.Group();
+  const gl = new THREE.Mesh(new THREE.CylinderGeometry(BR, BR * 0.96, BH, 48, 1, true), glassMat()); gl.position.y = BH / 2; gl.renderOrder = 9; g.add(gl);
+  const bottom = new THREE.Mesh(new THREE.CircleGeometry(BR * 0.96, 40), glassMat()); bottom.rotation.x = -Math.PI / 2; bottom.position.y = 0.02; g.add(bottom);
+  const lip = new THREE.Mesh(new THREE.TorusGeometry(BR, 0.035, 8, 48), glassMat()); lip.rotation.x = Math.PI / 2; lip.position.y = BH; g.add(lip);
+  const liq = new THREE.Mesh(new THREE.CylinderGeometry(BR - 0.05, BR * 0.96 - 0.05, 1, 40), new THREE.MeshPhysicalMaterial({ color, roughness: 0.1, transparent: true, opacity: 0.38, depthWrite: false }));
+  liq.renderOrder = 5; g.add(liq); enhanceLiquid(liq);
+  g.userData.liq = liq;
+  return g;
+}
+const beakA = makeBeaker(0xdcf0fa), beakB = makeBeaker(0xe8f4f8);
+PP.group.add(beakA, beakB);
+const TOP3 = sc3.top + 0.05;
+const POS_A0 = V3(-1.4, TOP3, -0.3), POS_B = V3(1.5, TOP3, -0.3);
+beakB.position.copy(POS_B);
+// 升降臂（立在天平秤盤上）
+const post = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 4.4, 16), metal(0x9aa3ab))); post.position.set(-3.1, TOP3 + 2.2, -0.3); PP.group.add(post);
+add(PP.group, shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.5, 0.12, 24), metal(0x8f979e))), -3.1, TOP3 + 0.06, -0.3);
+const armSeg = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 10), metal(0x8f979e)); armSeg.castShadow = true; PP.group.add(armSeg);
+const clampRing = new THREE.Mesh(new THREE.TorusGeometry(BR + 0.06, 0.06, 8, 40), metal(0x8f979e)); clampRing.rotation.x = Math.PI / 2; clampRing.position.y = BH * 0.62; beakA.add(clampRing);
+const KF = [[POS_A0, 0], [V3(-1.4, TOP3 + 2.4, -0.3), 0], [V3(0.25, TOP3 + 2.9, -0.3), 0], [V3(0.35, TOP3 + 2.75, -0.3), -1.95]];
+const stream = makePts(PP.group, 260, dotTexture('#e2f2fb', 'rgba(90,140,170,.8)'), 0.12);
+const strT = new Float32Array(stream.N).fill(-1);
+const ppt = makePts(PP.group, 900, dotTexture('#ffffff', 'rgba(150,150,150,.9)'), 0.09);
+const pptV = new Float32Array(ppt.N), pptFloor = new Float32Array(ppt.N); let pptN = 0;
+addLabel('ppt', 'Na₂CO₃ 水溶液<br><small>透明無色</small>', 'small', V3(-1.4, TOP3 - 0.4, 1.6));
+addLabel('ppt', 'CaCl₂ 水溶液<br><small>透明無色</small>', 'small', V3(1.5, TOP3 - 0.4, 1.6));
+const lbPpt = addLabel('ppt', '⬇ 白色沉澱 CaCO₃', 'lam small', V3(2.9, TOP3 + 0.35, 0.4));
+const lbRead3 = addLabel('ppt', '', 'yel', V3(0, 0.95, 2.2));
+$('pourBtn').addEventListener('click', () => { if (PP.t >= 0 && PP.t < 9.1) return; pptReset(); PP.t = 0; $('pourBtn').disabled = true; });
+function pptReset() { PP.t = -1; PP.levelA = 1.0; PP.levelB = 1.0; PP.cloud = 0; pptN = 0; for (let i = 0; i < ppt.N; i++) ppt.pos[i * 3 + 1] = -50; strT.fill(-1); $('pourBtn').disabled = false; }
+$('pptReset').addEventListener('click', pptReset);
+function poseA(t) {
+  const seg = [[0, 1, 0, 1], [1, 2, 1, 2], [2, 2.8, 2, 3], [2.8, 6.3, 3, 3], [6.3, 7.1, 3, 2], [7.1, 8.1, 2, 1], [8.1, 9.1, 1, 0]];
+  if (t < 0 || t >= 9.1) return { p: KF[0][0].clone(), r: 0 };
+  const s = seg.find(q => t < q[1]), u = sm(0, 1, (t - s[0]) / (s[1] - s[0]));
+  return { p: KF[s[2]][0].clone().lerp(KF[s[3]][0], u), r: lerp(KF[s[2]][1], KF[s[3]][1], u) };
+}
+const tmpV3 = V3(0, 0, 0);
+function updatePpt(dt) {
+  if (PP.t >= 0) { PP.t += dt; if (PP.t >= 9.1) { PP.t = 9.1; $('pourBtn').disabled = false; } }
+  const pose = poseA(PP.t), pouring = PP.t > 2.9 && PP.t < 6.3;
+  beakA.position.copy(pose.p); beakA.rotation.z = pose.r;
+  placeSeg(armSeg, V3(-3.1, Math.min(TOP3 + 4.2, pose.p.y + BH * 0.62), -0.3), beakA.localToWorld(tmpV3.set(-BR - 0.06, BH * 0.62, 0)), 0.07);
+  if (pouring) { PP.levelA = Math.max(0.05, PP.levelA - dt * 0.28); PP.levelB = Math.min(1.95, PP.levelB + dt * 0.27); PP.cloud = Math.min(1, PP.cloud + dt * 0.6); }
+  else if (PP.t > 6.3) PP.cloud = Math.max(0.15, PP.cloud - dt * 0.08);
+  for (const [b, lv] of [[beakA, PP.levelA], [beakB, PP.levelB]]) { const L = b.userData.liq; L.scale.y = lv; L.position.y = 0.04 + lv / 2; }
+  beakB.userData.liq.material.color.setHex(0xe8f4f8).lerp(tmpC.setHex(0xf6f6f2), PP.cloud);
+  beakB.userData.liq.material.opacity = 0.38 + 0.4 * PP.cloud;
+  // 液流
+  const lip = beakA.localToWorld(V3(BR, BH, 0)), surfB = TOP3 + 0.04 + PP.levelB;
+  for (let i = 0; i < stream.N; i++) {
+    const k = i * 3;
+    if (strT[i] < 0) { if (pouring && Math.random() < 0.35) { strT[i] = 0; stream.pos.set([lip.x, lip.y, lip.z + (Math.random() - 0.5) * 0.2], k); } else { stream.pos[k + 1] = -50; continue; } }
+    strT[i] += dt;
+    stream.pos[k] += (POS_B.x - 0.1 - stream.pos[k]) * dt * 2.5; stream.pos[k + 1] -= dt * (2 + strT[i] * 9);
+    if (stream.pos[k + 1] < surfB) {
+      strT[i] = -1; stream.pos[k + 1] = -50;
+      if (pptN < ppt.N) for (let n = 0; n < 3 && pptN < ppt.N; n++) {             // 一接觸就產生白色沉澱
+        const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * (BR - 0.15);
+        ppt.pos.set([POS_B.x + Math.cos(a) * r, TOP3 + 0.2 + Math.random() * (PP.levelB - 0.2), POS_B.z + Math.sin(a) * r], pptN * 3);
+        pptV[pptN] = 0.12 + Math.random() * 0.18; pptFloor[pptN] = TOP3 + 0.06 + Math.random() * 0.18 * (0.3 + pptN / ppt.N); pptN++;
+      }
+    }
+  }
+  stream.geo.attributes.position.needsUpdate = true;
+  for (let i = 0; i < pptN; i++) { const k = i * 3; if (ppt.pos[k + 1] > pptFloor[i]) { ppt.pos[k + 1] = Math.max(pptFloor[i], ppt.pos[k + 1] - pptV[i] * dt); ppt.pos[k] += (Math.random() - 0.5) * dt * 0.1; } }
+  ppt.geo.attributes.position.needsUpdate = true;
+  lbPpt.show = pptN > 80;
+  sc3.set(PP.M.toFixed(2));
+  setLabel(lbRead3, `⚖️ ${PP.M.toFixed(2)} g（一直不變）`);
+  if (PP.t < 0) setCap(`<small>反應前：兩杯透明無色的溶液</small>按「<b>🫗 傾倒混合</b>」，注意電子天平的數字`);
+  else setCap(`<small>${PP.t < 2.9 ? '升降臂把燒杯抬起…' : pouring ? '倒入！立刻產生白色沉澱 CaCO₃' : PP.t < 9.1 ? '白色沉澱慢慢沉到杯底…' : '反應完成'}・讀數 ${PP.M.toFixed(2)} g</small><span class="huge grn">無論是否產生沉澱，化學反應前後總質量恆等！</span>`);
+  setHTML('pptStat', `反應前總質量：<b>${PP.M.toFixed(2)} g</b><br>現在讀數：<b class="g">${PP.M.toFixed(2)} g</b>（完全不變）<br>白色沉澱：<b>${pptN > 0 ? 'CaCO₃（碳酸鈣）' : '尚未產生'}</b><br><small>沒有氣體跑掉，所有原子都還在杯子裡</small>`);
+}
+const tmpC = new THREE.Color();
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  atom: { group: AT.group, cam: () => ({ pos: [0, 9.5, 13.5], target: [0, 2.4, 1.4], fitW: 12.5 }), update: updateAtom },
+  gas: { group: GS.group, cam: () => ({ pos: [2.5, 5.6, 12], target: [0, 2.3, 0], fitW: 9 }), update: updateGas },
+  ppt: { group: PP.group, cam: () => ({ pos: [1.5, 7, 13], target: [0, 2.6, 0], fitW: 11 }), update: updatePpt }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  renderer.domElement.style.cursor = '';
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, AT, GS, PP, ATOMS, camera, controls };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'atom';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>
