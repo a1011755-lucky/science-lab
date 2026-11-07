@@ -173,17 +173,11 @@
       </div>
       <label class="chk"><input type="checkbox" id="allPaths" checked> 比較四季的太陽路徑</label>
       <label class="chk"><input type="checkbox" id="showStars"> 顯示星星和北極星（假裝沒有陽光）</label>
-      <label class="chk"><input type="checkbox" id="showMoon"> 顯示月亮</label>
-      <div id="moonBox" hidden>
-        <label class="lab" for="lunar">🌙 農曆日期<b id="lunarV">初八</b></label>
-        <input type="range" id="lunar" min="1" max="29" step="1" value="8">
-      </div>
       <div class="stat" id="sunStat"></div>
       <details class="learn"><summary>📘 學習重點</summary>
-        <p>太陽、月亮和星星每天都<b>東升西落</b>，這叫做<b>周日運動</b>，原因是地球<b>由西向東自轉</b>。</p>
+        <p>太陽和星星每天都<b>東升西落</b>，這叫做<b>周日運動</b>，原因是地球<b>由西向東自轉</b>。</p>
         <p>在台灣，太陽<b>中午</b>在南方天空最高，這時竿影最短，影子指向<b>北方</b>。</p>
         <p><b>夏至</b>從東偏北升起、路徑高、白天長；<b>冬至</b>從東偏南升起、路徑低、白天短；<b>春分、秋分</b>正東升、正西落。</p>
-        <p>月亮每天大約<b>晚 50 分鐘</b>升起，形狀（月相）也跟著改變。</p>
         <p class="tiny">時間用「太陽時」：太陽在正南方最高時算中午 12 點。圖中大小沒有照真實比例。</p>
       </details>
     </section>
@@ -699,8 +693,6 @@ document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click'
 }));
 $('allPaths').addEventListener('change', e => { SUN.showAll = e.target.checked; });
 $('showStars').addEventListener('change', e => { SUN.stars = e.target.checked; });
-$('showMoon').addEventListener('change', e => { SUN.moon = e.target.checked; $('moonBox').hidden = !e.target.checked; });
-$('lunar').addEventListener('input', e => { SUN.lunar = Number(e.target.value); $('lunarV').textContent = LUNAR[SUN.lunar - 1]; });
 function updateSun(dt) {
   const r = SUN.update(dt);
   $('hour').value = SUN.hour; $('hourV').textContent = fmtH(SUN.hour);

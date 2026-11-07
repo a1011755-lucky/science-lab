@@ -78,12 +78,15 @@ ol b{color:var(--sun);font-weight:500}
   #side{left:calc(10px + env(safe-area-inset-left,0px));right:calc(10px + env(safe-area-inset-right,0px));top:auto;bottom:calc(10px + env(safe-area-inset-bottom,0px));width:auto;max-height:38%;padding:12px 14px;gap:10px}
   #side header{display:none}
 }
+#homeBack{display:inline-block;margin-bottom:6px;font-size:13px;color:var(--muted,#93a7c4);text-decoration:none}
+#homeBack:hover{color:var(--ink)}
 </style>
 
 <canvas id="c" aria-label="嘉義上空的天球 3D 示意圖"></canvas>
 
 <aside id="side" class="card">
   <header>
+    <a id="homeBack" href="index.html#g9">‹ 課程總覽</a>
     <h1>太陽和星星的周日運動</h1>
     <p class="sub">站在嘉義（北緯 23.5°）看一整天的天空 · 拖曳轉動畫面</p>
   </header>
