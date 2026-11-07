@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>壓力與浮力綜合實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #3b3127;
+    --ink-soft: #7a6e60;
+    --card: rgba(255,252,245,.62);
+    --accent: #c0703f;
+    --ok: #2f8a5b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(22px) saturate(160%); -webkit-backdrop-filter: blur(22px) saturate(160%);
+    border: 1px solid rgba(255,255,255,.85); box-shadow: 0 20px 50px rgba(90,60,30,.12), 0 2px 6px rgba(90,60,30,.06);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 316px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(192,112,63,.13); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.15rem; font-weight: 800; margin-top: 6px; padding-right: 62px; }
+  .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .7rem; font-weight: 800; padding: 8px 2px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.62); line-height: 1.35; }
+  .tab:hover { background: rgba(255,255,255,.92); }
+  .tab.on { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(91,138,114,.35); }
+  .sec[hidden] { display: none; }
+  .concept { background: #fff; border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(90,60,30,.08); border-left: 5px solid var(--cc, #5b8a72); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #5b8a72); }
+  .concept .cd { font-size: .84rem; font-weight: 800; margin-top: 2px; line-height: 1.55; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e4d9c6; border-radius: 12px; padding: 9px 10px; background: #fffdf8; color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--accent); background: rgba(192,112,63,.13);
+    transition: background .2s, transform .1s, opacity .2s;
+  }
+  .btn:hover { background: rgba(192,112,63,.22); }
+  .btn:active { transform: scale(.98); }
+  .btn.primary { color: #fff; background: var(--accent); box-shadow: 0 6px 16px rgba(192,112,63,.3); }
+  .btn.on { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(91,138,114,.3); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c0392b; } .stat .g { color: var(--ok); } .stat .o { color: #b45309; } .stat .b { color: #1d4ed8; }
+  .note { background: #fff4d8; border: 1.5px solid #ecc46a; color: #6b4b00; font-weight: 600; border-radius: 14px; padding: 8px 11px; margin-top: 10px; font-size: .77rem; line-height: 1.6; }
+  .note b { color: #9a3b00; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 20px; text-align: center;
+          width: max-content; max-width: min(820px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .98rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .08em; }
+  .cap b { color: #9a3b00; }
+  .cap .huge { display: block; font-size: clamp(1.25rem, 2.4vw, 2rem); font-weight: 900; color: #1f6b43; line-height: 1.35; margin: 2px 0; }
+  .cap .mid { display: block; font-size: clamp(1.05rem, 1.9vw, 1.5rem); font-weight: 900; line-height: 1.4; font-variant-numeric: tabular-nums; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,253,248,.92); color: var(--ink); box-shadow: 0 4px 12px rgba(90,60,30,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag small { font-size: .66rem; color: var(--ink-soft); font-weight: 700; }
+  .tag.f1 { background: #ff8a3d; color: #fff; } .tag.f2 { background: #3d8bff; color: #fff; } .tag.net { background: #2fbf71; color: #fff; }
+  .tag.fr { background: #e5484d; color: #fff; }
+  .tag.hl { background: #5b8a72; color: #fff; }
+  .tag.boom { background: #e5484d; color: #fff; font-size: .9rem; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 760px), (max-width: 1100px) and (orientation: portrait) {
+    .tabs { display: grid !important; grid-template-columns: repeat(4, 1fr) !important; }
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .8rem; }
+    .cap .huge { font-size: 1.05rem; } .cap .mid { font-size: .95rem; }
+    .tag { font-size: .64rem; padding: 3px 7px; }
+  }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="scene"></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g8">‹ 課程總覽</a>
+  <div class="title">壓力與浮力綜合實驗室</div>
+  <div class="body">
+    <div class="tabs">
+      <button class="tab on" data-tab="pres">🎈<br>固體<br>壓力</button>
+      <button class="tab" data-tab="liq">🌊<br>液體<br>壓力</button>
+      <button class="tab" data-tab="atm">🌍<br>大氣<br>壓力</button>
+      <button class="tab" data-tab="buoy">🛟<br>浮力<br>溢水杯</button>
+    </div>
+
+    <!-- Tab 3 -->
+    <section class="sec" data-tab="pres">
+      <div class="concept" style="--cc:#c26a00"><div class="ct">壓力 P ＝ F ÷ A</div><div class="cd">壓力 ＝ 垂直作用力 ÷ 受力面積<br>同樣的力，面積越大，壓力越小</div></div>
+      <div class="row2">
+        <button class="btn on" data-nail="one">📍 單根釘子<br><small>A ＝ 0.01 cm²</small></button>
+        <button class="btn" data-nail="bed">🔩 百根釘板<br><small>A ＝ 1 cm²</small></button>
+      </div>
+      <label class="lab" for="presS">⬇️ 下壓力 F<b><span id="presV">0</span> N</b></label>
+      <input type="range" id="presS" min="0" max="100" step="0.5" value="0">
+      <div class="stat" id="presStat"></div>
+      <button class="btn" id="balloonReset">🎈 換一顆新氣球</button>
+      <p class="desc">氣球能承受的壓力上限約 <b>150 N/cm²</b>。單根釘子只要一點點力就超過；百根釘板把力分散，壓到 100 N 也只會變形。</p>
+    </section>
+
+    <!-- 液體壓力 -->
+    <section class="sec" data-tab="liq" hidden>
+      <div class="concept" style="--cc:#1d6fd8"><div class="ct">液體壓力 P ＝ h × d</div><div class="cd">液體壓力來自四面八方，且垂直於接觸面<br>只和深度 h、液體密度 d 有關</div></div>
+      <label class="lab" for="liqD">液體種類 d</label>
+      <select id="liqD">
+        <option value="water">💧 純水（1.0 g/cm³）</option>
+        <option value="salt">🧂 食鹽水（1.2 g/cm³）</option>
+        <option value="oil">🫒 沙拉油（0.9 g/cm³）</option>
+      </select>
+      <label class="lab" for="liqH">⬇️ 探測深度 h<b><span id="liqHV">40</span> cm</b></label>
+      <input type="range" id="liqH" min="10" max="80" step="1" value="40">
+      <div class="stat" id="liqStat"></div>
+      <p class="desc">四根發光箭頭代表探測球受到的液體壓力。仔細看：球的<b>下方</b>比上方深一點，向上的箭頭也稍長——這就是<b>浮力</b>的來源！</p>
+    </section>
+
+    <!-- 大氣壓力 -->
+    <section class="sec" data-tab="atm" hidden>
+      <div class="concept" style="--cc:#d0453a"><div class="ct">托里切利實驗</div><div class="cd">1 大氣壓 ＝ 76 cmHg<br>水銀柱的「垂直高度」只由大氣壓力決定</div></div>
+      <label class="lab" for="locS">觀測地點</label>
+      <select id="locS">
+        <option value="sea">🏖️ 平地（1 大氣壓）</option>
+        <option value="jade">⛰️ 玉山頂（約 3952 m）</option>
+        <option value="moon">🌕 月球（沒有大氣）</option>
+      </select>
+      <label class="lab" for="tiltS">📐 玻璃管傾角<b><span id="tiltV">0</span>°</b></label>
+      <input type="range" id="tiltS" min="0" max="60" step="1" value="0">
+      <div class="stat" id="atmStat"></div>
+      <p class="desc">玻璃管長 160 cm（傾斜 60° 時水銀柱長 152 cm，仍裝得下）。管子越斜，水銀柱越長，但<b>紅線（垂直高度）不變</b>。玉山頂約 47 cmHg 為概略值。</p>
+    </section>
+
+    <!-- Tab 4 -->
+    <section class="sec" data-tab="buoy" hidden>
+      <div class="concept" style="--cc:#1d6fd8"><div class="ct">阿基米德原理</div><div class="cd">浮力 B ＝ V排 × D液 ＝ 排開液體的重量</div></div>
+      <div class="row3">
+        <button class="btn" data-obj="foam">⬜<br>保麗龍</button>
+        <button class="btn" data-obj="wood">🪵<br>木塊</button>
+        <button class="btn" data-obj="iron">🔩<br>鐵塊</button>
+      </div>
+      <div class="stat" id="buoyStat"></div>
+      <button class="btn" id="buoyView">🔭 看全景</button>
+      <p class="desc">👆 把溢水槽前方的<b>積木拖進水槽</b>（或點上面按鈕）。三塊體積都是 500 cm³。溢水槽裝滿到出水口，物體<b>慢慢放入</b>後，被擠出的水從出水口流進磅秤上的燒杯——<b>磅秤增加的重量 ＝ 排開的水重 ＝ 浮力</b>（磅秤已扣除燒杯）。</p>
+    </section>
+
+    <button class="btn" id="viewBtn" style="margin-top:10px">重設視角</button>
+  </div>
+</aside>
+
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = THREE.MathUtils.clamp, lerp = THREE.MathUtils.lerp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const rnd = (a, b) => a + Math.random() * (b - a);
+
+/* =========================================================
+   共用：場景、燈光、原木桌面、材質
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.HemisphereLight(0xfffaf0, 0xd8c3a0, 1.05));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.9);
+sun.position.set(-6, 15, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -8, near: 1, far: 50 });
+sun.shadow.radius = 6;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 1.5; controls.maxDistance = 40;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const WOOD_TEX = woodTexture();
+const table = new THREE.Mesh(new RoundedBoxGeometry(30, 0.6, 14, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: WOOD_TEX, roughness: 0.72, clearcoat: 0.25, clearcoatRoughness: 0.5 }));
+table.position.y = -0.3; table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.55, metalness: 0, clearcoat: 0.35, clearcoatRoughness: 0.4, ...o });
+const frost = (color = 0xf4fbff, o = {}) => new THREE.MeshPhysicalMaterial({ color, transmission: 0.93, roughness: 0.1, thickness: 0.15, ior: 1.1, clearcoat: 1, clearcoatRoughness: 0.1, ...o });
+const glassA = (o = {}) => new THREE.MeshPhysicalMaterial({ color: 0xf6fbff, roughness: 0.05, clearcoat: 1, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide, ...o });
+const glow = color => new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.9, roughness: 0.3, toneMapped: false });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+
+/** 發光 3D 箭頭：沿 +x 方向，setLength 改長度（箭頭長度 ∝ 力的大小） */
+function makeArrow(color, r = 0.07) {
+  const g = new THREE.Group();
+  const mat = glow(color);
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, 16).rotateZ(-Math.PI / 2).translate(0.5, 0, 0), mat);
+  const head = new THREE.Mesh(new THREE.ConeGeometry(r * 2.4, r * 5, 20).rotateZ(-Math.PI / 2).translate(r * 2.5, 0, 0), mat);
+  g.add(shaft, head);
+  g.userData.set = len => {
+    const hl = r * 5;
+    g.visible = len > 0.02;
+    const L = Math.max(len, 0.001);
+    shaft.scale.x = Math.max(0.001, L - hl * Math.min(1, L / hl));
+    head.position.x = shaft.scale.x;
+    head.scale.setScalar(Math.min(1, L / hl));
+  };
+  return g;
+}
+/** LCD 數字顯示器（canvas 貼圖） */
+function makeLcd(w, h, unit = 'g') {
+  const c = document.createElement('canvas'); c.width = 512; c.height = Math.round(512 * h / w);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+  let last = '';
+  mesh.userData.set = text => {
+    if (text === last) return; last = text;
+    const g = c.getContext('2d');
+    g.fillStyle = '#1f2a24'; g.fillRect(0, 0, c.width, c.height);
+    g.fillStyle = '#9df0c2'; g.shadowColor = '#5be59a'; g.shadowBlur = 18;
+    g.font = `700 ${c.height * 0.62}px "Consolas", "Menlo", monospace`; g.textAlign = 'right'; g.textBaseline = 'middle';
+    g.fillText(text, c.width - 50, c.height * 0.54);
+    g.shadowBlur = 0; g.font = `700 ${c.height * 0.24}px sans-serif`; g.textAlign = 'left'; g.fillStyle = '#6fbf95'; g.fillText(unit, c.width - 44, c.height * 0.7);
+    tex.needsUpdate = true;
+  };
+  return mesh;
+}
+function makeScale(w = 2.2, d = 1.8) {
+  const g = new THREE.Group();
+  const body = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w, 0.32, d, 4, 0.12), clay(0xf3ece0))); body.position.y = 0.16; g.add(body);
+  const plate = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w - 0.3, 0.07, d - 0.3, 3, 0.03), clay(0xd9dde3, { metalness: 0.5, roughness: 0.25, clearcoat: 1 })));
+  plate.position.y = 0.355; g.add(plate);
+  const lcd = makeLcd(1.1, 0.24); lcd.position.set(0.25, 0.16, d / 2 + 0.005); g.add(lcd);
+  g.userData.lcd = lcd; g.userData.top = 0.39;
+  return g;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html) { if (L.html !== html) { L.html = html; L.el.innerHTML = html; } }
+function placeLabels() {
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * window.innerWidth) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * window.innerHeight) + 'px';
+  }
+}
+let tab = 'net', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+/* =========================================================
+   Tab 3：壓力與接觸面積（釘子／釘板與果凍氣球）
+   ========================================================= */
+const A_NAIL = 0.01, P_BURST = 150;                                      // 單根釘尖 0.01 cm²；氣球承受上限 150 N/cm²
+const PRES = { group: new THREE.Group(), mode: 'one', F: 0, burst: false, plateY: 3.2, boomT: 0 };
+scene.add(PRES.group); PRES.group.visible = false;
+const BR = 1.05;
+const balloonMat = new THREE.MeshPhysicalMaterial({ color: 0xff6f8e, transmission: 0.55, roughness: 0.08, thickness: 1.6, ior: 1.25, clearcoat: 1, clearcoatRoughness: 0.05,
+  iridescence: 0.35, iridescenceIOR: 1.3, attenuationColor: new THREE.Color(0xff4d77), attenuationDistance: 1.6, emissive: 0xff5f86, emissiveIntensity: 0.08 });
+const balloon = new THREE.Mesh(new THREE.SphereGeometry(BR, 64, 48), balloonMat); balloon.castShadow = true; PRES.group.add(balloon);
+const knot = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.18, 16), clay(0xff6f8e)); knot.rotation.z = -Math.PI / 2 - 0.4; PRES.group.add(knot);
+const presser = new THREE.Group(); PRES.group.add(presser);
+presser.add(shadowed(new THREE.Mesh(new RoundedBoxGeometry(2.8, 0.24, 2.8, 4, 0.08), clay(0xb4865a, { map: WOOD_TEX }))));
+const handleP = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.8, 8, 20), clay(0x8a6440))); handleP.position.y = 0.62; presser.add(handleP);
+const NAIL_L = 0.42;
+const nailMat = clay(0xc9ccd2, { metalness: 0.7, roughness: 0.25, clearcoat: 1 });
+function nail() {
+  const g = new THREE.Group();
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, NAIL_L - 0.1, 10), nailMat); shaft.position.y = -0.12 - (NAIL_L - 0.1) / 2; g.add(shaft);
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(0.025, 0.1, 10).rotateX(Math.PI), nailMat); tip.position.y = -0.12 - NAIL_L + 0.05; g.add(tip);
+  return g;
+}
+const nailOne = nail(); presser.add(nailOne);
+const nailBed = new THREE.Group(); presser.add(nailBed);
+for (let i = 0; i < 10; i++) for (let j = 0; j < 10; j++) { const n = nail(); n.position.set(-0.99 + i * 0.22, 0, -0.99 + j * 0.22); nailBed.add(n); }
+const TIP_OFF = 0.12 + NAIL_L;                                           // 壓板中心到釘尖的距離
+const aDown = makeArrow(0xff8a3d, 0.09); aDown.rotation.z = -Math.PI / 2; PRES.group.add(aDown);
+const lP = addLabel('pres', '', 'hl', V3(2.4, 0, 0), presser);
+const lBoom = addLabel('pres', '💥 啪！氣球爆了！', 'boom', V3(0, 1.4, 0)); lBoom.show = false;
+// 爆破碎片
+const shardGeo = new THREE.PlaneGeometry(0.16, 0.12);
+const shardMat = new THREE.MeshPhysicalMaterial({ color: 0xff6f8e, roughness: 0.3, clearcoat: 1, side: THREE.DoubleSide, emissive: 0xff5f86, emissiveIntensity: 0.15 });
+const shards = Array.from({ length: 110 }, () => { const m = new THREE.Mesh(shardGeo, shardMat); m.visible = false; PRES.group.add(m); return { m, v: V3(0, 0, 0), w: V3(0, 0, 0) }; });
+const flashMat = new THREE.MeshBasicMaterial({ color: 0xfff1f4, transparent: true, opacity: 0, depthWrite: false, toneMapped: false });
+const flash = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 20), flashMat); flash.visible = false; PRES.group.add(flash);
+function burst() {
+  PRES.burst = true; PRES.boomT = 0;
+  balloon.visible = false; knot.visible = false;
+  const c = V3(0, BR, 0);
+  shards.forEach(s => {
+    const d = V3(rnd(-1, 1), rnd(-0.4, 1), rnd(-1, 1)).normalize();
+    s.m.position.copy(c).addScaledVector(d, BR * 0.9);
+    s.v.copy(d).multiplyScalar(rnd(3, 7)); s.w.set(rnd(-12, 12), rnd(-12, 12), rnd(-12, 12));
+    s.m.visible = true; s.m.scale.setScalar(rnd(0.6, 1.5));
+  });
+  flash.visible = true; flash.position.copy(c);
+}
+function resetBalloon() {
+  PRES.burst = false; PRES.F = 0; $('presS').value = 0; $('presV').textContent = '0';
+  balloon.visible = true; knot.visible = true; flash.visible = false;
+  shards.forEach(s => { s.m.visible = false; });
+}
+function setNail(m) {
+  PRES.mode = m;
+  document.querySelectorAll('[data-nail]').forEach(b => b.classList.toggle('on', b.dataset.nail === m));
+  resetBalloon();
+}
+document.querySelectorAll('[data-nail]').forEach(b => b.addEventListener('click', () => setNail(b.dataset.nail)));
+$('presS').addEventListener('input', () => { if (!PRES.burst) { PRES.F = Number($('presS').value); } else $('presS').value = PRES.F; $('presV').textContent = Number($('presS').value).toFixed(1).replace('.0', ''); });
+$('balloonReset').addEventListener('click', resetBalloon);
+function updatePres(dt) {
+  const one = PRES.mode === 'one', A = one ? A_NAIL : A_NAIL * 100, F = PRES.F, P = F / A;
+  nailOne.visible = one; nailBed.visible = !one;
+  if (!PRES.burst && P > P_BURST) burst();
+  let top;
+  if (!PRES.burst) {
+    // 變形：釘板＝把力分散，氣球被壓扁（Y 縮、X/Z 變寬，體積大致不變）；單根釘子＝只有一點小凹陷
+    const sq = one ? 0.05 * Math.min(1, F / 1.5) : 0.42 * F / 100;
+    const sy = 1 - sq, sxz = 1 / Math.sqrt(sy);
+    balloon.scale.set(sxz, sy, sxz);
+    balloon.position.y = BR * sy;
+    top = 2 * BR * sy;
+    knot.position.set(BR * sxz * 0.98, BR * sy * 0.55, 0);
+  } else top = 0.03;
+  const targetY = (PRES.burst ? top : Math.max(top, 0) + (F > 0 || !one ? 0 : 0)) + TIP_OFF;
+  PRES.plateY += ((F > 0 || PRES.burst ? targetY : targetY + 0.6) - PRES.plateY) * (1 - Math.exp(-dt * (PRES.burst ? 6 : 10)));
+  presser.position.y = PRES.plateY;
+  aDown.position.set(0, PRES.plateY + 2.0, 0); aDown.userData.set(F > 0 ? 0.4 + F * 0.012 : 0); aDown.position.y = PRES.plateY + 0.95 + (0.4 + F * 0.012);
+  // 爆破動畫
+  if (PRES.burst) {
+    PRES.boomT += dt;
+    shards.forEach(s => {
+      if (!s.m.visible) return;
+      s.v.y -= 9.8 * dt; s.v.multiplyScalar(Math.pow(0.4, dt));
+      s.m.position.addScaledVector(s.v, dt);
+      if (s.m.position.y < 0.02) { s.m.position.y = 0.02; s.v.set(0, 0, 0); s.w.set(0, 0, 0); s.m.rotation.x = -Math.PI / 2; }
+      s.m.rotation.x += s.w.x * dt; s.m.rotation.y += s.w.y * dt;
+    });
+    flash.scale.setScalar(BR * (1 + PRES.boomT * 4)); flashMat.opacity = Math.max(0, 0.7 - PRES.boomT * 2.5);
+    flash.visible = flashMat.opacity > 0;
+  }
+  lBoom.show = PRES.burst && PRES.boomT < 2.5;
+  setLabel(lP, `P ＝ ${F.toFixed(1)} N ÷ ${A} cm² ＝ ${P.toFixed(0)} N/cm²`);
+  const danger = P / P_BURST;
+  setHTML('presStat', `接觸面：<b>${one ? '單根釘子' : '百根釘板'}</b>（A ＝ ${A} cm²）<br>下壓力 F ＝ <b>${F.toFixed(1)} N</b><br>壓力 P ＝ <b class="${danger > 0.8 ? 'r' : 'g'}">${P.toFixed(0)} N/cm²</b>（上限 150）<br>${PRES.burst ? '<span class="r">💥 壓力超過上限 → 氣球被刺破！</span>' : one ? '一點點力就會刺破…' : `<span class="g">氣球只被壓扁，不會破</span>`}`);
+  setCap(PRES.burst
+    ? `<small>壓力 P ＝ 垂直作用力 ÷ 受力面積</small><span class="mid">${F.toFixed(1)} N ÷ ${A} cm² ＝ ${P.toFixed(0)} N/cm² ＞ 150</span>受力面積<b>非常小</b> → 壓力超大 → 氣球<b>爆了</b>！`
+    : one ? `<small>壓力 P ＝ 垂直作用力 ÷ 受力面積</small>單根釘子：面積只有 0.01 cm²，<b>微微</b>往下壓看看…`
+    : `<small>壓力 P ＝ 垂直作用力 ÷ 受力面積</small><span class="mid">${F.toFixed(1)} N ÷ 1 cm² ＝ ${P.toFixed(0)} N/cm²</span>力被 100 根釘子<b>分散</b> → 面積大、壓力小 → 氣球只<b>變形</b>`);
+}
+
+/* =========================================================
+   Tab 2：液體壓力探測（P ＝ h × d）
+   1 cm ＝ 0.04 單位長；水深 0～100 cm
+   ========================================================= */
+const LIQS = {
+  water: { name: '純水', d: 1.0, color: 0x6fbcff, att: 0x3aa6ff },
+  salt: { name: '食鹽水', d: 1.2, color: 0x7aa3c4, att: 0x4f86ad },
+  oil: { name: '沙拉油', d: 0.9, color: 0xf5c642, att: 0xd9a400 }
+};
+const LIQ = { group: new THREE.Group(), h: 40, hD: 40, kind: 'water', dD: 1.0 };
+scene.add(LIQ.group); LIQ.group.visible = false;
+const CM = 0.04, LT = { w: 4.6, d: 3.0, floor: 0.32, depth: 100 };
+const SURF_Y = LT.floor + LT.depth * CM;                                    // 水面高度
+const ltStand = shadowed(new THREE.Mesh(new RoundedBoxGeometry(LT.w + 0.6, 0.32, LT.d + 0.6, 4, 0.12), clay(0xb4865a))); ltStand.position.y = 0.16; LIQ.group.add(ltStand);
+const ltGlass = new THREE.Mesh(new RoundedBoxGeometry(LT.w + 0.1, LT.depth * CM + 0.5, LT.d + 0.1, 4, 0.12), glassA({ opacity: 0.07 }));
+ltGlass.position.y = LT.floor + (LT.depth * CM + 0.5) / 2; ltGlass.renderOrder = 5; LIQ.group.add(ltGlass);
+// 用半透明（不用透射）：裡面的發光箭頭才不會被液體顏色洗淡
+const liqMat = new THREE.MeshPhysicalMaterial({ color: LIQS.water.color, roughness: 0.05, clearcoat: 1, transparent: true, opacity: 0.32, depthWrite: false,
+  attenuationColor: new THREE.Color(LIQS.water.att) });
+const liqBody = new THREE.Mesh(new RoundedBoxGeometry(LT.w - 0.04, LT.depth * CM, LT.d - 0.04, 3, 0.06), liqMat);
+liqBody.position.y = LT.floor + LT.depth * CM / 2; liqBody.renderOrder = 4; LIQ.group.add(liqBody);
+{ // 深度尺（從水面往下 0～100 cm）
+  const c = document.createElement('canvas'); c.width = 160; c.height = 1024;
+  const g = c.getContext('2d');
+  for (let cm = 0; cm <= 100; cm += 5) {
+    const y = 12 + cm / 100 * 1000;
+    g.strokeStyle = '#1f5fa8'; g.lineWidth = cm % 10 ? 3 : 6;
+    g.beginPath(); g.moveTo(0, y); g.lineTo(cm % 10 ? 30 : 55, y); g.stroke();
+    if (cm % 10 === 0) { g.fillStyle = '#1f5fa8'; g.font = '700 40px sans-serif'; g.textBaseline = 'middle'; g.fillText(cm, 64, y); }
+  }
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+  const ruler = new THREE.Mesh(new THREE.PlaneGeometry(0.62, LT.depth * CM * 1024 / 1000), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false }));
+  ruler.position.set(-LT.w / 2 + 0.38, SURF_Y - LT.depth * CM * 1024 / 1000 / 2 + 12 / 1000 * LT.depth * CM, LT.d / 2 + 0.07); ruler.renderOrder = 7; LIQ.group.add(ruler);
+  addLabel('liq', '<small>深度 h（cm）</small>', '', V3(-LT.w / 2 + 0.4, SURF_Y + 0.35, LT.d / 2));
+}
+// 深潛探測球
+const probe = new THREE.Group(); LIQ.group.add(probe);
+const PR = 0.32, PR_CM = PR / CM;                                            // 球半徑 0.32（8 cm）
+probe.add(new THREE.Mesh(new THREE.SphereGeometry(PR, 40, 28), new THREE.MeshPhysicalMaterial({ color: 0xfff6e0, roughness: 0.15, clearcoat: 1, emissive: 0xffd27a, emissiveIntensity: 0.35 })));
+const probeCore = new THREE.Mesh(new THREE.SphereGeometry(PR * 0.45, 24, 16), new THREE.MeshBasicMaterial({ color: 0xffb02e, toneMapped: false })); probe.add(probeCore);
+const ring = new THREE.Mesh(new THREE.TorusGeometry(PR * 1.02, 0.025, 10, 48), clay(0xb4865a)); probe.add(ring);
+const pArrows = { up: makeArrow(0xff4a12, 0.07), down: makeArrow(0xff4a12, 0.07), left: makeArrow(0xff4a12, 0.07), right: makeArrow(0xff4a12, 0.07) };
+Object.values(pArrows).forEach(a => probe.add(a));
+pArrows.down.rotation.z = -Math.PI / 2;                                     // 從上方往下壓
+pArrows.up.rotation.z = Math.PI / 2;                                        // 從下方往上推
+pArrows.right.rotation.y = Math.PI;                                         // 從右邊往左壓
+const lProbe = addLabel('liq', '', 'hl', V3(1.45, 0.55, 0), probe);
+const lTop = addLabel('liq', '', '', V3(0, 0, 0)), lBot = addLabel('liq', '', '', V3(0, 0, 0));
+function setLiquid(k) {
+  LIQ.kind = k;
+  liqMat.color.set(LIQS[k].color); liqMat.attenuationColor.set(LIQS[k].att);
+}
+$('liqH').addEventListener('input', () => { LIQ.h = Number($('liqH').value); $('liqHV').textContent = LIQ.h; });
+$('liqD').addEventListener('change', () => setLiquid($('liqD').value));
+function updateLiq(dt) {
+  const e = 1 - Math.exp(-dt * 6);
+  LIQ.hD += (LIQ.h - LIQ.hD) * e; LIQ.dD += (LIQS[LIQ.kind].d - LIQ.dD) * e;
+  const h = LIQ.hD, d = LIQ.dD;
+  probe.position.set(0, SURF_Y - h * CM, 0);
+  probeCore.scale.setScalar(0.9 + 0.1 * Math.sin(wall * 4));
+  // 每根箭頭用它所在位置的深度計算（上面淺一點、下面深一點）
+  const depth = { down: h - PR_CM, up: h + PR_CM, left: h, right: h };
+  for (const [k, a] of Object.entries(pArrows)) {
+    const P = Math.max(0, depth[k]) * d;
+    const L = 0.15 + P * 0.0045, t = 0.6 + P / 90;            // 長度、粗細都隨壓力變大
+    a.userData.set(L); a.scale.set(1, t, t);
+    const off = PR + 0.06 + L;
+    a.position.set(k === 'left' ? -off : k === 'right' ? off : 0, k === 'down' ? off : k === 'up' ? -off : 0, 0);
+  }
+  const P = h * d;
+  setLabel(lProbe, `P ＝ ${h.toFixed(0)} × ${d.toFixed(1)} ＝ ${P.toFixed(1)} gw/cm²`);
+  lTop.pos.copy(probe.position).add(V3(0.55, PR + 0.25 + (0.15 + Math.max(0, h - PR_CM) * d * 0.0045) / 2, 0));
+  lBot.pos.copy(probe.position).add(V3(0.55, -PR - 0.25 - (0.15 + (h + PR_CM) * d * 0.0045) / 2, 0));
+  setLabel(lTop, `<small>上方 ${((h - PR_CM) * d).toFixed(1)}</small>`); setLabel(lBot, `<small>下方 ${((h + PR_CM) * d).toFixed(1)}</small>`);
+  setHTML('liqStat', `液體：<b>${LIQS[LIQ.kind].name}</b>（密度 ${LIQS[LIQ.kind].d} g/cm³）<br>深度 h ＝ <b>${h.toFixed(0)} cm</b><br>液體壓力 P ＝ <b class="o">${P.toFixed(1)} gw/cm²</b>`);
+  setCap(`<small>液體壓力 P ＝ 深度 h × 密度 d</small><span class="mid">P ＝ ${h.toFixed(0)} cm × ${d.toFixed(1)} g/cm³ ＝ ${P.toFixed(1)} gw/cm²</span>壓力來自<b>四面八方</b>、垂直於接觸面；越深、密度越大，壓力越大`);
+}
+
+/* =========================================================
+   Tab 3：大氣壓力與托里切利實驗（1 cm ＝ 0.04 單位長）
+   ========================================================= */
+const LOCS = { sea: { name: '平地', H: 76 }, jade: { name: '玉山頂（約 3952 m）', H: 47 }, moon: { name: '月球（沒有大氣）', H: 0 } };
+const ATM = { group: new THREE.Group(), tilt: 0, tiltD: 0, loc: 'sea', HD: 76 };
+scene.add(ATM.group); ATM.group.visible = false;
+const TUBE_CM = 160, DIP = 0.3;                                             // 玻璃管長 160 cm；插入水銀槽 0.3 單位
+const HG_Y = 0.55;                                                           // 水銀槽液面高度
+const mercury = new THREE.MeshPhysicalMaterial({ color: 0x8e959e, metalness: 1, roughness: 0.18, clearcoat: 1, clearcoatRoughness: 0.05 });   // 深一點的銀色，桌面上才看得清楚
+const dishWall = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 1.9, 0.75, 64, 1, true), glassA({ opacity: 0.25 })); dishWall.position.y = 0.375; dishWall.renderOrder = 5; ATM.group.add(dishWall);
+const dishPool = new THREE.Mesh(new THREE.CylinderGeometry(1.94, 1.88, HG_Y - 0.02, 64), mercury); dishPool.position.y = (HG_Y - 0.02) / 2 + 0.02; ATM.group.add(dishPool);
+const tubeG = new THREE.Group(); tubeG.position.set(0, HG_Y - DIP, 0); ATM.group.add(tubeG);
+const TL = TUBE_CM * CM;
+const tubeGlass = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, TL, 32, 1, true).translate(0, TL / 2, 0), glassA({ opacity: 0.3 })); tubeGlass.renderOrder = 6; tubeG.add(tubeGlass);
+const tubeCap = new THREE.Mesh(new THREE.SphereGeometry(0.19, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), glassA({ opacity: 0.3 })); tubeCap.position.y = TL; tubeG.add(tubeCap);
+const column = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 1, 24).translate(0, 0.5, 0), mercury); tubeG.add(column);
+const meniscus = new THREE.Mesh(new THREE.SphereGeometry(0.16, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), mercury); tubeG.add(meniscus);
+const redLine = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.035, 0.035), new THREE.MeshBasicMaterial({ color: 0xff3b30, toneMapped: false })); ATM.group.add(redLine);
+const dimArrow = new THREE.Group(); ATM.group.add(dimArrow);
+const dimLine = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1, 10).translate(0, 0.5, 0), new THREE.MeshBasicMaterial({ color: 0xff3b30, toneMapped: false })); dimArrow.add(dimLine);
+const atmArrows = [-1.5, -0.8, 0.8, 1.5].map(x => { const a = makeArrow(0x3d8bff, 0.06); a.rotation.z = -Math.PI / 2; a.position.set(x, HG_Y + 0.9, 0.6); ATM.group.add(a); return a; });
+const lHeight = addLabel('atm', '', 'fr', V3(0, 0, 0));
+const lVac = addLabel('atm', '<small>真空（托里切利真空）</small>', '', V3(0, 0, 0));
+const lAtm = addLabel('atm', '<small>大氣壓力往下壓</small>', 'f2', V3(-1.15, HG_Y + 1.25, 0.6));
+const lLen = addLabel('atm', '', '', V3(0, 0, 0));
+$('tiltS').addEventListener('input', () => { ATM.tilt = Number($('tiltS').value); $('tiltV').textContent = ATM.tilt; });
+$('locS').addEventListener('change', () => { ATM.loc = $('locS').value; });
+function updateAtm(dt) {
+  ATM.tiltD += (ATM.tilt - ATM.tiltD) * (1 - Math.exp(-dt * 6));
+  const target = LOCS[ATM.loc].H;
+  const rate = ATM.loc === 'moon' ? 30 : 4;                                 // 月球：瞬間掉到底
+  ATM.HD += (target - ATM.HD) * (1 - Math.exp(-dt * rate));
+  if (Math.abs(target - ATM.HD) < 0.05) ATM.HD = target;
+  const th = ATM.tiltD * Math.PI / 180, H = ATM.HD;
+  tubeG.rotation.z = -th;
+  const vert = DIP + H * CM;                                                 // 從管底算起的垂直高度
+  const len = Math.min(TL - 0.02, vert / Math.cos(th));                      // 沿管子的水銀長度（傾斜時變長）
+  column.scale.y = len; meniscus.position.y = len;
+  const topY = HG_Y + H * CM;
+  redLine.position.set(2.2, topY, 0); redLine.visible = H > 0.5;
+  dimArrow.position.set(-2.6, HG_Y, 0); dimLine.scale.y = Math.max(0.001, H * CM); dimArrow.visible = H > 0.5;
+  lHeight.pos.set(-2.6, HG_Y + H * CM / 2, 0.2);
+  setLabel(lHeight, H > 0.5 ? `垂直高度恆為 ${H.toFixed(0)} cm` : '0 cm');
+  const tip = V3(Math.sin(th) * (TL - 0.4), HG_Y - DIP + Math.cos(th) * (TL - 0.4), 0);
+  lVac.pos.copy(tip).add(V3(0.9, 0, 0));
+  const along = V3(Math.sin(th) * len, HG_Y - DIP + Math.cos(th) * len, 0);
+  lLen.pos.copy(along).add(V3(1.2, -0.1, 0));
+  setLabel(lLen, `<small>管內水銀長 ${(H / Math.cos(th)).toFixed(1)} cm</small>`);
+  lLen.show = H > 0.5 && ATM.tiltD > 1;
+  const pk = H / 76;
+  atmArrows.forEach((a, i) => { a.visible = pk > 0.01; a.userData.set(0.25 + 0.55 * pk + 0.03 * Math.sin(wall * 4 + i)); });
+  lAtm.show = pk > 0.01;
+  const L = LOCS[ATM.loc];
+  setHTML('atmStat', `地點：<b>${L.name}</b><br>傾斜角：<b>${ATM.tilt}°</b><br>水銀柱垂直高度：<b class="r">${H.toFixed(0)} cm</b>${ATM.tiltD > 1 && H > 0.5 ? `<br>管內水銀長度：<b>${(H / Math.cos(th)).toFixed(1)} cm</b>（＝ ${H.toFixed(0)} ÷ cos ${ATM.tilt}°）` : ''}`);
+  setCap(ATM.loc === 'moon'
+    ? '<small>月球沒有大氣</small><span class="mid">大氣壓力 ＝ 0 → 水銀柱掉到 0 cm</span>沒有空氣往下壓，就撐不起任何水銀'
+    : `<small>${L.name}：大氣壓力 ＝ ${H.toFixed(0)} cmHg</small><span class="mid">${ATM.tilt > 0 ? `傾斜 ${ATM.tilt}°：水銀柱變長，但垂直高度仍是 ${H.toFixed(0)} cm` : `水銀柱垂直高度 ${H.toFixed(0)} cm`}</span>大氣壓力只撐得起固定的「垂直高度」，和管子傾斜、粗細無關${ATM.loc === 'jade' ? '；高山空氣稀薄，壓力變小' : ''}`);
+}
+
+/* =========================================================
+   Tab 4：阿基米德浮力（溢水槽＋磅秤）
+   1 單位長 ＝ 10 cm；水的密度 1 g/cm³
+   ========================================================= */
+const BUOY = { group: new THREE.Group(), obj: null, kind: null, state: 'idle', disp: 0, poured: 0, pending: 0, settleT: 0 };
+scene.add(BUOY.group); BUOY.group.visible = false;
+const TK = { cx: -1.45, half: 1.25, floor: 0.05, wl: 2.05, wallH: 2.45 };    // 槽內寬 2.5（25 cm）、水深 20 cm
+const tankGlass = new THREE.Mesh(new RoundedBoxGeometry(2 * TK.half + 0.12, TK.wallH, 2 * TK.half + 0.12, 4, 0.12), glassA({ opacity: 0.16 }));
+tankGlass.position.set(TK.cx, TK.wallH / 2, 0); tankGlass.renderOrder = 5; BUOY.group.add(tankGlass);
+const tankWaterMat = new THREE.MeshPhysicalMaterial({ color: 0x8fd0ff, transmission: 0.8, roughness: 0.03, thickness: 1.5, ior: 1.2, clearcoat: 1,
+  attenuationColor: new THREE.Color(0x3aa6ff), attenuationDistance: 2.5 });
+const tankWater = new THREE.Mesh(new RoundedBoxGeometry(2 * TK.half - 0.04, TK.wl - TK.floor, 2 * TK.half - 0.04, 3, 0.08), tankWaterMat);
+tankWater.position.set(TK.cx, (TK.wl + TK.floor) / 2, 0); BUOY.group.add(tankWater);
+// 出水口
+const SPOUT = { x0: TK.cx + TK.half + 0.06, y: TK.wl - 0.06, tipX: TK.cx + TK.half + 0.75, tipY: TK.wl - 0.32 };
+const spoutCurve = new THREE.CatmullRomCurve3([V3(SPOUT.x0 - 0.1, SPOUT.y, 0), V3(SPOUT.x0 + 0.35, SPOUT.y - 0.02, 0), V3(SPOUT.tipX - 0.05, SPOUT.tipY + 0.1, 0), V3(SPOUT.tipX, SPOUT.tipY, 0)]);
+BUOY.group.add(new THREE.Mesh(new THREE.TubeGeometry(spoutCurve, 40, 0.09, 16, false), glassA({ opacity: 0.35 })));
+// 小燒杯＋磅秤
+const bScale = makeScale(2.0, 1.7); bScale.position.set(SPOUT.tipX + 0.15, 0, 0); BUOY.group.add(bScale);
+const BK = { r: 0.75, h: 1.15, x: SPOUT.tipX + 0.15, y0: bScale.userData.top };
+{
+  const g = new THREE.Group(); g.position.set(BK.x, BK.y0, 0); BUOY.group.add(g);
+  const wallM = new THREE.Mesh(new THREE.CylinderGeometry(BK.r, BK.r * 0.97, BK.h, 48, 1, true), glassA()); wallM.position.y = BK.h / 2; wallM.renderOrder = 5; g.add(wallM);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(BK.r, 0.035, 10, 60), clay(0xffffff, { transparent: true, opacity: 0.8 })); rim.rotation.x = Math.PI / 2; rim.position.y = BK.h; g.add(rim);
+}
+const bWaterMat = tankWaterMat.clone();
+const bWater = new THREE.Mesh(new THREE.CylinderGeometry(BK.r - 0.05, BK.r - 0.05, 1, 40), bWaterMat); bWater.position.x = BK.x; BUOY.group.add(bWater);
+const BEAKER_AREA = Math.PI * Math.pow((BK.r - 0.05) * 10, 2);         // cm²
+// 水流粒子
+const dropGeo = new THREE.CapsuleGeometry(0.04, 0.08, 4, 8), dropMat = new THREE.MeshStandardMaterial({ color: 0x4fb8ff, emissive: 0x2f9bff, emissiveIntensity: 0.9, roughness: 0.2, toneMapped: false });
+const drops = Array.from({ length: 160 }, () => { const m = new THREE.Mesh(dropGeo, dropMat); m.visible = false; BUOY.group.add(m); return { m, on: false, v: V3(0, 0, 0) }; });
+let dropAcc = 0;
+// 物體
+const OBJ = {
+  foam: { name: '保麗龍', V: 500, m: 125, shape: 'box', size: [0.8, 0.78125, 0.8], mat: () => clay(0xf7f8fa, { roughness: 0.95, clearcoat: 0, sheen: 0.5 }) },
+  wood: { name: '木塊', V: 500, m: 300, shape: 'box', size: [0.8, 0.78125, 0.8], mat: () => new THREE.MeshPhysicalMaterial({ map: woodTexture('#d8b07a', '#c4955d'), roughness: 0.7, clearcoat: 0.25 }) },
+  iron: { name: '鐵塊', V: 500, m: 3950, shape: 'box', size: [0.8, 0.78125, 0.8], mat: () => clay(0x7d848d, { metalness: 0.75, roughness: 0.3, clearcoat: 0.6 }) }
+};
+/** 物體底部到水面的深度 h（單位長）→ 排開的水體積（cm³） */
+function submerged(o, h) {
+  if (h <= 0) return 0;
+  if (o.shape === 'box') { const [w, H, d] = o.size; return Math.min(h, H) * w * d * 1000; }
+  const R = o.r; h = Math.min(h, 2 * R);
+  return Math.PI * h * h * (3 * R - h) / 3 * 1000;
+}
+/** 漂浮平衡：排開水重 ＝ 物重（二分法求吃水深度）；會沉的物體回傳 null */
+function floatDepth(o) {
+  const full = o.shape === 'box' ? o.size[1] : 2 * o.r;
+  if (submerged(o, full) < o.m) return null;
+  let lo = 0, hi = full;
+  for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (submerged(o, mid) < o.m) lo = mid; else hi = mid; }
+  return (lo + hi) / 2;
+}
+const lObj = addLabel('buoy', '', 'hl', V3(0, 1.15, 0));
+addLabel('buoy', '<small>溢水槽（裝滿到出水口）</small>', '', V3(TK.cx, -0.25, 1.5));
+addLabel('buoy', '<small>磅秤（已扣除燒杯）</small>', '', V3(BK.x, -0.25, 1.3));
+function dropObject(kind, from = null) {
+  if (BUOY.obj) { BUOY.group.remove(BUOY.obj); BUOY.obj.traverse(c => { c.geometry?.dispose(); c.material?.dispose?.(); }); }
+  const o = OBJ[kind];
+  BUOY.kind = kind; BUOY.disp = 0; BUOY.poured = 0; BUOY.settleT = 0;
+  drops.forEach(d => { d.on = false; d.m.visible = false; });
+  const mesh = o.shape === 'box'
+    ? new THREE.Mesh(new RoundedBoxGeometry(...o.size, 4, 0.08), o.mat())
+    : new THREE.Mesh(new THREE.SphereGeometry(o.r, 48, 32), o.mat());
+  shadowed(mesh);
+  const g = new THREE.Group(); g.add(mesh);
+  const half = o.shape === 'box' ? o.size[1] / 2 : o.r;
+  mesh.position.y = half;                                                // 群組原點＝物體底部
+  g.position.set(from ? clamp(from.x, TK.cx - TK.half + 0.5, TK.cx + TK.half - 0.5) : TK.cx, from ? Math.max(3.0, from.y) : 3.6, from ? clamp(from.z, -TK.half + 0.5, TK.half - 0.5) : 0);
+  BUOY.group.add(g); BUOY.obj = g;
+  const fd = floatDepth(o);
+  BUOY.target = fd == null ? TK.floor + 0.02 : TK.wl - fd;               // 最終底部高度
+  BUOY.floats = fd != null;
+  BUOY.state = 'lower';
+  document.querySelectorAll('[data-obj]').forEach(b => b.classList.toggle('on', b.dataset.obj === kind));
+  lObj.follow = g; lObj.off = V3(0, (o.shape === 'box' ? o.size[1] : 2 * o.r) + 0.35, 0);
+  goView(BUOY_CLOSE);
+}
+document.querySelectorAll('[data-obj]').forEach(b => b.addEventListener('click', () => dropObject(b.dataset.obj)));
+const BUOY_CAM = { pos: [-0.4, 4.4, 10.2], target: [-0.4, 1.2, 0.6], fitW: 7.2 };
+const BUOY_CLOSE = { pos: [0.7, 3.4, 7.2], target: [0.1, 1.45, 0], fitW: 5.6 };
+$('buoyView').addEventListener('click', () => goView(BUOY_CAM));
+function updateBuoy(dt) {
+  const o = BUOY.kind ? OBJ[BUOY.kind] : null;
+  if (o && BUOY.obj) {
+    const g = BUOY.obj;
+    if (BUOY.state === 'lower') {                                        // 慢慢放入（不激起水花，溢出量才準）
+      const speed = g.position.y > TK.wl + 0.1 ? 1.4 : 0.32;
+      g.position.y = Math.max(BUOY.target, g.position.y - speed * dt);
+      if (g.position.y <= BUOY.target + 1e-4) { BUOY.state = 'settle'; }
+    }
+    if (BUOY.state === 'settle') {
+      BUOY.settleT += dt;
+      if (BUOY.floats) g.position.y = BUOY.target + Math.sin(BUOY.settleT * 3) * 0.012 * Math.exp(-BUOY.settleT);
+    }
+    const h = TK.wl - (BUOY.state === 'settle' ? BUOY.target : g.position.y);
+    BUOY.disp = Math.max(BUOY.disp, submerged(o, h));                    // 排開的水（只增不減）
+    lObj.show = true;
+    setLabel(lObj, `${o.name}：${o.V} cm³、${o.m} g`);
+  } else lObj.show = false;
+  // 溢出：排開多少水就流出多少，經出水口流進燒杯
+  const pend = BUOY.disp - BUOY.poured;
+  if (pend > 0.01) {
+    const flow = Math.min(pend, Math.max(60, pend * 1.6) * dt);
+    BUOY.poured += flow;
+    dropAcc += flow * 0.35;
+    while (dropAcc >= 1) {
+      dropAcc -= 1;
+      const d = drops.find(q => !q.on);
+      if (d) { d.on = true; d.m.visible = true; d.m.position.set(SPOUT.tipX + rnd(-0.02, 0.02), SPOUT.tipY, rnd(-0.03, 0.03)); d.v.set(rnd(0.15, 0.4), 0, rnd(-0.05, 0.05)); }
+    }
+  }
+  const bLevel = BUOY.poured / BEAKER_AREA / 10;                          // 燒杯水深（單位長）
+  bWater.visible = bLevel > 0.002;
+  bWater.scale.y = Math.max(0.001, bLevel); bWater.position.y = BK.y0 + 0.03 + bLevel / 2;
+  const surf = BK.y0 + 0.03 + bLevel;
+  for (const d of drops) {
+    if (!d.on) continue;
+    d.v.y -= 9.8 * 0.5 * dt;
+    d.m.position.addScaledVector(d.v, dt);
+    const dx = d.m.position.x - BK.x;
+    if (d.m.position.y < surf && Math.abs(dx) < BK.r) { d.on = false; d.m.visible = false; }
+    if (d.m.position.y < 0) { d.on = false; d.m.visible = false; }
+    d.m.quaternion.setFromUnitVectors(V3(0, 1, 0), d.v.clone().normalize());
+  }
+  const reading = BUOY.poured;
+  bScale.userData.lcd.userData.set(reading.toFixed(0));
+  const done = o && BUOY.state === 'settle' && BUOY.disp - BUOY.poured < 0.5;
+  if (!o) {
+    setHTML('buoyStat', '選一個物體放入溢水槽');
+    setCap('<small>阿基米德原理</small>選一個物體放進溢水槽，看看溢出的水有多重');
+    return;
+  }
+  const B = BUOY.disp, W = o.m;
+  setHTML('buoyStat', `${o.name}：體積 <b>${o.V} cm³</b>、質量 <b>${o.m} g</b>（密度 ${(o.m / o.V).toFixed(2)} g/cm³）<br>排開的水：<b class="b">${B.toFixed(0)} cm³</b><br>磅秤讀數：<b class="g">${reading.toFixed(0)} g</b><br>${done ? (BUOY.floats ? `<span class="g">漂浮：浮力 ＝ 物重 ＝ ${W} gw</span>` : `<span class="o">沉底：浮力 ${B.toFixed(0)} gw ＜ 物重 ${W} gw</span>`) : '水正在溢出…'}`);
+  if (!done) setCap(`<small>${o.name}放入中</small><span class="mid">磅秤：${reading.toFixed(0)} g</span>物體排開的水從出水口流進燒杯…`);
+  else if (BUOY.kind === 'foam') setCap(`<small>保麗龍：密度 0.25 g/cm³ ＜ 1 → 漂浮</small><span class="huge">浮力 ＝ 減輕的重量 ＝ 排開液體重 ＝ ${B.toFixed(0)} gw</span>漂浮時 浮力 ＝ 保麗龍重 ${W} gw，只有一小部分泡在水裡`);
+  else if (BUOY.kind === 'wood') setCap(`<small>木塊：密度 0.6 g/cm³ ＜ 1 → 漂浮</small><span class="huge">浮力 ＝ 減輕的重量 ＝ 排開液體重 ＝ ${B.toFixed(0)} gw</span>木塊在水中「變輕」了 ${W} gw → 浮力 ＝ 木塊重 ${W} gw（約 ${(B / 1000 * 9.8).toFixed(2)} N）`);
+  else if (BUOY.kind === 'iron') setCap(`<small>鐵塊：密度 7.9 g/cm³ ＞ 1 → 沉底</small><span class="huge">沉體浮力 ＝ 鐵塊體積 × 液體密度 ＝ 500 cm³ × 1 g/cm³ ＝ ${B.toFixed(0)} gw</span>整塊泡進水裡，排開的水比木塊、保麗龍都多；但浮力 ＜ 鐵重 ${W} gw，所以沉底`);
+}
+
+/* ----- 浮力：三塊可拖曳的物質積木（放在溢水槽前方） ----- */
+const SHELF = ['foam', 'wood', 'iron'].map((k, i) => {
+  const o = OBJ[k];
+  const m = shadowed(new THREE.Mesh(new RoundedBoxGeometry(...o.size, 4, 0.08), o.mat())); m.position.y = o.size[1] / 2;
+  const g = new THREE.Group(); g.add(m); BUOY.group.add(g);
+  const home = V3(TK.cx - 1.1 + i * 1.1, 0, 2.35); g.position.copy(home);
+  addLabel('buoy', `<small>${o.name}<br>${(o.m / o.V).toFixed(2)} g/cm³</small>`, '', V3(home.x, -0.2, home.z + 0.75));
+  return { g, kind: k, home, from: null, t: 1 };
+});
+const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2(), hitP = V3(0, 0, 0);
+let drag = null;
+function setNdc(ev) {
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+}
+function pickShelf(ev) {
+  if (tab !== 'buoy') return null;
+  setNdc(ev);
+  const hit = raycaster.intersectObjects(SHELF.map(s => s.g), true)[0];
+  return hit ? SHELF.find(s => { let o = hit.object; while (o) { if (o === s.g) return true; o = o.parent; } return false; }) : null;
+}
+const overTank = p => Math.abs(p.x - TK.cx) < TK.half + 0.15 && Math.abs(p.z) < TK.half + 0.15;   // 拿在水槽口上方就算放進去
+renderer.domElement.addEventListener('pointerdown', ev => {
+  const s = pickShelf(ev); if (!s) return;
+  drag = { s, plane: new THREE.Plane(V3(0, 1, 0), -2.75) };
+  controls.enabled = false; renderer.domElement.setPointerCapture(ev.pointerId); renderer.domElement.style.cursor = 'grabbing';
+});
+renderer.domElement.addEventListener('pointermove', ev => {
+  if (!drag) { if (!ev.buttons) renderer.domElement.style.cursor = pickShelf(ev) ? 'grab' : ''; return; }
+  setNdc(ev);
+  if (!raycaster.ray.intersectPlane(drag.plane, hitP)) return;
+  drag.s.g.position.set(clamp(hitP.x, -5, 4), 2.75, clamp(hitP.z, -2, 3.5));
+  tankGlass.material.opacity = overTank(drag.s.g.position) ? 0.32 : 0.16;   // 移到水槽上方時水槽變亮
+});
+function endShelfDrag(ev) {
+  if (!drag) return;
+  const s = drag.s; drag = null;
+  controls.enabled = true; renderer.domElement.style.cursor = ''; tankGlass.material.opacity = 0.16;
+  try { renderer.domElement.releasePointerCapture(ev.pointerId); } catch (e) { /* 已釋放 */ }
+  if (overTank(s.g.position)) { dropObject(s.kind, s.g.position.clone()); s.g.position.copy(s.home); }   // 放進水槽：從放手的位置慢慢放入
+  else { s.from = s.g.position.clone(); s.t = 0; }                                                     // 沒放到：彈回原位
+}
+renderer.domElement.addEventListener('pointerup', endShelfDrag);
+renderer.domElement.addEventListener('pointercancel', endShelfDrag);
+function updateShelf(dt) {
+  for (const s of SHELF) if (s.t < 1) { s.t = Math.min(1, s.t + dt / 0.45); s.g.position.lerpVectors(s.from, s.home, smooth(0, 1, s.t)); s.g.position.y += Math.sin(s.t * Math.PI) * 0.6; }
+}
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  pres: { group: PRES.group, cam: { pos: [0, 3.6, 8.5], target: [0, 1.8, 0], fitW: 5.5 }, update: updatePres },
+  liq: { group: LIQ.group, cam: { pos: [0, 3.4, 11.5], target: [0, 2.3, 0], fitW: 7.2 }, update: updateLiq },
+  atm: { group: ATM.group, cam: { pos: [1.4, 3.9, 13.5], target: [1.4, 3.0, 0], fitW: 10.5 }, update: updateAtm },
+  buoy: { group: BUOY.group, cam: BUOY_CAM, update: dt => { updateBuoy(dt); updateShelf(dt); } }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  goView(TABS[t].cam, true);
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (window.MobileView?.isMobile()) return { pos, tgt };
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;   // 公式列在上方 → 畫面主體往下移
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant || window.MobileView?.isMobile()) {
+    camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update();
+    window.MobileView?.frame(camera, controls, 1.4);
+    return;
+  }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam, true));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.fov = 40;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam, true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.2);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, PRES, BUOY, LIQ, ATM, SHELF, dropObject, setNail, floatDepth, OBJ, camera, setLiquid };
+
+resize();
+setTab(TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'pres');
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>

@@ -154,12 +154,13 @@
     <section class="sec" data-tab="ion" hidden>
       <div class="concept" style="--cc:#3d6fd8"><div class="ct">離子樂高</div><div class="cd">正電總數 ＝ 負電總數，才能組成離子化合物<br>一個凸起 ＝ +1、一個凹槽 ＝ −1</div></div>
       <div class="legend">
-        <span><i style="background:#5b8def"></i>陽離子（藍，凸起）：Na⁺、Ca²⁺、Al³⁺</span>
-        <span><i style="background:#e5605a"></i>陰離子（紅，凹槽）：Cl⁻、O²⁻、SO₄²⁻</span>
+        <span><i style="background:#5b8def"></i>陽離子（藍，凸起）<br>+1：Na⁺ K⁺ Ag⁺ NH₄⁺<br>+2：Ca²⁺ Mg²⁺ Hg²⁺ Zn²⁺ Cu²⁺<br>+3：Al³⁺ Fe³⁺</span>
+        <span><i style="background:#e5605a"></i>陰離子（紅，凹槽）<br>−1：Cl⁻ I⁻ OH⁻ CH₃COO⁻ NO₃⁻<br>−2：O²⁻ SO₄²⁻ CO₃²⁻</span>
       </div>
       <div class="stat" id="ionStat"></div>
-      <button class="btn" id="ionReset">↺ 全部拆開、放回原位</button>
-      <p class="desc">把陽離子和陰離子拖到中間的<b>組合區</b>、<b>放在彼此旁邊</b>。凸起數 ＝ 凹槽數時會自動卡合；不相等就會閃紅光。一次只用<b>一種</b>陽離子和<b>一種</b>陰離子。</p>
+      <button class="btn" id="ionReset">↺ 清空組合區</button>
+      <div class="note">📝 化學式規則<br>① 陽離子在前，陰離子在後；數量 1 不寫<br>② 原子團（NH₄⁺、OH⁻、NO₃⁻、SO₄²⁻、CO₃²⁻、CH₃COO⁻）超過 1 個要加<b>括號</b>：Mg(OH)₂、Al₂(SO₄)₃、(NH₄)₂CO₃<br>③ <b>醋酸根寫在前面</b>：CH₃COONa、(CH₃COO)₂Ca</div>
+      <p class="desc">從兩側<b>供應站</b>把積木拖到中間的<b>組合區</b>、放在彼此旁邊（拿走一塊會自動補貨，拖回供應站＝回收）。凸起數 ＝ 凹槽數時會自動卡合；不相等就會閃紅光。一次只用<b>一種</b>陽離子和<b>一種</b>陰離子。</p>
     </section>
 
     <button class="btn" id="viewBtn" style="margin-top:10px">重設視角</button>
@@ -244,6 +245,8 @@ const textTexture = (text, { w = 256, h = 128, color = '#fff', font = 800, size 
   if (bg) { g.fillStyle = bg; g.fillRect(0, 0, w, h); }
   g.fillStyle = color; g.textAlign = 'center'; g.textBaseline = 'middle';
   g.font = `${font} ${h * size}px "Segoe UI","PingFang TC","Microsoft JhengHei",sans-serif`;
+  const tw = g.measureText(text).width;
+  if (tw > w * 0.9) g.font = `${font} ${h * size * w * 0.9 / tw}px "Segoe UI","PingFang TC","Microsoft JhengHei",sans-serif`;
   g.fillText(text, w / 2, h * 0.54);
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
   return t;
@@ -566,26 +569,55 @@ function updateTable(dt) {
 
 /* =========================================================
    Tab 3：離子樂高（正電總數 ＝ 負電總數）
+   ‧ 左右兩個玻璃供應站，依價數分排；拖走一塊，原位立刻補一塊（無限供應）
+   ‧ 拖回供應站＝回收；拼成矩形（正負相等）就卡合並寫出化學式
    ========================================================= */
 const ION = { group: new THREE.Group(), pieces: [], bonds: [], near: [], msg: '', msgT: 0 };
 scene.add(ION.group); ION.group.visible = false;
 const UNIT = 0.62, BW = 1.0, BH = 0.6;
+// pre：命名前綴（○化、○酸）；poly：原子團（數量 > 1 要加括號）
 const TYPES = {
   Na: { q: 1, sym: 'Na', label: 'Na⁺', name: '鈉', color: 0x5b8def },
+  K: { q: 1, sym: 'K', label: 'K⁺', name: '鉀', color: 0x6a97f2 },
+  Ag: { q: 1, sym: 'Ag', label: 'Ag⁺', name: '銀', color: 0x7ea3ee },
+  NH4: { q: 1, sym: 'NH₄', label: 'NH₄⁺', name: '銨', color: 0x3fa3d9, poly: true },
   Ca: { q: 2, sym: 'Ca', label: 'Ca²⁺', name: '鈣', color: 0x4a7fe0 },
+  Mg: { q: 2, sym: 'Mg', label: 'Mg²⁺', name: '鎂', color: 0x5688e6 },
+  Hg: { q: 2, sym: 'Hg', label: 'Hg²⁺', name: '汞', color: 0x6c8fd6 },
+  Zn: { q: 2, sym: 'Zn', label: 'Zn²⁺', name: '鋅', color: 0x4f86d8 },
+  Cu: { q: 2, sym: 'Cu', label: 'Cu²⁺', name: '銅', color: 0x2f8fe0 },
   Al: { q: 3, sym: 'Al', label: 'Al³⁺', name: '鋁', color: 0x3d6fd8 },
-  Cl: { q: -1, sym: 'Cl', label: 'Cl⁻', name: '氯', color: 0xe5605a },
-  O: { q: -2, sym: 'O', label: 'O²⁻', name: '氧', color: 0xe0504f },
-  SO4: { q: -2, sym: 'SO₄', label: 'SO₄²⁻', name: '硫酸', color: 0xd9486e, poly: true }
+  Fe: { q: 3, sym: 'Fe', label: 'Fe³⁺', name: '鐵', color: 0x3a62c4 },
+  Cl: { q: -1, sym: 'Cl', label: 'Cl⁻', pre: '氯化', color: 0xe5605a },
+  I: { q: -1, sym: 'I', label: 'I⁻', pre: '碘化', color: 0xe06a72 },
+  OH: { q: -1, sym: 'OH', label: 'OH⁻', pre: '氫氧化', color: 0xe8706a, poly: true },
+  CH3COO: { q: -1, sym: 'CH₃COO', label: 'CH₃COO⁻', pre: '醋酸', color: 0xd9577e, poly: true, first: true },
+  NO3: { q: -1, sym: 'NO₃', label: 'NO₃⁻', pre: '硝酸', color: 0xdf5f86, poly: true },
+  O: { q: -2, sym: 'O', label: 'O²⁻', pre: '氧化', color: 0xe0504f },
+  SO4: { q: -2, sym: 'SO₄', label: 'SO₄²⁻', pre: '硫酸', color: 0xd9486e, poly: true },
+  CO3: { q: -2, sym: 'CO₃', label: 'CO₃²⁻', pre: '碳酸', color: 0xd4556a, poly: true }
 };
+// 供應站：依價數分排（每排一種價數）
+const STATION = {
+  cat: { x0: -9.6, dx: 1.55, rows: [['Na', 'K', 'Ag', 'NH4'], ['Ca', 'Mg', 'Hg', 'Zn', 'Cu'], ['Al', 'Fe']], rowZ: [-3.3, -1.9, -0.05], tags: ['+1 價', '+2 價', '+3 價'] },
+  an: { x0: 3.4, dx: 1.55, rows: [['Cl', 'I', 'OH', 'CH3COO', 'NO3'], ['O', 'SO4', 'CO3']], rowZ: [-3.3, -1.9], tags: ['−1 價', '−2 價'] }
+};
+const TRAY = { cat: { x0: -10.45, x1: -2.6, z0: -3.85, z1: 1.05 }, an: { x0: 2.6, x1: 10.45, z0: -3.85, z1: -1.0 } };
+const inTray = p => Object.values(TRAY).some(t => p.x > t.x0 - 0.2 && p.x < t.x1 + 0.2 && p.z > t.z0 - 0.2 && p.z < t.z1 + 0.2);
+for (const [k, t] of Object.entries(TRAY)) {                                // 毛玻璃托盤
+  const tray = new THREE.Mesh(new RoundedBoxGeometry(t.x1 - t.x0, 0.08, t.z1 - t.z0, 4, 0.04),
+    new THREE.MeshPhysicalMaterial({ color: k === 'cat' ? 0xe6efff : 0xffe9e6, roughness: 0.25, clearcoat: 1, transparent: true, opacity: 0.55 }));
+  tray.position.set((t.x0 + t.x1) / 2, 0.04, (t.z0 + t.z1) / 2); tray.receiveShadow = true; ION.group.add(tray);
+}
+addLabel('ion', '<b>陽離子供應站</b><small>（拖出去就自動補貨）</small>', '', V3((TRAY.cat.x0 + TRAY.cat.x1) / 2, 0.1, TRAY.cat.z1 + 0.45));
+addLabel('ion', '<b>陰離子供應站</b><small>（拖回來＝回收）</small>', '', V3((TRAY.an.x0 + TRAY.an.x1) / 2, 0.1, TRAY.an.z1 + 0.45));
+for (const [k, S] of Object.entries(STATION)) S.rowZ.forEach((z, r) => addLabel('ion', S.tags[r], '', V3(k === 'cat' ? S.x0 - 0.95 : S.x0 + S.rows[r].length * S.dx - 0.45, 0.1, z)));
 // 中間的組合區
-const mat = new THREE.Mesh(new RoundedBoxGeometry(3.6, 0.04, 4.6, 3, 0.02), clay(0xfff4dc, { roughness: 0.8, clearcoat: 0 })); mat.position.set(0, 0.02, 0.2); mat.receiveShadow = true; ION.group.add(mat);
-addLabel('ion', '🧩 組合區', '', V3(0, 0.1, 2.85));
-addLabel('ion', '<small>陽離子（藍）</small>', '', V3(-5.3, 0.1, 3.4));
-addLabel('ion', '<small>陰離子（紅）</small>', '', V3(5.3, 0.1, 3.4));
-const STOCK = [['Na', 3], ['Ca', 2], ['Al', 2], ['Cl', 3], ['O', 3], ['SO4', 2]];
+const mat = new THREE.Mesh(new RoundedBoxGeometry(5.4, 0.04, 5.0, 3, 0.02), clay(0xfff4dc, { roughness: 0.8, clearcoat: 0 })); mat.position.set(0, 0.02, 1.7); mat.receiveShadow = true; ION.group.add(mat);
+addLabel('ion', '🧩 組合區', '', V3(0, 0.1, 4.45));
 const studMat = clay(0x7fa6f5, { emissive: 0x5b8def, emissiveIntensity: 0.2 });
 const holeMat = new THREE.MeshBasicMaterial({ color: 0x5a1f1f });
+const rimMat = clay(0xffd0c8);
 function makePiece(type) {
   const T = TYPES[type], n = Math.abs(T.q), len = n * UNIT;
   const g = new THREE.Group(); g.userData.drag = true;
@@ -597,33 +629,40 @@ function makePiece(type) {
       const stud = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.24, 20).rotateZ(Math.PI / 2), studMat); stud.position.set(BW / 2 + 0.11, BH / 2, z); g.add(stud);
     } else {                                                              // 陰離子：左側凹槽（深色洞口＋框）
       const hole = new THREE.Mesh(new THREE.CircleGeometry(0.16, 24), holeMat); hole.rotation.y = -Math.PI / 2; hole.position.set(-BW / 2 - 0.006, BH / 2, z); g.add(hole);
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.03, 8, 24), clay(0xffd0c8)); rim.rotation.y = Math.PI / 2; rim.position.set(-BW / 2 - 0.01, BH / 2, z); g.add(rim);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.03, 8, 24), rimMat); rim.rotation.y = Math.PI / 2; rim.position.set(-BW / 2 - 0.01, BH / 2, z); g.add(rim);
     }
   }
-  const top = new THREE.Mesh(new THREE.PlaneGeometry(0.92, Math.min(len - 0.1, 0.9)), new THREE.MeshBasicMaterial({ map: textTexture(T.label, { w: 256, h: 160, size: 0.55 }), transparent: true, toneMapped: false }));
+  const top = new THREE.Mesh(new THREE.PlaneGeometry(0.94, Math.min(len - 0.08, 0.9)), new THREE.MeshBasicMaterial({ map: textTexture(T.label, { w: 256, h: 160, size: 0.5 }), transparent: true, toneMapped: false }));
   top.rotation.x = -Math.PI / 2; top.position.y = BH + 0.005; g.add(top);
   shadowed(g);
-  return { g, type, T, len, mat, q: T.q, bond: null };
+  return { g, type, T, len, mat, q: T.q, bond: null, slot: null, pop: 0 };
 }
-function homeOf(i, type, k) {
-  const T = TYPES[type];
-  const cat = T.q > 0, idx = ['Na', 'Ca', 'Al', 'Cl', 'O', 'SO4'].indexOf(type) % 3;
-  return V3((cat ? -7.6 : 3.0) + idx * 2.3, 0, -3.0 + k * (Math.abs(T.q) * UNIT + 0.75) + Math.abs(T.q) * UNIT / 2);   // 存放區拉開，避免誤判成同一組
+/** 在供應站的某一格放一塊新積木（有彈出動畫） */
+function fillSlot(slot) {
+  const p = makePiece(slot.type); p.slot = slot; p.pop = 0.001;
+  p.g.position.copy(slot.pos); p.g.scale.setScalar(0.001);
+  ION.group.add(p.g); ION.pieces.push(p);
+  return p;
 }
+const SLOTS = [];
+for (const S of Object.values(STATION)) S.rows.forEach((row, r) => row.forEach((type, i) => SLOTS.push({ type, pos: V3(S.x0 + i * S.dx, 0, S.rowZ[r]) })));
+function removePiece(p) { ION.group.remove(p.g); const i = ION.pieces.indexOf(p); if (i >= 0) ION.pieces.splice(i, 1); }
 function resetIons() {
   ION.bonds.forEach(b => removeLabel(b.L)); ION.bonds = [];
-  ION.pieces.forEach(p => ION.group.remove(p.g)); ION.pieces = [];
-  STOCK.forEach(([type, n]) => { for (let k = 0; k < n; k++) { const p = makePiece(type); p.home = homeOf(0, type, k); p.g.position.copy(p.home); ION.group.add(p.g); ION.pieces.push(p); } });
+  ION.pieces.slice().forEach(removePiece);
+  SLOTS.forEach(s => { const p = fillSlot(s); p.pop = 1; p.g.scale.setScalar(1); });
   ION.msg = ''; ION.msgT = 0;
 }
 $('ionReset').addEventListener('click', resetIons);
+/** 從供應站拿起：這塊變成自由積木，原位立刻補一塊 */
+function takeFromSlot(p) { if (!p.slot) return; const s = p.slot; p.slot = null; fillSlot(s); }
 const nearPieces = (a, b) => {
   const gx = Math.abs(a.g.position.x - b.g.position.x) - BW - 0.25;
   const gz = Math.abs(a.g.position.z - b.g.position.z) - (a.len + b.len) / 2;
   return Math.max(gx, gz) < 0.4;
 };
-function clusterOf(p) {                                                   // 找出互相靠近（未接合）的一群積木
-  const free = ION.pieces.filter(q => !q.bond);
+function clusterOf(p) {                                                   // 找出互相靠近、還沒接合的自由積木
+  const free = ION.pieces.filter(q => !q.bond && !q.slot);
   const out = [p], queue = [p];
   while (queue.length) {
     const a = queue.pop();
@@ -631,7 +670,7 @@ function clusterOf(p) {                                                   // 找
   }
   return out;
 }
-const SUB = n => (n > 1 ? String(n).split('').map(d => '₀₁₂₃₄₅₆₇₈₉'[d]).join('') : '');
+const SUB = n => (n > 1 ? String(n).split('').map(d => '₀₁₂₃₄₅₆₇₈₉'[d]).join('') : '');   // 1 不寫
 function judge(cl) {
   const cats = cl.filter(p => p.q > 0), ans = cl.filter(p => p.q < 0);
   if (!cats.length || !ans.length) return { ok: false, none: true };
@@ -640,23 +679,29 @@ function judge(cl) {
   if (ct.size > 1 || at.size > 1) return { ok: false, mixed: true, plus, minus };
   return { ok: plus === minus, plus, minus, cats, ans };
 }
-function formulaOf(j) {
-  const C = TYPES[j.cats[0].type], A = TYPES[j.ans[0].type], nc = j.cats.length, na = j.ans.length;
-  const an = na > 1 && A.poly ? `(${A.sym})${SUB(na)}` : A.sym + SUB(na);
-  return { f: C.sym + SUB(nc) + an, name: (A.poly ? '硫酸' : A.name + '化') + C.name };
+/** 化學式：原子團超過 1 個要加括號；數量 1 不寫；醋酸根寫在最前面 */
+const partOf = (T, n) => (n > 1 ? (T.poly ? `(${T.sym})${SUB(n)}` : T.sym + SUB(n)) : T.sym);
+function formulaOf(cations, anions) {
+  const C = TYPES[cations.type], A = TYPES[anions.type];
+  const cp = partOf(C, cations.n), ap = partOf(A, anions.n);
+  const rules = [];
+  if (A.first) rules.push('醋酸根寫在前面，陽離子寫在後面');
+  else rules.push('陽離子在前，陰離子在後');
+  if ((C.poly && cations.n > 1) || (A.poly && anions.n > 1)) rules.push('原子團超過 1 個要加括號');
+  return { f: A.first ? ap + cp : cp + ap, name: A.pre + C.name, rules };
 }
 function bondCluster(cl, j) {
   const cx = cl.reduce((s, p) => s + p.g.position.x, 0) / cl.length, cz = cl.reduce((s, p) => s + p.g.position.z, 0) / cl.length;
   const total = j.plus * UNIT;
   const stack = (arr, x) => { let z = cz - total / 2; for (const p of arr) { p.target = V3(x, 0, z + p.len / 2); z += p.len; } };
-  stack(j.cats, cx - BW / 2 - 0.02); stack(j.ans, cx + BW / 2 + 0.24);     // 陽離子在左、陰離子在右；高度一樣 → 卡榫剛好對齊
-  const { f, name } = formulaOf(j);
+  stack(j.cats, cx - BW / 2 - 0.02); stack(j.ans, cx + BW / 2 + 0.24);     // 陽離子在左、陰離子在右；長度一樣 → 卡榫剛好對齊
+  const { f, name, rules } = formulaOf({ type: j.cats[0].type, n: j.cats.length }, { type: j.ans[0].type, n: j.ans.length });
   const bond = { members: cl, t: 0, center: V3(cx, 0, cz), fired: false, f, name };
-  bond.L = addLabel('ion', `${f}<small>${name}｜陽離子在前，陰離子在後</small>`, 'formula', V3(cx, 3.0, cz - 0.4)); bond.L.show = false;
+  bond.L = addLabel('ion', `${f}<small>${name}｜${rules.join('；')}</small>`, 'formula', V3(cx, 2.6 + total * 0.2, cz - 0.4)); bond.L.show = false;
   cl.forEach(p => { p.bond = bond; p.from = p.g.position.clone(); });
   ION.bonds.push(bond);
-  ION.msg = `<span class="good">✨ 正電 ${j.plus} ＝ 負電 ${j.minus}，完美卡合！</span>化學式 <b>${f}</b>（${name}）：<b>陽離子在前，陰離子在後</b>`;
-  ION.msgT = 6;
+  ION.msg = `<span class="good">✨ 正電 ${j.plus} ＝ 負電 ${j.minus}，完美卡合！</span>化學式 <b>${f}</b>（${name}）：${rules.map(r => `<b>${r}</b>`).join('、')}`;
+  ION.msgT = 7;
 }
 function updateIon(dt) {
   // 拖曳中：即時偵測靠近的積木，電荷不平衡就閃紅光
@@ -664,7 +709,12 @@ function updateIon(dt) {
   let live = null;
   if (drag && drag.kind === 'ion') { const cl = clusterOf(drag.piece); if (cl.length > 1) { live = judge(cl); if (!live.none && !live.ok) ION.near = cl; } }
   const pulse = 0.5 + 0.5 * Math.sin(wall * 10);
-  for (const p of ION.pieces) {
+  for (const p of ION.pieces.slice()) {
+    if (p.pop > 0 && p.pop < 1) { p.pop = Math.min(1, p.pop + dt * 4); p.g.scale.setScalar(0.4 + 0.6 * smooth(0, 1, p.pop) + Math.sin(p.pop * Math.PI) * 0.12); }
+    if (p.recycle) {                                                      // 回收：縮小消失
+      p.recycle += dt * 4; p.g.scale.setScalar(Math.max(0.001, 1 - p.recycle));
+      if (p.recycle >= 1) { removePiece(p); continue; }
+    }
     const red = ION.near.includes(p) || (p.redT > 0);
     p.redT = Math.max(0, (p.redT || 0) - dt);
     p.mat.emissive.set(red ? 0xff2a1f : 0xffc23d);
@@ -692,7 +742,7 @@ function updateIon(dt) {
     : `<span class="bad">⚠️ 正負電荷未抵銷！</span>正電 <b>${live.plus}</b>（凸起）≠ 負電 <b>${live.minus}</b>（凹槽）→ 再拖一塊${live.plus < live.minus ? '<b>陽離子</b>' : '<b>陰離子</b>'}過來`;
   else if (live && live.ok) cap = `<span class="good">放開就會卡合！</span>正電 ${live.plus} ＝ 負電 ${live.minus}`;
   else if (ION.msgT > 0) cap = ION.msg;
-  else cap = '<small>離子樂高</small>把藍色陽離子和紅色陰離子拖在一起：<b>凸起數 ＝ 凹槽數</b>才能卡合';
+  else cap = '<small>離子樂高</small>從兩側供應站拖出積木到<b>組合區</b>：<b>凸起數 ＝ 凹槽數</b>才能卡合（供應站會自動補貨）';
   setCap(cap);
 }
 
@@ -704,8 +754,8 @@ renderer.domElement.addEventListener('pointerdown', ev => {
     root = pickRoot(SORT.items.filter(i => i.state === 'belt' || i.state === 'fall').map(i => i.g), ev);
     if (root) { kind = 'sort'; ref = SORT.items.find(i => i.g === root); }
   } else if (tab === 'ion') {
-    root = pickRoot(ION.pieces.filter(p => !p.bond).map(p => p.g), ev);
-    if (root) { kind = 'ion'; ref = ION.pieces.find(p => p.g === root); }
+    root = pickRoot(ION.pieces.filter(p => !p.bond && !p.recycle).map(p => p.g), ev);
+    if (root) { kind = 'ion'; ref = ION.pieces.find(p => p.g === root); takeFromSlot(ref); }
   }
   if (!root) return;
   const planeY = kind === 'sort' ? 2.0 : 0;
@@ -721,8 +771,8 @@ renderer.domElement.addEventListener('pointermove', ev => {
   if (drag) {
     setNdc(ev);
     if (!raycaster.ray.intersectPlane(drag.plane, hitP)) return;
-    drag.root.position.x = clamp(hitP.x + drag.off.x, -9, 9);
-    drag.root.position.z = clamp(hitP.z + drag.off.z, -3.2, 4.2);
+    drag.root.position.x = clamp(hitP.x + drag.off.x, drag.kind === 'ion' ? -11 : -9, drag.kind === 'ion' ? 11 : 9);
+    drag.root.position.z = clamp(hitP.z + drag.off.z, drag.kind === 'ion' ? -4.2 : -3.2, drag.kind === 'ion' ? 4.6 : 4.2);
     if (drag.kind === 'ion') drag.root.position.y = 0.25;
     if (drag.kind === 'sort') drag.item.home.x += 0;                      // 原位保持在被拿起的地方
     return;
@@ -734,7 +784,7 @@ renderer.domElement.addEventListener('pointermove', ev => {
     PT.hover = hit ? PT.tiles.find(t => t.box === hit.object) : null;
     renderer.domElement.style.cursor = PT.hover ? 'pointer' : '';
   } else if (tab === 'sort' || tab === 'ion') {
-    const r = tab === 'sort' ? pickRoot(SORT.items.map(i => i.g), ev) : pickRoot(ION.pieces.filter(p => !p.bond).map(p => p.g), ev);
+    const r = tab === 'sort' ? pickRoot(SORT.items.map(i => i.g), ev) : pickRoot(ION.pieces.filter(p => !p.bond && !p.recycle).map(p => p.g), ev);
     renderer.domElement.style.cursor = r ? 'grab' : '';
   }
 });
@@ -744,6 +794,7 @@ function endDrag(ev) {
   controls.enabled = true; renderer.domElement.style.cursor = '';
   try { renderer.domElement.releasePointerCapture(ev.pointerId); } catch (e) { /* 已釋放 */ }
   if (d.kind === 'sort') dropItem(d.item);
+  if (d.kind === 'ion' && inTray(d.piece.g.position)) { d.piece.recycle = 0.001; return; }   // 拖回供應站＝回收
   if (d.kind === 'ion') {
     const cl = clusterOf(d.piece);
     if (cl.length > 1) {
@@ -768,7 +819,7 @@ renderer.domElement.addEventListener('pointerleave', () => { if (tab === 'table'
 const TABS = {
   sort: { group: SORT.group, cam: { pos: [0, 7.2, 13.5], target: [0, 0.8, 0.6], fitW: 15 }, update: updateSort },
   table: { group: PT.group, cam: PT_CAM, update: updateTable },
-  ion: { group: ION.group, cam: { pos: [0, 9.5, 11], target: [0, 0.2, 0.3], fitW: 18 }, update: updateIon }
+  ion: { group: ION.group, cam: { pos: [0, 11.5, 11.5], target: [0, 0.2, 0.4], fitW: 22.5 }, update: updateIon }
 };
 function setTab(t) {
   tab = t; drag = null; controls.enabled = true; PT.hover = null;
@@ -848,7 +899,7 @@ function frame(dt) {
 }
 function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
 
-window.lab = { frame, setTab, SORT, PT, ION, setFamily, dropItem, spawnItem, makeItem, resetIons, clusterOf, judge, bondCluster, camera, BINS, endDrag: () => {} };
+window.lab = { frame, setTab, SORT, PT, ION, setFamily, dropItem, spawnItem, makeItem, resetIons, clusterOf, judge, bondCluster, takeFromSlot, formulaOf, inTray, camera, BINS, endDrag: () => {} };
 
 resize();
 resetIons();
