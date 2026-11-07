@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>地球內部與板塊運動實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tipbox { position: fixed; z-index: 30; max-width: 260px; pointer-events: none; background: rgba(255,250,240,.96); border: 1.5px solid #e2cfb2; border-radius: 14px; padding: 9px 12px; font-size: .78rem; line-height: 1.6; color: var(--ink); box-shadow: 0 10px 24px rgba(93,64,55,.18); }
+  .tipbox[hidden] { display: none; }
+  .cmp { background: rgba(255,255,255,.78); border-radius: 14px; padding: 8px 10px; margin-top: 8px; }
+  .cmp-h { display: flex; justify-content: space-between; font-size: .78rem; font-weight: 800; margin-bottom: 4px; }
+  .cmp-h em { font-style: normal; color: var(--accent); }
+  .cmp-row { display: grid; grid-template-columns: 34px 1fr 92px; align-items: center; gap: 6px; font-size: .74rem; font-weight: 700; padding: 3px 4px; border-radius: 8px; cursor: pointer; }
+  .cmp-row:hover, .cmp-row.on { background: rgba(161,103,74,.12); }
+  .cmp-row .bar { height: 9px; background: rgba(141,115,102,.15); border-radius: 99px; overflow: hidden; }
+  .cmp-row .bar i { display: block; height: 100%; min-width: 3px; border-radius: 99px; }
+  .cmp-row .v { text-align: right; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .cmp-f { font-size: .66rem; color: var(--ink-soft); margin-top: 3px; }
+  .lbtn.on { outline: 2px solid var(--accent); }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+<div class="tipbox" id="tipbox" hidden></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g9">‹ 課程總覽</a>
+  <div class="title">地球內部與板塊運動實驗室</div>
+  <div class="body">
+    <div class="tabs">
+      <button class="tab on" data-tab="earth">🌍 地球分層<small>蘋果皮模型</small></button>
+      <button class="tab" data-tab="ridge">🌋 中洋脊<small>張裂性邊界</small></button>
+      <button class="tab" data-tab="conv">⛰️ 造山運動<small>聚合性邊界</small></button>
+      <button class="tab" data-tab="fault">🪨 斷層<small>張力與壓力</small></button>
+    </div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="earth">
+      <div class="concept" style="--cc:#a1674a"><div class="ct">地殼 → 地函 → 地核</div><div class="cd">人類鑽不到深處，地球內部是靠<b>地震波</b>探測出來的</div></div>
+      <button class="btn primary" id="drillBtn">⛏️ 深度探測（鑽到地心？）</button>
+      <p class="desc">把滑鼠移到剖面上（手機用點的），看各層的說明。</p>
+      <div class="cmp">
+        <div class="cmp-h"><span>📦 體積</span><em>地函 ＞ 地核 ＞ 地殼</em></div>
+        <div class="cmp-row" data-layer="mantle"><span class="n">地函</span><div class="bar"><i style="width:84%;background:#c65a3a"></i></div><span class="v">約 84%</span></div>
+        <div class="cmp-row" data-layer="core"><span class="n">地核</span><div class="bar"><i style="width:15%;background:#f2a93b"></i></div><span class="v">約 15%</span></div>
+        <div class="cmp-row" data-layer="crust"><span class="n">地殼</span><div class="bar"><i style="width:1.5%;background:#8d7b62"></i></div><span class="v">不到 1%</span></div>
+      </div>
+      <div class="cmp">
+        <div class="cmp-h"><span>⚖️ 密度</span><em>地核 ＞ 地函 ＞ 地殼</em></div>
+        <div class="cmp-row" data-layer="core"><span class="n">地核</span><div class="bar"><i style="width:100%;background:#f2a93b"></i></div><span class="v">10～13</span></div>
+        <div class="cmp-row" data-layer="mantle"><span class="n">地函</span><div class="bar"><i style="width:40%;background:#c65a3a"></i></div><span class="v">3.3～5.7</span></div>
+        <div class="cmp-row" data-layer="crust"><span class="n">地殼</span><div class="bar"><i style="width:25%;background:#8d7b62"></i></div><span class="v">2.7～3.0</span></div>
+        <div class="cmp-f">單位 g/cm³ · 地核是最重的鐵、鎳金屬，地殼是最輕的岩石</div>
+      </div>
+      <div class="cmp">
+        <div class="cmp-h"><span>📏 厚度</span><em>地核 ＞ 地函 ＞ 地殼</em></div>
+        <div class="cmp-row" data-layer="core"><span class="n">地核</span><div class="bar"><i style="width:100%;background:#f2a93b"></i></div><span class="v">半徑約 3470 km</span></div>
+        <div class="cmp-row" data-layer="mantle"><span class="n">地函</span><div class="bar"><i style="width:83.6%;background:#c65a3a"></i></div><span class="v">約 2900 km</span></div>
+        <div class="cmp-row" data-layer="crust"><span class="n">地殼</span><div class="bar"><i style="width:1.5%;background:#8d7b62"></i></div><span class="v">平均約 35 km</span></div>
+      </div>
+      <div class="row2">
+        <button class="btn lbtn" data-layer="litho">🧱 岩石圈<small>地殼＋地函最上部</small></button>
+        <button class="btn lbtn" data-layer="asth">🫠 軟流圈<small>可緩慢流動</small></button>
+      </div>
+      <div class="stat" id="layerInfo">把滑鼠移到比較表或剖面上，3D 模型會同步發光。</div>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="ridge" hidden>
+      <div class="concept" style="--cc:#d35400"><div class="ct">海底擴張</div><div class="cd">軟流圈<b>熱對流</b> → 帶動兩側板塊分開<br>岩漿湧出、冷卻 → 新的<b>玄武岩</b>海洋地殼</div></div>
+      <label class="lab" for="convR">🔥 啟動熱對流（推桿）<b><span id="convV">0</span>%</b></label>
+      <input class="big" type="range" id="convR" min="0" max="100" step="1" value="0">
+      <div class="ticks"><span>關閉</span><span>中</span><span>強</span></div>
+      <div class="stat" id="ridgeStat"></div>
+      <p class="desc">觀察：新生的地殼在中洋脊兩側<b>左右對稱</b>地往外移動，離中洋脊越遠，岩石越老。</p>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="sec" data-tab="conv" hidden>
+      <div class="concept" style="--cc:#5b8a72"><div class="ct">聚合性邊界</div><div class="cd">海洋 vs 陸地 → 隱沒、海溝、火山<br>陸地 vs 陸地 → 擠壓成高大的褶皺山脈</div></div>
+      <label class="lab" for="convType">碰撞情境</label>
+      <select id="convType">
+        <option value="oc">🌊 海洋 vs 陸地（安地斯山脈）</option>
+        <option value="cc">🏔️ 陸地 vs 陸地（喜馬拉雅山）</option>
+      </select>
+      <button class="btn primary" id="crashBtn">💥 擠壓碰撞</button>
+      <div class="stat" id="convStat"></div>
+    </section>
+
+    <!-- Tab 4 -->
+    <section class="sec" data-tab="fault" hidden>
+      <div class="concept" style="--cc:#8d6e63"><div class="ct">正斷層與逆斷層</div><div class="cd">斷層面<b>上方</b>的岩塊叫<b>上磐</b>，<b>下方</b>的叫<b>下磐</b></div></div>
+      <div class="row2">
+        <button class="btn" id="tensionBtn">⟷ 張力<small>拉扯</small></button>
+        <button class="btn" id="compressBtn">→← 壓力<small>擠壓</small></button>
+      </div>
+      <button class="btn" id="resetFault">↺ 復原岩塊</button>
+      <div class="stat" id="faultStat"></div>
+      <p class="desc">觀察技巧：看彩色岩層在斷層兩側「錯開」的方向，就能判斷上磐是上升還是下滑。</p>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'earth', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+const sm = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+const lerp = THREE.MathUtils.lerp;
+const ray = new THREE.Raycaster(), ndc = V2(0, 0);
+function setNdc(ev) { const r = renderer.domElement.getBoundingClientRect(); ndc.set((ev.clientX - r.left) / r.width * 2 - 1, -(ev.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ndc, camera); }
+/** 用多個 2D 輪廓擠出的地層（每幀可重建） */
+function profileGeo(lo, hi, x0, x1, depth, N = 120) {
+  const sh = new THREE.Shape();
+  for (let i = 0; i <= N; i++) { const x = x0 + (x1 - x0) * i / N; i ? sh.lineTo(x, lo(x)) : sh.moveTo(x, lo(x)); }
+  for (let i = N; i >= 0; i--) { const x = x0 + (x1 - x0) * i / N; sh.lineTo(x, Math.max(lo(x) + 0.002, hi(x))); }
+  const g = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: false, curveSegments: 1 });
+  g.translate(0, 0, -depth / 2);
+  return g;
+}
+function setGeo(mesh, geo) { mesh.geometry.dispose(); mesh.geometry = geo; }
+
+/* =========================================================
+   Tab 1：地球分層與蘋果皮模型
+   ---------------------------------------------------------
+   切掉 1/4 的地球（x > 0、z > 0 的部分）。地核半徑按真實比例；
+   地殼、岩石圈、軟流圈太薄，放大顯示（畫面上有註明）。
+   ========================================================= */
+const EA = { group: new THREE.Group(), R: 5, CY: 6.3, hover: null, pin: null, drill: null, t: 0 };
+scene.add(EA.group);
+const earth = new THREE.Group(); earth.position.y = EA.CY; EA.group.add(earth);
+earth.rotation.y = -0.05;
+const LAYERS = [                                                // 由內而外
+  { key: 'innerCore', r0: 0, r1: 0.95, color: 0xffd35a, group: 'core', name: '內地核', info: '內地核：<b>固態</b>的鐵、鎳金屬，密度最大（約 13 g/cm³），溫度高達 5000℃ 以上。' },
+  { key: 'outerCore', r0: 0.95, r1: 2.72, color: 0xf2a93b, group: 'core', name: '外地核', info: '外地核：<b>液態</b>的鐵、鎳金屬。地震的 S 波無法通過，所以知道它是液體。' },
+  { key: 'mantle', r0: 2.72, r1: 4.25, color: 0xc65a3a, group: 'mantle', name: '地函', info: '地函：體積最大（約 84%），厚約 2900 km，由高溫岩石組成，密度約 3.3～5.7 g/cm³。' },
+  { key: 'asth', r0: 4.25, r1: 4.68, color: 0xe8894a, group: 'mantle', name: '軟流圈（地函上部）', info: '軟流圈：地函上部，溫度高、具<b>可塑性</b>，像黏土一樣能緩慢流動；板塊就在它上面移動。' },
+  { key: 'lithoMantle', r0: 4.68, r1: 4.86, color: 0xa86553, group: 'mantle', name: '地函最上部（岩石圈底部）', info: '地函最上部：堅硬，和地殼一起組成「<b>岩石圈</b>」，裂成一塊塊的板塊。' },
+  { key: 'crust', r0: 4.86, r1: 5.0, color: 0x8d7b62, group: 'crust', name: '地殼', info: '地殼：最外層、最薄（平均約 35 km）。<b>密度最小</b>（約 2.7～3.0 g/cm³），主要是矽、鋁的氧化物組成的岩石。' }
+];
+const GROUP_KEYS = { crust: ['crust'], mantle: ['mantle', 'asth', 'lithoMantle'], core: ['innerCore', 'outerCore'], litho: ['crust', 'lithoMantle'], asth: ['asth'] };
+const layerMeshes = [];
+const PHI0 = Math.PI, PHIL = Math.PI * 1.5;                     // 缺口：x > 0、z > 0
+function earthTexture() {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  g.fillStyle = '#5b9fc9'; g.fillRect(0, 0, 1024, 512);
+  const blob = (x, y, r, col) => { g.fillStyle = col; g.beginPath(); for (let a = 0; a <= TAU + 0.01; a += 0.2) { const rr = r * (0.7 + 0.3 * Math.sin(a * 3 + x) * Math.cos(a * 2 + y)); a ? g.lineTo(x + Math.cos(a) * rr * 1.4, y + Math.sin(a) * rr) : g.moveTo(x + rr * 1.4, y); } g.fill(); };
+  [[180, 170, 70], [240, 300, 55], [520, 160, 90], [560, 300, 60], [760, 190, 85], [820, 330, 40], [420, 230, 30], [900, 120, 35]].forEach(([x, y, r]) => { blob(x, y, r, '#8fb36b'); blob(x + 10, y - 5, r * 0.55, '#b9a46a'); });
+  g.fillStyle = '#f4f8fb'; g.fillRect(0, 0, 1024, 26); g.fillRect(0, 486, 1024, 26);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+LAYERS.forEach((L, i) => {
+  const mat = clay(L.color, { roughness: 0.7, side: THREE.DoubleSide, emissive: L.color, emissiveIntensity: 0 });
+  L.mat = mat;
+  // 兩個切面上的半圓環
+  for (const face of [0, 1]) {
+    const ring = new THREE.Mesh(new THREE.RingGeometry(Math.max(0.001, L.r0), L.r1, 96, 1, -Math.PI / 2, Math.PI), mat);
+    if (face === 1) ring.rotation.y = -Math.PI / 2;
+    ring.position.z = face === 0 ? 0.001 * (i + 1) : 0; ring.position.x = face === 1 ? 0.001 * (i + 1) : 0;
+    ring.userData.layer = L; earth.add(ring); layerMeshes.push(ring);
+  }
+});
+const crustL = LAYERS[LAYERS.length - 1];
+const surfaceMat = new THREE.MeshPhysicalMaterial({ map: earthTexture(), roughness: 0.6, clearcoat: 0.3, emissive: 0x8d7b62, emissiveIntensity: 0 });
+const surface = new THREE.Mesh(new THREE.SphereGeometry(EA.R, 96, 64, PHI0, PHIL), surfaceMat);
+surface.castShadow = true; surface.userData.layer = crustL; earth.add(surface); layerMeshes.push(surface);
+crustL.mat2 = surfaceMat;
+// 底座
+add(EA.group, shadowed(new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.6, 0.4, 48), clay(0xc49a6c))), 0, 0.2, 0);
+add(EA.group, shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, EA.CY - EA.R - 0.2 + 0.3, 20), clay(0xb98a5e))), 0, 0.4 + (EA.CY - EA.R - 0.4) / 2, 0);
+addLabel('earth', '（地殼、岩石圈、軟流圈的厚度已放大顯示）', 'small', V3(0, 0.75, 3.2));
+const lbCore = addLabel('earth', '地核', 'yel', V3(1.2, EA.CY - 0.6, 0.1));
+const lbMantle = addLabel('earth', '地函', '', V3(2.9, EA.CY - 2.4, 0.1));
+const lbCrust = addLabel('earth', '地殼', '', V3(4.2, EA.CY + 3.0, 0.1));
+// 鑽井
+const DXZ = [0.2, 0.025], DY = Math.sqrt(EA.R * EA.R - 0.04);
+const rig = new THREE.Group(); earth.add(rig); rig.position.set(DXZ[0], DY, DXZ[1]);
+{
+  const m = metal(0x8f979e);
+  for (const [x, z] of [[-0.06, -0.06], [0.06, -0.06], [-0.06, 0.06], [0.06, 0.06]]) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.36, 6), m);
+    leg.position.set(x * 0.6, 0.17, z * 0.6); leg.rotation.set(z * 1.2, 0, -x * 1.2); rig.add(leg);
+  }
+  add(rig, new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.012, 0.12), clay(0xc0634f)), 0, 0.01, 0);
+}
+const drillPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 1, 8), metal(0x6d7680)); earth.add(drillPipe);
+const drillBit = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.04, 10), metal(0xe0b84f)); drillBit.rotation.x = Math.PI; earth.add(drillBit);
+const DRILL_DEPTH = 12.262 / 6371 * EA.R * 5;                   // 科拉超深鑽孔 12.262 km（與地殼同樣放大 5 倍）
+const NSP = 60, spPos = new Float32Array(NSP * 3), spVel = Array.from({ length: NSP }, () => V3(0, 0, 0));
+const spGeo = new THREE.BufferGeometry(); spGeo.setAttribute('position', new THREE.BufferAttribute(spPos, 3));
+const sparks = new THREE.Points(spGeo, new THREE.PointsMaterial({ size: 0.025, color: 0xffb020, transparent: true, depthWrite: false }));
+sparks.frustumCulled = false; earth.add(sparks);
+const lbDrill = addLabel('earth', '', 'red', V3(0, 0, 0));
+// 地震波（畫在 z = 0 的切面上）
+const QUAKE = V3(EA.R * Math.sin(0.06), EA.R * Math.cos(0.06), 0.02);
+const wavePaths = [0.8, 1.25, 1.7, 2.1].map(th => {
+  const B = V3(EA.R * Math.sin(th + 0.06), EA.R * Math.cos(th + 0.06), 0.02);
+  const mid = QUAKE.clone().add(B).multiplyScalar(0.5);
+  const ctrl = mid.clone().multiplyScalar(lerp(0.25, -0.1, (th - 0.8) / 1.3) + 0.3);
+  return new THREE.QuadraticBezierCurve3(QUAKE, ctrl, B);
+});
+wavePaths.push(new THREE.LineCurve3(QUAKE, V3(EA.R * Math.sin(Math.PI - 0.12), EA.R * Math.cos(Math.PI - 0.12), 0.02)));
+const eaDraw = Drawer(earth);
+const waveDots = wavePaths.map(() => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 8), new THREE.MeshBasicMaterial({ color: 0x1e6aa8, toneMapped: false })); m.visible = false; earth.add(m); return m; });
+const lbWave = addLabel('earth', '〰️ 地震波', 'lam', V3(0, 0, 0));
+const lbQuake = addLabel('earth', '💥 震源', 'red small', V3(0, 0, 0));
+
+function highlight(keys) {
+  for (const L of LAYERS) {
+    const on = keys && keys.includes(L.key);
+    L.mat.emissiveIntensity = on ? 0.45 : 0;
+    if (L.mat2) L.mat2.emissiveIntensity = on ? 0.35 : 0;
+  }
+}
+function showLayer(group, src) {
+  const keys = GROUP_KEYS[group] || [group];
+  highlight(keys);
+  const txt = keys.map(k => LAYERS.find(L => L.key === k)).map(L => `<b style="color:#${L.color.toString(16).padStart(6, '0')}">■</b> ${L.info}`).join('<br>');
+  const head = group === 'litho' ? '<b>岩石圈 ＝ 地殼 ＋ 地函最上部</b>（堅硬，裂成板塊）<br>' : group === 'asth' ? '<b>軟流圈</b>在岩石圈下方<br>' : '';
+  $('layerInfo').innerHTML = head + txt;
+}
+document.querySelectorAll('.cmp-row, .lbtn').forEach(el => {
+  el.addEventListener('pointerenter', () => showLayer(el.dataset.layer));
+  el.addEventListener('pointerleave', () => { if (!EA.pin) highlight(null); else showLayer(EA.pin); });
+  el.addEventListener('click', () => { EA.pin = EA.pin === el.dataset.layer ? null : el.dataset.layer; document.querySelectorAll('.cmp-row, .lbtn').forEach(x => x.classList.toggle('on', x.dataset.layer === EA.pin)); if (EA.pin) showLayer(EA.pin); else highlight(null); });
+});
+const tipbox = $('tipbox');
+function hoverEarth(ev) {
+  if (tab !== 'earth') { tipbox.hidden = true; return; }
+  setNdc(ev);
+  const h = ray.intersectObjects(layerMeshes)[0];
+  if (!h) { tipbox.hidden = true; if (EA.hover) { EA.hover = null; if (EA.pin) showLayer(EA.pin); else highlight(null); } return; }
+  const L = h.object.userData.layer;
+  if (EA.hover !== L) { EA.hover = L; highlight([L.key]); tipbox.innerHTML = `<b>${L.name}</b><br>${L.info}`; }
+  tipbox.hidden = false;
+  const W = window.innerWidth;
+  tipbox.style.left = Math.min(W - 270, ev.clientX + 16) + 'px';
+  tipbox.style.top = (ev.clientY + 16) + 'px';
+}
+renderer.domElement.addEventListener('pointermove', ev => { if (!ev.buttons) hoverEarth(ev); });
+renderer.domElement.addEventListener('pointerdown', ev => { if (ev.pointerType !== 'mouse') hoverEarth(ev); });
+renderer.domElement.addEventListener('pointerleave', () => { tipbox.hidden = true; });
+
+$('drillBtn').addEventListener('click', () => {
+  EA.drill = { t: 0, stage: 'go' };
+  $('drillBtn').innerHTML = '🔁 再鑽一次';
+  goView(TABS.earth.cam());
+});
+function updateEarth(dt) {
+  EA.t += dt;
+  const D = EA.drill;
+  let depth = 0;
+  eaDraw.begin();
+  waveDots.forEach(m => { m.visible = false; });
+  lbWave.show = lbQuake.show = false; lbDrill.show = false;
+  if (D) {
+    D.t += dt;
+    if (D.stage === 'go') {
+      depth = DRILL_DEPTH * sm(0.6, 3.0, D.t);
+      if (D.t > 3.0) {
+        D.stage = 'stuck'; D.t0 = D.t;
+        for (let i = 0; i < NSP; i++) { spPos.set([DXZ[0], DY - DRILL_DEPTH, DXZ[1]], i * 3); spVel[i].set(Math.random() - 0.5, Math.random() * 0.8, Math.random() - 0.5).multiplyScalar(0.6); }
+      }
+    } else depth = DRILL_DEPTH;
+    if (D.stage !== 'go') {
+      const k = D.t - D.t0;
+      rig.position.x = DXZ[0] + (k < 1.2 ? 0.006 * Math.sin(k * 80) : 0);
+      for (let i = 0; i < NSP; i++) { spVel[i].y -= dt * 1.5; spPos[i * 3] += spVel[i].x * dt; spPos[i * 3 + 1] += spVel[i].y * dt; spPos[i * 3 + 2] += spVel[i].z * dt; }
+      spGeo.attributes.position.needsUpdate = true;
+      sparks.material.opacity = Math.max(0, 1 - k / 1.4);
+      lbDrill.show = k < 4.5; lbDrill.pos.copy(earth.localToWorld(V3(DXZ[0] + 0.25, DY + 0.25, 0.1))); setLabel(lbDrill, '❌ 卡住了！約 12 km', 'red');
+      if (D.stage === 'stuck' && k > 3.2) { D.stage = 'wave'; D.tw = 0; goView(TABS.earth.cam()); }
+      if (D.stage === 'wave') {                          // 地震波穿過地球
+        D.tw += dt;
+        const u = (D.tw % 4) / 3.2;
+        wavePaths.forEach((c, i) => {
+          const pts = c.getPoints(40);
+          for (let j = 1; j < pts.length; j++) eaDraw.line(pts[j - 1], pts[j], i === 4 ? 0xb07a2a : 0x1e6aa8, 0.025, 0.55);
+          if (u <= 1) { waveDots[i].visible = true; waveDots[i].position.copy(c.getPoint(u)); }
+        });
+        lbQuake.show = true; lbQuake.pos.copy(QUAKE).applyMatrix4(earth.matrixWorld).add(V3(-0.4, 0.4, 0));
+        lbWave.show = true; lbWave.pos.copy(wavePaths[1].getPoint(0.55)).applyMatrix4(earth.matrixWorld);
+      }
+    }
+  }
+  eaDraw.end();
+  sparks.visible = !!D && D.stage !== 'go';
+  const top = V3(DXZ[0], DY + 0.3, DXZ[1]), tip = V3(DXZ[0], DY - depth, DXZ[1]);
+  drillPipe.visible = drillBit.visible = !!D;
+  placeSeg(drillPipe, top, tip, 0.008);
+  drillBit.position.copy(tip).add(V3(0, -0.015, 0)); drillBit.rotation.y += dt * 20;
+  if (!D) setCap(`<small>地球的分層</small>把滑鼠移到剖面上看說明；或按「<b>⛏️ 深度探測</b>」試試看能鑽多深`);
+  else if (D.stage === 'go') setCap(`<small>⛏️ 鑽探中…</small><span class="huge">深度 ${(depth / DRILL_DEPTH * 12.262).toFixed(1)} km</span>地球半徑約 6371 km`);
+  else setCap(`<small>⚠️ 極限到達！（史上最深的鑽孔約 12 km）</small><span class="huge red${D.stage === 'stuck' ? ' pop' : ''}">人類鑽孔深度不到地球半徑的 1%</span>就像連<b>蘋果皮</b>都鑽不破。深層結構是靠『<b>地震波</b>』測出來的！`);
+}
+
+/* =========================================================
+   Tab 2：中洋脊與張裂性邊界
+   ---------------------------------------------------------
+   板塊由一條條「地殼條帶」組成。熱對流把條帶往兩側推，
+   中洋脊中央不斷補上新的條帶（剛形成時是紅色岩漿，冷卻後變黑色玄武岩）。
+   離中洋脊越遠，板塊越老、越冷、越厚，海底也越深。
+   ========================================================= */
+const RG = { group: new THREE.Group(), conv: 0, t: 0, W: 0.5, X: 14, D: 5, SEA: 8.4, born: 0 };
+scene.add(RG.group);
+const rTop = x => 6.3 - 0.85 * Math.sqrt(Math.min(1, Math.abs(x) / RG.X));
+const rThick = x => 0.25 + 1.45 * Math.sqrt(Math.min(1, Math.abs(x) / RG.X));
+const rBot = x => rTop(x) - rThick(x);
+const asthMesh = new THREE.Mesh(profileGeo(() => 0.3, x => rBot(x) - 0.02, -RG.X, RG.X, RG.D - 0.2), clay(0xe8894a, { roughness: 0.85 }));
+asthMesh.position.z = -0.1; asthMesh.receiveShadow = true; RG.group.add(asthMesh);
+const seaMesh = new THREE.Mesh(profileGeo(x => rTop(x), () => RG.SEA, -RG.X, RG.X, RG.D), new THREE.MeshPhysicalMaterial({ color: 0x4fa3d1, roughness: 0.1, transparent: true, opacity: 0.32, depthWrite: false }));
+seaMesh.renderOrder = 4; RG.group.add(seaMesh); enhanceLiquid(seaMesh);
+// 地殼條帶
+const NSTRIP = 2 * Math.ceil(RG.X / RG.W) + 8;
+const strips = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), clay(0xffffff, { roughness: 0.8 }), NSTRIP);
+strips.castShadow = strips.receiveShadow = true; RG.group.add(strips);
+const SL = [];
+for (const s of [-1, 1]) for (let x = RG.W / 2; x < RG.X; x += RG.W) SL.push({ x: s * x, side: s, age: 99, birth: -x / 0.6 });
+const C_LAVA = new THREE.Color(0xff4a1a), C_B1 = new THREE.Color(0x3a3533), C_B2 = new THREE.Color(0x5c5550), tmpC = new THREE.Color();
+const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpS = V3(1, 1, 1), tmpP = V3(0, 0, 0);
+// 對流粒子
+const NCV = 360, cvPos = new Float32Array(NCV * 3), cvCol = new Float32Array(NCV * 3), cvPhi = new Float32Array(NCV), cvK = new Float32Array(NCV), cvSide = new Int8Array(NCV);
+for (let i = 0; i < NCV; i++) { cvPhi[i] = Math.random() * TAU; cvK[i] = 0.45 + Math.random() * 0.55; cvSide[i] = i % 2 ? 1 : -1; }
+const cvGeo = new THREE.BufferGeometry();
+cvGeo.setAttribute('position', new THREE.BufferAttribute(cvPos, 3)); cvGeo.setAttribute('color', new THREE.BufferAttribute(cvCol, 3));
+const cvPts = new THREE.Points(cvGeo, new THREE.PointsMaterial({ size: 0.3, vertexColors: true, map: dotTexture('#ffffff', 'rgba(110,30,10,.7)'), transparent: true, depthWrite: false, alphaTest: 0.05 }));
+cvPts.frustumCulled = false; cvPts.renderOrder = 3; RG.group.add(cvPts);
+const CELL = { cx: 6.6, cy: 2.35, a: 6.2, b: 1.55 };
+const cellPt = (side, phi, k) => V3(side * (CELL.cx - CELL.a * k * Math.cos(phi)), CELL.cy + CELL.b * k * Math.sin(phi), RG.D / 2 - 0.05);
+const arrowsCV = [];
+for (const side of [-1, 1]) for (let i = 0; i < 6; i++) {
+  const m = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.55, 12), clay(0xd84315, { emissive: 0xff5a1f, emissiveIntensity: 0.4 }));
+  m.userData = { side, phi: i / 6 * TAU }; RG.group.add(m); arrowsCV.push(m);
+}
+// 岩漿粒子
+const NMG = 160, mgPos = new Float32Array(NMG * 3), mgCol = new Float32Array(NMG * 3), mgT = new Float32Array(NMG);
+for (let i = 0; i < NMG; i++) mgT[i] = Math.random();
+const mgGeo = new THREE.BufferGeometry();
+mgGeo.setAttribute('position', new THREE.BufferAttribute(mgPos, 3)); mgGeo.setAttribute('color', new THREE.BufferAttribute(mgCol, 3));
+const mgPts = new THREE.Points(mgGeo, new THREE.PointsMaterial({ size: 0.22, vertexColors: true, map: dotTexture('#ffffff', 'rgba(80,30,10,.6)'), transparent: true, depthWrite: false, alphaTest: 0.05 }));
+mgPts.frustumCulled = false; mgPts.renderOrder = 6; RG.group.add(mgPts);
+addLabel('ridge', '🌋 中洋脊（裂谷）', '', V3(0, RG.SEA + 0.6, 0));
+addLabel('ridge', '岩石圈板塊', 'small', V3(-9.5, rTop(-9.5) + 0.35, RG.D / 2 + 0.1));
+addLabel('ridge', '岩石圈板塊', 'small', V3(9.5, rTop(9.5) + 0.35, RG.D / 2 + 0.1));
+addLabel('ridge', '軟流圈（可緩慢流動）', 'yel small', V3(-10.5, 0.9, RG.D / 2 + 0.1));
+addLabel('ridge', '🌊 海水', 'small', V3(-11, RG.SEA - 0.5, RG.D / 2));
+const lbNew = addLabel('ridge', '新的玄武岩（海洋地殼）', 'small', V3(0, 0, 0));
+const lbL = addLabel('ridge', '⬅ 板塊分開', 'energy', V3(-4.5, RG.SEA - 0.9, 0));
+const lbR = addLabel('ridge', '板塊分開 ➡', 'energy', V3(4.5, RG.SEA - 0.9, 0));
+$('convR').addEventListener('input', e => { RG.conv = Number(e.target.value) / 100; $('convV').textContent = e.target.value; });
+function updateRidge(dt) {
+  RG.t += dt;
+  const c = RG.conv, v = c * 1.1;
+  // 條帶移動、補上新地殼
+  for (const s of SL) { s.x += s.side * v * dt; s.age += dt; }
+  for (const side of [-1, 1]) {
+    let inner = Infinity;
+    for (const s of SL) if (s.side === side) inner = Math.min(inner, Math.abs(s.x));
+    if (inner >= RG.W) {
+      const old = SL.filter(s => s.side === side).sort((a, b) => Math.abs(b.x) - Math.abs(a.x))[0];
+      old.x = side * (inner - RG.W); old.age = 0; old.birth = RG.t;
+    }
+  }
+  SL.forEach((s, i) => {
+    const ax = Math.abs(s.x), vis = ax < RG.X - RG.W * 0.4;
+    const top = rTop(s.x), th = rThick(s.x);
+    tmpP.set(s.x, top - th / 2, 0); tmpS.set(vis ? RG.W * 0.98 : 0, th, RG.D);
+    strips.setMatrixAt(i, tmpM.compose(tmpP, tmpQ, tmpS));
+    const band = Math.floor((s.birth) / 4) % 2 === 0 ? C_B1 : C_B2;          // 每 4 秒換一次深淺 → 兩側對稱的條紋
+    tmpC.copy(C_LAVA).lerp(band, sm(0.3, 3.5, s.age));
+    strips.setColorAt(i, tmpC);
+  });
+  for (let i = SL.length; i < NSTRIP; i++) strips.setMatrixAt(i, tmpM.compose(tmpP.set(0, -50, 0), tmpQ, tmpS.set(0, 0, 0)));
+  strips.instanceMatrix.needsUpdate = true; strips.instanceColor.needsUpdate = true;
+  const newest = SL.filter(s => s.side === 1).sort((a, b) => a.x - b.x)[0];
+  lbNew.show = c > 0.05; if (newest) lbNew.pos.set(Math.max(1.6, newest.x + 1.2), rTop(newest.x) + 0.6, RG.D / 2);
+  lbL.show = lbR.show = c > 0.05;
+  // 熱對流
+  for (let i = 0; i < NCV; i++) {
+    cvPhi[i] += dt * c * 0.9 / cvK[i];
+    const p = cellPt(cvSide[i], cvPhi[i], cvK[i]);
+    cvPos.set([p.x, p.y, p.z + (i % 3) * 0.02], i * 3);
+    const hot = 0.5 + 0.5 * Math.cos(cvPhi[i] - 0.6);                     // 中央上升處最熱
+    tmpC.setRGB(0.85, 0.08 + 0.3 * (1 - hot), 0.04).lerp(C_B2, 0.75 * (1 - c));
+    cvCol.set([tmpC.r, tmpC.g, tmpC.b], i * 3);
+  }
+  cvGeo.attributes.position.needsUpdate = true; cvGeo.attributes.color.needsUpdate = true;
+  for (const m of arrowsCV) {
+    const u = m.userData; u.phi += dt * c * 0.9;
+    const p = cellPt(u.side, u.phi, 0.78), q = cellPt(u.side, u.phi + 0.05, 0.78);
+    m.position.copy(p).setZ(RG.D / 2 + 0.05);
+    m.quaternion.setFromUnitVectors(YUP, q.sub(p).normalize());
+    m.visible = c > 0.02;
+  }
+  // 岩漿：從裂谷湧出，碰到海水冷卻變黑
+  const topC = rTop(0);
+  for (let i = 0; i < NMG; i++) {
+    mgT[i] += dt * (0.25 + c * 0.6);
+    if (mgT[i] > 1) mgT[i] -= 1;
+    const t = mgT[i], y = lerp(3.0, topC + 0.35, t);
+    const x = (Math.sin(i * 7.3) * 0.22) * (1 + t) + (t > 0.85 ? Math.sign(Math.sin(i)) * (t - 0.85) * 4 * c : 0);
+    mgPos.set([x, c > 0.02 ? y : -50, RG.D / 2 - 0.1 - (i % 4) * 0.3], i * 3);
+    tmpC.copy(C_LAVA).lerp(C_B1, sm(0.82, 0.97, t));
+    mgCol.set([tmpC.r, tmpC.g, tmpC.b], i * 3);
+  }
+  mgGeo.attributes.position.needsUpdate = true; mgGeo.attributes.color.needsUpdate = true;
+  if (c < 0.02) setCap(`<small>中洋脊剖面</small>推動左邊的「<b>🔥 啟動熱對流</b>」推桿，看看海底怎麼擴張`);
+  else setCap(`<small>熱物質在中洋脊上升 → 往兩側流 → 帶著板塊分開</small><span class="huge org">海底擴張：軟流圈熱對流是板塊運動的推手！</span>岩漿湧出、遇到海水冷卻 → 變成黑色的<b>玄武岩</b>（新的海洋地殼）`);
+  setHTML('ridgeStat', `熱對流強度：<b class="o">${Math.round(c * 100)}%</b><br>板塊分開的速度：<b>${c > 0 ? '每年約 ' + (2 + c * 8).toFixed(0) + ' 公分' : '靜止'}</b><br><small>（真實速度很慢，動畫加快了幾百萬倍）</small>`);
+}
+
+/* =========================================================
+   Tab 3：聚合性邊界與造山運動
+   ========================================================= */
+const CV = { group: new THREE.Group(), type: 'oc', p: 0, run: false, t: 0, D: 5, SEA: 7.6 };
+scene.add(CV.group);
+const MANTLE_TOP = 4.6;
+const mantleMesh = new THREE.Mesh(profileGeo(() => 0.3, () => MANTLE_TOP, -14, 14, CV.D - 0.2), clay(0xe8894a, { roughness: 0.85 }));
+mantleMesh.position.z = -0.1; CV.group.add(mantleMesh);
+// ---- 海洋板塊：沿著「先水平、再彎曲往下」的路徑滑動 ----
+const XT = -1.0, YC = 5.25, RB = 2.5, ANG = Math.PI / 4, ARC = RB * ANG, HT = 0.35;
+function slabAt(s) {
+  if (s <= 0) return { p: V2(XT + s, YC), a: 0 };
+  if (s <= ARC) { const a = s / RB; return { p: V2(XT + RB * Math.sin(a), YC - RB + RB * Math.cos(a)), a }; }
+  const e = slabAt(ARC).p, d = s - ARC;
+  return { p: V2(e.x + d * Math.cos(ANG), e.y - d * Math.sin(ANG)), a: ANG };
+}
+const S0 = -13.2, NSL = 160;
+const slabTopTab = [];
+for (let i = 0; i <= 400; i++) { const s = S0 + (16 - S0) * i / 400, q = slabAt(s); slabTopTab.push(V2(q.p.x + Math.sin(q.a) * HT, q.p.y + Math.cos(q.a) * HT)); }
+function slabTop(x) {
+  for (let i = 1; i < slabTopTab.length; i++) if (slabTopTab[i].x >= x) { const a = slabTopTab[i - 1], b = slabTopTab[i]; return a.y + (b.y - a.y) * (x - a.x) / (b.x - a.x || 1); }
+  return -99;
+}
+const slabGeo = new THREE.BufferGeometry();
+{
+  const pos = new Float32Array((NSL + 1) * 4 * 3), col = new Float32Array((NSL + 1) * 4 * 3), idx = [];
+  for (let i = 0; i < NSL; i++) {
+    const a = i * 4, b = a + 4;
+    // 0 上前、1 下前、2 上後、3 下後
+    idx.push(a, a + 1, b, b, a + 1, b + 1);           // 前
+    idx.push(a + 2, b + 2, a + 3, a + 3, b + 2, b + 3); // 後
+    idx.push(a, b, a + 2, a + 2, b, b + 2);           // 上
+    idx.push(a + 1, a + 3, b + 1, b + 1, a + 3, b + 3); // 下
+  }
+  const e = NSL * 4; idx.push(e, e + 2, e + 1, e + 1, e + 2, e + 3);   // 尖端
+  slabGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  slabGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  slabGeo.setIndex(idx);
+}
+const slab = new THREE.Mesh(slabGeo, clay(0xffffff, { vertexColors: true, roughness: 0.8, side: THREE.DoubleSide }));
+slab.castShadow = true; slab.frustumCulled = false; CV.group.add(slab);
+const C_OC1 = new THREE.Color(0x3d3a3c), C_OC2 = new THREE.Color(0x56514f);
+function updateSlab(shift) {
+  const tip = 0.2 + shift, pos = slabGeo.attributes.position.array, col = slabGeo.attributes.color.array;
+  for (let i = 0; i <= NSL; i++) {
+    const s = S0 + (tip - S0) * i / NSL, q = slabAt(s), nx = Math.sin(q.a), ny = Math.cos(q.a);
+    const tx = q.p.x + nx * HT, ty = q.p.y + ny * HT, bx = q.p.x - nx * HT, by = q.p.y - ny * HT;
+    pos.set([tx, ty, CV.D / 2, bx, by, CV.D / 2, tx, ty, -CV.D / 2, bx, by, -CV.D / 2], i * 12);
+    (Math.floor((s - shift) / 1.2) % 2 === 0 ? C_OC1 : C_OC2).toArray(tmpArr);
+    for (let k = 0; k < 4; k++) col.set(tmpArr, i * 12 + k * 3);
+  }
+  slabGeo.attributes.position.needsUpdate = true; slabGeo.attributes.color.needsUpdate = true;
+  slabGeo.computeVertexNormals();
+  return slabAt(tip).p;
+}
+const tmpArr = [0, 0, 0];
+// 海水（海溝會被水填滿）
+const ocSea = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshPhysicalMaterial({ color: 0x4fa3d1, roughness: 0.1, transparent: true, opacity: 0.32, depthWrite: false }));
+ocSea.renderOrder = 4; CV.group.add(ocSea);
+// 陸地板塊（分層的岩層）
+const STRATA_C = [0x9c8a74, 0xc9a27e, 0xb5654a, 0xd9c9a3];
+const contL = STRATA_C.map(c => { const m = new THREE.Mesh(new THREE.BufferGeometry(), clay(c, { roughness: 0.9, flatShading: true })); m.castShadow = m.receiveShadow = true; CV.group.add(m); return m; });
+const contR = STRATA_C.map(c => { const m = new THREE.Mesh(new THREE.BufferGeometry(), clay(c, { roughness: 0.9, flatShading: true })); m.castShadow = m.receiveShadow = true; CV.group.add(m); return m; });
+const volcano = shadowed(new THREE.Mesh(new THREE.ConeGeometry(1.3, 1, 32, 1, true), clay(0x7a6a5e, { side: THREE.DoubleSide })));
+CV.group.add(volcano);
+const crater = new THREE.Mesh(new THREE.CircleGeometry(0.28, 20), new THREE.MeshBasicMaterial({ color: 0xff5a1f, toneMapped: false }));
+crater.rotation.x = -Math.PI / 2; CV.group.add(crater);
+const NLV = 220, lvPos = new Float32Array(NLV * 3), lvVel = Array.from({ length: NLV }, () => V3(0, 0, 0)), lvT = new Float32Array(NLV), lvCol = new Float32Array(NLV * 3);
+for (let i = 0; i < NLV; i++) { lvT[i] = Math.random() * 3; lvPos[i * 3 + 1] = -50; }
+const lvGeo = new THREE.BufferGeometry(); lvGeo.setAttribute('position', new THREE.BufferAttribute(lvPos, 3)); lvGeo.setAttribute('color', new THREE.BufferAttribute(lvCol, 3));
+const lava = new THREE.Points(lvGeo, new THREE.PointsMaterial({ size: 0.24, vertexColors: true, map: dotTexture('#ffffff', 'rgba(90,30,10,.6)'), transparent: true, depthWrite: false, alphaTest: 0.05 }));
+lava.frustumCulled = false; lava.renderOrder = 6; CV.group.add(lava);
+const lbOcean = addLabel('conv', '海洋板塊<br><small>密度大、較薄</small>', '', V3(-9, 6.0, CV.D / 2 + 0.1));
+const lbCont = addLabel('conv', '陸地板塊<br><small>密度小、較厚</small>', '', V3(10, 6.0, CV.D / 2 + 0.1));
+const lbContL = addLabel('conv', '陸地板塊（印度）', '', V3(-9, 5.6, CV.D / 2 + 0.1));
+const lbContR = addLabel('conv', '陸地板塊（歐亞）', '', V3(9, 5.6, CV.D / 2 + 0.1));
+const lbTrench = addLabel('conv', '⬇ 海溝', 'lam', V3(0, 0, 0));
+const lbSub = addLabel('conv', '隱沒 ↘', 'red small', V3(0, 0, 0));
+const lbVol = addLabel('conv', '🌋 安山岩火山', 'red', V3(0, 0, 0));
+const lbMt = addLabel('conv', '🏔️ 褶皺山脈', 'red', V3(0, 0, 0));
+addLabel('conv', '地函（軟流圈）', 'yel small', V3(-11, 1.0, CV.D / 2 + 0.1));
+const VX = 4.6;
+function strata(x0, x1, bottom, top, mesh, N = 110) {
+  const fr = [0, 0.28, 0.6, 0.85, 1];
+  mesh.forEach((m, k) => setGeo(m, profileGeo(x => lerp(bottom(x), top(x), fr[k]), x => lerp(bottom(x), top(x), fr[k + 1]), x0, x1, CV.D, N)));
+}
+function buildConv() {
+  const p = CV.p;
+  const oc = CV.type === 'oc';
+  slab.visible = ocSea.visible = volcano.visible = crater.visible = oc;
+  contL.forEach(m => { m.visible = !oc; });
+  lbOcean.show = lbCont.show = oc; lbContL.show = lbContR.show = !oc;
+  if (oc) {
+    const shift = p * 9;
+    const tip = updateSlab(shift);
+    const up = p * 2.4;
+    const XE = 1.2;
+    const cTop = x => lerp(5.9, 6.6 + up * Math.exp(-(((x - VX) / 2.6) ** 2)) + 0.15 * up * Math.sin(x * 2.3) * Math.exp(-(((x - VX) / 3) ** 2)), sm(XE, XE + 1.6, x));
+    const cBot = x => Math.max(MANTLE_TOP, slabTop(x) + 0.03);
+    strata(XE, 14, cBot, cTop, contR);
+    const seaBot = x => (x <= tip.x ? slabTop(x) : MANTLE_TOP + 0.95);
+    setGeo(ocSea, profileGeo(seaBot, () => CV.SEA, -14, XE + 1.0, CV.D, 140));
+    const vTop = cTop(VX);
+    const vh = 0.3 + 1.7 * sm(0.3, 0.8, p);
+    volcano.scale.set(1, vh, 1); volcano.position.set(VX, vTop + vh / 2 - 0.05, 0);
+    crater.position.set(VX, vTop + vh - 0.02, 0); crater.visible = p > 0.55;
+    // 海溝：海底最深處
+    let tx = XE, ty = 99; for (let x = XT; x <= XE + 1; x += 0.05) { const y = seaBot(x); if (y < ty) { ty = y; tx = x; } }
+    lbTrench.show = p > 0.2; lbTrench.pos.set(tx, ty + 0.3, CV.D / 2 + 0.2);
+    lbSub.show = p > 0.15; lbSub.pos.set(tip.x - 0.6, tip.y + 0.9, CV.D / 2 + 0.2);
+    lbVol.show = p > 0.5; lbVol.pos.set(VX, vTop + vh + 0.8, 0);
+    lbMt.show = false;
+    CV.vTop = vTop + vh; CV.magmaY = slabTop(VX);
+  } else {
+    const gap = 1.6 * (1 - sm(0, 0.3, p)), q = sm(0.25, 1, p);
+    const H = x => q * (5.2 * Math.exp(-((x / 2.6) ** 2)) + 0.55 * Math.cos(x * 2.4) * Math.exp(-((x / 3.2) ** 2)));
+    const cTop = x => 6.6 + H(x), cBot = x => MANTLE_TOP - 0.55 * H(x);
+    strata(-14, -gap, cBot, cTop, contL);
+    strata(gap, 14, cBot, cTop, contR);
+    lbTrench.show = lbSub.show = lbVol.show = false;
+    lbMt.show = q > 0.3; lbMt.pos.set(0, cTop(0) + 0.9, 0);
+  }
+}
+$('convType').addEventListener('change', e => { CV.type = e.target.value; CV.p = 0; CV.run = false; $('crashBtn').textContent = '💥 擠壓碰撞'; buildConv(); });
+$('crashBtn').addEventListener('click', () => {
+  if (CV.p >= 1 || CV.run) { CV.p = 0; CV.run = false; $('crashBtn').textContent = '💥 擠壓碰撞'; buildConv(); return; }
+  CV.run = true; $('crashBtn').textContent = '↺ 重來';
+});
+function updateConv(dt) {
+  CV.t += dt;
+  if (CV.run) { CV.p = Math.min(1, CV.p + dt / 7); buildConv(); if (CV.p >= 1) CV.run = false; }
+  const oc = CV.type === 'oc', p = CV.p;
+  // 岩漿：從隱沒板塊上方熔融，上升到火山口噴出
+  for (let i = 0; i < NLV; i++) {
+    const k = i * 3;
+    if (!oc || p < 0.45) { lvPos[k + 1] = -50; continue; }
+    lvT[i] += dt;
+    const T = lvT[i] % 3;
+    if (T < 1.6) {
+      const u = T / 1.6;
+      lvPos.set([VX + Math.sin(i * 3.1) * 0.25 * (1 - u), lerp(CV.magmaY, CV.vTop, u), CV.D / 2 - 0.15 - (i % 3) * 0.4], k);
+      tmpC.setRGB(1, 0.3 + 0.2 * u, 0.08);
+    } else {
+      const u = T - 1.6;
+      const a = i * 2.39;
+      lvPos.set([VX + Math.cos(a) * 1.6 * u, CV.vTop + 2.6 * u - 2.8 * u * u, Math.sin(a) * 1.0 * u], k);
+      tmpC.setRGB(1, 0.42, 0.1).lerp(C_OC1, sm(0.5, 1.3, u));
+    }
+    lvCol.set([tmpC.r, tmpC.g, tmpC.b], k);
+  }
+  lvGeo.attributes.position.needsUpdate = true; lvGeo.attributes.color.needsUpdate = true;
+  if (p === 0) setCap(`<small>${oc ? '海洋板塊 vs 陸地板塊' : '陸地板塊 vs 陸地板塊'}</small>按「<b>💥 擠壓碰撞</b>」，看兩個板塊相撞`);
+  else if (oc) setCap(`<small>例：南美洲西岸 ── 安地斯山脈、秘魯－智利海溝</small><span class="huge">海洋板塊密度大、較薄 → <span class="red">向下隱沒</span>，形成深邃的<span class="blu">海溝</span></span>陸地被擠壓抬升，隱沒的板塊熔融成岩漿 → 噴發形成<b>安山岩</b>火山`);
+  else setCap(`<small>例：喜馬拉雅山（印度板塊撞上歐亞板塊）</small><span class="huge">兩塊陸地密度相近，<span class="red">誰也不隱沒</span> → 擠壓隆起成極高的褶皺山脈</span>沒有海溝；岩層被擠得彎彎曲曲（褶皺），山底下的地殼也變厚`);
+  setHTML('convStat', oc
+    ? `海洋板塊：<b>玄武岩</b>，密度約 3.0 g/cm³<br>陸地板塊：<b>花岡岩</b>為主，密度約 2.7 g/cm³<br>結果：<b class="r">隱沒、海溝、火山、地震</b>`
+    : `兩塊都是陸地板塊，密度都約 <b>2.7 g/cm³</b><br>結果：<b class="r">褶皺山脈，沒有海溝</b><br>喜馬拉雅山至今仍在長高！`);
+}
+
+/* =========================================================
+   Tab 4：斷層（從原本的「地質剖面與斷層模擬器」移植）
+   ---------------------------------------------------------
+   岩塊 x∈[−6,6]、y∈[−3,3]（放在桌上：整體抬高 3.3）。
+   斷層線傾角 60°，右側（壓在斷層面上方）＝上磐。
+   ========================================================= */
+const FT = { group: new THREE.Group(), force: null, slip: 0, slipT: 0, t: 0 };
+FT.group.position.y = 3.35; scene.add(FT.group);
+const FW = 6, FH = 3, FD = 6, DIP = 60 * Math.PI / 180;
+const fTop = V2(-FH / Math.tan(DIP), FH), fBot = V2(FH / Math.tan(DIP), -FH);
+const downDip = V3(fBot.x - fTop.x, fBot.y - fTop.y, 0).normalize();
+const faultNormal = V3(-downDip.y, downDip.x, 0);
+const FOOT = [[-FW, -FH], [fBot.x, -FH], [fTop.x, FH], [-FW, FH]];
+const HANG = [[fBot.x, -FH], [FW, -FH], [FW, FH], [fTop.x, FH]];
+const FSTRATA = [[-3.0, -1.9, 0x6b5442], [-1.9, -0.9, 0xc09a6e], [-0.9, 0.0, 0x8a8178], [0.0, 0.9, 0xd9bc8c], [0.9, 1.9, 0x9a7356], [1.9, 2.6, 0xcfae80], [2.6, 3.0, 0x7d9b5a]];
+function clipBand(poly, a, b) {
+  const clip = (pts, keep, cut) => { const out = []; pts.forEach((cur, i) => { const prev = pts[(i + pts.length - 1) % pts.length]; const ci = keep(cur), pi = keep(prev); if (ci) { if (!pi) out.push(cut(prev, cur)); out.push(cur); } else if (pi) out.push(cut(prev, cur)); }); return out; };
+  const atY = y => (p, q) => [p[0] + (q[0] - p[0]) * (y - p[1]) / (q[1] - p[1]), y];
+  let r = clip(poly, p => p[1] >= a - 1e-9, atY(a));
+  if (r.length) r = clip(r, p => p[1] <= b + 1e-9, atY(b));
+  return r;
+}
+function buildBlock(poly) {
+  const g = new THREE.Group();
+  FSTRATA.forEach(([y0, y1, color]) => {
+    const pts = clipBand(poly, y0, y1); if (pts.length < 3) return;
+    const geo = new THREE.ExtrudeGeometry(new THREE.Shape(pts.map(([x, y]) => V2(x, y))), { depth: FD, bevelEnabled: false });
+    geo.translate(0, 0, -FD / 2);
+    const m = new THREE.Mesh(geo, clay(color, { roughness: 0.9, flatShading: true }));
+    m.castShadow = m.receiveShadow = true; g.add(m);
+    g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30), new THREE.LineBasicMaterial({ color: 0x5d4037, transparent: true, opacity: 0.35 })));
+  });
+  return g;
+}
+const footwall = buildBlock(FOOT), hanging = buildBlock(HANG);
+FT.group.add(footwall, hanging);
+function textPlane(big, small, w = 3.2) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+  const g = c.getContext('2d'); g.textAlign = 'center';
+  g.fillStyle = 'rgba(255,250,240,.85)'; g.beginPath(); g.roundRect(30, 40, 452, 176, 40); g.fill();
+  g.fillStyle = '#5d4037'; g.font = '900 96px "Noto Sans TC","Microsoft JhengHei",sans-serif'; g.fillText(big, 256, 140);
+  g.font = '700 38px sans-serif'; g.fillStyle = '#8d7366'; g.fillText(small, 256, 192);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.Mesh(new THREE.PlaneGeometry(w, w / 2), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false }));
+}
+[[hanging, '上磐', 'Hanging Wall', 3.15], [footwall, '下磐', 'Footwall', -3.6]].forEach(([blk, big, small, x]) => {
+  const f = textPlane(big, small); f.position.set(x, 0.55, FD / 2 + 0.02); blk.add(f);
+  const b = textPlane(big, small); b.position.set(x, 0.55, -FD / 2 - 0.02); b.rotation.y = Math.PI; blk.add(b);
+});
+const ftDraw = Drawer(FT.group);
+function forceArrow(color) {
+  const g = new THREE.Group(), mat = clay(color, { emissive: color, emissiveIntensity: 0.3 });
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, 1.8, 16), mat); shaft.rotation.z = -Math.PI / 2; shaft.position.x = 0.9;
+  const head = new THREE.Mesh(new THREE.ConeGeometry(0.38, 0.75, 20), mat); head.rotation.z = -Math.PI / 2; head.position.x = 2.15;
+  g.add(shaft, head); g.userData.mat = mat; return g;
+}
+const fArrows = [];
+for (const side of [-1, 1]) for (const y of [-1.2, 1.2]) { const a = forceArrow(0xffffff); a.userData.side = side; a.userData.y = y; fArrows.push(a); FT.group.add(a); }
+const slipArrow = forceArrow(0xe9a23b); slipArrow.scale.setScalar(0.45); hanging.add(slipArrow);
+addLabel('fault', '斷層面（傾角 60°）', 'yel', V3(fTop.x - 0.7, FT.group.position.y + fTop.y + 0.8, FD / 2));
+function setForce(f) {
+  FT.force = f; FT.slipT = f === 'tension' ? 1.6 : f === 'compression' ? -1.6 : 0;
+  $('tensionBtn').classList.toggle('on', f === 'tension'); $('compressBtn').classList.toggle('on', f === 'compression');
+  const color = f === 'tension' ? 0x1e88e5 : 0xe76f51;
+  fArrows.forEach(a => { a.userData.mat.color.setHex(color); a.userData.mat.emissive.setHex(color); });
+}
+$('tensionBtn').addEventListener('click', () => setForce('tension'));
+$('compressBtn').addEventListener('click', () => setForce('compression'));
+$('resetFault').addEventListener('click', () => setForce(null));
+function updateFault(dt) {
+  FT.t += dt;
+  FT.slip += (FT.slipT - FT.slip) * Math.min(1, dt * 1.4);
+  hanging.position.copy(downDip).multiplyScalar(FT.slip);
+  const f = FT.force, pulse = 0.35 * Math.sin(FT.t * 5);
+  fArrows.forEach(a => {
+    a.visible = !!f; if (!f) return;
+    const { side, y } = a.userData, out = f === 'tension', dir = out ? side : -side;
+    a.position.set((out ? side * 7.0 : side * 10.6) + dir * pulse, y, 0);
+    a.rotation.set(0, dir > 0 ? 0 : Math.PI, 0);
+  });
+  slipArrow.visible = !!f;
+  if (f) {
+    const d = f === 'tension' ? downDip : downDip.clone().negate();
+    slipArrow.position.copy(V3(0.9, 0.2, FD / 2 + 0.15).addScaledVector(faultNormal, 0.35)).addScaledVector(d, 0.25 * Math.sin(FT.t * 4));
+    slipArrow.rotation.set(0, 0, Math.atan2(d.y, d.x));
+  }
+  ftDraw.begin();
+  ftDraw.dash(V3(fTop.x, fTop.y, FD / 2 + 0.04), V3(fBot.x, fBot.y, FD / 2 + 0.04), 0xe9a23b, { r: 0.04 });
+  ftDraw.end();
+  if (f === 'tension') setCap(`<small>受到<span class="blu">張力</span>（拉扯）→ 岩層被拉長</small><span class="huge">正斷層：上磐相對下磐「<span class="blu">下滑</span>」</span>`);
+  else if (f === 'compression') setCap(`<small>受到<span class="red">壓力</span>（擠壓）→ 岩層被縮短</small><span class="huge">逆斷層：上磐相對下磐「<span class="red">上升</span>」</span>板塊聚合處（例如台灣）常見逆斷層`);
+  else setCap(`<small>斷層受力模擬</small>選擇「<b>⟷ 張力</b>」或「<b>→← 壓力</b>」，觀察上磐怎麼移動`);
+  setHTML('faultStat', f === 'tension' ? '斷層種類：<b class="b">正斷層</b><br>受力：張力（拉扯）<br>上磐：沿斷層面<b>往下滑</b>'
+    : f === 'compression' ? '斷層種類：<b class="r">逆斷層</b><br>受力：壓力（擠壓）<br>上磐：沿斷層面<b>往上升</b>' : '斷層種類：<b>—</b>（尚未受力）');
+}
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  earth: { group: EA.group, cam: () => {
+    if (EA.drill && EA.drill.stage !== 'wave') {
+      const p = earth.localToWorld(V3(DXZ[0], DY, DXZ[1]));
+      return { pos: [p.x + 0.45, p.y + 0.25, p.z + 1.5], target: [p.x, p.y - 0.05, p.z], fitW: 1.1 };
+    }
+    return { pos: [14, 11, 15], target: [0, 5.6, 0], fitW: 21 };
+  }, update: updateEarth },
+  ridge: { group: RG.group, cam: () => ({ pos: [0, 10, 23], target: [0, 4.6, 0], fitW: 30 }), update: updateRidge },
+  conv: { group: CV.group, cam: () => ({ pos: [0, 10, 23], target: [0, 5.0, 0], fitW: 30 }), update: updateConv },
+  fault: { group: FT.group, cam: () => ({ pos: [5, 8.5, 24], target: [-1, 3.3, 0], fitW: 25 }), update: updateFault }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  $('tipbox').hidden = true; highlight(null);
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, EA, RG, CV, FT, buildConv, setForce, camera, controls, LAYERS };
+
+resize();
+buildConv();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'earth';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>
