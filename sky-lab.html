@@ -1,3 +1,5 @@
+<!doctype html>
+<html lang="zh-Hant">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>月亮與天空 3D 教室</title>
@@ -18,6 +20,9 @@ html,body{height:100%;margin:0;overflow:hidden}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;-webkit-tap-highlight-color:transparent}
 #tabs{position:fixed;top:calc(14px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:20;display:flex;gap:4px;padding:4px;background:var(--tab);border:1px solid var(--line);border-radius:99px;box-shadow:0 8px 28px rgba(0,0,0,.5)}
 #tabs button{font:inherit;font-family:var(--f-display);font-size:17px;font-weight:700;color:var(--muted);background:transparent;border:0;border-radius:99px;padding:6px 18px;cursor:pointer;white-space:nowrap}
+#skyBack{font-family:var(--f-display);font-size:17px;font-weight:700;color:var(--muted);text-decoration:none;border-radius:99px;padding:6px 14px;border-right:1px solid var(--line);white-space:nowrap}
+#skyBack:hover{color:var(--ink)}
+@media (max-width:999px){#skyBack{font-size:15px;padding:5px 10px}}
 #tabs button:hover{color:var(--ink)}
 #tabs button[aria-selected=true]{background:var(--tabOn);color:var(--tabOnInk)}
 #tabs button:focus-visible{outline:2px solid var(--tabOn);outline-offset:2px}
@@ -179,6 +184,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 </style>
 
 <nav id="tabs" role="tablist" aria-label="切換單元">
+  <a id="skyBack" href="index.html#g9" title="回課程總覽">‹ 總覽</a>
   <button role="tab" id="tab-moon" aria-controls="moonApp" aria-selected="true">🌙 月相變化</button>
   <button role="tab" id="tab-daily" aria-controls="dayApp" aria-selected="false">☀️ 周日運動</button>
 </nav>

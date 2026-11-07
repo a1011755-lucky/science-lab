@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>地球上的水與地貌實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+  .tabs.three .tab { font-size: .74rem; padding: 9px 2px; }
+  .btn.hold { color: #fff; background: #c0634f; font-size: .92rem; padding: 14px 6px; touch-action: none; user-select: none; -webkit-user-select: none; box-shadow: 0 6px 16px rgba(192,99,79,.3); }
+  .btn.hold.on { background: #9c4433; transform: scale(.97); box-shadow: inset 0 3px 10px rgba(0,0,0,.25); }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g9">‹ 課程總覽</a>
+  <div class="title">地球上的水與地貌實驗室</div>
+  <div class="body">
+    <div class="tabs three">
+      <button class="tab on" data-tab="dist">💧 水資源分布<small>比例模型</small></button>
+      <button class="tab" data-tab="well">⛲ 自流井<small>連通管原理</small></button>
+      <button class="tab" data-tab="sink">🏚️ 地層下陷<small>超抽地下水</small></button>
+    </div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="dist">
+      <div class="concept" style="--cc:#1e6aa8"><div class="ct">地球上的水，能用的很少</div><div class="cd">海水最多但太鹹；冰川難利用；<br>河湖水最容易取得</div></div>
+      <p class="desc">點下面的按鈕，或直接點畫面中水滴旁的<b>立體按鈕</b>：</p>
+      <button class="btn wsel" data-w="ocean">🌊 海洋<small>約 97%</small></button>
+      <button class="btn wsel" data-w="ice">🧊 冰川<small>約 2%</small></button>
+      <button class="btn wsel" data-w="fresh">💧 地下水與河湖水<small>不到 1%</small></button>
+      <div class="stat" id="distStat"></div>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="well" hidden>
+      <div class="concept" style="--cc:#2a7fb0"><div class="ct">受壓地下水＋連通管原理</div><div class="cd">含水層夾在兩層不透水層之間，<br>井口低於「受壓地下水面」→ 水自己噴出</div></div>
+      <button class="btn primary" id="rainBtn">🌧️ 降雨補注</button>
+      <label class="lab" for="wellX">⛏️ 開鑿水井的位置<b id="wellV"></b></label>
+      <input class="big" type="range" id="wellX" min="-10" max="12" step="0.1" value="6">
+      <div class="ticks"><span>⛰️ 高地</span><span>山腳</span><span>平原 🏘️</span></div>
+      <button class="btn" id="handPump" disabled>🪣 手動抽水</button>
+      <button class="btn" id="resetWell">↺ 地下水排空，重來</button>
+      <div class="stat" id="wellStat"></div>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="sec" data-tab="sink" hidden>
+      <div class="concept" style="--cc:#c62828"><div class="ct">超抽地下水 → 地層下陷</div><div class="cd">水撐住了砂礫間的縫隙；水被抽走，<br>砂礫就被上方重量壓得更緊密</div></div>
+      <button class="btn hold" id="motorBtn">⚙️ 按住不放：馬達抽水</button>
+      <div class="row2">
+        <button class="btn" id="refillBtn">💧 補回地下水<small>下了很久的雨</small></button>
+        <button class="btn" id="resetSink">↺ 全部重置</button>
+      </div>
+      <div class="stat" id="sinkStat"></div>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'dist', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+const sm = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+function textTexture(lines, { w = 512, h = 256, bg = '#fffaf0', fg = '#5d4037', sizes = [72, 40] } = {}) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  g.fillStyle = bg; g.fillRect(0, 0, w, h);
+  g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle';
+  const total = lines.reduce((s, _, i) => s + (sizes[i] || sizes[sizes.length - 1]) * 1.25, 0);
+  let y = (h - total) / 2;
+  lines.forEach((t, i) => { const sz = sizes[i] || sizes[sizes.length - 1]; g.font = `900 ${sz}px "Noto Sans TC","Microsoft JhengHei",sans-serif`; y += sz * 0.625; g.fillText(t, w / 2, y); y += sz * 0.625; });
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8; return tex;
+}
+
+/* =========================================================
+   Tab 1：水資源分布比例模型
+   ---------------------------------------------------------
+   水滴的體積 ＝ 地球上所有的水。由下往上依「體積」切：
+   海洋 97%（下方）、地下水與河湖水 約 1%（薄薄一層）、冰川 2%（頂端）。
+   ========================================================= */
+const DR = { group: new THREE.Group(), sel: null, R: 2.7, H: 3.3, CY: 4.0, t: 0, zoom: false };
+scene.add(DR.group);
+const dropPts = [];
+for (let i = 0; i <= 200; i++) {                         // 由底部往上
+  const t = Math.PI - Math.PI * i / 200;
+  dropPts.push(V2(Math.max(0, DR.R * Math.sin(t) * Math.pow(Math.sin(t / 2), 1.6)), DR.H * Math.cos(t)));
+}
+// 累積體積 → 找出 97%、98% 的高度
+const cumV = [0];
+for (let i = 1; i < dropPts.length; i++) {
+  const a = dropPts[i - 1], b = dropPts[i];
+  cumV.push(cumV[i - 1] + Math.PI * (a.x * a.x + b.x * b.x) / 2 * (b.y - a.y));
+}
+const VTOT = cumV[cumV.length - 1];
+function yAtFrac(f) {
+  const v = f * VTOT;
+  for (let i = 1; i < cumV.length; i++) if (cumV[i] >= v) { const k = (v - cumV[i - 1]) / (cumV[i] - cumV[i - 1]); return dropPts[i - 1].y + (dropPts[i].y - dropPts[i - 1].y) * k; }
+  return DR.H;
+}
+const rAtY = y => { for (let i = 1; i < dropPts.length; i++) if (dropPts[i].y >= y) { const a = dropPts[i - 1], b = dropPts[i], k = (y - a.y) / (b.y - a.y || 1); return a.x + (b.x - a.x) * k; } return 0; };
+const Y97 = yAtFrac(0.97), Y98 = yAtFrac(0.98);
+function sliceLathe(y0, y1, seg = 96) {
+  const pts = [V2(0, y0), V2(rAtY(y0), y0)];
+  for (const p of dropPts) if (p.y > y0 && p.y < y1) pts.push(p);
+  pts.push(V2(rAtY(y1), y1), V2(0, y1));
+  return new THREE.LatheGeometry(pts, seg);
+}
+const oceanMat = new THREE.MeshPhysicalMaterial({ color: 0x134a8e, emissive: 0x0a2c6e, emissiveIntensity: 0.15, roughness: 0.12, clearcoat: 1, transparent: true, opacity: 0.95, side: THREE.DoubleSide });
+const iceMat = new THREE.MeshPhysicalMaterial({ color: 0xeaf6ff, emissive: 0xdff2ff, emissiveIntensity: 0.1, roughness: 0.25, clearcoat: 1, flatShading: true, transparent: true, opacity: 0.95, side: THREE.DoubleSide });
+const freshMat = new THREE.MeshPhysicalMaterial({ color: 0x9fe8ff, emissive: 0x2fc4ff, emissiveIntensity: 0.25, roughness: 0.1, clearcoat: 1, transparent: true, opacity: 0.95, side: THREE.DoubleSide });
+const dropRoot = new THREE.Group(); dropRoot.position.y = DR.CY; DR.group.add(dropRoot);
+const ocean = new THREE.Mesh(sliceLathe(-DR.H, Y97), oceanMat);
+const fresh = new THREE.Mesh(sliceLathe(Y97, Y98), freshMat);
+const ice = new THREE.Mesh(sliceLathe(Y98, DR.H, 14), iceMat);
+dropRoot.add(ocean, fresh, ice);
+const iceEdges = new THREE.LineSegments(new THREE.EdgesGeometry(ice.geometry, 10), new THREE.LineBasicMaterial({ color: 0x7fb8dc, transparent: true, opacity: 0.5 }));
+ice.add(iceEdges);
+ocean.castShadow = ice.castShadow = true;
+const shell = new THREE.Mesh(new THREE.LatheGeometry(dropPts.map(p => V2(p.x * 1.035 + 0.02, p.y * 1.02)), 96),
+  new THREE.MeshPhysicalMaterial({ color: 0xeaf6ff, roughness: 0.03, clearcoat: 1, transparent: true, opacity: 0.12, depthWrite: false }));
+shell.renderOrder = 8; dropRoot.add(shell);
+// 河湖水：淡水層裡更小的一顆亮點
+const lake = new THREE.Mesh(new THREE.SphereGeometry(0.08, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false }));
+const YF = (Y97 + Y98) / 2, RF = rAtY(YF);
+lake.position.set(RF * 0.55, YF, RF * 0.75); dropRoot.add(lake);
+const freshRing = new THREE.Mesh(new THREE.TorusGeometry(RF * 1.04, 0.045, 10, 96), new THREE.MeshBasicMaterial({ color: 0x4fd8ff, transparent: true, opacity: 0, toneMapped: false }));
+freshRing.rotation.x = Math.PI / 2; freshRing.position.y = YF; dropRoot.add(freshRing);
+const lakeGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('80,200,255'), transparent: true, depthWrite: false }));
+lakeGlow.scale.setScalar(0.6); lake.add(lakeGlow);
+// 底座
+add(DR.group, shadowed(new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.9, 0.35, 48), clay(0xc49a6c))), 0, 0.18, 0);
+add(DR.group, new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.4, DR.CY - DR.H - 0.35 + 0.15, 20), clay(0xb98a5e)), 0, 0.35 + (DR.CY - DR.H - 0.2) / 2, 0);
+// 立體按鈕
+const WBTN = { ocean: ['🌊 海洋', '約 97%', '#1f5fa8'], ice: ['🧊 冰川', '約 2%', '#5b8fb0'], fresh: ['💧 地下水與河湖水', '不到 1%', '#1b9cc7'] };
+const btn3 = {};
+Object.entries(WBTN).forEach(([k, [t1, t2, col]], i) => {
+  const g = new THREE.Group(); g.position.set(5.6, 6.0 - i * 2.0, 0.6); DR.group.add(g);
+  const tex = textTexture([t1, t2], { w: 640, h: 220, bg: '#fffaf0', fg: col, sizes: [64, 46] });
+  const box = new THREE.Mesh(new RoundedBoxGeometry(4.0, 1.4, 0.5, 4, 0.22), clay(0xfffaf0, { clearcoat: 0.8 }));
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(3.7, 1.27), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+  face.position.z = 0.26; g.add(box, face);
+  box.castShadow = true; box.userData.w = k; face.userData.w = k;
+  btn3[k] = { g, box, face, push: 0 };
+});
+const lbOcean = addLabel('dist', '海洋 97%', 'lam', V3(-DR.R - 0.6, DR.CY - 1.2, 0));
+const lbIce = addLabel('dist', '冰川 2%', '', V3(-0.9, DR.CY + Y98 + 0.5, 0));
+const lbFresh = addLabel('dist', '地下水與河湖水 &lt; 1%', 'yel', V3(-RF - 1.4, DR.CY + YF, 0));
+const lbLake = addLabel('dist', '★ 河湖水（最容易取得）', 'red small', V3(0, 0.22, 0), lake);
+const TIPS_W = {
+  ocean: ['🌊 海洋', '海水佔 97%，但淡化成本太高（水費會暴增），難以直接利用！'],
+  ice: ['🧊 冰川', '冰川佔 2%，是最大的淡水庫，但距離太遠難以利用！'],
+  fresh: ['💧 地下水與河湖水', '不到 1%！其中河湖水是最容易取得、最常使用的淡水資源！']
+};
+function selectWater(k) {
+  DR.sel = k; DR.zoom = k === 'fresh'; DR.t = 0;
+  document.querySelectorAll('.wsel').forEach(b => b.classList.toggle('on', b.dataset.w === k));
+  btn3[k].push = 1;
+  goView(TABS.dist.cam());
+}
+document.querySelectorAll('.wsel').forEach(b => b.addEventListener('click', () => selectWater(b.dataset.w)));
+function updateDist(dt) {
+  DR.t += dt;
+  const s = DR.sel, pulse = 0.5 + 0.5 * Math.sin(DR.t * 3);
+  dropRoot.rotation.y += dt * (DR.zoom ? 0 : 0.25);
+  if (DR.zoom) dropRoot.rotation.y += (0 - dropRoot.rotation.y) * (1 - Math.exp(-dt * 5));
+  const fade = (k, base) => !s || s === k ? base : base * 0.28;
+  oceanMat.opacity = fade('ocean', 0.95); iceMat.opacity = fade('ice', 0.95); freshMat.opacity = fade('fresh', 0.95);
+  oceanMat.emissiveIntensity = s === 'ocean' ? 0.35 + 0.5 * pulse : 0.1;
+  iceMat.emissiveIntensity = s === 'ice' ? 0.25 + 0.35 * pulse : 0.08;
+  iceMat.color.setHex(s === 'ice' ? 0xffffff : 0xeaf6ff); iceEdges.material.opacity = s === 'ice' ? 0.9 : s ? 0.15 : 0.5;
+  freshMat.emissiveIntensity = s === 'fresh' ? 0.9 + 0.9 * pulse : 0.3;
+  lakeGlow.scale.setScalar(s === 'fresh' ? 0.8 + 0.5 * pulse : 0.35);
+  freshRing.material.opacity = s === 'fresh' ? 0.45 + 0.5 * pulse : 0;
+  lbLake.show = s === 'fresh';
+  for (const [k, b] of Object.entries(btn3)) {
+    b.push = Math.max(0, b.push - dt * 3);
+    b.g.position.z = 0.6 - 0.25 * Math.sin(Math.PI * b.push);
+    b.box.material.color.setHex(s === k ? 0xffe7c2 : 0xfffaf0);
+  }
+  if (!s) setCap(`<small>地球上所有的水，裝進一顆水滴</small>點選右邊的<b>立體按鈕</b>，看看每一種水佔多少`);
+  else setCap(`<small>${TIPS_W[s][0]}</small><span class="huge pop" data-k="${s}">${TIPS_W[s][1]}</span>`);
+  setHTML('distStat', `🌊 海洋：<b class="b">約 97%</b>（鹹水）<br>🧊 冰川：<b>約 2%</b>（固態淡水）<br>💧 地下水＋河湖水：<b class="g">不到 1%</b><br><small>人類真正方便使用的淡水，少之又少！</small>`);
+}
+const ray = new THREE.Raycaster(), ndc = V2(0, 0);
+function setNdc(ev) { const r = renderer.domElement.getBoundingClientRect(); ndc.set((ev.clientX - r.left) / r.width * 2 - 1, -(ev.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ndc, camera); }
+const btnMeshes = Object.values(btn3).flatMap(b => [b.box, b.face]);
+let downAt = null;
+renderer.domElement.addEventListener('pointerdown', ev => { downAt = [ev.clientX, ev.clientY]; });
+renderer.domElement.addEventListener('pointerup', ev => {
+  if (tab !== 'dist' || !downAt || Math.hypot(ev.clientX - downAt[0], ev.clientY - downAt[1]) > 6) return;
+  setNdc(ev);
+  const h = ray.intersectObjects(btnMeshes)[0];
+  if (h) selectWater(h.object.userData.w);
+});
+renderer.domElement.addEventListener('pointermove', ev => {
+  if (tab !== 'dist' || ev.buttons) return;
+  setNdc(ev);
+  renderer.domElement.style.cursor = ray.intersectObjects(btnMeshes).length ? 'pointer' : '';
+});
+
+/* =========================================================
+   Tab 2：自流井與連通管原理
+   ---------------------------------------------------------
+   地層（由上到下）：表土、不透水層（頁岩）、含水層（砂岩）、不透水層（頁岩）。
+   含水層在左邊高山露出地表（補注區）。含水層灌滿後，水壓能把水推到
+   「受壓地下水面」head(x) 的高度：井口低於它 → 水自己噴出（自流井）。
+   ========================================================= */
+const WL = { group: new THREE.Group(), fill: 0, raining: false, xw: 6, level: 0, hand: 0, t: 0, X0: -14, X1: 14, D: 6, BASE: 0.05 };
+scene.add(WL.group);
+const topY = x => 5.6 + 6 * sm(-1, -11, x);
+const shaleT = x => 2.2 * sm(-11.5, -7.5, x);
+const b2Y = x => topY(x) - 0.35 - shaleT(x);
+const b1Y = x => b2Y(x) - 1.5;
+const headY = x => 10.2 - 0.11 * (x + 11.5);
+const FRONT = WL.D / 2;
+function layer(lo, hi, color, o = {}) {
+  const sh = new THREE.Shape(), N = 140;
+  for (let i = 0; i <= N; i++) { const x = WL.X0 + (WL.X1 - WL.X0) * i / N; i ? sh.lineTo(x, lo(x)) : sh.moveTo(x, lo(x)); }
+  for (let i = N; i >= 0; i--) { const x = WL.X0 + (WL.X1 - WL.X0) * i / N; sh.lineTo(x, Math.max(lo(x) + 0.001, hi(x))); }
+  const g = new THREE.ExtrudeGeometry(sh, { depth: WL.D, bevelEnabled: false, curveSegments: 2 });
+  g.translate(0, 0, -WL.D / 2);
+  const m = new THREE.Mesh(g, clay(color, { roughness: 0.9, clearcoat: 0.05, ...o }));
+  m.castShadow = m.receiveShadow = true; WL.group.add(m); return m;
+}
+layer(() => WL.BASE, b1Y, 0x5e5450);                         // 下方不透水層
+const aquifer = layer(b1Y, b2Y, 0xe3c48d);                    // 含水層（砂岩）
+layer(b2Y, x => topY(x) - 0.35, 0x6f6460);                    // 上方不透水層
+layer(x => topY(x) - 0.35, topY, 0x8fb36b);                   // 表土
+// 樹與房子
+for (let i = 0; i < 9; i++) {
+  const x = -13.2 + i * 1.15 + Math.random() * 0.4, z = (Math.random() - 0.5) * 4;
+  const tr = new THREE.Group(); tr.position.set(x, topY(x), z); WL.group.add(tr);
+  add(tr, new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.5, 8), clay(0x8d6e63)), 0, 0.25, 0);
+  add(tr, new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.1, 10), clay(0x6f9f6a)), 0, 0.95, 0);
+  shadowed(tr);
+}
+for (const [x, z] of [[1.5, -1.6], [3.4, -1.9], [9.5, -1.7]]) {
+  const hs = new THREE.Group(); hs.position.set(x, topY(x), z); WL.group.add(hs);
+  add(hs, new THREE.Mesh(new RoundedBoxGeometry(1.1, 0.8, 0.9, 2, 0.06), clay(0xfaf3e0)), 0, 0.4, 0);
+  const rf = add(hs, new THREE.Mesh(new THREE.ConeGeometry(0.85, 0.6, 4), clay(0xc0634f)), 0, 1.1, 0); rf.rotation.y = Math.PI / 4;
+  shadowed(hs);
+}
+// 雲與雨
+const cloud = new THREE.Group(); cloud.position.set(-11.5, 16.3, 0); WL.group.add(cloud);
+const cloudMat = clay(0xffffff, { roughness: 1, clearcoat: 0, transparent: true, opacity: 0.95 });
+[[0, 0, 0, 1.3], [1.3, -0.2, 0.3, 1.0], [-1.3, -0.25, -0.2, 1.0], [0.5, 0.6, -0.3, 0.9]].forEach(([x, y, z, r]) => add(cloud, new THREE.Mesh(new THREE.SphereGeometry(r, 24, 16), cloudMat), x, y, z));
+const NR = 260, rPos = new Float32Array(NR * 3);
+for (let i = 0; i < NR; i++) rPos.set([-14 + Math.random() * 5, 5 + Math.random() * 11, (Math.random() - 0.5) * 5], i * 3);
+const rainGeo = new THREE.BufferGeometry(); rainGeo.setAttribute('position', new THREE.BufferAttribute(rPos, 3));
+const rain = new THREE.Points(rainGeo, new THREE.PointsMaterial({ size: 0.16, map: dotTexture('#8fd0ff', 'rgba(40,110,170,.8)'), transparent: true, depthWrite: false, alphaTest: 0.05 })); rain.frustumCulled = false;
+WL.group.add(rain);
+// 含水層裡的水分子（畫在剖面上）
+const NM = 900, mPos = new Float32Array(NM * 3), mX = new Float32Array(NM), mF = new Float32Array(NM);
+for (let i = 0; i < NM; i++) { mX[i] = WL.X0 + Math.random() * (WL.X1 - WL.X0); mF[i] = 0.08 + Math.random() * 0.84; }
+const molGeo = new THREE.BufferGeometry(); molGeo.setAttribute('position', new THREE.BufferAttribute(mPos, 3));
+const mols = new THREE.Points(molGeo, new THREE.PointsMaterial({ size: 0.2, map: dotTexture('#4fa8e8', 'rgba(20,80,150,.85)'), transparent: true, depthWrite: false, alphaTest: 0.05 })); mols.frustumCulled = false;
+mols.renderOrder = 3; WL.group.add(mols);
+// 水井
+const well = new THREE.Group(); WL.group.add(well);
+const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 1, 24, 1, true), new THREE.MeshPhysicalMaterial({ color: 0xdfe7ea, roughness: 0.1, clearcoat: 1, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false }));
+pipe.renderOrder = 6; well.add(pipe);
+const lip = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.07, 10, 28), metal(0x9aa3ab)); lip.rotation.x = Math.PI / 2; well.add(lip);
+const wcol = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 1, 20), new THREE.MeshPhysicalMaterial({ color: 0x3f9fe0, roughness: 0.1, transparent: true, opacity: 0.85 }));
+wcol.renderOrder = 5; well.add(wcol);
+const hpump = new THREE.Group(); well.add(hpump);
+add(hpump, new THREE.Mesh(new RoundedBoxGeometry(0.42, 0.9, 0.42, 2, 0.08), clay(0x4f7d6a)), 0, 0.45, 0);
+const spoutM = add(hpump, new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.5, 10), clay(0x4f7d6a)), 0.3, 0.7, 0); spoutM.rotation.z = Math.PI / 2;
+const handle = new THREE.Group(); handle.position.set(-0.15, 0.85, 0); hpump.add(handle);
+add(handle, new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.0, 8), metal()), -0.45, 0, 0).rotation.z = Math.PI / 2;
+shadowed(hpump);
+// 噴泉粒子
+const NF = 320, fPos = new Float32Array(NF * 3), fVel = Array.from({ length: NF }, () => V3(0, -99, 0));
+const fGeo = new THREE.BufferGeometry(); fGeo.setAttribute('position', new THREE.BufferAttribute(fPos, 3));
+const fount = new THREE.Points(fGeo, new THREE.PointsMaterial({ size: 0.2, map: dotTexture('#7cc8ff', 'rgba(30,100,170,.8)'), transparent: true, depthWrite: false, alphaTest: 0.05 })); fount.frustumCulled = false;
+fount.renderOrder = 7; WL.group.add(fount);
+for (let i = 0; i < NF; i++) fPos[i * 3 + 1] = -99;
+const puddle = new THREE.Mesh(new THREE.CircleGeometry(1, 40), new THREE.MeshPhysicalMaterial({ color: 0x4fa8e8, transparent: true, opacity: 0.6, roughness: 0.05 }));
+puddle.rotation.x = -Math.PI / 2; puddle.scale.setScalar(0.01); WL.group.add(puddle);
+const wlDraw = Drawer(WL.group);
+addLabel('well', '⛰️ 補注區（高山）', '', V3(-12.3, 13.0, 0));
+addLabel('well', '🏘️ 平原', '', V3(8, 6.8, -1.5));
+addLabel('well', '不透水層（頁岩）', 'small', V3(4, 4.3, FRONT + 0.1));
+addLabel('well', '含水層（砂岩）', 'yel small', V3(-1.5, 3.6, FRONT + 0.1));
+addLabel('well', '不透水層（頁岩）', 'small', V3(4, 0.8, FRONT + 0.1));
+const lbHead = addLabel('well', '受壓地下水面（水壓能推到的高度）', 'lam small', V3(10, headY(10) + 0.5, FRONT + 0.3));
+const lbWell = addLabel('well', '', '', V3(0, 0, 0));
+
+$('rainBtn').addEventListener('click', () => { WL.raining = true; });
+$('wellX').addEventListener('input', e => { WL.xw = Number(e.target.value); });
+$('resetWell').addEventListener('click', () => { WL.fill = 0; WL.raining = false; WL.level = b1Y(WL.xw); });
+$('handPump').addEventListener('click', () => { WL.hand = 1.6; });
+
+function emitDrop(i, x, y, vy, spread) { fPos.set([x, y, FRONT], i * 3); fVel[i].set((Math.random() - 0.5) * spread, vy * (0.85 + Math.random() * 0.3), (Math.random() - 0.5) * spread * 0.6); }
+let fCursor = 0;
+function updateWell(dt) {
+  WL.t += dt;
+  const xw = WL.xw, top = topY(xw);
+  // 降雨與補注
+  if (WL.raining) { WL.fill = Math.min(1, WL.fill + dt * 0.16); if (WL.fill >= 1) WL.raining = false; }
+  cloudMat.color.setHex(WL.raining ? 0x9aa5ad : 0xffffff);
+  rain.visible = WL.raining;
+  if (WL.raining) for (let i = 0; i < NR; i++) {
+    rPos[i * 3 + 1] -= dt * 9;
+    if (rPos[i * 3 + 1] < topY(rPos[i * 3])) rPos.set([-14 + Math.random() * 5, 15.2 + Math.random() * 1.5, (Math.random() - 0.5) * 5], i * 3);
+  }
+  rainGeo.attributes.position.needsUpdate = true;
+  const frontX = WL.X0 + WL.fill * (WL.X1 - WL.X0 + 0.5);
+  for (let i = 0; i < NM; i++) {
+    if (WL.fill > 0) { mX[i] += dt * (WL.fill >= 1 ? 0.25 : 0.6); if (mX[i] > WL.X1) mX[i] = WL.X0; }
+    const x = mX[i], ok = x < frontX;
+    const y = ok ? b1Y(x) + mF[i] * (b2Y(x) - b1Y(x)) + 0.04 * Math.sin(WL.t * 3 + i) : -99;
+    mPos.set([x, y, FRONT + 0.03], i * 3);
+  }
+  molGeo.attributes.position.needsUpdate = true;
+  aquifer.material.color.setHex(WL.fill >= 1 ? 0xc9c7a8 : 0xe3c48d);
+  // 水井
+  const bot = b1Y(xw) + 0.15, mouth = top + 0.45;
+  well.position.set(xw, 0, FRONT - 0.05);
+  pipe.scale.y = mouth - bot; pipe.position.y = (mouth + bot) / 2;
+  lip.position.y = mouth;
+  const full = WL.fill >= 1, reached = frontX > xw, head = headY(xw);
+  const artesian = full && head > mouth;
+  let target = reached ? (full ? Math.min(head, mouth) : b2Y(xw)) : bot;
+  WL.level += (target - WL.level) * (1 - Math.exp(-dt * 2));
+  wcol.visible = WL.level > bot + 0.02;
+  wcol.scale.y = Math.max(0.01, WL.level - bot); wcol.position.y = (WL.level + bot) / 2;
+  hpump.visible = !artesian; hpump.position.y = mouth;
+  // 手動抽水
+  const pumping = WL.hand > 0 && !artesian && full;
+  WL.hand = Math.max(0, WL.hand - dt);
+  handle.rotation.z = pumping ? 0.35 * Math.sin(WL.t * 10) : 0;
+  $('handPump').disabled = artesian || !full;
+  // 噴泉／抽出的水
+  const jet = artesian ? Math.sqrt(2 * 9.8 * (head - mouth)) * 1.15 + 1.2 : 0;
+  const nEmit = artesian ? 6 : pumping ? 2 : 0;
+  for (let n = 0; n < nEmit; n++) {
+    const i = fCursor; fCursor = (fCursor + 1) % NF;
+    if (artesian) emitDrop(i, xw, mouth + 0.05, jet, 1.0);
+    else { emitDrop(i, xw + 0.55, mouth + 0.7, -0.5, 0.3); fVel[i].x = 1.2; }
+  }
+  for (let i = 0; i < NF; i++) {
+    const k = i * 3; if (fPos[k + 1] < -50) continue;
+    fVel[i].y -= 9.8 * dt;
+    fPos[k] += fVel[i].x * dt; fPos[k + 1] += fVel[i].y * dt; fPos[k + 2] += fVel[i].z * dt;
+    if (fPos[k + 1] < topY(fPos[k]) + 0.05 && fVel[i].y < 0) fPos[k + 1] = -99;
+  }
+  fGeo.attributes.position.needsUpdate = true;
+  const pTarget = artesian ? 1.6 + (head - mouth) * 0.6 : 0.01;
+  puddle.scale.setScalar(puddle.scale.x + (pTarget - puddle.scale.x) * (1 - Math.exp(-dt * 0.8)));
+  puddle.position.set(xw, top + 0.02, FRONT - 1.3);
+  puddle.visible = puddle.scale.x > 0.05;
+  // 受壓地下水面
+  wlDraw.begin();
+  lbHead.show = full;
+  if (full) {
+    let prev = null;
+    for (let x = -11.5; x <= WL.X1; x += 0.5) { const p = V3(x, headY(x), FRONT + 0.3); if (prev) wlDraw.dash(prev, p, 0x1e6aa8, { r: 0.035, on: 0.28, off: 0.22 }); prev = p; }
+    wlDraw.line(V3(xw - 0.7, head, FRONT + 0.3), V3(xw + 0.7, head, FRONT + 0.3), 0x1e6aa8, 0.05);
+  }
+  wlDraw.end();
+  lbWell.pos.set(xw, mouth + (artesian ? Math.min(jet * jet / 19.6, 5) + 0.9 : 1.9), FRONT);
+  setLabel(lbWell, artesian ? '⛲ 自流井' : full ? '🪣 一般水井（要抽水）' : '⛏️ 水井', artesian ? 'red' : '');
+  $('wellV').textContent = xw < -7 ? '高地' : xw < 0 ? '山腳' : '平原';
+  // 字卡
+  if (!full && !WL.raining && WL.fill === 0) setCap(`<small>地層剖面</small>按「<b>🌧️ 降雨補注</b>」，讓雨水從高山的<b>補注區</b>滲進含水層`);
+  else if (!full) setCap(`<small>補注中… ${(WL.fill * 100).toFixed(0)}%</small><span class="huge">雨水從高山滲入，沿著砂岩含水層流向平原</span>上下都是不透水層，水被「夾」在中間`);
+  else if (artesian) setCap(`<small>井口比受壓地下水面低</small><span class="huge red pop">連通管原理！井口低於受壓地下水面，形成自流井！</span>`);
+  else setCap(`<small>井口比受壓地下水面高 ${(mouth - head).toFixed(1)} 格</small><span class="huge">井底有水，但不會自己噴出來</span>水只能被壓到「受壓地下水面」的高度 → 需要<b>手動抽水</b>`);
+  setHTML('wellStat', `含水層：<b class="b">${full ? '已灌滿（受壓地下水）' : (WL.fill * 100).toFixed(0) + '%'}</b><br>井口高度：<b>${mouth.toFixed(1)}</b>　受壓地下水面：<b class="b">${full ? head.toFixed(1) : '—'}</b><br>結果：<b class="${artesian ? 'r' : 'g'}">${!full ? '等待補注' : artesian ? '自流井（水自己噴出）' : '一般水井（要抽水）'}</b>`);
+}
+
+/* =========================================================
+   Tab 3：超抽地下水與地層下陷（微觀剖面）
+   ---------------------------------------------------------
+   砂礫之間的縫隙充滿地下水，水撐住了上方的重量。水被抽走後，
+   砂礫被壓得更緊密（排列改變、層層下沉）→ 地面下陷。
+   壓密是「不可逆」的：再補水，砂礫也回不到原本的鬆散排列。
+   ========================================================= */
+const SK = { group: new THREE.Group(), w: 1, comp: 0, pumping: false, refill: false, t: 0, flood: 0, front: 1.6, SEA: 6.35, NX: 15, NY: 6, NZ: 3, LOOSE: 1.08, TIGHT: 0.8, GR: 0.42, BASEY: 0.5 };
+scene.add(SK.group);
+const COAST = 1.6;
+add(SK.group, shadowed(new THREE.Mesh(new RoundedBoxGeometry(28.4, SK.BASEY, 4.2, 3, 0.1), clay(0x7b6f66))), 0, SK.BASEY / 2, 0);
+add(SK.group, shadowed(new THREE.Mesh(new THREE.BoxGeometry(14 - COAST - 0.2, 1.1, 4.0), clay(0xd9bf8c, { roughness: 0.95 }))), (COAST + 14) / 2 + 0.1, SK.BASEY + 0.55, 0);
+const grainX = i => -12.9 + i * 0.95;
+const grainZ = k => -1.1 + k * 1.1;
+const NG = SK.NX * SK.NY * SK.NZ;
+const grains = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 2), clay(0xffffff, { roughness: 0.85, clearcoat: 0.1 }), NG);
+grains.castShadow = grains.receiveShadow = true;
+const gJit = [], tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpS = V3(1, 1, 1), tmpP = V3(0, 0, 0), tmpE = new THREE.Euler();
+for (let n = 0; n < NG; n++) {
+  gJit.push({ dx: (Math.random() - 0.5) * 0.12, dy: (Math.random() - 0.5) * 0.08, s: SK.GR * (0.85 + Math.random() * 0.22), rx: Math.random() * 3, ry: Math.random() * 3 });
+  grains.setColorAt(n, new THREE.Color().setHSL(0.09 + Math.random() * 0.03, 0.35 + Math.random() * 0.15, 0.55 + Math.random() * 0.12));
+}
+SK.group.add(grains);
+const spacing = () => SK.LOOSE - (SK.LOOSE - SK.TIGHT) * SK.comp;
+const grainY = j => SK.BASEY + SK.GR + j * spacing();
+const landTop = () => grainY(SK.NY - 1) + SK.GR + 0.45;
+const TOP0 = SK.BASEY + SK.GR + (SK.NY - 1) * SK.LOOSE + SK.GR + 0.45;
+// 地下水粒子：在砂礫之間的縫隙
+const slots = [];
+for (let i = 0; i < SK.NX - 1; i++) for (let j = 0; j < SK.NY; j++) for (let k = 0; k < SK.NZ; k++) for (let m = 0; m < 2; m++) slots.push({ i, j, k, m, ox: (Math.random() - 0.5) * 0.25, oz: (Math.random() - 0.5) * 0.3 });
+const NWP = slots.length;
+const waterI = new THREE.InstancedMesh(new THREE.SphereGeometry(0.14, 12, 8), new THREE.MeshPhysicalMaterial({ color: 0x3f9fe0, emissive: 0x1f6fc0, emissiveIntensity: 0.35, roughness: 0.15, clearcoat: 1 }), NWP);
+SK.group.add(waterI);
+const wState = new Uint8Array(NWP), wPos = Array.from({ length: NWP }, () => V3(0, 0, 0)), wT = new Float32Array(NWP);   // 0 在縫隙、1 被抽走中、2 已抽走、3 補回中
+const slotPos = (s, out) => out.set(grainX(s.i) + 0.475 + s.ox, grainY(s.j) + (s.m ? 0.3 : -0.25) * spacing() + 0.1, grainZ(s.k) + (s.k < SK.NZ - 1 ? 0.55 : -0.55) + s.oz);
+// 表土與房子
+const soil = shadowed(new THREE.Mesh(new RoundedBoxGeometry(COAST + 13.6, 0.45, 4.0, 3, 0.1), clay(0x8fb36b)));
+SK.group.add(soil);
+const house = new THREE.Group(); SK.group.add(house);
+add(house, new THREE.Mesh(new RoundedBoxGeometry(2.4, 1.8, 1.8, 3, 0.1), clay(0xfaf3e0)), 0, 0.9, 0);
+const roof = add(house, new THREE.Mesh(new THREE.ConeGeometry(1.95, 1.2, 4), clay(0xc0634f)), 0, 2.4, 0); roof.rotation.y = Math.PI / 4;
+add(house, new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.9, 0.05), clay(0x8d6e63)), 0.4, 0.45, 0.92);
+add(house, new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.45, 0.05), clay(0x9fd3ef)), -0.55, 1.1, 0.92);
+shadowed(house);
+const tree = new THREE.Group(); SK.group.add(tree);
+add(tree, new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.9, 8), clay(0x8d6e63)), 0, 0.45, 0);
+add(tree, new THREE.Mesh(new THREE.SphereGeometry(0.75, 16, 12), clay(0x6f9f6a)), 0, 1.35, 0);
+shadowed(tree);
+// 抽水井與馬達
+const motor = new THREE.Group(); SK.group.add(motor);
+add(motor, new THREE.Mesh(new RoundedBoxGeometry(1.1, 0.8, 0.9, 3, 0.12), clay(0x5b8a72)), 0, 0.4, 0);
+const fan = add(motor, new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 6), metal(0x9aa3ab)), 0, 0.85, 0);
+shadowed(motor);
+const PIPE_X = -4.0, PIPE_Z = 1.75;
+const skPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 1, 14), metal(0x8f979e)); SK.group.add(skPipe);
+// 海
+const seaBox = new THREE.Mesh(new THREE.BoxGeometry(14 - COAST - 0.3, 1, 4.0), new THREE.MeshPhysicalMaterial({ color: 0x3aa58a, roughness: 0.1, transparent: true, opacity: 0.35, depthWrite: false }));
+seaBox.renderOrder = 4; SK.group.add(seaBox);
+const SEA_BOT = SK.BASEY + 1.1;
+seaBox.scale.y = SK.SEA - SEA_BOT; seaBox.position.set((COAST + 14) / 2 + 0.05, (SK.SEA + SEA_BOT) / 2, 0);
+enhanceLiquid(seaBox);
+const floodBox = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 4.0), new THREE.MeshPhysicalMaterial({ color: 0x3aa58a, roughness: 0.1, transparent: true, opacity: 0.4, depthWrite: false }));
+floodBox.renderOrder = 4; floodBox.visible = false; SK.group.add(floodBox);
+const NS = 320, sPos = new Float32Array(NS * 3), sHome = [], sState = new Uint8Array(NS), sTgt = Array.from({ length: NS }, () => V3(0, 0, 0)), sSeed = new Float32Array(NS);
+for (let i = 0; i < NS; i++) { sHome.push(V3(COAST + 0.4 + Math.random() * (14 - COAST - 1), SEA_BOT + 0.2 + Math.random() * (SK.SEA - SEA_BOT - 0.4), (Math.random() - 0.5) * 3.6)); sPos.set(sHome[i].toArray(), i * 3); sSeed[i] = Math.random() * 10; }
+const seaGeo = new THREE.BufferGeometry(); seaGeo.setAttribute('position', new THREE.BufferAttribute(sPos, 3));
+const seaPts = new THREE.Points(seaGeo, new THREE.PointsMaterial({ size: 0.22, map: dotTexture('#5fd39a', 'rgba(20,110,70,.85)'), transparent: true, depthWrite: false, alphaTest: 0.05 })); seaPts.frustumCulled = false;
+seaPts.renderOrder = 5; SK.group.add(seaPts);
+// 抽出來的水（噴到排水溝）
+const NO = 160, oPos = new Float32Array(NO * 3), oVel = Array.from({ length: NO }, () => V3(0, 0, 0));
+for (let i = 0; i < NO; i++) oPos[i * 3 + 1] = -99;
+const outGeo = new THREE.BufferGeometry(); outGeo.setAttribute('position', new THREE.BufferAttribute(oPos, 3));
+SK.group.add(Object.assign(new THREE.Points(outGeo, new THREE.PointsMaterial({ size: 0.18, map: dotTexture('#7cc8ff', 'rgba(30,100,170,.8)'), transparent: true, depthWrite: false, alphaTest: 0.05 })), { frustumCulled: false }));
+let oCur = 0;
+const skDraw = Drawer(SK.group);
+const lbHouse = addLabel('sink', '🏠 房屋', '', V3(0, 3.6, 0), house);
+addLabel('sink', '🌊 海洋', '', V3(8, SK.SEA + 0.8, 0));
+const lbSeaL = addLabel('sink', '海平面', 'lam small', V3(13, SK.SEA + 0.3, 2.1));
+const lbOrig = addLabel('sink', '原本的地面', 'small', V3(-12.6, TOP0 + 0.35, 2.1));
+const lbSink = addLabel('sink', '', 'red', V3(-11, 0, 2.2));
+addLabel('sink', '砂礫（土粒）', 'small', V3(-9.5, 2.0, 2.4));
+addLabel('sink', '💧 地下水', 'small', V3(-6.3, 3.2, 2.4));
+const lbMotor = addLabel('sink', '⚙️ 抽水馬達', 'small', V3(0, 1.6, 0), motor);
+
+const motorBtn = $('motorBtn');
+const startPump = e => { e.preventDefault(); SK.pumping = true; SK.refill = false; motorBtn.classList.add('on'); };
+const stopPump = () => { SK.pumping = false; motorBtn.classList.remove('on'); };
+motorBtn.addEventListener('pointerdown', startPump);
+['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => motorBtn.addEventListener(ev, stopPump));
+motorBtn.addEventListener('contextmenu', e => e.preventDefault());
+$('refillBtn').addEventListener('click', () => { SK.refill = true; SK.pumping = false; });
+$('resetSink').addEventListener('click', () => {
+  SK.w = 1; SK.comp = 0; SK.refill = false; SK.flood = 0; SK.front = COAST;
+  wState.fill(0); sState.fill(0);
+  for (let i = 0; i < NS; i++) sPos.set(sHome[i].toArray(), i * 3);
+});
+const capacity = () => 1 - 0.55 * SK.comp;              // 壓密後孔隙變小，能存的水變少
+function updateSink(dt) {
+  SK.t += dt;
+  if (SK.pumping) SK.w = Math.max(0, SK.w - dt * 0.14);
+  if (SK.refill) { SK.w = Math.min(capacity(), SK.w + dt * 0.2); if (SK.w >= capacity()) SK.refill = false; }
+  // 壓密：只會變緊、不會恢復（不可逆）
+  const want = clamp((0.92 - SK.w) / 0.85, 0, 1);
+  if (want > SK.comp) SK.comp += (want - SK.comp) * (1 - Math.exp(-dt * 3.5));
+  const sp = spacing();
+  for (let i = 0, n = 0; i < SK.NX; i++) for (let j = 0; j < SK.NY; j++) for (let k = 0; k < SK.NZ; k++, n++) {
+    const J = gJit[n];
+    tmpP.set(grainX(i) + J.dx + (j % 2) * 0.45 * SK.comp, grainY(j) + J.dy * (1 - SK.comp), grainZ(k));
+    tmpQ.setFromEuler(tmpE.set(J.rx, J.ry, 0)); tmpS.setScalar(J.s);
+    grains.setMatrixAt(n, tmpM.compose(tmpP, tmpQ, tmpS));
+  }
+  grains.instanceMatrix.needsUpdate = true;
+  const top = landTop();
+  // 地下水粒子
+  let have = 0; for (let n = 0; n < NWP; n++) if (wState[n] === 0 || wState[n] === 3) have++;
+  const target = Math.round(NWP * SK.w);
+  for (let d = have - target, tries = 0; d > 0 && tries < NWP * 3; tries++) { const n = Math.random() * NWP | 0; if (wState[n] === 0) { wState[n] = 1; wT[n] = 0; d--; } }
+  for (let d = target - have, n = 0; d > 0 && n < NWP; n++) if (wState[n] === 2) { wState[n] = 3; wT[n] = 0; wPos[n].set(grainX(slots[n].i) + 0.4, top + 0.5, slots[n].oz); d--; }
+  const pipeBot = SK.BASEY + 0.6;
+  for (let n = 0; n < NWP; n++) {
+    const st = wState[n];
+    if (st === 2) { tmpS.setScalar(0); tmpM.compose(tmpP.set(0, -50, 0), tmpQ.identity(), tmpS); waterI.setMatrixAt(n, tmpM); continue; }
+    slotPos(slots[n], tmpD);
+    if (st === 0) wPos[n].copy(tmpD);
+    else if (st === 3) { wT[n] += dt; wPos[n].lerp(tmpD, 1 - Math.exp(-dt * 4)); if (wT[n] > 1.2) wState[n] = 0; }
+    else {                                                // 被吸向井管，再往上抽出
+      wT[n] += dt;
+      const goal = wT[n] < 0.7 ? tmpP.set(PIPE_X, Math.max(pipeBot, wPos[n].y), PIPE_Z) : tmpP.set(PIPE_X, top + 1.2, PIPE_Z);
+      wPos[n].lerp(goal, 1 - Math.exp(-dt * (wT[n] < 0.7 ? 6 : 4)));
+      if (wT[n] > 1.3) {
+        wState[n] = 2;
+        const i = oCur; oCur = (oCur + 1) % NO;
+        oPos.set([PIPE_X + 0.6, top + 1.0, PIPE_Z], i * 3); oVel[i].set(2 + Math.random(), 1 + Math.random(), (Math.random() - 0.5) * 0.5);
+      }
+    }
+    tmpS.setScalar(1); tmpM.compose(wPos[n], tmpQ.identity(), tmpS); waterI.setMatrixAt(n, tmpM);
+  }
+  waterI.instanceMatrix.needsUpdate = true;
+  for (let i = 0; i < NO; i++) {
+    const k = i * 3; if (oPos[k + 1] < -50) continue;
+    oVel[i].y -= 9.8 * dt; oPos[k] += oVel[i].x * dt; oPos[k + 1] += oVel[i].y * dt; oPos[k + 2] += oVel[i].z * dt;
+    if (oPos[k + 1] < top) oPos[k + 1] = -99;
+  }
+  outGeo.attributes.position.needsUpdate = true;
+  // 地面、房子、馬達跟著下沉
+  soil.position.set((COAST - 14) / 2 - 0.1, top - 0.225, 0);
+  house.position.set(-8.4, top, -0.6); house.rotation.z = -0.05 * SK.comp;
+  tree.position.set(-11.6, top, -1.0);
+  motor.position.set(PIPE_X, top, PIPE_Z); fan.rotation.y += dt * (SK.pumping ? 25 : 0);
+  placeSeg(skPipe, V3(PIPE_X, pipeBot, PIPE_Z), V3(PIPE_X, top + 0.1, PIPE_Z), 0.16);
+  // 海水倒灌：地面低於海平面時，綠色海水湧上陸地
+  const below = top < SK.SEA - 0.02;
+  if (below) { SK.front = Math.max(-13.4, SK.front - dt * 5.5); SK.flood = Math.min(1, SK.flood + dt * 0.8); }
+  floodBox.visible = below && SK.flood > 0.01;
+  if (floodBox.visible) {
+    const h = (SK.SEA - top) * SK.flood, w = COAST - SK.front;
+    floodBox.scale.set(w, Math.max(0.01, h), 1); floodBox.position.set((COAST + SK.front) / 2, top + h / 2, 0);
+  }
+  for (let i = 0; i < NS; i++) {
+    const k = i * 3;
+    if (below && sState[i] === 0 && i % 2 === 0) { sState[i] = 1; sTgt[i].set(SK.front + Math.random() * (COAST - SK.front), 0, (Math.random() - 0.5) * 3.6); }
+    if (sState[i] === 1) {
+      sTgt[i].x = Math.max(sTgt[i].x, SK.front);
+      const ty = top + 0.15 + (sSeed[i] % 1) * Math.max(0.05, (SK.SEA - top - 0.3) * SK.flood);
+      sPos[k] += (sTgt[i].x - sPos[k]) * (1 - Math.exp(-dt * 1.6));
+      sPos[k + 1] += (ty - sPos[k + 1]) * (1 - Math.exp(-dt * 3));
+      sPos[k + 2] += (sTgt[i].z - sPos[k + 2]) * (1 - Math.exp(-dt * 2));
+    } else {
+      sPos[k] = sHome[i].x + 0.15 * Math.sin(SK.t * 0.8 + sSeed[i]);
+      sPos[k + 1] = sHome[i].y + 0.1 * Math.cos(SK.t * 1.1 + sSeed[i]);
+    }
+  }
+  seaGeo.attributes.position.needsUpdate = true;
+  // 標線
+  skDraw.begin();
+  skDraw.dash(V3(-13.4, TOP0, 2.1), V3(COAST, TOP0, 2.1), 0x8d6e63, { r: 0.03, opacity: 0.8 });
+  skDraw.dash(V3(-13.4, SK.SEA, 2.15), V3(14, SK.SEA, 2.15), 0x1e6aa8, { r: 0.025, opacity: 0.55 });
+  const drop = TOP0 - top;
+  lbSink.show = drop > 0.05;
+  if (drop > 0.05) { skDraw.line(V3(-11.9, TOP0, 2.2), V3(-11.9, top, 2.2), 0xc62828, 0.05); lbSink.pos.set(-10.6, (TOP0 + top) / 2, 2.2); setLabel(lbSink, `下陷 ${drop.toFixed(2)} m`); }
+  skDraw.end();
+  // 字卡
+  const pct = Math.round(SK.w * 100);
+  if (below) setCap(`<small>地面已低於海平面 ${(SK.SEA - top).toFixed(2)} m</small><span class="huge red">水被抽走，砂礫變緊密！導致地層下陷、積水與海水倒灌！</span>`);
+  else if (SK.refill || (SK.comp > 0.05 && !SK.pumping && SK.w > 0.4 && SK.w >= capacity() - 0.01)) setCap(`<small>地下水補回 ${pct}%（孔隙變小，最多只能存 ${Math.round(capacity() * 100)}%）</small><span class="huge">補回地下水，地面也不會升回去！</span>砂礫被壓緊後就回不去了 → 地層下陷<b>無法恢復</b>`);
+  else if (SK.comp > 0.12) setCap(`<small>地下水剩 ${pct}%</small><span class="huge red">水被抽走，砂礫變緊密！地面開始下陷</span>繼續抽，房子會越來越低…`);
+  else if (SK.pumping) setCap(`<small>馬達抽水中… 地下水剩 ${pct}%</small><span class="huge">縫隙裡的地下水被抽走了</span>水原本幫忙撐住上方的土壤和房子`);
+  else setCap(`<small>海岸地層的微觀剖面</small><b>按住</b>「⚙️ 馬達抽水」不放，觀察砂礫和房子的變化`);
+  setHTML('sinkStat', `地下水：<b class="b">${pct}%</b><br>砂礫間距：<b>${sp.toFixed(2)}</b>（原本 ${SK.LOOSE.toFixed(2)}）<br>地面下陷：<b class="r">${drop.toFixed(2)} m</b><br>海水倒灌：<b class="${below ? 'r' : 'g'}">${below ? '發生了！' : '尚未發生'}</b>`);
+}
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  dist: { group: DR.group, cam: () => DR.zoom
+    ? { pos: [RF * 0.4, DR.CY + YF + 0.6, RF + 4.2], target: [RF * 0.3, DR.CY + YF, RF * 0.6], fitW: 4.2 }
+    : { pos: [1.6, 6.2, 19], target: [1.6, 4.0, 0], fitW: 15 }, update: updateDist },
+  well: { group: WL.group, cam: () => ({ pos: [0, 11, 26], target: [0, 6.6, 0], fitW: 33 }), update: updateWell },
+  sink: { group: SK.group, cam: () => ({ pos: [0, 8.5, 21], target: [0, 3.8, 0], fitW: 31 }), update: updateSink }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  if (t !== 'sink') stopPump();
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, selectWater, DR, WL, SK, camera, controls, Y97, Y98, VTOT, cumV };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'dist';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>

@@ -127,6 +127,7 @@
     .field input { font-size: 1.15rem; }
     .tag { font-size: .66rem; padding: 3px 7px; }
   }
+  .tag.wtag { padding: 2px 8px; font-size: .74rem; background: #fff6dc; color: #6b4a14; border: 1.5px solid #d4a84f; }
 </style>
 <script src="mobile.js"></script>
 <script type="importmap">
@@ -699,6 +700,18 @@ const MASS_OBJ = {
 const W_LIST = [50, 20, 10, 5, 1];
 const W_SIZE = { 50: [1.05, 2.3], 20: [0.78, 1.7], 10: [0.63, 1.4], 5: [0.5, 1.1], 1: [0.32, 0.75] };
 const brass = metalM(0xd4a84f, { roughness: 0.25 });
+// 砝碼上的克數刻字（貼在正面的一段圓弧上）
+const W_TEX = {};
+function weightTex(w) {
+  if (W_TEX[w]) return W_TEX[w];
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128;
+  const x = c.getContext('2d');
+  x.font = '900 86px "Noto Sans TC", "Microsoft JhengHei", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.lineWidth = 10; x.strokeStyle = 'rgba(255,240,200,.85)'; x.strokeText(w + 'g', 128, 68);
+  x.fillStyle = '#4a2f12'; x.fillText(w + 'g', 128, 68);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return (W_TEX[w] = t);
+}
 function makeItem(kind, key, home) {
   const g = new THREE.Group(); MASS.group.add(g);
   let h, r, mass, mesh;
@@ -707,6 +720,12 @@ function makeItem(kind, key, home) {
     const body = new THREE.Mesh(new THREE.CylinderGeometry(wr, wr, wh, 32), brass); body.position.y = wh / 2; g.add(body);
     const neck = new THREE.Mesh(new THREE.CylinderGeometry(wr * 0.35, wr * 0.45, wr * 0.3, 20), brass); neck.position.y = wh + wr * 0.15; g.add(neck);
     const knob = new THREE.Mesh(new THREE.SphereGeometry(wr * 0.45, 20, 14), brass); knob.position.y = wh + wr * 0.4; g.add(knob);
+    { // 正面刻字：弧長依砝碼大小，字高約為砝碼高度的 45%
+      const arc = Math.min(2.4, 1.9 / wr * 0.62 + 1.0), th = Math.min(wh * 0.62, wr * arc * 0.5);
+      const lab = new THREE.Mesh(new THREE.CylinderGeometry(wr * 1.012, wr * 1.012, th, 24, 1, true, -arc / 2, arc),
+        new THREE.MeshBasicMaterial({ map: weightTex(key), transparent: true, depthWrite: false, toneMapped: false }));
+      lab.position.y = wh * 0.5; lab.raycast = () => {}; g.add(lab);
+    }
   } else {
     mass = MASS_OBJ[key].mass;
     if (key === 'iron') { mesh = new THREE.Mesh(new RoundedBoxGeometry(2.6, 1.6, 2.4, 3, 0.18), metalM(0x7d8288, { roughness: 0.45 })); h = 1.6; r = 1.4; }
@@ -741,6 +760,7 @@ const lbBox = addLabel('⚖️ 砝碼盒：用鑷子夾到<b>右盤</b>', 'hl', 
 const lbL = addLabel('左盤：放物體', '', null, V3(0, 0, 0), 'mass');
 const lbR = addLabel('右盤：放砝碼', '', null, V3(0, 0, 0), 'mass');
 const lbRider = addLabel('', '', null, V3(0, 0, 0), 'mass');
+const lbW = MASS.items.filter(i => i.kind === 'w').map(i => addLabel(`<b>${i.key} g</b>`, 'wtag', i.g, V3(0, i.h + 0.55, 0), 'mass'));
 const lbObj = MASS.items.filter(i => i.kind === 'o').map(i => addLabel(`${MASS_OBJ[i.key].emoji} ${MASS_OBJ[i.key].name}`, '', i.g, V3(0, i.h + 1.0, 0), 'mass'));
 
 $('rider').addEventListener('input', () => { MASS.rider = +$('rider').value; $('riderV').textContent = MASS.rider.toFixed(1); });

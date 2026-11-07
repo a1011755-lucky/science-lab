@@ -6,17 +6,17 @@
 <title>3D 光學綜合實驗室</title>
 <style>
   :root {
-    --bg: #050510;
-    --white: #ffffff;
-    --cyan: #00e5ff;
-    --magenta: #ff4fd8;
-    --yellow: #ffe45c;
-    --orange: #ff9f43;
-    --green: #39ff88;
-    --violet: #9d8cff;
-    --muted: rgba(255,255,255,.62);
-    --glass: rgba(15,15,25,.6);
-    --border: rgba(255,255,255,.1);
+    --bg: #f5f1e7;
+    --white: #5d4037;
+    --cyan: #a1674a;
+    --magenta: #b8327f;
+    --yellow: #a67a00;
+    --orange: #c45a1c;
+    --green: #2f8452;
+    --violet: #5b4cb8;
+    --muted: #8d7366;
+    --glass: rgba(255,255,255,.62);
+    --border: rgba(141,110,99,.2);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; }
@@ -143,6 +143,35 @@
     .hint { display: none; }
     .tag { font-size: .66rem; }
   }
+
+  /* ===== 暖色極簡風：取消霓虹光暈 ===== */
+  .panel { backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%); border: none; border-radius: 22px; box-shadow: 0 14px 40px rgba(93,64,55,.14); }
+  h1, .ctrl output { text-shadow: none !important; }
+  h1 { color: var(--white); font-weight: 800; }
+  .mode-btn { color: var(--white); background: rgba(255,255,255,.6); border: none; border-radius: 14px; font-weight: 700; }
+  .mode-btn:hover { background: rgba(255,255,255,.95); color: var(--white); }
+  .mode-btn.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.22); }
+  .preset { background: rgba(255,255,255,.6); border: none; border-radius: 10px; color: var(--white); }
+  .preset:hover { background: #fff; box-shadow: none; }
+  .preset i, .legend i { box-shadow: none !important; }
+  .ctrl output { color: var(--cyan); font-weight: 700; }
+  input[type=range] { box-shadow: none; background: linear-gradient(90deg, var(--cyan) 0%, var(--cyan) var(--fill, 50%), rgba(141,110,99,.2) var(--fill, 50%)); }
+  input[type=range]::-webkit-slider-thumb { background: #fff; box-shadow: 0 2px 6px rgba(93,64,55,.3) !important; }
+  input[type=range]::-moz-range-thumb { background: #fff; box-shadow: none; }
+  select { background-color: rgba(255,255,255,.7); border: 1px solid rgba(161,103,74,.35); color: var(--white); }
+  select:focus-visible { box-shadow: 0 0 0 3px rgba(161,103,74,.2); }
+  select option { background: #fff; color: #5d4037; }
+  .btn { color: #fff; background: #a1674a; border: none; border-radius: 14px; font-weight: 700; }
+  .btn:hover { background: #8f5a40; box-shadow: none; color: #fff; }
+  .toggle { color: var(--cyan); background: rgba(161,103,74,.12); border: none; font-weight: 600; }
+  .toggle:hover { background: rgba(161,103,74,.22); }
+  .tag { background: rgba(255,255,255,.85); border: none; color: var(--white); font-weight: 700; box-shadow: 0 3px 10px rgba(93,64,55,.12); }
+  .tag.plain { background: rgba(255,255,255,.7); color: var(--white); box-shadow: none; }
+  .hint { color: rgba(93,64,55,.5); }
+  .swatch { border-color: rgba(93,64,55,.3); }
+  #cRange::-webkit-slider-thumb, #cR::-webkit-slider-thumb { border-color: #d03b3b; }
+  #cG::-webkit-slider-thumb { border-color: #2f9a4f; }
+  #cB::-webkit-slider-thumb { border-color: #3a5bd0; }
 </style>
 <script src="mobile.js"></script>
 <script type="importmap">
@@ -272,15 +301,15 @@ window.__opticsReady = true;
    共用設定
    ========================================================= */
 const COLOR = {
-  bg: 0x050510, grid: 0x222233, gridCenter: 0x2c2c48,
-  cyan: 0x00e5ff, magenta: 0xff4fd8, yellow: 0xffe45c,
-  orange: 0xff9f43, green: 0x39ff88, violet: 0x9d8cff, white: 0xffffff, dim: 0x5a5a80
+  bg: 0xf5f1e7, grid: 0xe2d7c3, gridCenter: 0xcdbb9c,
+  cyan: 0x1590a6, magenta: 0xc23a8e, yellow: 0xe08600,
+  orange: 0xe06a24, green: 0x2f9a58, violet: 0x6552c8, white: 0x6d5446, dim: 0xb3a08a
 };
 // 高門檻：只有刻意「提亮超過 1」的光源（光束、成像箭頭）會發光，鏡片反光不會被拿去泛光
-const BLOOM = { threshold: 0.85, strength: 0.8, radius: 0.4 };
-const GLOW_BOOST = 2.2;       // 發光物的顏色倍率（HDR，超過 Bloom 門檻）
+const BLOOM = { threshold: 1.5, strength: 0, radius: 0.2 };   // 暖色風格：不使用泛光
+const GLOW_BOOST = 1.0;       // 發光物的顏色倍率（HDR，超過 Bloom 門檻）
 const RAY_EXTENT = 14;        // 光線畫到 x = ±14
-const BEAM_RADIUS = 0.01;     // 雷射光柱半徑（精細雷射筆）
+const BEAM_RADIUS = 0.028;     // 雷射光柱半徑（精細雷射筆）
 const glowColor = (hex, k = GLOW_BOOST) => new THREE.Color(hex).multiplyScalar(k);
 
 const $ = id => document.getElementById(id);
@@ -300,7 +329,7 @@ $('scene').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(COLOR.bg);
-scene.fog = new THREE.FogExp2(COLOR.bg, 0.015);
+scene.fog = new THREE.FogExp2(COLOR.bg, 0.012);
 // 環境貼圖：讓玻璃邊緣與拋光金屬有真實的反光
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
@@ -318,12 +347,12 @@ const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.in
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
 
-const ambientLight = new THREE.AmbientLight(0x8899ff, 0.2);
+const ambientLight = new THREE.AmbientLight(0xfff6ea, 1.0);
 scene.add(ambientLight);
-const keyLight = new THREE.DirectionalLight(0xffffff, 1.1);
+const keyLight = new THREE.DirectionalLight(0xfff4e2, 1.5);
 keyLight.position.set(6, 10, 8);
 scene.add(keyLight);
-const rimLight = new THREE.DirectionalLight(0x66ccff, 0.5);
+const rimLight = new THREE.DirectionalLight(0xffe9d0, 0.5);
 rimLight.position.set(-8, 3, -6);
 scene.add(rimLight);
 
@@ -355,7 +384,7 @@ const MAT = {
   backing: () => new THREE.MeshStandardMaterial({ color: 0x2a2c34, roughness: 0.92, metalness: 0.1 }),
   // 深色磨砂玻璃（擋板、屏幕）
   frosted: (transmission = 0.15) => new THREE.MeshPhysicalMaterial({
-    color: 0x1a1d2e, roughness: 0.75, metalness: 0.15, transmission, thickness: 0.6, ior: 1.4,
+    color: 0xd8c9b2, roughness: 0.75, metalness: 0.05, transmission, thickness: 0.6, ior: 1.4,
     clearcoat: 0.3, clearcoatRoughness: 0.6
   })
 };
@@ -365,10 +394,8 @@ const SCAN_TEX = (() => {
   const c = document.createElement('canvas');
   c.width = 8; c.height = 64;
   const g = c.getContext('2d');
-  g.fillStyle = 'rgba(255,255,255,0.28)';
+  g.fillStyle = 'rgba(255,255,255,0.75)';
   g.fillRect(0, 0, 8, 64);
-  g.fillStyle = 'rgba(255,255,255,0.95)';
-  for (let y = 0; y < 64; y += 8) g.fillRect(0, y, 8, 2);
   const tex = new THREE.CanvasTexture(c);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.repeat.set(1, 1.6);
@@ -379,7 +406,7 @@ const SCAN_TEX = (() => {
 /** 為物件加上微光的科技感框線（Wireframe overlay） */
 function addEdgeGlow(mesh, color = COLOR.cyan, opacity = 0.35) {
   const e = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry, 20),
-    new THREE.LineBasicMaterial({ color, transparent: true, opacity }));
+    new THREE.LineBasicMaterial({ color: 0x9c7b62, transparent: true, opacity: Math.min(0.5, opacity * 1.3) }));
   e.position.copy(mesh.position);
   e.rotation.copy(mesh.rotation);
   mesh.parent ? mesh.parent.add(e) : null;
@@ -419,8 +446,8 @@ function makeBeam(color, { radius = BEAM_RADIUS, opacity = 1, onTop = false } = 
   const group = new THREE.Group();
   const coreMat = new THREE.MeshBasicMaterial({ color: glowColor(color, GLOW_BOOST * opacity), toneMapped: false, transparent: onTop || opacity < 1, opacity, depthTest: !onTop });
   const haloMat = new THREE.MeshBasicMaterial({
-    color, toneMapped: false, transparent: true, opacity: 0.12 * opacity,
-    blending: THREE.AdditiveBlending, depthWrite: false, depthTest: !onTop
+    color, toneMapped: false, transparent: true, opacity: 0.14 * opacity,
+    depthWrite: false, depthTest: !onTop
   });
   return { group, coreMat, haloMat, radius, onTop, segs: [] };
 }
@@ -430,7 +457,7 @@ function setBeam(beam, pts) {
     const core = new THREE.Mesh(BEAM_GEO, beam.coreMat);
     const halo = new THREE.Mesh(BEAM_GEO, beam.haloMat);
     core.scale.set(beam.radius, 1, beam.radius);
-    halo.scale.set(beam.radius * 3.4, 1, beam.radius * 3.4);
+    halo.scale.set(beam.radius * 2.6, 1, beam.radius * 2.6);
     if (beam.onTop) { core.renderOrder = 10; halo.renderOrder = 10; }
     seg.add(core, halo);
     beam.group.add(seg);
@@ -646,7 +673,7 @@ const Refract = (() => {
   // 雷射發射器
   const emitter = new THREE.Group();
   const body = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.4, 32),
-    new THREE.MeshStandardMaterial({ color: 0x2a2d44, metalness: 0.9, roughness: 0.25 }));
+    new THREE.MeshStandardMaterial({ color: 0xb9a48c, metalness: 0.3, roughness: 0.5 }));
   body.position.y = 0.7;
   const ringMat = new THREE.MeshBasicMaterial({ color: COLOR.yellow, toneMapped: false });
   const ring1 = new THREE.Mesh(new THREE.TorusGeometry(0.225, 0.012, 8, 40), ringMat);
@@ -803,7 +830,7 @@ const LensMode = (() => {
     const edges = new THREE.EdgesGeometry(low, 1);
     low.dispose();
     return new THREE.LineSegments(edges,
-      new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3 }));
+      new THREE.LineBasicMaterial({ color: 0x8d7366, transparent: true, opacity: 0.35 }));
   }
   const outlineOf = profile => {
     const upper = profile.map(([r, x]) => V(x, r));
@@ -840,7 +867,7 @@ const LensMode = (() => {
         hatch.push(V(x, r), V(x + 0.28, r - 0.28));
       }
       g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(hatch),
-        new THREE.LineBasicMaterial({ color: 0x8890a8, transparent: true, opacity: 0.7 })));
+        new THREE.LineBasicMaterial({ color: 0x8d7366, transparent: true, opacity: 0.7 })));
     }
     return g;
   }
@@ -986,7 +1013,7 @@ const ColorMode = (() => {
     const P = V(...ch.proj);
     const dir = center.clone().sub(P).normalize();
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.45, 0.8),
-      new THREE.MeshStandardMaterial({ color: 0x2a2d44, metalness: 0.8, roughness: 0.3 }));
+      new THREE.MeshStandardMaterial({ color: 0xb9a48c, metalness: 0.3, roughness: 0.5 }));
     body.position.copy(P);
     body.lookAt(center);
     group.add(body);
@@ -1046,7 +1073,7 @@ const ColorMode = (() => {
   lamp.target.position.set(STAGE.x, -0.6, STAGE.z);
   group.add(lamp, lamp.target);
   const lampBody = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 0.7, 32),
-    new THREE.MeshStandardMaterial({ color: 0x2a2d44, metalness: 0.8, roughness: 0.3 }));
+    new THREE.MeshStandardMaterial({ color: 0xb9a48c, metalness: 0.3, roughness: 0.5 }));
   lampBody.position.copy(LAMP);
   group.add(lampBody);
   const lampLensMat = new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: false, side: THREE.DoubleSide });

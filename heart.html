@@ -105,6 +105,9 @@
     background: rgba(255,255,255,.86); color: var(--ink); box-shadow: 0 4px 12px rgba(0,0,0,.08);
   }
   .tag.b { color: var(--blue); } .tag.r { color: var(--red); } .tag.big { font-size: .82rem; font-weight: 800; }
+  .tag.vt { font-size: .72rem; font-weight: 800; border: 2px solid #c9a35a; padding: 3px 9px; }
+  .tag.vt.open { border-color: #16a34a; color: #15803d; }
+  .tag.vt.shut { border-color: #94a3b8; color: #475569; }
   .tag.ex { background: rgba(255,255,255,.95); border: 1.5px solid currentColor; }
   .hint { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 5; font-size: .74rem; color: rgba(29,29,31,.45); }
   .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
@@ -155,6 +158,7 @@
       <div class="btns">
         <button class="btn primary" id="playBtn">⏸ 暫停</button>
         <button class="btn" id="viewBtn">重設視角</button>
+        <button class="btn" id="zoomBtn" style="grid-column: span 2">🔍 瓣膜特寫（放大心臟）</button>
       </div>
     </div>
 
@@ -251,28 +255,69 @@ const clay = (color, extra = {}) => new THREE.MeshPhysicalMaterial({ color, roug
 const HEART = { rx: 2.3, ry: 2.2, rz: 1.6, avY: 0.4 };
 const heart = new THREE.Group();
 scene.add(heart);
+renderer.localClippingEnabled = true;
+const CUT_BACK = [new THREE.Plane(V3(0, 0, -1), 0)];     // 只留後半（z < 0）
+const CUT_FRONT = [new THREE.Plane(V3(0, 0, 1), 0)];     // 只留前半（z > 0）
+/** 把單位球上的點變形成「心臟」：上寬下尖、心尖偏向身體左側（畫面右邊）、上方兩個心房鼓起 */
+function deform(x, y, z) {
+  const low = S(-y, 0, 1);                                // 0：上半部 → 1：心尖
+  let X = x * HEART.rx * (1 - 0.34 * low * low);
+  let Y = y * HEART.ry * (1 + 0.14 * low);
+  let Z = z * HEART.rz * (1 - 0.22 * low);
+  X += 0.42 * low * low;                                  // 心尖偏右（人體左側）
+  const bump = cx => Math.exp(-((x - cx) ** 2 + (y - 0.62) ** 2) / 0.09);
+  const k = 1 + 0.1 * (bump(-0.6) + bump(0.62));          // 左右心房的鼓起
+  return V3(X * k, Y * k, Z * k);
+}
+const MUSCLE = 0xc94b58, MUSCLE_IN = 0x8e2a36;
 {
-  // 外殼：略壓扁的球，下半部往心尖收窄
-  const g = new THREE.SphereGeometry(1, 96, 72);
+  const g = new THREE.SphereGeometry(1, 120, 90);
   const p = g.attributes.position;
   for (let i = 0; i < p.count; i++) {
-    const y = p.getY(i);
-    const taper = 1 - 0.32 * S(-y, 0, 1);       // 越往下越窄
-    p.setXYZ(i, p.getX(i) * HEART.rx * taper, y * HEART.ry, p.getZ(i) * HEART.rz * (1 - 0.15 * S(-y, 0, 1)));
+    const v = deform(p.getX(i), p.getY(i), p.getZ(i));
+    p.setXYZ(i, v.x, v.y, v.z);
   }
   g.computeVertexNormals();
-  const shell = new THREE.Mesh(g, jelly(0xffdce5));
-  shell.castShadow = true;
-  heart.add(shell);
-  heart.userData.shell = shell;
+  // 後半：不透明的心肌（外面鮮紅、裡面深紅）
+  const back = new THREE.Mesh(g, clay(MUSCLE, { roughness: 0.42, clearcoat: 0.7, clippingPlanes: CUT_BACK, clipShadows: true }));
+  const backIn = new THREE.Mesh(g, clay(MUSCLE_IN, { roughness: 0.6, clearcoat: 0.2, side: THREE.BackSide, clippingPlanes: CUT_BACK }));
+  back.castShadow = true;
+  // 前半：半透明，像把心臟從正面剖開，看得到裡面四個腔室
+  const front = new THREE.Mesh(g, new THREE.MeshPhysicalMaterial({
+    color: 0xe0707c, roughness: 0.25, clearcoat: 1, transparent: true, opacity: 0.2, depthWrite: false, clippingPlanes: CUT_FRONT
+  }));
+  front.renderOrder = 5;
+  heart.add(back, backIn, front);
+  heart.userData.shell = back;
+  // 剖面切口：一圈厚厚的心肌壁
+  const rim = [];
+  for (let i = 0; i < 160; i++) { const t = i / 160 * Math.PI * 2; rim.push(deform(Math.cos(t), Math.sin(t), 0)); }
+  const rimMesh = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rim, true), 240, 0.11, 12, true), clay(0xb73d4b, { roughness: 0.5 }));
+  rimMesh.castShadow = true;
+  heart.add(rimMesh);
+  // 冠狀血管：爬在心臟表面的紅色動脈、藍紫色靜脈
+  const onSurf = (y, a, lift = 1.02) => {
+    const r = Math.sqrt(Math.max(0, 1 - y * y));
+    return deform(r * Math.sin(a), y, r * Math.cos(a)).multiplyScalar(lift);
+  };
+  const vessel = (pts, color, rad) => {
+    const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 80, rad, 8, false), clay(color, { roughness: 0.35 }));
+    heart.add(m);
+  };
+  const line = (n, f) => Array.from({ length: n + 1 }, (_, i) => f(i / n));
+  vessel(line(20, t => onSurf(0.42 - 1.35 * t, 0.08 + 0.25 * t)), 0xd8263a, 0.055);           // 前室間支
+  vessel(line(20, t => onSurf(0.38 - 1.25 * t, 0.2 + 0.28 * t)), 0x5a4fc4, 0.04);             // 心大靜脈
+  vessel(line(20, t => onSurf(0.32 - 0.2 * t, -0.15 - 1.2 * t)), 0xd8263a, 0.05);             // 右冠狀動脈
+  vessel(line(20, t => onSurf(0.34 - 0.15 * t, 0.15 + 1.15 * t)), 0xd8263a, 0.045);           // 迴旋支
+  vessel(line(12, t => onSurf(0.0 - 0.5 * t, -0.6 - 0.25 * t)), 0xd8263a, 0.03);
+  vessel(line(12, t => onSurf(-0.1 - 0.55 * t, 0.75 + 0.3 * t)), 0xd8263a, 0.03);
 }
-// 外殼內任一高度 y 的截面半徑（考慮心尖收窄）
+// 外殼內任一高度 y 的截面半徑（跟 deform 一致，忽略心尖偏移）
 const radiusAt = y => {
-  const u = y / HEART.ry, base = Math.sqrt(Math.max(0, 1 - u * u)), k = 1 - 0.32 * S(-u, 0, 1);
-  return { x: HEART.rx * base * k, z: HEART.rz * base * (1 - 0.15 * S(-u, 0, 1)) };
+  const u = y / HEART.ry, base = Math.sqrt(Math.max(0, 1 - u * u)), low = S(-u, 0, 1);
+  return { x: HEART.rx * base * (1 - 0.34 * low * low), z: HEART.rz * base * (1 - 0.22 * low) };
 };
-
-// 中隔（不透明）：沿 YZ 平面的橢圓板，把心臟分成左右兩半
+// 中隔（厚厚的心肌）：沿 YZ 平面，把心臟分成左右兩半
 {
   const sh = new THREE.Shape();
   const pts = [];
@@ -283,23 +328,22 @@ const radiusAt = y => {
     pts.push(new THREE.Vector2(Math.cos(t) * r, y));
   }
   sh.setFromPoints(pts);
-  const g = new THREE.ExtrudeGeometry(sh, { depth: 0.16, bevelEnabled: true, bevelSize: 0.04, bevelThickness: 0.04, bevelSegments: 3 });
-  g.translate(0, 0, -0.08);
+  const g = new THREE.ExtrudeGeometry(sh, { depth: 0.26, bevelEnabled: true, bevelSize: 0.05, bevelThickness: 0.05, bevelSegments: 3 });
+  g.translate(0, 0, -0.13);
   g.rotateY(Math.PI / 2);
-  const septum = new THREE.Mesh(g, clay(0xf2c9d4));
+  const septum = new THREE.Mesh(g, clay(0xb94452, { roughness: 0.5 }));
   septum.castShadow = true;
   heart.add(septum);
 }
-
-// 房室隔板（每側一片，中間開一個瓣膜孔）
-const AV_HOLE = { R: V3(-1.15, HEART.avY, 0), L: V3(1.15, HEART.avY, 0), r: 0.52 };
+// 房室之間的纖維環（每側一片，中間開一個瓣膜孔）
+const AV_HOLE = { R: V3(-1.15, HEART.avY, 0), L: V3(1.15, HEART.avY, 0), r: 0.55 };
 ['R', 'L'].forEach(side => {
   const s = side === 'R' ? -1 : 1;
   const rr = radiusAt(HEART.avY);
   const sh = new THREE.Shape();
   const pts = [];
   for (let i = 0; i <= 48; i++) {
-    const t = -Math.PI / 2 + (i / 48) * Math.PI;      // 半個橢圓（朝外側）
+    const t = -Math.PI / 2 + (i / 48) * Math.PI;
     pts.push(new THREE.Vector2(Math.cos(t) * rr.x * 0.97 * s, Math.sin(t) * rr.z * 0.97));
   }
   sh.setFromPoints(pts);
@@ -308,41 +352,99 @@ const AV_HOLE = { R: V3(-1.15, HEART.avY, 0), L: V3(1.15, HEART.avY, 0), r: 0.52
   sh.holes.push(hole);
   const g = new THREE.ShapeGeometry(sh, 48);
   g.rotateX(Math.PI / 2);
-  const plate = new THREE.Mesh(g, clay(0xf6dbe2, { transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
+  const plate = new THREE.Mesh(g, clay(0xd27a7c, { transparent: true, opacity: 0.92, side: THREE.DoubleSide }));
   plate.position.y = HEART.avY;
   heart.add(plate);
 });
-
-/* ----- 瓣膜（白色圓潤閘門） ----- */
-const valveMat = clay(0xffffff);
-function makeValve(center, width, up) {
+/* ----- 瓣膜：真的「瓣葉」造型（房室瓣往下開、半月瓣往上開）＋金色瓣環 ----- */
+const valveMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.3, clearcoat: 0.8, side: THREE.DoubleSide, emissive: 0xfff6ea, emissiveIntensity: 0.45 });
+const valveEdgeMat = new THREE.LineBasicMaterial({ color: 0x7a4a30 });
+const chordMat = new THREE.LineBasicMaterial({ color: 0xfff1de, transparent: true, opacity: 0.9 });
+/** 一片瓣葉（扇形、略微凹成口袋），座標以「鉸鏈點」為原點 */
+function cuspGeo(r, a0, a1, H, cup) {
+  const NR = 7, NA = 18, pos = [], idx = [];
+  for (let i = 0; i <= NR; i++) {
+    const rho = r * (1 - i / NR * 0.97);
+    for (let j = 0; j <= NA; j++) {
+      const a = a0 + (a1 - a0) * j / NA;
+      const y = -cup * Math.sin(Math.PI * j / NA) * Math.sin(Math.PI * i / NR * 0.9);
+      pos.push(rho * Math.cos(a) - H.x, y, rho * Math.sin(a) - H.z);
+    }
+  }
+  for (let i = 0; i < NR; i++) for (let j = 0; j < NA; j++) {
+    const a = i * (NA + 1) + j, b = a + NA + 1;
+    idx.push(a, b, a + 1, b, b + 1, a + 1);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+function makeValve(center, r, n, up, name) {
   const g = new THREE.Group();
   g.position.copy(center);
-  const flaps = [-1, 1].map(s => {
+  const ringMat = new THREE.MeshStandardMaterial({ color: 0xf2c25c, roughness: 0.35, metalness: 0.2, emissive: 0x000000 });
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(r, Math.max(0.06, r * 0.16), 14, 48), ringMat);
+  ring.rotation.x = Math.PI / 2;
+  g.add(ring);
+  const gap = 0.02, cusps = [];
+  for (let k = 0; k < n; k++) {
+    const a0 = 2 * Math.PI * k / n + gap, a1 = 2 * Math.PI * (k + 1) / n - gap, m = (a0 + a1) / 2;
+    const H = V3(r * Math.cos(m), 0, r * Math.sin(m));
     const pivot = new THREE.Group();
-    pivot.position.x = s * width / 2;
-    const leaf = new THREE.Mesh(new RoundedBoxGeometry(width / 2, 0.07, width * 0.9, 4, 0.03), valveMat);
-    leaf.position.x = -s * width / 4;
+    pivot.position.copy(H);
+    const geo = cuspGeo(r * 0.98, a0, a1, H, (up ? -1 : 1) * r * 0.18);
+    const leaf = new THREE.Mesh(geo, valveMat);
     leaf.castShadow = true;
-    pivot.add(leaf);
+    pivot.add(leaf, new THREE.LineSegments(new THREE.EdgesGeometry(geo, 30), valveEdgeMat));
     g.add(pivot);
-    return { pivot, s };
-  });
+    // 瓣葉尖端（給腱索用）
+    const tip = V3(r * 0.25 * Math.cos(m), 0, r * 0.25 * Math.sin(m)).sub(H);
+    cusps.push({ pivot, axis: V3(-Math.sin(m), 0, Math.cos(m)), tip, m });
+  }
   heart.add(g);
-  return { g, flaps, up, open: 0 };
+  const v = { g, cusps, up, r, open: 0, ringMat, flash: 0, name, wasOpen: false };
+  // 房室瓣：腱索 + 乳頭肌，把瓣葉拉住、不會被血液沖回心房
+  if (!up) {
+    v.papillary = cusps.map(c => {
+      const P = V3(r * 0.45 * Math.cos(c.m), -1.25, r * 0.45 * Math.sin(c.m));
+      const pm = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.42, 16), clay(0xb73d4b));
+      pm.position.copy(P).add(V3(0, -0.12, 0));
+      g.add(pm);
+      return P;
+    });
+    v.chordGeo = new THREE.BufferGeometry();
+    v.chordGeo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(cusps.length * 3 * 6), 3));
+    g.add(new THREE.LineSegments(v.chordGeo, chordMat));
+  }
+  return v;
 }
 const VALVES = {
-  tri: makeValve(AV_HOLE.R, 0.98, false),          // 三尖瓣
-  mit: makeValve(AV_HOLE.L, 0.98, false),          // 二尖瓣
-  pul: makeValve(V3(-0.55, 0.55, 1.05), 0.46, true), // 肺動脈瓣
-  aor: makeValve(V3(0.55, 0.55, 1.05), 0.48, true)   // 主動脈瓣
+  tri: makeValve(AV_HOLE.R, 0.5, 3, false, '三尖瓣'),
+  mit: makeValve(AV_HOLE.L, 0.5, 2, false, '二尖瓣'),
+  pul: makeValve(V3(-0.55, 0.55, 1.05), 0.32, 3, true, '肺動脈瓣'),
+  aor: makeValve(V3(0.55, 0.55, 1.05), 0.33, 3, true, '主動脈瓣')
 };
+const tmpQ = new THREE.Quaternion(), tmpA = V3(0, 0, 0), tmpB = V3(0, 0, 0);
 function setValve(v, k) {
   v.open = k;
-  const ang = k * 1.25;
-  v.flaps.forEach(({ pivot, s }) => { pivot.rotation.z = (v.up ? 1 : -1) * -s * ang; });
+  const ang = k * 1.2 * (v.up ? -1 : 1);                  // 房室瓣往下開、半月瓣往上開
+  v.cusps.forEach(c => c.pivot.quaternion.setFromAxisAngle(c.axis, ang));
+  if (v.chordGeo) {
+    const arr = v.chordGeo.attributes.position.array;
+    v.cusps.forEach((c, i) => {
+      tmpQ.setFromAxisAngle(c.axis, ang);
+      // 每片瓣葉兩條腱索：尖端、半徑一半處
+      [1, 0.5].forEach((f, j) => {
+        tmpA.copy(c.tip).multiplyScalar(f).applyQuaternion(tmpQ).add(c.pivot.position);
+        tmpB.copy(v.papillary[i]);
+        arr.set([tmpA.x, tmpA.y, tmpA.z, tmpB.x, tmpB.y, tmpB.z], (i * 2 + j) * 6);
+      });
+    });
+    v.chordGeo.attributes.position.needsUpdate = true;
+  }
 }
-
 /* =========================================================
    2. 雙循環迴圈（8 字型）
    ========================================================= */
@@ -361,6 +463,13 @@ const BLUE = new THREE.Color(0x3f7be8), RED = new THREE.Color(0xe5484d);
   scene.add(m);
 });
 
+// 大血管主幹：靠近心臟的一段比較粗，一看就知道是從心臟出來的
+[['pa', 0x6f8fe8, 0.06, 0.32], ['ao', 0xe0525c, 0.05, 0.22], ['vc', 0x6f8fe8, 0.8, 1], ['pv', 0xe0525c, 0.7, 1]].forEach(([k, c, a, b]) => {
+  const pts = Array.from({ length: 13 }, (_, i) => PATHS[k].getPointAt(a + (b - a) * i / 12));
+  const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 60, 0.36, 24, false), jelly(c, { opacity: 0.55, transmission: 0.5 }));
+  m.castShadow = true;
+  scene.add(m);
+});
 /** 微血管網：多條細分支，顏色由一端漸變到另一端 */
 function capillaryBed(y, fromX, toX, fromColor, toColor) {
   const branches = [];
@@ -460,6 +569,11 @@ addLabel('肺動脈', V3(-1.75, 3.6, 0.5), 'b');
 addLabel('肺靜脈', V3(3.65, 3.6, -0.4), 'r');
 addLabel('主動脈', V3(2.1, 3.95, 0.6), 'r');
 addLabel('上、下腔靜脈', V3(-5.75, 0.3, -0.2), 'b');
+// 四個瓣膜的名稱（顯示開／關）
+const VL = {
+  tri: addLabel('', V3(-2.35, -0.15, 1.3), 'vt'), mit: addLabel('', V3(2.35, -0.15, 1.3), 'vt'),
+  pul: addLabel('', V3(-1.0, 2.1, 1.3), 'vt'), aor: addLabel('', V3(1.0, 2.1, 1.3), 'vt')
+};
 // 交換模式的方向標籤
 const EXL = {
   gas: [
@@ -679,7 +793,24 @@ $('collapse').addEventListener('click', () => {
   $('collapse').textContent = c ? '展開' : '收合';
 });
 
+let camGoal = null;
+controls.addEventListener('start', () => { camGoal = null; });
+function shifted(pos, tgt) {
+  const panel = $('panel');
+  if (!window.MobileView?.isMobile() && !panel.classList.contains('collapsed')) {
+    const visW = 2 * pos.distanceTo(tgt) * Math.tan(camera.fov * Math.PI / 360) * camera.aspect;
+    const shift = -(panel.getBoundingClientRect().right / 2) / window.innerWidth * visW;
+    pos.x += shift; tgt.x += shift;
+  }
+  return { pos, tgt };
+}
+$('zoomBtn').addEventListener('click', () => {
+  const mob = window.MobileView?.isMobile();
+  camGoal = shifted(V3(0.6, mob ? 6 : 4.6, mob ? 14 : 9.6), V3(0, 0.15, 0));
+  if (bpm > 30) { bpm = 20; $('bpm').value = 20; $('bpmVal').innerHTML = '20<small>次/分</small>'; }   // 放慢，看清楚瓣膜開關
+});
 function resetView() {
+  camGoal = null;
   const pos = V3(0, 2.2, 29), tgt = V3(0, 0.5, 0);
   const panel = $('panel');
   if (!window.MobileView?.isMobile() && !panel.classList.contains('collapsed')) {
@@ -732,7 +863,20 @@ function frame(dt) {
     const v = VALVES[k];
     const rate = tg < v.open ? 22 : 7;
     setValve(v, v.open + (tg - v.open) * Math.min(1, dt * rate * Math.max(0.35, bpm / 60)));
+    // 瓣膜關上的瞬間：瓣環閃一下（就是「撲通」的心音）
+    if (v.wasOpen && !tg) v.flash = 1;
+    v.wasOpen = !!tg;
+    v.flash = Math.max(0, v.flash - dt * 2.2);
+    v.ringMat.color.setHex(tg ? 0x37c06a : 0xf2c25c);
+    v.ringMat.emissive.setRGB(1.0 * v.flash, 0.45 * v.flash, 0.1 * v.flash);
+    const L = VL[k], st = tg ? 'open' : 'shut';
+    if (L.st !== st) { L.st = st; L.el.className = 'tag vt ' + st; L.el.textContent = v.name + (tg ? '：打開' : '：關閉'); }
   });
+  if (camGoal) {
+    const a = 1 - Math.exp(-dt * 4);
+    camera.position.lerp(camGoal.pos, a); controls.target.lerp(camGoal.tgt, a);
+    if (camera.position.distanceTo(camGoal.pos) < 0.02) camGoal = null;
+  }
   if (playing) {
     stepParticles(dt, phase, 0.6 + bpm / 60);
     stepExchange(dt);
@@ -745,7 +889,7 @@ function frame(dt) {
   renderer.render(scene, camera);
 }
 
-window.heartSim = { PHASE, get phase() { return phase; }, set phase(v) { phase = v; }, VALVES, particles, frame, exPool, setMode: m => document.querySelector(`.mode[data-mode="${m}"]`).click() };
+window.heartSim = { VL, PHASE, get phase() { return phase; }, set phase(v) { phase = v; }, VALVES, particles, frame, exPool, setMode: m => document.querySelector(`.mode[data-mode="${m}"]`).click() };
 
 resize();
 resetView();
