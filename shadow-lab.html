@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>光學與影子實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+  .tabs.three .tab { font-size: .74rem; padding: 9px 2px; }
+  .blink { animation: blink 0.9s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+  .btn.ebtn[data-e="0"].on { background: #1e6aa8; } .btn.ebtn[data-e="1"].on { background: #c62828; }
+  .sst { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+  .sst div { background: rgba(255,255,255,.8); border-radius: 14px; padding: 8px 10px; text-align: center; }
+  .sst small { display: block; font-size: .7rem; font-weight: 700; color: var(--ink-soft); }
+  .sst b { font-size: 1.3rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .checks { display: grid; gap: 4px; background: rgba(255,255,255,.8); border-radius: 14px; padding: 8px 12px; margin-top: 8px; font-size: .84rem; font-weight: 800; }
+  .aqibar { display: grid; grid-template-columns: repeat(4, 1fr); height: 8px; border-radius: 99px; overflow: hidden; margin-top: 2px; }
+  .aqi { display: flex; align-items: baseline; gap: 10px; justify-content: center; border-radius: 16px; padding: 10px; margin-top: 8px; color: #fff; transition: background .3s; }
+  .aqi b { font-size: 2.2rem; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+  .aqi span { font-size: .95rem; font-weight: 800; }
+  .three-btn { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .three-btn .btn { padding: 8px 2px; font-size: .78rem; }
+  .chk { display: flex; gap: 8px; align-items: center; font-size: .8rem; font-weight: 700; margin-top: 8px; cursor: pointer; }
+  .chk input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .stat hr { border: none; border-top: 1px dashed #e4d9c6; margin: 4px 0; }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g8">‹ 課程總覽</a>
+  <div class="title">光學與影子實驗室</div>
+  <div class="body">
+    <div class="tabs three">
+      <button class="tab on" data-tab="umbra">🌑 本影與半影<small>光源種類</small></button>
+      <button class="tab" data-tab="ratio">🌳 影子比例<small>相似三角形</small></button>
+      <button class="tab" data-tab="pin">🕯️ 針孔成像<small>暗箱</small></button>
+    </div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="umbra">
+      <div class="concept" style="--cc:#5d4037"><div class="ct">光的直進形成影子</div><div class="cd">點光源 → 只有本影<br>面光源 → 本影＋半影　平行光 → 影子等大</div></div>
+      <label class="lab">光源類型</label>
+      <div class="three-btn">
+        <button class="btn lsrc on" data-src="point">💡 點光源<small>微小亮點</small></button>
+        <button class="btn lsrc" data-src="area">🔆 面光源<small>大型發光球</small></button>
+        <button class="btn lsrc" data-src="sun">☀️ 太陽光<small>平行光</small></button>
+      </div>
+      <label class="lab" for="obsD">障礙物離光源的距離<b><span id="obsDV">6.0</span> 格</b></label>
+      <input class="big" type="range" id="obsD" min="3" max="13" step="0.1" value="6">
+      <div class="ticks"><span>靠近光源</span><span></span><span>靠近牆</span></div>
+      <div class="stat" id="umbraStat"></div>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="ratio" hidden>
+      <div class="concept" style="--cc:#1e6aa8"><div class="ct">陽光互相平行</div><div class="cd">同一時間：物高 ÷ 影長 都一樣<br>（相似三角形）</div></div>
+      <label class="lab" for="elev">☀️ 太陽仰角<b><span id="elevV">40</span>°</b></label>
+      <input class="big" type="range" id="elev" min="20" max="75" step="0.5" value="40">
+      <div class="ticks"><span>傍晚（影子長）</span><span>中午（影子短）</span></div>
+      <label class="chk"><input type="checkbox" id="showAns"> 揭曉樹的真實高度</label>
+      <div class="stat" id="ratioStat"></div>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="sec" data-tab="pin" hidden>
+      <div class="concept" style="--cc:#d35400"><div class="ct">針孔成像：倒立實像</div><div class="cd">光直進、在針孔交叉 →<br><b>上下顛倒、左右相反</b></div></div>
+      <label class="lab" for="candD">🕯️ 蠟燭到針孔（物距）<b><span id="candDV">5.0</span> 格</b></label>
+      <input type="range" id="candD" min="2" max="9" step="0.1" value="5">
+      <label class="lab" for="boxQ">📦 針孔到紙屏（像距）<b><span id="boxQV">3.0</span> 格</b></label>
+      <input type="range" id="boxQ" min="1.5" max="5" step="0.1" value="3">
+      <label class="lab" for="holeA">⚫ 針孔大小<b id="holeAV">小</b></label>
+      <input type="range" id="holeA" min="0.02" max="0.45" step="0.01" value="0.05">
+      <div class="stat" id="pinStat"></div>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'umbra', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+const sm = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+const lerp = THREE.MathUtils.lerp;
+const DEG = Math.PI / 180;
+function canvasPlane(w, h, px = 512) {
+  const c = document.createElement('canvas'); c.width = px; c.height = Math.round(px * h / w);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  return { c, g: c.getContext('2d'), tex };
+}
+function glowSprite(rgb, s) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(rgb), transparent: true, depthWrite: false })); sp.scale.setScalar(s); return sp; }
+
+/* =========================================================
+   Tab 1：本影與半影
+   ---------------------------------------------------------
+   側視：光源在 x = −8，白牆在 x = +8（相距 16）。障礙物圓球半徑 r。
+   用相似三角形（把球看成圓盤）計算牆上的影子半徑：
+     點光源：本影 R ＝ r × 16 ÷ D
+     面光源（半徑 s）：本影 ＝ s ＋ (r − s) × 16 ÷ D；半影外緣 ＝ −s ＋ (r ＋ s) × 16 ÷ D
+     平行光：影子 ＝ r（等大）
+   ========================================================= */
+const UM = { group: new THREE.Group(), src: 'point', D: 6, t: 0, key: '' };
+scene.add(UM.group);
+const SX = -8, WX = 8, DW = WX - SX, YC = 3.4, OR = 0.8, AS = 0.6, WALL_W = 8, WALL_H = 7.2;
+{
+  const wall = shadowed(new THREE.Mesh(new RoundedBoxGeometry(0.3, WALL_H, WALL_W, 3, 0.08), clay(0xfbf8f2)));
+  wall.position.set(WX + 0.15, WALL_H / 2, 0); UM.group.add(wall);
+  add(UM.group, shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, YC - OR, 12), metal(0x9aa3ab))), 0, (YC - OR) / 2, 0).userData.stand = true;
+  add(UM.group, shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.4, 0.12, 24), metal(0x8f979e))), 0, 0.06, 0).userData.stand = true;
+}
+const wallTex = canvasPlane(WALL_W, WALL_H);
+const wallFace = new THREE.Mesh(new THREE.PlaneGeometry(WALL_W, WALL_H), new THREE.MeshBasicMaterial({ map: wallTex.tex, transparent: true }));
+wallFace.rotation.y = -Math.PI / 2; wallFace.position.set(WX - 0.02, WALL_H / 2, 0); UM.group.add(wallFace);
+const obstacle = shadowed(new THREE.Mesh(new THREE.SphereGeometry(OR, 48, 32), clay(0x8d6e63)));
+UM.group.add(obstacle);
+const obsStand = UM.group.children.filter(o => o.userData.stand);
+// 光源
+const pointSrc = new THREE.Group(); pointSrc.position.set(SX, YC, 0); UM.group.add(pointSrc);
+pointSrc.add(new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffd23f, toneMapped: false })), glowSprite('255,200,60', 1.2));
+const areaSrc = new THREE.Group(); areaSrc.position.set(SX, YC, 0); UM.group.add(areaSrc);
+areaSrc.add(new THREE.Mesh(new THREE.SphereGeometry(AS, 32, 24), new THREE.MeshBasicMaterial({ color: 0xfff1b0, toneMapped: false })), glowSprite('255,200,80', 3.6));
+const sunSrc = new THREE.Group(); sunSrc.position.set(SX - 4, YC + 2.5, 0); UM.group.add(sunSrc);
+sunSrc.add(new THREE.Mesh(new THREE.SphereGeometry(0.9, 32, 24), new THREE.MeshBasicMaterial({ color: 0xffc93c, toneMapped: false })), glowSprite('255,190,60', 5));
+for (const [x, s] of [[SX, 0], [SX, 1]]) { const stand = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, YC - 0.1, 10), metal(0x9aa3ab))); stand.position.set(x, (YC - 0.1) / 2, 0); UM.group.add(stand); if (s) stand.visible = false; }
+const umDraw = Drawer(UM.group);
+const lbSrc = addLabel('umbra', '', 'yel', V3(SX, YC + 1.5, 0));
+const lbObs = addLabel('umbra', '障礙物', 'small', V3(0, 0, 0));
+const lbU = addLabel('umbra', '本影', 'lam', V3(0, 0, 0)), lbP = addLabel('umbra', '半影', 'small', V3(0, 0, 0));
+document.querySelectorAll('.lsrc').forEach(b => b.addEventListener('click', () => { UM.src = b.dataset.src; document.querySelectorAll('.lsrc').forEach(x => x.classList.toggle('on', x === b)); }));
+$('obsD').addEventListener('input', e => { UM.D = Number(e.target.value); $('obsDV').textContent = UM.D.toFixed(1); });
+function shadowRadii() {
+  const D = UM.D, k = DW / D;
+  if (UM.src === 'point') return { u: OR * k, p: 0 };
+  if (UM.src === 'area') return { u: Math.max(0, AS + (OR - AS) * k), p: -AS + (OR + AS) * k };
+  return { u: OR, p: 0 };
+}
+function drawWall(R) {
+  const { c, g } = wallTex, s = c.width / WALL_W, cx = c.width / 2, cy = c.height - YC * s;
+  g.clearRect(0, 0, c.width, c.height);
+  if (R.p > R.u) {
+    const gr = g.createRadialGradient(cx, cy, R.u * s, cx, cy, R.p * s);
+    gr.addColorStop(0, 'rgba(60,50,45,.62)'); gr.addColorStop(1, 'rgba(60,50,45,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, R.p * s, 0, TAU); g.fill();
+  }
+  g.fillStyle = 'rgba(25,20,18,.95)'; g.beginPath(); g.arc(cx, cy, R.u * s, 0, TAU); g.fill();
+  wallTex.tex.needsUpdate = true;
+}
+function updateUmbra(dt) {
+  UM.t += dt;
+  const xo = SX + UM.D, src = UM.src, R = shadowRadii();
+  obstacle.position.set(xo, YC, 0);
+  obsStand.forEach(o => { o.position.x = xo; });
+  pointSrc.visible = src === 'point'; areaSrc.visible = src === 'area'; sunSrc.visible = src === 'sun';
+  UM.group.children.forEach(o => { if (o.isMesh && o.geometry.type === 'CylinderGeometry' && o.position.x === SX) o.visible = src !== 'sun'; });
+  const key = src + UM.D.toFixed(2);
+  if (key !== UM.key) { UM.key = key; drawWall(R); }
+  // 光線
+  umDraw.begin();
+  const z = 0.02, W = (y) => V3(WX - 0.05, y, z);
+  if (src === 'point') {
+    for (const s of [1, -1]) { const top = V3(xo, YC + s * OR, z); umDraw.line(V3(SX, YC, z), W(YC + s * R.u), 0xf2a33a, 0.035); }
+  } else if (src === 'area') {
+    for (const s of [1, -1]) {
+      umDraw.line(V3(SX, YC + s * AS, z), W(YC + s * R.u), 0xf2a33a, 0.035);                     // 上緣→上緣：本影邊界
+      umDraw.dash(V3(SX, YC - s * AS, z), W(YC + s * Math.min(R.p, WALL_H)), 0x8d6e63, { r: 0.028 }); // 交叉：半影邊界
+    }
+  } else {
+    for (let i = -4; i <= 4; i++) { const y = YC + i * 0.42; const hit = Math.abs(y - YC) < OR; umDraw.line(V3(SX - 3, y, z), V3(hit ? xo - Math.sqrt(OR * OR - (y - YC) ** 2) : WX - 0.05, y, z), 0xf2a33a, 0.025, hit ? 1 : 0.6); }
+  }
+  umDraw.end();
+  lbSrc.pos.set(src === 'sun' ? SX - 4 : SX, src === 'sun' ? YC + 4 : YC + 1.4, 0);
+  setLabel(lbSrc, src === 'point' ? '💡 點光源' : src === 'area' ? '🔆 面光源' : '☀️ 太陽（很遠，光線平行）');
+  lbObs.pos.set(xo, YC + OR + 0.5, 0);
+  lbU.pos.set(WX - 0.1, YC, 0.2); lbU.show = R.u > 0.15;
+  lbP.pos.set(WX - 0.1, YC + (R.u + Math.min(R.p, 3.3)) / 2 + 0.05, -Math.min(R.p, 3.3) * 0.55); lbP.show = R.p > R.u + 0.2;
+  const dia = v => (2 * v).toFixed(2);
+  if (src === 'point') setCap(`<small>💡 點光源</small><span class="huge">只有銳利、全黑的「本影」</span>光從一點出發，被擋住的地方完全照不到光`);
+  else if (src === 'area') setCap(`<small>🔆 面光源</small><span class="huge org">面光源部分光線被擋住，形成半影！</span>中間全部被擋住 → <b>本影</b>（全黑）；外圈只擋住一部分 → <b>半影</b>（灰）`);
+  else setCap(`<small>☀️ 太陽光（平行光）</small><span class="huge blu">光線互相平行 → 影子和物體等大</span>移動障礙物，影子大小都不變`);
+  setHTML('umbraStat', `障礙物直徑：<b>${dia(OR)}</b> 格<br>本影直徑：<b>${dia(R.u)}</b> 格${R.p > 0 ? `<br>半影外圈直徑：<b>${dia(R.p)}</b> 格` : ''}<br><small>${src === 'sun' ? '平行光：障礙物放在哪裡，影子都一樣大' : '障礙物越靠近光源 → 影子越大'}</small>`);
+}
+
+/* =========================================================
+   Tab 2：影子比例與相似三角形（單位：公尺，整組縮小 0.55 倍放到桌上）
+   ========================================================= */
+const RT = { group: new THREE.Group(), elev: 40, ans: false };
+RT.group.scale.setScalar(0.55); scene.add(RT.group);
+const PX = -12, PZ = 3, TX = -8, TZ = -2.5, PH = 2, TH = 7.5, TRUNK = 3.5, CROWN = 2;
+add(RT.group, shadowed(new THREE.Mesh(new RoundedBoxGeometry(42, 0.4, 16, 3, 0.15), clay(0x8fb36b))), 3, 0.2, 0);
+const person = new THREE.Group(); person.position.set(PX, 0.4, PZ); RT.group.add(person);
+add(person, new THREE.Mesh(new THREE.CapsuleGeometry(0.28, 1.0, 6, 12), clay(0x5b8a72)), 0, 0.78, 0);
+add(person, new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), clay(0xf0c8a0)), 0, PH - 0.22, 0);
+shadowed(person);
+const tree = new THREE.Group(); tree.position.set(TX, 0.4, TZ); RT.group.add(tree);
+add(tree, new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.38, TRUNK, 14), clay(0x8d6e63)), 0, TRUNK / 2, 0);
+add(tree, new THREE.Mesh(new THREE.SphereGeometry(CROWN, 28, 20), clay(0x6f9f6a)), 0, TH - CROWN, 0);
+shadowed(tree);
+const sunRT = new THREE.Group(); RT.group.add(sunRT);
+sunRT.add(new THREE.Mesh(new THREE.SphereGeometry(1.4, 28, 20), new THREE.MeshBasicMaterial({ color: 0xffc93c, toneMapped: false })), glowSprite('255,190,60', 7));
+const shMat = new THREE.MeshBasicMaterial({ color: 0x2e2a26, transparent: true, opacity: 0.5, depthWrite: false });
+const pShadow = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), shMat); pShadow.rotation.x = -Math.PI / 2;
+const pHead = new THREE.Mesh(new THREE.CircleGeometry(1, 24), shMat); pHead.rotation.x = -Math.PI / 2;
+const tTrunk = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), shMat); tTrunk.rotation.x = -Math.PI / 2;
+const tCrown = new THREE.Mesh(new THREE.CircleGeometry(1, 40), shMat); tCrown.rotation.x = -Math.PI / 2;
+RT.group.add(pShadow, pHead, tTrunk, tCrown);
+const rtDraw = Drawer(RT.group);
+const lbPH = addLabel('ratio', '人 2 m', 'red small', V3(0, 0, 0)), lbPS = addLabel('ratio', '', 'red', V3(0, 0, 0));
+const lbTH = addLabel('ratio', '', 'lam small', V3(0, 0, 0)), lbTS = addLabel('ratio', '', 'lam', V3(0, 0, 0));
+const lbSun = addLabel('ratio', '', 'yel small', V3(0, 0, 0));
+$('elev').addEventListener('input', e => { RT.elev = Number(e.target.value); $('elevV').textContent = RT.elev.toFixed(1); });
+$('showAns').addEventListener('change', e => { RT.ans = e.target.checked; });
+const G = (x, y, z) => V3(x, y, z).multiplyScalar(0.55);
+function updateRatio() {
+  const th = RT.elev * DEG, k = 1 / Math.tan(th), Y0 = 0.42;
+  const X = PH * k, Z = TH * k;
+  sunRT.position.set(-Math.cos(th) * 15 - 6, Math.sin(th) * 15, -4);
+  // 影子（陽光從 −x 照來，影子往 +x）
+  pShadow.scale.set(X, 0.5, 1); pShadow.position.set(PX + X / 2, Y0, PZ);
+  pHead.scale.set(0.22 / Math.sin(th), 0.22, 1); pHead.position.set(PX + (PH - 0.22) * k, Y0 + 0.001, PZ);
+  tTrunk.scale.set(TRUNK * k, 0.62, 1); tTrunk.position.set(TX + TRUNK * k / 2, Y0, TZ);
+  tCrown.scale.set(CROWN / Math.sin(th), CROWN, 1); tCrown.position.set(TX + (TH - CROWN) * k, Y0 + 0.001, TZ);
+  // 相似三角形
+  rtDraw.begin();
+  const tri = (x, z, H, L, col) => {
+    const a = V3(x, 0.45 + H, z + 0.6), b = V3(x, 0.45, z + 0.6), c = V3(x + L, 0.45, z + 0.6);
+    rtDraw.dash(a, b, col, { r: 0.07, on: 0.4, off: 0.25 }); rtDraw.dash(b, c, col, { r: 0.07, on: 0.4, off: 0.25 }); rtDraw.dash(a, c, col, { r: 0.07, on: 0.4, off: 0.25 });
+    rtDraw.line(V3(x + 0.5, 0.45, z + 0.6), V3(x + 0.5, 0.95, z + 0.6), col, 0.05); rtDraw.line(V3(x, 0.95, z + 0.6), V3(x + 0.5, 0.95, z + 0.6), col, 0.05);
+  };
+  tri(PX, PZ, PH, X, 0xd84315); tri(TX, TZ, TH, Z, 0x1e6aa8);
+  rtDraw.end();
+  lbPH.pos.copy(G(PX - 0.9, 0.4 + PH / 2, PZ + 0.6));
+  lbPS.pos.copy(G(PX + X / 2, 0.6, PZ + 1.6)); setLabel(lbPS, `人影 X ＝ ${X.toFixed(2)} m`);
+  lbTH.pos.copy(G(TX - 1.4, 0.4 + TH / 2, TZ + 0.6)); setLabel(lbTH, RT.ans ? '樹高 7.5 m ✔' : '樹高 Y ＝ ?');
+  lbTS.pos.copy(G(TX + Z / 2, 0.6, TZ - 1.4)); setLabel(lbTS, `樹影 Z ＝ ${Z.toFixed(2)} m`);
+  lbSun.pos.copy(sunRT.position).multiplyScalar(0.55).add(V3(0, 1.6, 0)); setLabel(lbSun, `☀️ 仰角 ${RT.elev.toFixed(1)}°`);
+  const Y = PH * Z / X;
+  setCap(`<small>陽光平行 → 兩個直角三角形相似</small><span class="huge"><span class="red">人物高 2 m ／ 人影長 ${X.toFixed(2)} m</span> ＝ <span class="blu">樹高 Y ／ 樹影長 ${Z.toFixed(2)} m</span></span>Y ＝ 2 × ${Z.toFixed(2)} ÷ ${X.toFixed(2)} ＝ <b>${Y.toFixed(2)} m</b>`);
+  setHTML('ratioStat', `太陽仰角 <b>${RT.elev.toFixed(1)}°</b><br>人影 <b class="r">${X.toFixed(2)} m</b>　樹影 <b class="b">${Z.toFixed(2)} m</b><br>2 ÷ ${X.toFixed(2)} ＝ <b>${(PH / X).toFixed(3)}</b>　Y ÷ ${Z.toFixed(2)} ＝ <b>${(PH / X).toFixed(3)}</b><br>算出樹高 Y ＝ <b class="g">${Y.toFixed(2)} m</b><br><small>太陽越低，影子越長，但「物高 ÷ 影長」兩邊一直相等</small>`);
+}
+
+/* =========================================================
+   Tab 3：針孔成像暗箱（整合原本「針孔成像」的物距、像距與像高公式）
+   ---------------------------------------------------------
+   像高 h' ＝ h × 像距 q ÷ 物距 d（倒立實像）。
+   像的亮度（每單位面積）∝ 針孔面積 ÷ q²，和蠟燭距離無關。
+   模糊程度：每一點變成直徑 ＝ 針孔直徑 × (d ＋ q) ÷ d 的光斑。
+   ========================================================= */
+const PN = { group: new THREE.Group(), d: 5, q: 3, a: 0.05, t: 0, last: '', key: '' };
+scene.add(PN.group);
+const YP = 2.3, BOX = { y0: 0.8, y1: 3.8, z: 1.5 }, CAND = { base: 1.3, top: 2.5, flame: 2.95, r: 0.22 };
+const wood = clay(0xc49a6c), woodDark = clay(0xa47b52);
+const boxFloor = shadowed(new THREE.Mesh(new THREE.BoxGeometry(1, 0.12, BOX.z * 2), wood)); PN.group.add(boxFloor);
+const boxBack = shadowed(new THREE.Mesh(new THREE.BoxGeometry(1, BOX.y1 - BOX.y0, 0.12), woodDark)); PN.group.add(boxBack);
+const boxGlass = new THREE.Mesh(new THREE.PlaneGeometry(1, BOX.y1 - BOX.y0), new THREE.MeshPhysicalMaterial({ color: 0xeef7fa, transparent: true, opacity: 0.12, roughness: 0.05, depthWrite: false, side: THREE.DoubleSide }));
+boxGlass.renderOrder = 9; PN.group.add(boxGlass);
+const frontWall = shadowed(new THREE.Mesh(new THREE.BufferGeometry(), wood)); PN.group.add(frontWall);
+const legs = [0, 1].map(() => { const m = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, BOX.y0, 10), woodDark)); PN.group.add(m); return m; });
+const scr = canvasPlane(BOX.z * 2, BOX.y1 - BOX.y0, 512);
+const screen = new THREE.Mesh(new THREE.PlaneGeometry(BOX.z * 2, BOX.y1 - BOX.y0), new THREE.MeshBasicMaterial({ map: scr.tex, side: THREE.DoubleSide, toneMapped: false }));
+screen.rotation.y = Math.PI / 2; PN.group.add(screen);
+const screenFrame = new THREE.Group(); PN.group.add(screenFrame);
+{ const H = BOX.y1 - BOX.y0, W = BOX.z * 2;
+  for (const [h, w, y, z] of [[0.12, W + 0.24, H / 2 + 0.06, 0], [0.12, W + 0.24, -H / 2 - 0.06, 0], [H, 0.12, 0, W / 2 + 0.06], [H, 0.12, 0, -W / 2 - 0.06]]) add(screenFrame, shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.1, h, w), woodDark)), 0, y, z); }
+// 蠟燭
+const candle = new THREE.Group(); PN.group.add(candle);
+add(candle, shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, CAND.base, 20), metal(0xb4bac4))), 0, CAND.base / 2, 0);
+add(candle, shadowed(new THREE.Mesh(new THREE.CylinderGeometry(CAND.r, CAND.r, CAND.top - CAND.base, 24), clay(0xfaf3e0))), 0, (CAND.base + CAND.top) / 2, 0);
+add(candle, new THREE.Mesh(new THREE.CylinderGeometry(CAND.r + 0.01, CAND.r + 0.01, 0.18, 24, 1, true, -0.6, 1.2), clay(0x1e6aa8)), 0, CAND.base + 0.35, 0);
+const flame = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffb020, toneMapped: false }));
+flame.scale.set(1, 1.9, 1); flame.position.y = CAND.top + 0.23; candle.add(flame);
+const flameGlow = glowSprite('255,170,60', 1.6); flameGlow.position.y = CAND.top + 0.25; candle.add(flameGlow);
+const flameLight = new THREE.PointLight(0xffa040, 2.2, 8, 1.6); flameLight.position.y = CAND.top + 0.3; candle.add(flameLight);
+const pnDraw = Drawer(PN.group);
+const lbCand = addLabel('pin', '🕯️ 蠟燭（藍色標記在這一側）', 'small', V3(0, 0, 0));
+const lbHole = addLabel('pin', '針孔', 'small', V3(0, 0, 0));
+const lbImg = addLabel('pin', '', 'yel', V3(0, 0, 0));
+for (const [id, k, f] of [['candD', 'd', v => v.toFixed(1)], ['boxQ', 'q', v => v.toFixed(1)], ['holeA', 'a', v => v < 0.08 ? '小' : v < 0.2 ? '中' : '大']]) {
+  $(id).addEventListener('input', e => { PN[k] = Number(e.target.value); PN.last = k; $(id + 'V').textContent = f(PN[k]); });
+}
+function frontGeo(a) {
+  const W = BOX.z * 2, H = BOX.y1 - BOX.y0;
+  const sh = new THREE.Shape([V2(-W / 2, 0), V2(W / 2, 0), V2(W / 2, H), V2(-W / 2, H)]);
+  const hole = new THREE.Path(); hole.absarc(0, YP - BOX.y0, a, 0, TAU, true); sh.holes.push(hole);
+  const g = new THREE.ExtrudeGeometry(sh, { depth: 0.12, bevelEnabled: false, curveSegments: 24 });
+  g.translate(0, BOX.y0, -0.06); g.rotateY(Math.PI / 2); return g;
+}
+function drawScreen() {
+  const { c, g } = scr, W = BOX.z * 2, H = BOX.y1 - BOX.y0, s = c.width / W;
+  const m = PN.q / PN.d, blur = 2 * PN.a * (PN.d + PN.q) / PN.d;
+  const rel = (PN.a / 0.05) ** 2 * (3 / PN.q) ** 2, bright = 1 - Math.exp(-0.45 * rel);
+  g.filter = 'none'; g.fillStyle = '#2f2823'; g.fillRect(0, 0, c.width, c.height);
+  const Y = y => (BOX.y1 - (YP - (y - YP) * m)) * s;            // 物體高度 → 畫布座標（上下顛倒）
+  const Zc = z => c.width / 2 + z * m * s;                         // 物體的 +z 側 → 紙屏的另一側（左右相反）
+  g.filter = `blur(${Math.min(22, blur * s * 0.16).toFixed(1)}px)`;
+  g.globalAlpha = 0.4 + 0.6 * bright;
+  g.fillStyle = '#efe6cf'; g.fillRect(Zc(-CAND.r), Y(CAND.top), CAND.r * 2 * m * s, (CAND.top - CAND.base) * m * s);
+  g.fillStyle = '#4f8fd0'; g.fillRect(Zc(CAND.r * 0.35), Y(CAND.base + 0.44), CAND.r * 0.65 * m * s, 0.18 * m * s);
+  const fy0 = Y(CAND.top + 0.02), fy1 = Y(CAND.flame), fx = Zc(0);
+  const gr = g.createRadialGradient(fx, (fy0 + fy1) / 2, 0, fx, (fy0 + fy1) / 2, Math.abs(fy1 - fy0) * 0.9);
+  gr.addColorStop(0, '#fff6c8'); gr.addColorStop(0.5, '#ffb84a'); gr.addColorStop(1, 'rgba(255,140,40,0)');
+  g.fillStyle = gr; g.beginPath(); g.ellipse(fx, (fy0 + fy1) / 2, 0.16 * m * s, Math.abs(fy1 - fy0) * 0.6, 0, 0, TAU); g.fill();
+  g.globalAlpha = 1; g.filter = 'none';
+  scr.tex.needsUpdate = true;
+  return { m, blur, rel, bright };
+}
+let pnStat = null;
+function updatePin(dt) {
+  PN.t += dt;
+  const { d, q, a } = PN;
+  // 暗箱（前板在 x ＝ 0，紙屏在 x ＝ q）
+  boxFloor.scale.x = q; boxFloor.position.set(q / 2, BOX.y0, 0);
+  boxBack.scale.x = q; boxBack.position.set(q / 2, (BOX.y0 + BOX.y1) / 2, -BOX.z);
+  boxGlass.scale.x = q; boxGlass.position.set(q / 2, (BOX.y0 + BOX.y1) / 2, BOX.z);
+  legs[0].position.set(0.3, BOX.y0 / 2, 0); legs[1].position.set(q - 0.3, BOX.y0 / 2, 0);
+  screen.position.set(q + 0.01, (BOX.y0 + BOX.y1) / 2, 0); screenFrame.position.set(q, (BOX.y0 + BOX.y1) / 2, 0);
+  candle.position.set(-d, 0, 0);
+  const fl = 1 + 0.08 * Math.sin(PN.t * 17) + 0.05 * Math.sin(PN.t * 29);
+  flame.scale.set(fl, 1.9 * (2 - fl), fl); flameLight.intensity = 2.2 * fl;
+  const key = [d, q, a].map(v => v.toFixed(3)).join('|');
+  if (key !== PN.key) { PN.key = key; setGeo(frontWall, frontGeo(a)); pnStat = drawScreen(); }
+  // 光線：火焰頂端、蠟燭底部 → 穿過針孔 → 打在紙屏（上下交叉）
+  pnDraw.begin();
+  const hole = V3(0, YP, 0.02);
+  for (const [y, col] of [[CAND.flame, 0xf2a33a], [CAND.base, 0x8d6e63]]) {
+    const P = V3(-d, y, 0.02), hit = V3(q, YP - (y - YP) * q / d, 0.02);
+    pnDraw.line(P, hole, col, 0.03); pnDraw.line(hole, hit, col, 0.03);
+    if (a > 0.1) for (const s of [1, -1]) {                       // 針孔大：光斑邊界
+      const hp = V3(0, YP + s * a, 0.02), hit2 = V3(q, hp.y + (hp.y - y) * q / d, 0.02);
+      pnDraw.dash(P, hp, col, { r: 0.015, opacity: 0.6 }); pnDraw.dash(hp, hit2, col, { r: 0.015, opacity: 0.6 });
+    }
+  }
+  pnDraw.end();
+  const h = CAND.flame - CAND.base, hi = h * pnStat.m;
+  lbCand.pos.set(-d, CAND.flame + 0.6, 0); lbHole.pos.set(0, YP + 0.45, BOX.z + 0.2);
+  lbImg.pos.set(q + 0.3, BOX.y1 + 0.35, 0); setLabel(lbImg, `紙屏上的倒立實像（高 ${hi.toFixed(2)}）`);
+  const nat = pnStat.m > 1.03 ? '放大' : pnStat.m < 0.97 ? '縮小' : '等大';
+  const blurTxt = pnStat.blur < 0.06 ? '清晰' : pnStat.blur < 0.2 ? '有點模糊' : '很模糊';
+  if (PN.last === 'd') setCap(`<small>改變物距（蠟燭到針孔）</small><span class="huge">蠟燭${d < 4.5 ? '靠近' : '遠離'} → 像${d < 4.5 ? '變大' : '變小'}</span>穿過針孔的光變多，但也分散到更大的像上，所以紙屏上的<b>亮度幾乎不變</b>`);
+  else if (PN.last === 'q') setCap(`<small>改變像距（針孔到紙屏）</small><span class="huge">紙屏${q > 3 ? '拉遠 → 像變大、變暗' : '拉近 → 像變小、變亮'}</span>同樣的光分散到${q > 3 ? '更大' : '更小'}的面積上`);
+  else if (PN.last === 'a') setCap(`<small>改變針孔大小</small><span class="huge org">針孔${a > 0.08 ? '變大 → 像變亮，但變模糊' : '很小 → 像清晰，但比較暗'}</span>每一點的光通過針孔後變成一個「光斑」，針孔越大光斑越大`);
+  else setCap(`<small>🕯️ 3D 針孔成像機</small><span class="huge">光直進，在針孔交叉 → 倒立實像</span><b>上下顛倒、左右相反</b>（看藍色標記跑到另一邊）`);
+  setHTML('pinStat', `物高 h ＝ <b>${h.toFixed(2)}</b>　像高 h' ＝ <b>${hi.toFixed(2)}</b><br>h' ÷ h ＝ 像距 ÷ 物距 ＝ ${q.toFixed(1)} ÷ ${d.toFixed(1)} ＝ <b>${pnStat.m.toFixed(2)}</b><br>像的性質：<b class="r">倒立、${nat}、實像</b><br>亮度：<b>${pnStat.bright > 0.8 ? '很亮' : pnStat.bright > 0.45 ? '中等' : '暗'}</b>　清晰度：<b>${blurTxt}</b>`);
+}
+function setGeo(m, g) { m.geometry.dispose(); m.geometry = g; }
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  umbra: { group: UM.group, cam: () => ({ pos: [-3, 8, 19], target: [0, 3.2, 0], fitW: 21 }), update: updateUmbra },
+  ratio: { group: RT.group, cam: () => ({ pos: [0, 9, 20], target: [-1, 2.6, 0], fitW: 23 }), update: updateRatio },
+  pin: { group: PN.group, cam: () => ({ pos: [8.5, 4.6, 7], target: [0.6, 2.3, 0], fitW: 11.5 }), update: updatePin }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  renderer.domElement.style.cursor = '';
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, UM, RT, PN, camera, controls };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'umbra';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>
