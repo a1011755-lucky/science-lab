@@ -168,6 +168,7 @@
 
 <script type="module">
 import * as THREE from 'three';
+import { enhanceLiquid, patchLiquid } from './liquid.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
@@ -280,6 +281,7 @@ function makeSolution(r, h, c = 1) {
     mat.attenuationColor.copy(WHITE).lerp(new THREE.Color(0x7aa4ff), k);
     mat.attenuationDistance = lerp(40, 2.2, Math.pow(k, 0.6));
   };
+  enhanceLiquid(m);
   m.userData.setConc(c);
   return m;
 }
@@ -1026,7 +1028,7 @@ function waterBuilder(electrolyte) {
       glassM.renderOrder = 7;
       const lip = new THREE.Mesh(new THREE.TorusGeometry(R + t, 0.03, 10, 48), glassT({ depthWrite: false }));
       lip.rotation.x = Math.PI / 2; lip.position.y = Y_MOUTH; lip.renderOrder = 7;
-      const water = new THREE.Mesh(new THREE.CylinderGeometry(R - 0.005, R - 0.005, 1, 48, 1, true), tubeWaterMat); water.renderOrder = 8;
+      const water = new THREE.Mesh(new THREE.CylinderGeometry(R - 0.005, R - 0.005, 1, 48, 1, true), tubeWaterMat); water.renderOrder = 8; enhanceLiquid(water);
       const men = new THREE.Mesh(new THREE.CircleGeometry(R - 0.005, 48), meniscusMat); men.rotation.x = -Math.PI / 2; men.renderOrder = 9;
       const gas = new THREE.Mesh(new THREE.CylinderGeometry(R - 0.01, R - 0.01, 1, 48), new THREE.MeshBasicMaterial({ color: gasColor, transparent: true, opacity: 0.35, depthWrite: false }));
       gas.renderOrder = 6;

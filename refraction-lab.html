@@ -157,6 +157,7 @@
 
 <script type="module">
 import * as THREE from 'three';
+import { enhanceLiquid, patchLiquid } from './liquid.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
@@ -328,6 +329,7 @@ const COIN_P = V2(-2, 0.11), BIRD_P = V2(-2, 6.4);
   // 水
   const water = new THREE.Mesh(new THREE.BoxGeometry(TW - 0.06, WS, TD - 0.06), new THREE.MeshPhysicalMaterial({ color: 0x7dbfd6, roughness: 0.1, transparent: true, opacity: 0.34, depthWrite: false }));
   water.position.y = WS / 2 + 0.05; water.renderOrder = 4; g.add(water);
+enhanceLiquid(water);
   const surf = new THREE.Mesh(new THREE.PlaneGeometry(TW - 0.06, TD - 0.06).rotateX(-Math.PI / 2), new THREE.MeshPhysicalMaterial({ color: 0xbfe6f2, roughness: 0.05, clearcoat: 1, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide }));
   surf.position.y = WS + 0.05; surf.renderOrder = 4; g.add(surf);
   // 缸底的細沙

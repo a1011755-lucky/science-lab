@@ -236,6 +236,7 @@
 
 <script type="module">
 import * as THREE from 'three';
+import { enhanceLiquid, patchLiquid } from './liquid.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
@@ -304,8 +305,8 @@ const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughnes
 const frost = (color = 0xf4fbff, o = {}) => new THREE.MeshPhysicalMaterial({ color, transmission: 0.93, roughness: 0.1, thickness: 0.15, ior: 1.1, clearcoat: 1, clearcoatRoughness: 0.1, ...o });
 /** 燒杯壁：用半透明（不是透射），裡面的透射液體才看得到 */
 const glassA = (o = {}) => new THREE.MeshPhysicalMaterial({ color: 0xf6fbff, roughness: 0.05, clearcoat: 1, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide, ...o });
-const liquidMat = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, transmission: 0.85, roughness: 0.04, thickness: 0.8, ior: 1.2, clearcoat: 1,
-  attenuationColor: new THREE.Color(color), attenuationDistance: 3, ...o });
+const liquidMat = (color, o = {}) => patchLiquid(new THREE.MeshPhysicalMaterial({ color, transmission: 0.85, roughness: 0.04, thickness: 0.8, ior: 1.2, clearcoat: 1,
+  attenuationColor: new THREE.Color(color), attenuationDistance: 3, ...o }));
 const glowMat = color => new THREE.MeshBasicMaterial({ color, toneMapped: false });
 const hitMat = new THREE.MeshBasicMaterial({ visible: false });
 const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
@@ -354,7 +355,7 @@ const cupHits = [];
 for (const k of ['A', 'B']) {
   const g = new THREE.Group(); g.position.set(CUP_X[k], 0, 0); MIX.group.add(g);
   g.add(makeBeaker(0.95, 2.0));
-  const liq = new THREE.Mesh(new THREE.CylinderGeometry(0.89, 0.89, 1.35, 48), liquidMat(0xeaf6ff, { attenuationDistance: 6 }));
+  const liq = new THREE.Mesh(new THREE.CylinderGeometry(0.89, 0.89, 1.35, 48), liquidMat(0xeaf6ff, { attenuationDistance: 6 })); enhanceLiquid(liq);
   liq.position.y = 0.7; g.add(liq);
   const hit = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.05, 2.2, 16), hitMat); hit.position.y = 1.05; hit.userData.cup = k; g.add(hit);
   cupHits.push(hit);
@@ -459,7 +460,7 @@ addLabel('pct', '<small>電子磅秤（已扣除燒杯）</small>', '', V3(-0.6,
 const BEAKER_R = 1.15, BEAKER_H = 2.7, BASE_Y = 0.6;
 const pBeaker = makeBeaker(BEAKER_R, BEAKER_H); pBeaker.position.y = BASE_Y; PCT.group.add(pBeaker);
 const pLiqMat = liquidMat(0xf2f8ff, { transmission: 0.55, attenuationDistance: 1.4 });
-const pLiq = new THREE.Mesh(new THREE.CylinderGeometry(BEAKER_R - 0.07, BEAKER_R - 0.07, 1, 56), pLiqMat); PCT.group.add(pLiq);
+const pLiq = new THREE.Mesh(new THREE.CylinderGeometry(BEAKER_R - 0.07, BEAKER_R - 0.07, 1, 56), pLiqMat); PCT.group.add(pLiq); enhanceLiquid(pLiq);
 const C_CLEAR = new THREE.Color(0xf2f8ff), C_ORANGE = new THREE.Color(0xe8650a);
 const levelOf = (s, w) => (w + 0.6 * s) / 260 * 2.4;                         // 液面高度（大約跟體積成正比）
 // 水龍頭與水流
@@ -573,7 +574,7 @@ const flameLight = new THREE.PointLight(0x6fa8ff, 0, 3); flameLight.position.y =
 // 燒杯與水
 const sBeaker = makeBeaker(1.3, 2.7); sBeaker.position.y = BY; SAT.group.add(sBeaker);
 const sWaterMat = liquidMat(0xeaf6ff, { attenuationDistance: 5 });
-const sWater = new THREE.Mesh(new THREE.CylinderGeometry(1.23, 1.23, 2.0, 56), sWaterMat); sWater.position.y = BY + 1.02; SAT.group.add(sWater);
+const sWater = new THREE.Mesh(new THREE.CylinderGeometry(1.23, 1.23, 2.0, 56), sWaterMat); sWater.position.y = BY + 1.02; SAT.group.add(sWater); enhanceLiquid(sWater);
 // 杯底晶體小山（由下而上排序：上面的先溶解）
 const crystalMat = clay(0xffffff, { roughness: 0.25, clearcoat: 1, emissive: 0xdff4ff, emissiveIntensity: 0.12 });
 const crystalGeos = [new THREE.OctahedronGeometry(0.12), new THREE.IcosahedronGeometry(0.1), new RoundedBoxGeometry(0.17, 0.17, 0.17, 1, 0.03)];
@@ -816,7 +817,7 @@ PPM.lab.position.set(0, 0, 0);
 }
 const labWaterMat = new THREE.MeshPhysicalMaterial({ color: 0xd8efff, transmission: 0.85, roughness: 0.04, thickness: 1, ior: 1.2, clearcoat: 1,
   attenuationColor: new THREE.Color(0x9fd8ff), attenuationDistance: 4, emissive: 0xff2a1f, emissiveIntensity: 0 });
-const labWater = new THREE.Mesh(new THREE.CylinderGeometry(BOT.r - 0.05, BOT.r - 0.05, 1, 56), labWaterMat); labWater.position.x = BOT.x; PPM.lab.add(labWater);
+const labWater = new THREE.Mesh(new THREE.CylinderGeometry(BOT.r - 0.05, BOT.r - 0.05, 1, 56), labWaterMat); labWater.position.x = BOT.x; PPM.lab.add(labWater); enhanceLiquid(labWater);
 const dangerLight = new THREE.PointLight(0xff3b30, 0, 6); dangerLight.position.set(BOT.x, 1.8, 1.2); PPM.lab.add(dangerLight);
 // 微量滴管
 const pip = new THREE.Group(); pip.position.set(BOT.x, 6.0, 0); PPM.lab.add(pip);

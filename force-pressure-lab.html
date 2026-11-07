@@ -203,6 +203,7 @@
 
 <script type="module">
 import * as THREE from 'three';
+import { enhanceLiquid, patchLiquid } from './liquid.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
@@ -587,7 +588,7 @@ const HOLES = [{ k: 'A', y: STAND_H + 0.5, tag: '深' }, { k: 'B', y: STAND_H + 
 const jStand = shadowed(new THREE.Mesh(new RoundedBoxGeometry(2.0, STAND_H, 2.0, 4, 0.12), clay(0xb4865a, { map: WOOD_TEX }))); jStand.position.set(-3.2, STAND_H / 2, 0); JET.group.add(jStand);
 const jGlass = new THREE.Mesh(new THREE.CylinderGeometry(COL_R, COL_R, COL_H, 48, 1, true), glassA({ opacity: 0.18 })); jGlass.position.set(-3.2, STAND_H + COL_H / 2, 0); jGlass.renderOrder = 5; JET.group.add(jGlass);
 const jWaterMat = new THREE.MeshPhysicalMaterial({ color: JLIQ.water.color, roughness: 0.05, clearcoat: 1, transparent: true, opacity: 0.5, depthWrite: false });
-const jWater = new THREE.Mesh(new THREE.CylinderGeometry(COL_R - 0.04, COL_R - 0.04, J_SURF - STAND_H, 48), jWaterMat); jWater.position.set(-3.2, (J_SURF + STAND_H) / 2, 0); jWater.renderOrder = 4; JET.group.add(jWater);
+const jWater = new THREE.Mesh(new THREE.CylinderGeometry(COL_R - 0.04, COL_R - 0.04, J_SURF - STAND_H, 48), jWaterMat); jWater.position.set(-3.2, (J_SURF + STAND_H) / 2, 0); jWater.renderOrder = 4; JET.group.add(jWater); enhanceLiquid(jWater);
 const tray = shadowed(new THREE.Mesh(new RoundedBoxGeometry(9, 0.12, 2.6, 3, 0.05), clay(0xdfe8f0, { roughness: 0.3, clearcoat: 1 }))); tray.position.set(1.4, 0.06, 0); JET.group.add(tray);
 const jetGeo = new THREE.SphereGeometry(0.055, 8, 6);
 const jetMat = new THREE.MeshStandardMaterial({ color: 0x4fb8ff, emissive: 0x2f9bff, emissiveIntensity: 0.8, roughness: 0.2, toneMapped: false });
@@ -707,7 +708,7 @@ tankGlass.position.set(TK.cx, TK.wallH / 2, 0); tankGlass.renderOrder = 5; BUOY.
 const tankWaterMat = new THREE.MeshPhysicalMaterial({ color: 0x8fd0ff, transmission: 0.8, roughness: 0.03, thickness: 1.5, ior: 1.2, clearcoat: 1,
   attenuationColor: new THREE.Color(0x3aa6ff), attenuationDistance: 2.5 });
 const tankWater = new THREE.Mesh(new RoundedBoxGeometry(2 * TK.half - 0.04, TK.wl - TK.floor, 2 * TK.half - 0.04, 3, 0.08), tankWaterMat);
-tankWater.position.set(TK.cx, (TK.wl + TK.floor) / 2, 0); BUOY.group.add(tankWater);
+tankWater.position.set(TK.cx, (TK.wl + TK.floor) / 2, 0); BUOY.group.add(tankWater); enhanceLiquid(tankWater);
 // 出水口
 const SPOUT = { x0: TK.cx + TK.half + 0.06, y: TK.wl - 0.06, tipX: TK.cx + TK.half + 0.75, tipY: TK.wl - 0.32 };
 const spoutCurve = new THREE.CatmullRomCurve3([V3(SPOUT.x0 - 0.1, SPOUT.y, 0), V3(SPOUT.x0 + 0.35, SPOUT.y - 0.02, 0), V3(SPOUT.tipX - 0.05, SPOUT.tipY + 0.1, 0), V3(SPOUT.tipX, SPOUT.tipY, 0)]);
@@ -721,7 +722,7 @@ const BK = { r: 0.75, h: 1.15, x: SPOUT.tipX + 0.15, y0: bScale.userData.top };
   const rim = new THREE.Mesh(new THREE.TorusGeometry(BK.r, 0.035, 10, 60), clay(0xffffff, { transparent: true, opacity: 0.8 })); rim.rotation.x = Math.PI / 2; rim.position.y = BK.h; g.add(rim);
 }
 const bWaterMat = tankWaterMat.clone();
-const bWater = new THREE.Mesh(new THREE.CylinderGeometry(BK.r - 0.05, BK.r - 0.05, 1, 40), bWaterMat); bWater.position.x = BK.x; BUOY.group.add(bWater);
+const bWater = new THREE.Mesh(new THREE.CylinderGeometry(BK.r - 0.05, BK.r - 0.05, 1, 40), bWaterMat); bWater.position.x = BK.x; BUOY.group.add(bWater); enhanceLiquid(bWater);
 const BEAKER_AREA = Math.PI * Math.pow((BK.r - 0.05) * 10, 2);         // cm²
 // 水流粒子
 const dropGeo = new THREE.CapsuleGeometry(0.04, 0.08, 4, 8), dropMat = new THREE.MeshStandardMaterial({ color: 0x4fb8ff, emissive: 0x2f9bff, emissiveIntensity: 0.9, roughness: 0.2, toneMapped: false });

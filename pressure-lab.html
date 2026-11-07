@@ -183,6 +183,7 @@
 
 <script type="module">
 import * as THREE from 'three';
+import { enhanceLiquid, patchLiquid } from './liquid.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
@@ -442,7 +443,7 @@ ltGlass.position.y = LT.floor + (LT.depth * CM + 0.5) / 2; ltGlass.renderOrder =
 // 用半透明（不用透射）：裡面的發光箭頭才不會被液體顏色洗淡
 const liqMat = new THREE.MeshPhysicalMaterial({ color: LIQS.water.color, roughness: 0.05, clearcoat: 1, transparent: true, opacity: 0.32, depthWrite: false,
   attenuationColor: new THREE.Color(LIQS.water.att) });
-const liqBody = new THREE.Mesh(new RoundedBoxGeometry(LT.w - 0.04, LT.depth * CM, LT.d - 0.04, 3, 0.06), liqMat);
+const liqBody = new THREE.Mesh(new RoundedBoxGeometry(LT.w - 0.04, LT.depth * CM, LT.d - 0.04, 3, 0.06), liqMat); enhanceLiquid(liqBody);
 liqBody.position.y = LT.floor + LT.depth * CM / 2; liqBody.renderOrder = 4; LIQ.group.add(liqBody);
 { // 深度尺（從水面往下 0～100 cm）
   const c = document.createElement('canvas'); c.width = 160; c.height = 1024;
@@ -572,7 +573,7 @@ tankGlass.position.set(TK.cx, TK.wallH / 2, 0); tankGlass.renderOrder = 5; BUOY.
 const tankWaterMat = new THREE.MeshPhysicalMaterial({ color: 0x8fd0ff, transmission: 0.8, roughness: 0.03, thickness: 1.5, ior: 1.2, clearcoat: 1,
   attenuationColor: new THREE.Color(0x3aa6ff), attenuationDistance: 2.5 });
 const tankWater = new THREE.Mesh(new RoundedBoxGeometry(2 * TK.half - 0.04, TK.wl - TK.floor, 2 * TK.half - 0.04, 3, 0.08), tankWaterMat);
-tankWater.position.set(TK.cx, (TK.wl + TK.floor) / 2, 0); BUOY.group.add(tankWater);
+tankWater.position.set(TK.cx, (TK.wl + TK.floor) / 2, 0); BUOY.group.add(tankWater); enhanceLiquid(tankWater);
 // 出水口
 const SPOUT = { x0: TK.cx + TK.half + 0.06, y: TK.wl - 0.06, tipX: TK.cx + TK.half + 0.75, tipY: TK.wl - 0.32 };
 const spoutCurve = new THREE.CatmullRomCurve3([V3(SPOUT.x0 - 0.1, SPOUT.y, 0), V3(SPOUT.x0 + 0.35, SPOUT.y - 0.02, 0), V3(SPOUT.tipX - 0.05, SPOUT.tipY + 0.1, 0), V3(SPOUT.tipX, SPOUT.tipY, 0)]);
@@ -586,7 +587,7 @@ const BK = { r: 0.75, h: 1.15, x: SPOUT.tipX + 0.15, y0: bScale.userData.top };
   const rim = new THREE.Mesh(new THREE.TorusGeometry(BK.r, 0.035, 10, 60), clay(0xffffff, { transparent: true, opacity: 0.8 })); rim.rotation.x = Math.PI / 2; rim.position.y = BK.h; g.add(rim);
 }
 const bWaterMat = tankWaterMat.clone();
-const bWater = new THREE.Mesh(new THREE.CylinderGeometry(BK.r - 0.05, BK.r - 0.05, 1, 40), bWaterMat); bWater.position.x = BK.x; BUOY.group.add(bWater);
+const bWater = new THREE.Mesh(new THREE.CylinderGeometry(BK.r - 0.05, BK.r - 0.05, 1, 40), bWaterMat); bWater.position.x = BK.x; BUOY.group.add(bWater); enhanceLiquid(bWater);
 const BEAKER_AREA = Math.PI * Math.pow((BK.r - 0.05) * 10, 2);         // cm²
 // 水流粒子
 const dropGeo = new THREE.CapsuleGeometry(0.04, 0.08, 4, 8), dropMat = new THREE.MeshStandardMaterial({ color: 0x4fb8ff, emissive: 0x2f9bff, emissiveIntensity: 0.9, roughness: 0.2, toneMapped: false });

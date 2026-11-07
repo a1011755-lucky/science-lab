@@ -228,6 +228,7 @@
 
 <script type="module">
 import * as THREE from 'three';
+import { enhanceLiquid, patchLiquid } from './liquid.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
@@ -903,6 +904,7 @@ const VOL_X = 0, EYE_D = 40;                      // 眼睛（鏡頭）到量筒
 const waterMat = new THREE.MeshPhysicalMaterial({ color: 0x4f9fe0, roughness: 0.1, transparent: true, opacity: 0.42, depthWrite: false });
 const water = new THREE.Mesh(new THREE.CylinderGeometry(CY.ri - 0.02, CY.ri - 0.02, 1, 48).translate(0, 0.5, 0), waterMat);
 water.position.y = CY.y0; water.renderOrder = 4; VOL.group.add(water);
+enhanceLiquid(water);
 const MEN_D = 0.3;
 const menisc = new THREE.Mesh(new THREE.LatheGeometry(Array.from({ length: 13 }, (_, i) => { const r = (CY.ri - 0.02) * i / 12; return new THREE.Vector2(r, MEN_D * Math.pow(i / 12, 3)); }).concat([new THREE.Vector2(CY.ri - 0.02, 0)]), 48),
   new THREE.MeshPhysicalMaterial({ color: 0x3f8fd6, roughness: 0.05, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide }));

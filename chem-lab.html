@@ -175,6 +175,7 @@
 
 <script type="module">
 import * as THREE from 'three';
+import { enhanceLiquid, patchLiquid } from './liquid.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -363,6 +364,7 @@ const ION_R = 2.0, Y_LO = 0.4, Y_HI = 2.85;
   for (let k = 1; k <= 3; k++) { const m = new THREE.Mesh(new THREE.TorusGeometry(2.31, 0.012, 6, 60, 0.7).rotateX(Math.PI / 2).rotateY(-Math.PI / 2 - 0.35), new THREE.MeshBasicMaterial({ color: 0xb9c8cf })); m.position.y = k * 1.0; g.add(m); }
   const water = new THREE.Mesh(new THREE.CylinderGeometry(2.25, 2.25, WL - 0.06, 64), new THREE.MeshPhysicalMaterial({ color: 0xa9d6e6, roughness: 0.1, transparent: true, opacity: 0.2, depthWrite: false }));
   water.position.y = (WL - 0.06) / 2 + 0.06; water.renderOrder = 4; g.add(water);
+enhanceLiquid(water);
   // 碳棒電極與夾座
   const carbon = clay(0x34343a, { roughness: 0.85, clearcoat: 0.1 });
   for (const x of [-EX, EX]) {
@@ -823,6 +825,7 @@ const RING_Y = 3.2, B_Y = 3.36, B_R = 1.2, B_H = 2.6, L_R = 1.12;
   const sb = new THREE.Mesh(new THREE.LatheGeometry(sp, 40), glassA({ opacity: 0.22 })); sb.renderOrder = 6; SO.salt.add(sb);
   SO.saltLiq = new THREE.Mesh(new THREE.CylinderGeometry(0.64, 0.64, 1, 32).translate(0, 0.5, 0), new THREE.MeshPhysicalMaterial({ color: 0xdcefff, transparent: true, opacity: 0.45, depthWrite: false, roughness: 0.1 }));
   SO.saltLiq.position.y = 0.05; SO.saltLiq.scale.y = 1.1; SO.salt.add(SO.saltLiq);
+enhanceLiquid(SO.saltLiq);
   SO.saltHome = V3(-3.4, 0, 0.8); SO.salt.position.copy(SO.saltHome);
   // 玻璃棒
   SO.rod = new THREE.Group(); SO.rod.position.y = B_Y; g.add(SO.rod);
@@ -843,6 +846,7 @@ const soapMat = clay(0xead08c, { roughness: 0.75, emissive: 0xffe9a8, emissiveIn
 const liqBot = new THREE.Mesh(unitCyl(L_R), botMat), liqMid = new THREE.Mesh(unitCyl(L_R), midMat), soapTop = new THREE.Mesh(soapGeo, soapMat);
 liqBot.renderOrder = liqMid.renderOrder = 4;
 for (const m of [liqBot, liqMid, soapTop]) { m.position.y = B_Y + 0.02; SO.group.add(m); }
+enhanceLiquid(liqBot); enhanceLiquid(liqMid);
 const BUB = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, roughness: 0.2 }), 140);
 BUB.count = 0; BUB.frustumCulled = false; SO.group.add(BUB);
 const STEAM = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.28, roughness: 1, depthWrite: false }), 40);
