@@ -3,6 +3,7 @@
    ---------------------------------------------------------
    1. 手機與直式平板：控制面板改成「底部抽屜」，最多佔 40% 高度
       右下角有懸浮的「收起／展開」按鈕，收起後 3D 畫面全螢幕
+      <body data-mv-start="closed"> 的頁面在手機上一開始就是收起狀態
    1b. 在面板上滑動、拉滑桿時，事件不會穿透去轉動背景的 3D 視角
    2. 3D 畫面自動避開抽屜（setViewOffset），內容永遠在看得到的區域置中
    3. 直式螢幕自動把鏡頭拉遠，左右不會被切掉
@@ -110,6 +111,7 @@
       btn.setAttribute('aria-label', closed ? '展開控制面板' : '收起控制面板');
     };
     btn.addEventListener('click', () => { document.body.classList.toggle('mv-closed'); paint(); });
+    if (document.body.dataset.mvStart === 'closed' && isMobile()) document.body.classList.add('mv-closed');
     paint();
     document.body.appendChild(btn);
     // 按鈕永遠貼在抽屜上緣：用 CSS 變數記錄抽屜高度

@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>長度的測量與估計值</title>
+<title>基本測量實驗室</title>
 <style>
   :root {
     --bg: #f5f1e7;
-    --ink: #3b3127;
+    --ink: #5d4037;
     --ink-soft: #7a6e60;
     --card: rgba(255,252,245,.62);
     --accent: #c0703f;
@@ -103,6 +103,25 @@
   .tag.hl { background: #5b8a72; color: #fff; }
   .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
 
+  /* 三大測量模式 */
+  .mtabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin: 12px 0 8px; }
+  .mtab { border: none; cursor: pointer; font: inherit; font-size: .8rem; font-weight: 800; padding: 9px 2px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.62); line-height: 1.35; }
+  .mtab small { display: block; font-weight: 600; font-size: .66rem; opacity: .8; }
+  .mtab:hover { background: rgba(255,255,255,.95); }
+  .mtab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .msec[hidden] { display: none; }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .7rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .9rem; } .stat .g { color: var(--ok); } .stat .r { color: var(--bad); } .stat .b { color: #1e6aa8; }
+  .stat hr { border: none; border-top: 1px dashed #e4d9c6; margin: 4px 0; }
+  .btn.primary { color: #fff; background: #a1674a; }
+  .btn.primary:hover { background: #8f5a40; }
+  .eyecard { background: rgba(255,255,255,.85); border-radius: 16px; padding: 8px; margin-top: 8px; }
+  .eyecard canvas { display: block; width: 100%; height: auto; border-radius: 10px; }
+  .eyecard p { font-size: .78rem; font-weight: 700; margin-top: 6px; line-height: 1.5; }
   @media (max-width: 760px), (max-width: 1100px) and (orientation: portrait) {
     .banner { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; font-size: .8rem; padding: 8px 12px; }
     .field input { font-size: 1.15rem; }
@@ -127,8 +146,14 @@
 <aside class="panel glass" id="panel">
   <button class="collapse" id="collapse">收合</button>
   <a class="back" href="index.html#g8">‹ 課程總覽</a>
-  <div class="title">長度的測量與估計值</div>
+  <div class="title">基本測量實驗室</div>
   <div class="body">
+    <div class="mtabs">
+      <button class="mtab on" data-mode="len">📏 長度<small>估計值</small></button>
+      <button class="mtab" data-mode="mass">⚖️ 質量<small>等臂天平</small></button>
+      <button class="mtab" data-mode="vol">🧪 體積<small>量筒排水法</small></button>
+    </div>
+    <section class="msec" data-mode="len">
     <div class="concept">
       <div class="cd">完整的測量結果 ＝ 數字部分（<em>準確值</em> ＋ <em>一位估計值</em>）＋ 單位</div>
       <small>請務必記錄至最小刻度的下一位！</small>
@@ -163,6 +188,41 @@
       <button class="btn" id="resetBtn">↺ 重新放尺</button>
       <button class="btn" id="viewBtn" disabled>🔭 看全景</button>
     </div>
+    </section>
+
+    <!-- 質量 -->
+    <section class="msec" data-mode="mass" hidden>
+      <div class="concept">
+        <div class="cd"><em>左物右碼</em>：待測物放左盤、砝碼放右盤<br>物體質量 ＝ 砝碼總和 ＋ 騎碼讀數</div>
+        <small>形狀改變，質量不變！</small>
+      </div>
+      <p class="desc">1. 把<b>待測物</b>拖到左盤<br>2. 用鑷子把<b>砝碼</b>由大到小夾到右盤<br>3. 最後用<b>騎碼</b>微調，直到指針停在正中央<br>🥚 彩蛋：黏土在左盤上時，<b>點一下黏土</b>看看！</p>
+      <label class="lab" for="rider">騎碼位置<b><span id="riderV">0.0</span> g</b></label>
+      <input type="range" id="rider" min="0" max="10" step="0.1" value="0">
+      <div class="ticks"><span>0 g</span><span>5 g</span><span>10 g</span></div>
+      <div class="stat" id="massStat"></div>
+      <button class="btn" id="massReset">↺ 全部放回</button>
+    </section>
+
+    <!-- 體積 -->
+    <section class="msec" data-mode="vol" hidden>
+      <div class="concept">
+        <div class="cd">排水法：物體體積 ＝ V₂ − V₁<br>讀數時，視線要與<em>凹液面底部</em>同高</div>
+        <small>俯視高估、仰視低估、平視最準確</small>
+      </div>
+      <label class="lab" for="eye">👁 視線高度<b id="eyeV">平視</b></label>
+      <input type="range" id="eye" min="-10" max="10" step="0.5" value="0">
+      <div class="ticks"><span>⬆ 仰視</span><span>平視</span><span>俯視 ⬇</span></div>
+      <div class="eyecard"><canvas id="eyeCv" width="340" height="170"></canvas><p id="eyeTxt"></p></div>
+      <div class="row2">
+        <button class="btn" id="dropStone">🪨 投入石頭<small>沉體</small></button>
+        <button class="btn" id="dropBall">🏓 投入乒乓球<small>浮體</small></button>
+      </div>
+      <button class="btn primary" id="sinkBtn" disabled>⚓ 掛上重錘</button>
+      <button class="btn" id="volReset">↺ 倒回原本的水量</button>
+      <div class="stat" id="volStat"></div>
+      <p class="desc">這個分頁的鏡頭就是你的<b>眼睛</b>，用「視線高度」滑桿上下移動。</p>
+    </section>
   </div>
 </aside>
 
@@ -197,7 +257,7 @@ envScene.background = new THREE.Color(0xf6efe2);
 const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
 envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
 scene.environment = pmrem.fromScene(envScene, 0.04).texture;
-scene.add(new THREE.HemisphereLight(0xfffaf0, 0xd8c3a0, 1.05));
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.05));
 const sun = new THREE.DirectionalLight(0xfff1dc, 1.9);
 sun.position.set(-6, 16, 10);
 sun.castShadow = true;
@@ -337,13 +397,13 @@ function buildRuler(key) {
    ========================================================= */
 const labels = [];
 const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
-function addLabel(html, cls, follow, off) {
+function addLabel(html, cls, follow, off, m = 'len') {
   const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
-  const L = { el, follow, off, visible: true, pos: off.clone() }; labels.push(L); return L;
+  const L = { el, follow, off, visible: true, pos: off.clone(), mode: m }; labels.push(L); return L;
 }
 function placeLabels() {
   for (const L of labels) {
-    if (!L.visible) { L.el.style.display = 'none'; continue; }
+    if (!L.visible || L.mode !== mode) { L.el.style.display = 'none'; continue; }
     if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
     tmpV.copy(L.pos).project(camera);
     if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
@@ -362,7 +422,8 @@ const Ltip = addLabel('鉛筆右端：讀這裡！', 'hl', null, V3(PR, 1.2, -0.
 const VIEWS = {
   overview: { pos: [0.5, 13, 15], target: [0.5, 0, 1.8], fitW: 22 },
   A: { pos: [PR, 5.6, 2.9], target: [PR, 0.1, 0.8] },
-  B: { pos: [PR, 3.7, 2.15], target: [PR, 0.1, 0.75] }
+  B: { pos: [PR, 3.7, 2.15], target: [PR, 0.1, 0.75] },
+  mass: { pos: [0, 20, 37], target: [0, 8, 3], fitW: 40 }
 };
 let view = 'overview', camTw = null;
 function viewFor(c) {
@@ -385,13 +446,20 @@ function viewFor(c) {
 function goView(name, instant = false) {
   view = name;
   const { pos, tgt } = viewFor(VIEWS[name]);
+  if (name === 'mass' && window.MobileView?.isMobile()) {   // 手機：依天平寬度把鏡頭拉遠
+    const need = VIEWS.mass.fitW * 0.82 / (2 * Math.tan(camera.fov * Math.PI / 360) * camera.aspect);
+    controls.maxDistance = Math.max(controls.maxDistance, need * 1.3);
+    pos.sub(tgt).setLength(Math.max(need, pos.distanceTo(tgt))).add(tgt);
+    if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+    camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 }; return;
+  }
   $('viewBtn').textContent = name === 'overview' ? '🔍 特寫筆尖' : '🔭 看全景';
   if (instant) {
     camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update();
-    if (name === 'overview') window.MobileView?.frame(camera, controls, 2.0);
+    if (VIEWS[name].fitW) window.MobileView?.frame(camera, controls, 2.0);
     return;
   }
-  if (window.MobileView?.isMobile() && name === 'overview') {
+  if (window.MobileView?.isMobile() && VIEWS[name].fitW) {
     const p = pos.clone().sub(tgt), k = Math.max(1, Math.min(2.0, window.innerHeight / window.innerWidth) * 2.0);
     pos.copy(tgt).add(p.multiplyScalar(k));
   }
@@ -413,7 +481,7 @@ function setNdc(ev) {
 }
 const overRuler = ev => { setNdc(ev); return raycaster.intersectObjects(rulerParts, false).length > 0; };
 renderer.domElement.addEventListener('pointerdown', ev => {
-  if (aligned || !overRuler(ev)) return;
+  if (mode !== 'len' || aligned || !overRuler(ev)) return;
   if (!raycaster.ray.intersectPlane(dragPlane, hitP)) return;
   dragging = true; controls.enabled = false; camTw = null;
   grabOff.copy(ruler.position).sub(hitP);
@@ -421,6 +489,7 @@ renderer.domElement.addEventListener('pointerdown', ev => {
   renderer.domElement.style.cursor = 'grabbing';
 });
 renderer.domElement.addEventListener('pointermove', ev => {
+  if (mode !== 'len') return;
   if (!dragging) {
     if (!ev.buttons) renderer.domElement.style.cursor = !aligned && overRuler(ev) ? 'grab' : '';
     return;
@@ -467,7 +536,8 @@ let snap = null;
 /* =========================================================
    面板：步驟、答案驗證
    ========================================================= */
-function banner(html, cls = '') { const b = $('banner'); b.innerHTML = html; b.className = 'banner ' + cls; b.style.opacity = ''; clearTimeout(banner.t); }
+const lenBanner = { html: '', cls: '' };
+function banner(html, cls = '') { lenBanner.html = html; lenBanner.cls = cls; if (mode !== 'len') return; const b = $('banner'); b.innerHTML = html; b.className = 'banner ' + cls; b.style.opacity = ''; clearTimeout(banner.t); }
 function setStep(n) {
   document.querySelectorAll('.step').forEach((s, i) => { s.classList.toggle('on', i + 1 === n); s.classList.toggle('done', i + 1 < n); });
 }
@@ -538,6 +608,506 @@ $('viewBtn').addEventListener('click', () => goView(view === 'overview' ? rulerK
 $('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; });
 
 /* =========================================================
+   共用：模式（長度／質量／體積）
+   ========================================================= */
+const metalM = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const glassM = (o = {}) => new THREE.MeshPhysicalMaterial({ color: 0xf6fbff, roughness: 0.04, clearcoat: 1, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide, ...o });
+const YUP = V3(0, 1, 0), tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b) {                             // 把單位圓柱擺成 a → b 的線段
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.y = Math.max(len, 1e-4);
+}
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+const lineMesh = (r, mat) => new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, 8), mat);
+const ease = (dt, k) => 1 - Math.exp(-dt * k);
+const rnd = (a, b) => a + Math.random() * (b - a);
+function noisyGeo(geo, amp, seed) {                       // 讓幾何形狀凹凸不平（石頭、黏土）
+  const p = geo.attributes.position, v = V3(0, 0, 0);
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    const n = Math.sin(v.x * 2.1 + seed) * Math.cos(v.y * 2.7 + seed * 1.3) + Math.sin(v.z * 3.3 + seed * 0.7) * 0.6;
+    v.multiplyScalar(1 + amp * n); p.setXYZ(i, v.x, v.y, v.z);
+  }
+  geo.computeVertexNormals(); return geo;
+}
+
+/* =========================================================
+   質量測量：懸吊式等臂天平（1 單位 ＝ 1 cm）
+   ========================================================= */
+const MASS = { group: new THREE.Group(), th: 0, om: 0, rider: 0, items: [], glow: 0, msg: '', msgT: 0 };
+scene.add(MASS.group); MASS.group.visible = false;
+const BAL = { pivotY: 16, L: 11, hang: 8.4, panR: 3.6, z: -1 };
+const beamMat = metalM(0xdfe3e8, { emissive: 0x2fbf71, emissiveIntensity: 0 });
+const beam = new THREE.Group(); beam.position.set(0, BAL.pivotY, BAL.z); MASS.group.add(beam);
+let riderMesh, pointerMat, plateMat;
+{
+  const g = MASS.group;
+  const wood = clay(0xb48a5f);
+  const base = new THREE.Mesh(new RoundedBoxGeometry(31, 1.2, 8, 4, 0.45), wood); base.position.set(0, 0.6, BAL.z); g.add(base);
+  for (const x of [-14, 14]) for (const z of [-3, 3]) { const f = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.55, 0.3, 16), metalM(0x8c8f96)); f.position.set(x, 0.05, BAL.z + z); g.add(f); }
+  const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.75, BAL.pivotY - 1.5, 28), clay(0xe8dccb, { clearcoat: 0.6 }));
+  pillar.position.set(0, 1.2 + (BAL.pivotY - 1.5) / 2, BAL.z - 0.3); g.add(pillar);
+  const knife = new THREE.Mesh(new THREE.ConeGeometry(0.35, 0.6, 3), metalM(0x8c8f96)); knife.position.set(0, BAL.pivotY - 0.35, BAL.z - 0.3); knife.rotation.y = Math.PI / 6; g.add(knife);
+  // 指針刻度板
+  const c = document.createElement('canvas'); c.width = 512; c.height = 160; const x = c.getContext('2d');
+  x.fillStyle = '#fffdf8'; x.fillRect(0, 0, 512, 160); x.strokeStyle = '#5d4037'; x.fillStyle = '#5d4037'; x.font = '700 30px sans-serif'; x.textAlign = 'center';
+  for (let i = -10; i <= 10; i++) { const px = 256 + i * 22; x.lineWidth = i % 5 === 0 ? 5 : 3; x.beginPath(); x.moveTo(px, 20); x.lineTo(px, i % 5 === 0 ? 90 : 62); x.stroke(); if (i % 5 === 0) x.fillText(Math.abs(i), px, 128); }
+  x.fillStyle = '#2fbf71'; x.fillRect(250, 8, 12, 10);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  plateMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.7, emissive: 0x2fbf71, emissiveIntensity: 0 });
+  const plate = new THREE.Mesh(new RoundedBoxGeometry(6, 1.9, 0.3, 3, 0.1), [clay(0xe8dccb), clay(0xe8dccb), clay(0xe8dccb), clay(0xe8dccb), plateMat, clay(0xe8dccb)]);
+  plate.position.set(0, 3.0, BAL.z + 0.35); g.add(plate);
+  // 橫梁（含騎碼刻度）
+  const bar = new THREE.Mesh(new RoundedBoxGeometry(BAL.L * 2 + 1.4, 0.8, 0.55, 3, 0.15), beamMat); beam.add(bar);
+  const bc = document.createElement('canvas'); bc.width = 2048; bc.height = 150; const y = bc.getContext('2d');
+  y.fillStyle = '#fbf6ec'; y.fillRect(0, 0, 2048, 150); y.strokeStyle = '#5d4037'; y.fillStyle = '#5d4037'; y.font = '700 54px sans-serif'; y.textAlign = 'center';
+  for (let i = 0; i <= 100; i++) { const px = 40 + i * 19.68; y.lineWidth = i % 10 === 0 ? 6 : i % 5 === 0 ? 4 : 2.5; y.beginPath(); y.moveTo(px, 0); y.lineTo(px, i % 10 === 0 ? 70 : i % 5 === 0 ? 52 : 34); y.stroke(); if (i % 10 === 0) y.fillText(i / 10, px, 128); }
+  const btex = new THREE.CanvasTexture(bc); btex.colorSpace = THREE.SRGBColorSpace; btex.anisotropy = 8;
+  const scale = new THREE.Mesh(new THREE.PlaneGeometry(BAL.L * 2048 / (2048 - 80), 0.62), new THREE.MeshBasicMaterial({ map: btex, toneMapped: false }));
+  scale.position.set(BAL.L / 2, 0, 0.285); beam.add(scale);
+  for (const s of [-1, 1]) { const hk = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.08, 8, 16), metalM(0x8c8f96)); hk.position.set(s * BAL.L, -0.45, 0); beam.add(hk); }
+  // 騎碼
+  riderMesh = new THREE.Group(); beam.add(riderMesh);
+  const rb = new THREE.Mesh(new RoundedBoxGeometry(0.35, 1.05, 0.85, 2, 0.08), metalM(0xd4a84f)); rb.position.y = 0.2; riderMesh.add(rb);
+  const rTip = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.3, 10).rotateX(Math.PI), clay(0xc0392b)); rTip.position.set(0, -0.2, 0.42); riderMesh.add(rTip);
+  // 指針
+  pointerMat = clay(0xc0392b, { emissive: 0x2fbf71, emissiveIntensity: 0 });
+  const needle = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.11, 12, 10), pointerMat); needle.position.set(0, -6.4, 0.32); beam.add(needle);
+  shadowed(g); shadowed(beam);
+}
+// 秤盤（含三條吊線）
+const PANS = [-1, 1].map(s => {
+  const g = new THREE.Group(); MASS.group.add(g);
+  const prof = [[0, 0], [BAL.panR - 0.3, 0.02], [BAL.panR, 0.45], [BAL.panR + 0.12, 0.5]].map(([r, y]) => new THREE.Vector2(r, y));
+  const dish = new THREE.Mesh(new THREE.LatheGeometry(prof, 48), metalM(0xe3e6ea, { side: THREE.DoubleSide })); g.add(dish);
+  const bottom = new THREE.Mesh(new THREE.CircleGeometry(BAL.panR - 0.3, 40).rotateX(-Math.PI / 2), metalM(0xe3e6ea)); bottom.position.y = 0.025; g.add(bottom);
+  shadowed(g);
+  const strings = [0, 1, 2].map(() => { const m = lineMesh(0.035, clay(0x8c7a6b)); MASS.group.add(m); return m; });
+  return { s, g, strings, hook: V3(0, 0, 0), top: 0.06 };
+});
+const panPos = s => PANS[s < 0 ? 0 : 1].g.position;
+
+// 待測物與砝碼
+const MASS_OBJ = {
+  iron: { name: '標準鐵塊', mass: 78.5, emoji: '🧱' },
+  stone: { name: '不規則石頭', mass: 33.7, emoji: '🪨' },
+  clay: { name: '黏土', mass: 26.4, emoji: '🟤' }
+};
+const W_LIST = [50, 20, 10, 5, 1];
+const W_SIZE = { 50: [1.05, 2.3], 20: [0.78, 1.7], 10: [0.63, 1.4], 5: [0.5, 1.1], 1: [0.32, 0.75] };
+const brass = metalM(0xd4a84f, { roughness: 0.25 });
+function makeItem(kind, key, home) {
+  const g = new THREE.Group(); MASS.group.add(g);
+  let h, r, mass, mesh;
+  if (kind === 'w') {
+    const [wr, wh] = W_SIZE[key]; h = wh + wr * 0.6; r = wr; mass = key;
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(wr, wr, wh, 32), brass); body.position.y = wh / 2; g.add(body);
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(wr * 0.35, wr * 0.45, wr * 0.3, 20), brass); neck.position.y = wh + wr * 0.15; g.add(neck);
+    const knob = new THREE.Mesh(new THREE.SphereGeometry(wr * 0.45, 20, 14), brass); knob.position.y = wh + wr * 0.4; g.add(knob);
+  } else {
+    mass = MASS_OBJ[key].mass;
+    if (key === 'iron') { mesh = new THREE.Mesh(new RoundedBoxGeometry(2.6, 1.6, 2.4, 3, 0.18), metalM(0x7d8288, { roughness: 0.45 })); h = 1.6; r = 1.4; }
+    else if (key === 'stone') { mesh = new THREE.Mesh(noisyGeo(new THREE.IcosahedronGeometry(1.45, 3), 0.16, 2.3), clay(0x8f857a, { roughness: 0.9, clearcoat: 0, flatShading: false })); mesh.scale.set(1.1, 0.75, 0.95); h = 2.2; r = 1.5; }
+    else { mesh = new THREE.Mesh(noisyGeo(new THREE.SphereGeometry(1.5, 48, 32), 0.06, 1.1), clay(0xd2794f, { roughness: 0.8, clearcoat: 0.15 })); h = 3; r = 1.5; }
+    mesh.position.y = key === 'iron' ? 0.8 : key === 'stone' ? 1.05 : 1.5; g.add(mesh);
+  }
+  shadowed(g);
+  const hit = new THREE.Mesh(new THREE.CylinderGeometry(Math.max(r, 0.8) + 0.25, Math.max(r, 0.8) + 0.25, h + 0.4, 12), new THREE.MeshBasicMaterial({ visible: false }));
+  hit.position.y = h / 2; g.add(hit);
+  g.position.copy(home);
+  const it = { kind, key, mass, g, mesh, hit, home: home.clone(), target: home.clone(), on: null, drag: false, h, r, morph: null };
+  hit.userData.item = it;
+  MASS.items.push(it); return it;
+}
+// 待測物區（木盤）與砝碼盒
+{
+  const tray = shadowed(new THREE.Mesh(new RoundedBoxGeometry(11.5, 0.5, 5, 4, 0.2), clay(0xe9dcc4))); tray.position.set(-11, 0.25, 9); MASS.group.add(tray);
+  const box = shadowed(new THREE.Mesh(new RoundedBoxGeometry(12.5, 0.9, 5, 4, 0.25), clay(0x9c6b45))); box.position.set(11, 0.45, 9); MASS.group.add(box);
+  const felt = new THREE.Mesh(new RoundedBoxGeometry(11.9, 0.1, 4.4, 2, 0.05), clay(0x7a3e2e, { roughness: 1, clearcoat: 0 })); felt.position.set(11, 0.92, 9); MASS.group.add(felt);
+}
+const OBJ_HOME = { iron: V3(-14.5, 0.5, 9), stone: V3(-11, 0.5, 9), clay: V3(-7.5, 0.5, 9) };
+for (const k of ['iron', 'stone', 'clay']) makeItem('o', k, OBJ_HOME[k]);
+W_LIST.forEach((w, i) => makeItem('w', w, V3(6.4 + i * 2.35, 0.97, 9)));
+const tweezers = new THREE.Group(); MASS.group.add(tweezers); tweezers.visible = false;
+{
+  const m = metalM(0xb9bdc4);
+  for (const s of [-1, 1]) { const p = new THREE.Mesh(new RoundedBoxGeometry(0.18, 4.2, 0.4, 2, 0.06), m); p.position.set(s * 0.32, 2.1, 0); p.rotation.z = -s * 0.1; tweezers.add(p); }
+}
+const lbObjZone = addLabel('🧪 待測物區：拖到<b>左盤</b>', 'hl', null, V3(-11, 0.6, 12.3), 'mass');
+const lbBox = addLabel('⚖️ 砝碼盒：用鑷子夾到<b>右盤</b>', 'hl', null, V3(11, 0.9, 12.3), 'mass');
+const lbL = addLabel('左盤：放物體', '', null, V3(0, 0, 0), 'mass');
+const lbR = addLabel('右盤：放砝碼', '', null, V3(0, 0, 0), 'mass');
+const lbRider = addLabel('', '', null, V3(0, 0, 0), 'mass');
+const lbObj = MASS.items.filter(i => i.kind === 'o').map(i => addLabel(`${MASS_OBJ[i.key].emoji} ${MASS_OBJ[i.key].name}`, '', i.g, V3(0, i.h + 1.0, 0), 'mass'));
+
+$('rider').addEventListener('input', () => { MASS.rider = +$('rider').value; $('riderV').textContent = MASS.rider.toFixed(1); });
+const onPan = s => MASS.items.filter(i => i.on === s);
+const W_SLOTS = [[0, 0], [1.75, 0.6], [-1.75, 0.6], [0.6, -1.75], [-0.6, -1.75], [1.4, 1.9]];
+function layoutPan(s) {
+  const list = onPan(s);
+  list.forEach((it, i) => { const o = s === 'R' ? W_SLOTS[i % W_SLOTS.length] : [0, 0]; it.slot = o; });
+}
+function massMsg(html, sec = 2.6) { MASS.msg = html; MASS.msgT = sec; }
+function dropItem(it, s) {
+  if (s === 'L' && it.kind === 'w') { massMsg('🙅 砝碼要放<b>右盤</b>喔！（左物右碼）'); s = null; }
+  if (s === 'R' && it.kind === 'o') { massMsg('🙅 待測物要放<b>左盤</b>！（左物右碼）'); s = null; }
+  if (s === 'R' && onPan('R').length >= W_SLOTS.length) s = null;
+  if (s === 'L') onPan('L').forEach(o => { o.on = null; o.target.copy(o.home); });   // 左盤一次只放一個物體
+  it.on = s;
+  if (!s) it.target.copy(it.home);
+  layoutPan('L'); layoutPan('R');
+}
+function morphClay(it) {                                  // 黏土隨機變形：體積（質量）不變
+  const a = rnd(0.55, 1.8), b = rnd(0.55, 1.6), c = 1 / (a * b);
+  const geo = noisyGeo(new THREE.SphereGeometry(1.5, 48, 32), rnd(0.03, 0.14), rnd(0, 20));
+  it.morph = { k: 0, from: it.mesh.scale.clone(), to: V3(a, c, b), geo };
+  massMsg('🟤 黏土的<b>形狀改變</b>了，但<b>質量不變</b>！天平依然保持原狀', 3.2);
+}
+// 拖曳（模擬鑷子）
+let mDrag = null;
+const mPlane = new THREE.Plane(V3(0, 1, 0), 0), mHit = V3(0, 0, 0);
+const DRAG_Y = 11;
+function pickItem(ev) { setNdc(ev); const h = raycaster.intersectObjects(MASS.items.map(i => i.hit), false)[0]; return h ? h.object.userData.item : null; }
+function nearPan(p) {
+  for (const [s, P] of [['L', PANS[0]], ['R', PANS[1]]]) if (Math.hypot(p.x - P.g.position.x, p.z - P.g.position.z) < BAL.panR + 1.4) return s;
+  return null;
+}
+renderer.domElement.addEventListener('pointerdown', ev => {
+  if (mode !== 'mass' || ev.button > 0) return;
+  const it = pickItem(ev); if (!it) return;
+  mDrag = { it, x: ev.clientX, y: ev.clientY, moved: false, wasOn: it.on, id: ev.pointerId };
+  controls.enabled = false; renderer.domElement.setPointerCapture(ev.pointerId);
+  renderer.domElement.style.cursor = 'grabbing';
+});
+renderer.domElement.addEventListener('pointermove', ev => {
+  if (mode !== 'mass') return;
+  if (!mDrag) { if (!ev.buttons) renderer.domElement.style.cursor = pickItem(ev) ? 'grab' : ''; return; }
+  if (!mDrag.moved && Math.hypot(ev.clientX - mDrag.x, ev.clientY - mDrag.y) < 6) return;
+  if (!mDrag.moved) { mDrag.moved = true; mDrag.it.on = null; mDrag.it.drag = true; layoutPan('L'); layoutPan('R'); }
+  setNdc(ev);
+  mPlane.constant = -(PANS[0].g.position.y + 0.5);       // 游標對應「秤盤高度」的位置
+  if (raycaster.ray.intersectPlane(mPlane, mHit)) {
+    mDrag.it.target.set(clamp(mHit.x, -19, 19), DRAG_Y, clamp(mHit.z, -6, 12));
+    mDrag.near = nearPan(mHit);
+  }
+});
+function mEnd() {
+  if (!mDrag) return;
+  const { it, moved, wasOn, near } = mDrag;
+  it.drag = false;
+  if (moved) dropItem(it, near);
+  else {                                                  // 單純點一下
+    if (it.key === 'clay' && wasOn === 'L') morphClay(it);
+    else if (it.key === 'clay') massMsg('先把黏土放上<b>左盤</b>，再點它看看會發生什麼事！');
+    it.on = wasOn;
+  }
+  mDrag = null; controls.enabled = true; renderer.domElement.style.cursor = '';
+}
+renderer.domElement.addEventListener('pointerup', mEnd);
+renderer.domElement.addEventListener('pointercancel', mEnd);
+$('massReset').addEventListener('click', () => {
+  MASS.items.forEach(i => { i.on = null; i.target.copy(i.home); });
+  MASS.rider = 0; $('rider').value = 0; $('riderV').textContent = '0.0';
+});
+
+const hookW = V3(0, 0, 0), rimW = V3(0, 0, 0);
+function updateMass(dt) {
+  const mL = onPan('L').reduce((s, i) => s + i.mass, 0), wR = onPan('R').reduce((s, i) => s + i.mass, 0);
+  const diff = mL - (wR + MASS.rider);
+  const thEq = 0.2 * Math.tanh(diff / 3);                 // 左邊重 → 橫梁左端下沉（逆時針）
+  MASS.om += ((thEq - MASS.th) * 26 - MASS.om * 3.4) * dt;
+  MASS.th += MASS.om * dt;
+  beam.rotation.z = MASS.th;
+  riderMesh.position.x = MASS.rider / 10 * BAL.L;
+  // 秤盤跟著橫梁兩端，保持水平
+  for (const P of PANS) {
+    hookW.set(P.s * BAL.L, -0.55, 0); beam.localToWorld(hookW);
+    P.g.position.set(hookW.x, hookW.y - BAL.hang, hookW.z);
+    P.strings.forEach((m, k) => { const a = k * Math.PI * 2 / 3 + Math.PI / 2; rimW.set(hookW.x + Math.cos(a) * (BAL.panR + 0.05), P.g.position.y + 0.5, hookW.z + Math.sin(a) * (BAL.panR + 0.05)); placeSeg(m, hookW, rimW); });
+  }
+  // 物品位置
+  for (const it of MASS.items) {
+    if (it.on) { const P = PANS[it.on === 'L' ? 0 : 1].g.position, o = it.slot || [0, 0]; it.target.set(P.x + o[0], P.y + 0.06, P.z + o[1]); it.g.position.lerp(it.target, ease(dt, 18)); }
+    else it.g.position.lerp(it.target, ease(dt, it.drag ? 20 : 9));
+    if (it.morph) {
+      it.morph.k = Math.min(1, it.morph.k + dt / 0.6);
+      const s = smooth(0, 1, it.morph.k), w = Math.sin(it.morph.k * Math.PI) * 0.12;
+      it.mesh.scale.lerpVectors(it.morph.from, it.morph.to, s).multiplyScalar(1 + w);
+      if (it.morph.k > 0.45 && it.morph.geo) { it.mesh.geometry.dispose(); it.mesh.geometry = it.morph.geo; it.morph.geo = null; }
+      it.mesh.position.y = 1.5 * it.mesh.scale.y;
+      if (it.morph.k >= 1) it.morph = null;
+    }
+  }
+  tweezers.visible = !!(mDrag && mDrag.moved && mDrag.it.kind === 'w');
+  if (tweezers.visible) { const it = mDrag.it; tweezers.position.copy(it.g.position).add(V3(0, it.h * 0.55, 0)); }
+  // 平衡判斷與綠色微光
+  const hasObj = mL > 0, balanced = hasObj && Math.abs(diff) < 0.05 && Math.abs(MASS.om) < 0.05 && Math.abs(MASS.th) < 0.01;
+  MASS.glow += ((balanced ? 1 : 0) - MASS.glow) * ease(dt, 5);
+  const gp = MASS.glow * (0.7 + 0.3 * Math.sin(wall * 4));
+  beamMat.emissiveIntensity = gp * 0.55; pointerMat.emissiveIntensity = gp * 1.2; plateMat.emissiveIntensity = gp * 0.25;
+  // 標籤
+  lbL.pos.copy(PANS[0].g.position).add(V3(-1.2, -1.4, 3.2)); lbR.pos.copy(PANS[1].g.position).add(V3(1.2, -1.4, 3.2));
+  lbRider.html !== `騎碼 ${MASS.rider.toFixed(1)} g` && (lbRider.el.innerHTML = lbRider.html = `騎碼 ${MASS.rider.toFixed(1)} g`);
+  hookW.set(MASS.rider / 10 * BAL.L, 1.6, 0); beam.localToWorld(hookW); lbRider.pos.copy(hookW);
+  lbObj.forEach((L, i) => { const it = MASS.items[i]; L.visible = !it.on && !it.drag; });
+  // 公式與提示
+  const ws = onPan('R').map(i => i.mass).sort((a, b) => b - a);
+  const wTxt = ws.length ? ws.join(' + ') + (ws.length > 1 ? ` = ${wR}` : '') : '0';
+  let html;
+  if (MASS.msgT > 0) { MASS.msgT -= dt; html = MASS.msg; }
+  else if (!hasObj) html = '👉 把一個<b>待測物</b>拖到<b>左盤</b>（左物右碼）';
+  else if (balanced) html = `⚖️ 平衡了！物體質量 ＝ 砝碼總和（<b>${wR} g</b>）＋ 騎碼（<b>${MASS.rider.toFixed(1)} g</b>）＝ <b>${(wR + MASS.rider).toFixed(1)} g</b>`;
+  else html = `物體質量 ＝ 砝碼總和（<b>${wTxt} g</b>）＋ 騎碼（<b>${MASS.rider.toFixed(1)} g</b>）？　` + (diff > 0 ? '👈 <b>左盤較重</b>：加砝碼，或把騎碼往右移' : '👉 <b>右盤較重</b>：拿掉砝碼，或把騎碼往左移');
+  setBanner(html, balanced ? 'good' : '');
+  const obj = onPan('L')[0];
+  setHTML('massStat',
+    `左盤：<b>${obj ? MASS_OBJ[obj.key].emoji + ' ' + MASS_OBJ[obj.key].name : '（空）'}</b><br>` +
+    `右盤砝碼：<b>${ws.length ? ws.map(w => w + ' g').join('、') : '（空）'}</b><br>` +
+    `騎碼：<b>${MASS.rider.toFixed(1)} g</b>　指針：<b class="${balanced ? 'g' : ''}">${balanced ? '指在正中央 ✔' : Math.abs(MASS.th) < 0.01 ? '中央附近' : MASS.th > 0 ? '偏右（左盤重）' : '偏左（右盤重）'}</b>` +
+    (balanced ? `<hr>測得質量 <b class="g">${(wR + MASS.rider).toFixed(1)} g</b>` : ''));
+}
+
+/* =========================================================
+   體積測量：量筒排水法（1 單位 ＝ 1 cm，量筒 250 mL）
+   ========================================================= */
+const VOL = { group: new THREE.Group(), obj: null, phase: 'idle', t: 0, V: 120, Vshow: 120, eye: 0, eyeShow: 0, objs: {}, splash: [], read: {} };
+scene.add(VOL.group); VOL.group.visible = false;
+const CY = { ri: 2.6, ro: 2.8, y0: 1.1, top: 15.2 };
+const AREA = Math.PI * CY.ri * CY.ri;                    // ≈ 21.2 cm²：每升高 1 cm ＝ 21.2 mL
+const V1 = 120, V_STONE = 18, V_BALL = 33.5, V_SINK = 10, BALL_R = 2.0, BALL_DRAFT_V = 2.7;
+const yOfV = V => CY.y0 + V / AREA;
+const VOL_X = 0, EYE_D = 40;                      // 眼睛（鏡頭）到量筒的距離
+{
+  const g = VOL.group;
+  const foot = new THREE.Mesh(new THREE.CylinderGeometry(4.2, 4.4, 0.7, 6), glassM({ opacity: 0.32 })); foot.position.y = 0.35; g.add(foot);
+  const prof = [[0, CY.y0 - 0.15], [CY.ro, CY.y0 - 0.15], [CY.ro, CY.top], [CY.ro + 0.18, CY.top + 0.12], [CY.ri, CY.top + 0.05], [CY.ri, CY.y0], [0, CY.y0]].map(([r, y]) => new THREE.Vector2(r, y));
+  const tube = new THREE.Mesh(new THREE.LatheGeometry(prof, 64), glassM({ opacity: 0.16 })); tube.renderOrder = 6; g.add(tube);
+  const spout = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.8, 16, 1, true).rotateZ(Math.PI / 2), glassM({ opacity: 0.25 })); spout.position.set(-CY.ro - 0.2, CY.top, 0); g.add(spout);
+  // 刻度（貼在量筒正面外壁）
+  const H = 260 / AREA, c = document.createElement('canvas'); c.width = 512; c.height = 4096; const x = c.getContext('2d');
+  x.strokeStyle = '#3e2723'; x.fillStyle = '#3e2723'; x.textBaseline = 'middle';
+  for (let v = 0; v <= 260; v += 2) {
+    const py = (1 - v / 260) * 4096, big = v % 10 === 0, huge = v % 50 === 0;
+    x.lineWidth = huge ? 9 : big ? 7 : 4; x.beginPath(); x.moveTo(150, py); x.lineTo(huge ? 330 : big ? 290 : 240, py); x.stroke();
+    if (big && v > 0 && v <= 250) { x.font = `800 ${huge ? 70 : 50}px sans-serif`; x.fillText(v, 345, py); }
+  }
+  x.font = '800 60px sans-serif'; x.fillText('mL', 345, (1 - 255 / 260) * 4096 - 120);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+  const scale = new THREE.Mesh(new THREE.CylinderGeometry(CY.ro + 0.01, CY.ro + 0.01, H, 32, 1, true, -0.55, 1.1), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false }));
+  scale.position.y = CY.y0 + H / 2; scale.renderOrder = 7; g.add(scale);
+  shadowed(g); tube.castShadow = false;
+}
+// 水（含凹液面）
+const waterMat = new THREE.MeshPhysicalMaterial({ color: 0x4f9fe0, roughness: 0.1, transparent: true, opacity: 0.42, depthWrite: false });
+const water = new THREE.Mesh(new THREE.CylinderGeometry(CY.ri - 0.02, CY.ri - 0.02, 1, 48).translate(0, 0.5, 0), waterMat);
+water.position.y = CY.y0; water.renderOrder = 4; VOL.group.add(water);
+const MEN_D = 0.3;
+const menisc = new THREE.Mesh(new THREE.LatheGeometry(Array.from({ length: 13 }, (_, i) => { const r = (CY.ri - 0.02) * i / 12; return new THREE.Vector2(r, MEN_D * Math.pow(i / 12, 3)); }).concat([new THREE.Vector2(CY.ri - 0.02, 0)]), 48),
+  new THREE.MeshPhysicalMaterial({ color: 0x3f8fd6, roughness: 0.05, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide }));
+menisc.renderOrder = 5; VOL.group.add(menisc);
+// 物體：石頭、乒乓球、重錘
+VOL.objs.stone = shadowed(new THREE.Mesh(noisyGeo(new THREE.IcosahedronGeometry(1.55, 3), 0.14, 5.1), clay(0x8f857a, { roughness: 0.9, clearcoat: 0 })));
+VOL.objs.stone.scale.set(1.05, 0.85, 1);
+VOL.objs.ball = shadowed(new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 40, 28), clay(0xfffaf0, { roughness: 0.35, clearcoat: 0.6 })));
+VOL.objs.sinker = new THREE.Group();
+{
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 2.2, 32), metalM(0x7d8288, { roughness: 0.4 })); body.position.y = 1.1; VOL.objs.sinker.add(body);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.06, 8, 16), metalM(0x8c8f96)); ring.position.y = 2.45; VOL.objs.sinker.add(ring);
+  shadowed(VOL.objs.sinker);
+}
+const string = lineMesh(0.03, clay(0x5d4037)); VOL.group.add(string);
+for (const o of Object.values(VOL.objs)) { o.visible = false; VOL.group.add(o); }
+const drops = new THREE.InstancedMesh(new THREE.SphereGeometry(0.09, 8, 6), new THREE.MeshPhysicalMaterial({ color: 0x8fc6f0, transparent: true, opacity: 0.7, roughness: 0.05 }), 40);
+drops.count = 0; drops.frustumCulled = false; VOL.group.add(drops);
+const lbV = addLabel('', 'hl', null, V3(0, 0, 0), 'vol');
+const lbObjV = addLabel('', '', null, V3(0, 0, 0), 'vol');
+addLabel('250 mL 量筒<br><small>最小刻度 2 mL</small>', '', null, V3(-5.2, 13.5, 0), 'vol');
+
+const sphereCap = (r, d) => { d = clamp(d, 0, 2 * r); return Math.PI * d * d * (3 * r - d) / 3; };
+function submerged(kind, cy, surf) {                     // 物體在水面下的體積（cy：物體中心或底部高度）
+  if (kind === 'stone') { const r = Math.cbrt(V_STONE * 3 / (4 * Math.PI)); return V_STONE * sphereCap(r, surf - (cy - r)) / (4 / 3 * Math.PI * r ** 3); }
+  if (kind === 'ball') return sphereCap(BALL_R, surf - (cy - BALL_R));
+  if (kind === 'sinker') return V_SINK * clamp((surf - cy) / 2.2, 0, 1);
+  return 0;
+}
+function volReset() {
+  VOL.obj = null; VOL.phase = 'idle'; VOL.V = V1;
+  for (const o of Object.values(VOL.objs)) o.visible = false;
+  string.visible = false; VOL.read = {};
+  $('sinkBtn').disabled = true;
+}
+function dropObj(kind) {
+  volReset();
+  VOL.obj = kind; VOL.phase = 'fall'; VOL.vy = 0;
+  const o = VOL.objs[kind]; o.visible = true;
+  VOL.y = 18.5; o.position.set(VOL_X, VOL.y, 0);
+}
+$('dropStone').addEventListener('click', () => dropObj('stone'));
+$('dropBall').addEventListener('click', () => dropObj('ball'));
+$('sinkBtn').addEventListener('click', () => { if (VOL.obj === 'ball' && VOL.phase === 'float') { VOL.phase = 'lift'; VOL.t = 0; $('sinkBtn').disabled = true; } });
+$('volReset').addEventListener('click', volReset);
+$('eye').addEventListener('input', () => { VOL.eye = +$('eye').value; });
+function splash(y) { for (let i = 0; i < 18; i++) VOL.splash.push({ p: V3(rnd(-1.2, 1.2), y, rnd(-1.2, 1.2)), v: V3(rnd(-1, 1), rnd(2, 4.5), rnd(-1, 1)), t: 0 }); }
+
+// 眼睛看出去的 2D 刻度圖
+const eyeCv = $('eyeCv'), eg = eyeCv.getContext('2d');
+function drawEyeCard(Vt, Va, eye) {
+  const W = eyeCv.width, H = eyeCv.height;
+  eg.clearRect(0, 0, W, H);
+  eg.fillStyle = '#fffdf8'; eg.fillRect(0, 0, W, H);
+  // 左：側面示意（眼睛、視線、量筒）
+  const sx = 12, sw = 150, cyl = sx + 104, mid = H / 2;
+  eg.strokeStyle = '#b9c8cf'; eg.lineWidth = 3; eg.strokeRect(cyl, 14, 34, H - 28);
+  eg.fillStyle = 'rgba(79,159,224,.35)'; eg.fillRect(cyl + 2, mid, 30, H - 14 - mid);
+  eg.strokeStyle = '#1e6aa8'; eg.lineWidth = 2; eg.beginPath(); eg.moveTo(cyl + 2, mid - 6); eg.quadraticCurveTo(cyl + 17, mid + 6, cyl + 32, mid - 6); eg.stroke();
+  const ey = mid - clamp(eye, -10, 10) * 6.5;
+  eg.font = '22px sans-serif'; eg.fillText('👁', sx, ey + 8);
+  eg.strokeStyle = '#d84a3f'; eg.lineWidth = 2; eg.setLineDash([5, 4]); eg.beginPath(); eg.moveTo(sx + 24, ey); eg.lineTo(cyl + 17, mid); eg.stroke(); eg.setLineDash([]);
+  const hitY = ey + (mid - ey) * ((cyl - sx - 24) / (cyl + 17 - sx - 24));
+  eg.fillStyle = '#d84a3f'; eg.beginPath(); eg.arc(cyl, hitY, 4, 0, Math.PI * 2); eg.fill();
+  // 右：放大的刻度（看到的讀數）
+  const rx = sx + sw + 18, rw = W - rx - 10, k = 9;          // 每 1 mL 9 像素
+  eg.fillStyle = '#f6fbff'; eg.fillRect(rx, 8, rw, H - 16);
+  eg.save(); eg.beginPath(); eg.rect(rx, 8, rw, H - 16); eg.clip();
+  const yv = v => mid - (v - Va) * k;
+  eg.fillStyle = 'rgba(79,159,224,.38)'; eg.fillRect(rx, yv(Vt) + 4, rw, H);
+  eg.strokeStyle = '#1e6aa8'; eg.lineWidth = 2.5; eg.beginPath(); eg.moveTo(rx, yv(Vt) - 6); eg.quadraticCurveTo(rx + rw / 2, yv(Vt) + 10, rx + rw, yv(Vt) - 6); eg.stroke();
+  eg.strokeStyle = '#3e2723'; eg.fillStyle = '#3e2723'; eg.font = '700 13px sans-serif'; eg.textBaseline = 'middle';
+  for (let v = Math.floor((Va - 12) / 2) * 2; v <= Va + 12; v += 2) {
+    const yy = yv(v), big = v % 10 === 0;
+    eg.lineWidth = big ? 2.5 : 1.3; eg.beginPath(); eg.moveTo(rx + 8, yy); eg.lineTo(rx + (big ? 44 : 28), yy); eg.stroke();
+    if (big) eg.fillText(v, rx + 50, yy);
+  }
+  eg.strokeStyle = '#d84a3f'; eg.lineWidth = 2; eg.beginPath(); eg.moveTo(rx, mid); eg.lineTo(rx + rw, mid); eg.stroke();
+  eg.restore();
+  eg.fillStyle = '#d84a3f'; eg.font = '800 14px sans-serif'; eg.textBaseline = 'alphabetic';
+  eg.fillText(`讀到 ${Va.toFixed(1)} mL`, rx + 6, H - 14);
+}
+
+const volCam = { pos: V3(0, 0, 0), tgt: V3(0, 0, 0) };
+function volCamera() {                                    // 鏡頭 ＝ 學生的眼睛：對準凹液面底部
+  const yM = yOfV(VOL.Vshow);
+  const dist = EYE_D;
+  let sx = 0;
+  if (!window.MobileView?.isMobile()) {
+    const panel = $('panel'), right = panel.classList.contains('collapsed') ? 0 : window.innerWidth - panel.getBoundingClientRect().left;
+    sx = (right / 2) / window.innerWidth * 2 * dist * Math.tan(camera.fov * Math.PI / 360) * camera.aspect;
+  }
+  volCam.tgt.set(VOL_X + sx, yM, 0); volCam.pos.set(VOL_X + sx, yM + VOL.eyeShow, dist);
+  return volCam;
+}
+const dM = new THREE.Matrix4(), dQ = new THREE.Quaternion(), dS = V3(1, 1, 1);
+function updateVol(dt) {
+  const o = VOL.obj && VOL.objs[VOL.obj];
+  const surf = yOfV(VOL.Vshow);
+  const bottom = CY.y0;
+  // ---- 動畫狀態機 ----
+  if (VOL.phase === 'fall') {
+    VOL.vy = Math.min(VOL.vy + 30 * dt, 14); VOL.y -= VOL.vy * dt;
+    const lowest = VOL.obj === 'ball' ? VOL.y - BALL_R : VOL.y - 1.3;
+    if (lowest <= surf) { splash(surf); VOL.phase = VOL.obj === 'ball' ? 'float' : 'sink'; VOL.vy *= 0.25; if (VOL.obj === 'ball') { VOL.bob = -0.9; $('sinkBtn').disabled = false; } }
+  } else if (VOL.phase === 'sink') {
+    VOL.y = Math.max(bottom + 1.3, VOL.y - 4 * dt);
+    if (VOL.y <= bottom + 1.3 + 1e-3) VOL.phase = 'rest';
+  } else if (VOL.phase === 'float') {
+    const rest = surf + BALL_R - 0.7;                     // 浮在水面：只沉入 2.7 mL
+    VOL.bob = (VOL.bob || 0) * Math.exp(-dt * 2.2);
+    VOL.y = rest + VOL.bob * Math.cos(wall * 7);
+  } else if (VOL.phase === 'lift') {                      // 撈起乒乓球、綁上重錘
+    VOL.t += dt; VOL.y += (19 - VOL.y) * ease(dt, 4);
+    if (VOL.t > 1.1) { VOL.phase = 'tie'; VOL.t = 0; VOL.objs.sinker.visible = true; string.visible = true; }
+  } else if (VOL.phase === 'tie') {
+    VOL.t += dt; if (VOL.t > 0.6) { VOL.phase = 'lower'; VOL.t = 0; }
+  } else if (VOL.phase === 'lower') {
+    VOL.y = Math.max(bottom + 2.2 + 0.8 + BALL_R, VOL.y - 3.2 * dt);
+    if (VOL.y <= bottom + 2.2 + 0.8 + BALL_R + 1e-3) VOL.phase = 'sunk';
+  }
+  // ---- 水位 ＝ 原本 ＋ 排開的體積 ----
+  let disp = 0;
+  if (o && o.visible) {
+    if (VOL.obj === 'stone') disp = submerged('stone', VOL.y, surf);
+    else if (VOL.phase === 'float') disp = Math.min(BALL_DRAFT_V, submerged('ball', VOL.y, surf));
+    else {
+      disp = submerged('ball', VOL.y, surf);
+      if (VOL.objs.sinker.visible) disp += submerged('sinker', VOL.y - BALL_R - 0.8 - 2.2, surf);
+    }
+  }
+  VOL.V = V1 + disp;
+  VOL.Vshow += (VOL.V - VOL.Vshow) * ease(dt, 6);
+  water.scale.y = yOfV(VOL.Vshow) - CY.y0; menisc.position.y = yOfV(VOL.Vshow) - 0.005;
+  if (o) o.position.set(VOL_X, VOL.y, 0);
+  if (VOL.objs.sinker.visible) {
+    const sy = VOL.y - BALL_R - 0.8 - 2.2;
+    VOL.objs.sinker.position.set(VOL_X, sy, 0);
+    placeSeg(string, V3(VOL_X, sy + 2.45, 0), V3(VOL_X, VOL.y - BALL_R + 0.05, 0));
+  }
+  if (VOL.obj === 'stone' && o) o.rotation.y += dt * (VOL.phase === 'rest' ? 0 : 1.5);
+  // 水花
+  let n = 0;
+  VOL.splash = VOL.splash.filter(s => (s.t += dt) < 0.9);
+  for (const s of VOL.splash) { s.v.y -= 14 * dt; s.p.addScaledVector(s.v, dt); dM.compose(s.p, dQ, dS); drops.setMatrixAt(n++, dM); }
+  drops.count = n; drops.instanceMatrix.needsUpdate = true;
+  // ---- 視線：俯視高估、仰視低估 ----
+  VOL.eyeShow += (VOL.eye - VOL.eyeShow) * ease(dt, 6);
+  const yM = yOfV(VOL.Vshow), zE = EYE_D, yE = yM + VOL.eyeShow;
+  const yAt = yE + (yM - yE) * (zE - CY.ro) / zE;
+  const Vapp = (yAt - CY.y0) * AREA;
+  drawEyeCard(VOL.Vshow, Vapp, VOL.eyeShow);
+  const view = Math.abs(VOL.eyeShow) < 0.8 ? 'level' : VOL.eyeShow > 0 ? 'down' : 'up';
+  const viewTxt = { level: '👁 <b>平視</b>：視線與凹液面底部同高，讀數最準確', down: '👁 <b>俯視</b>：讀數會<b>偏高（高估）</b>', up: '👁 <b>仰視</b>：讀數會<b>偏低（低估）</b>' }[view];
+  setHTML('eyeTxt', viewTxt);
+  $('eyeV').textContent = view === 'level' ? '平視' : view === 'down' ? '俯視' : '仰視';
+  // ---- 讀數與公式 ----
+  const r1 = v => v.toFixed(1);
+  let html;
+  if (!VOL.obj) html = `量筒裡有 <b>${V1} mL</b> 的水（V₁）。選一個物體投入，用<b>排水法</b>測體積`;
+  else if (VOL.obj === 'stone') html = VOL.phase === 'rest'
+    ? `🪨 石頭體積 ＝ V₂ − V₁ ＝ <b>${r1(V1 + V_STONE)}</b> − <b>${V1}</b> ＝ <b>${V_STONE} mL</b>（${V_STONE} cm³）`
+    : '石頭沉入水中，水面上升…';
+  else if (VOL.phase === 'fall') html = '投入乒乓球…';
+  else if (VOL.phase === 'float') html = `🏓 乒乓球<b>浮在水面</b>，水面只升到 ${r1(VOL.Vshow)} mL ── <b>無法測量！</b>請使用<b>重錘法</b>（按「掛上重錘」）`;
+  else if (VOL.phase === 'sunk') html = `⚓ 重錘法：乒乓球體積 ＝ V(球＋重錘) − V(只有重錘) ＝ <b>${r1(V1 + V_SINK + V_BALL)}</b> − <b>${V1 + V_SINK}</b> ＝ <b>${V_BALL} mL</b>`;
+  else html = '把乒乓球撈起來，綁上重錘一起沉入水中…';
+  setBanner(html, (VOL.obj === 'stone' && VOL.phase === 'rest') || VOL.phase === 'sunk' ? 'good' : '');
+  setHTML('volStat',
+    `原本水量 V₁ ＝ <b>${V1} mL</b><br>現在讀數 ＝ <b class="b">${r1(VOL.Vshow)} mL</b>（平視）<br>` +
+    (VOL.phase === 'sunk' || VOL.phase === 'lower' ? `只放重錘時的讀數 ＝ <b>${V1 + V_SINK} mL</b>（重錘 ${V_SINK} mL，事先量好）<br>` : '') +
+    `眼睛看到的讀數 ＝ <b class="${view === 'level' ? 'g' : 'r'}">${r1(Vapp)} mL</b>`);
+  lbV.pos.set(VOL_X + 5.4, yOfV(VOL.Vshow), 0); lbV.el.innerHTML !== `水面 ${r1(VOL.Vshow)} mL` && (lbV.el.innerHTML = `水面 ${r1(VOL.Vshow)} mL`);
+  lbObjV.visible = !!o; if (o) { lbObjV.pos.set(VOL_X - 5, VOL.y + 0.3, 0); lbObjV.el.innerHTML = { stone: '🪨 石頭（沉體）', ball: VOL.objs.sinker.visible ? '🏓 乒乓球＋⚓ 重錘' : '🏓 乒乓球（浮體）' }[VOL.obj]; }
+  // 鏡頭（沒有在轉場時，鏡頭就是眼睛）
+  if (!camTw) { const c = volCamera(); camera.position.lerp(c.pos, ease(dt, 8)); controls.target.lerp(c.tgt, ease(dt, 8)); }
+}
+
+/* =========================================================
+   模式切換
+   ========================================================= */
+let mode = 'len';
+const lenGroup = new THREE.Group(); scene.add(lenGroup);
+lenGroup.add(pencil, laser, ruler);
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('.mtab').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+  document.querySelectorAll('.msec').forEach(s => { s.hidden = s.dataset.mode !== m; });
+  lenGroup.visible = m === 'len'; MASS.group.visible = m === 'mass'; VOL.group.visible = m === 'vol';
+  controls.enabled = m !== 'vol';                        // 體積分頁：鏡頭由「視線高度」滑桿控制
+  renderer.domElement.style.cursor = '';
+  if (m === 'len') { goView(view === 'mass' ? 'overview' : view); banner(lenBanner.html, lenBanner.cls); }
+  else if (m === 'mass') goView('mass');
+  else { const c = volCamera(); camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: c.pos.clone(), t1: c.tgt.clone(), k: 0 }; }
+  try { history.replaceState(null, '', '#' + m); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.mtab').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+function setBanner(html, cls = '') {
+  const b = $('banner');
+  if (b.innerHTML !== html) b.innerHTML = html;
+  const c = 'banner ' + cls; if (b.className !== c) b.className = c;
+  b.style.opacity = '';
+}
+
+/* =========================================================
    主迴圈
    ========================================================= */
 function resize() {
@@ -547,12 +1117,14 @@ function resize() {
   camera.fov = 40;
   camera.updateProjectionMatrix();
 }
-window.addEventListener('resize', () => { resize(); goView(view, true); });
+window.addEventListener('resize', () => { resize(); if (mode === 'len') goView(view, true); else if (mode === 'mass') goView('mass', true); });
 
 const clock = new THREE.Clock();
 let wall = 0;
 function frame(dt) {
   wall += dt;
+  if (mode === 'mass') updateMass(dt);
+  if (mode === 'vol') updateVol(dt);
   if (snap) {                                            // 吸附到正確位置
     snap.k = Math.min(1, snap.k + dt * 5);
     const s = smooth(0, 1, snap.k);
@@ -576,12 +1148,14 @@ function frame(dt) {
 }
 function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
 
-window.lab = { frame, resetRuler, checkAlign, ruler, camera, controls, get aligned() { return aligned; }, PL, PR, Z_TARGET };
+window.lab = { frame, setMode, MASS, VOL, dropItem, dropObj, morphClay, resetRuler, checkAlign, ruler, camera, controls, get aligned() { return aligned; }, PL, PR, Z_TARGET };
 
 resize();
 buildRuler('A');
 resetRuler('A');
 goView('overview', true);
+volReset();
+if (['mass', 'vol'].includes(location.hash.slice(1))) setMode(location.hash.slice(1));
 animate();
 </script>
 
