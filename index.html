@@ -208,7 +208,7 @@
     <div class="features">
       <div class="feature"><div class="ico">👀</div><h3>看見看不見的</h3><p>原子、電子、氣流、天體運動……課本只能用平面圖畫的東西，在這裡都是可以 360° 轉動的立體模型。</p></div>
       <div class="feature"><div class="ico">🖐️</div><h3>自己動手操作</h3><p>拖曳滑桿、改變條件、按下按鈕，親眼看到「改了什麼就發生什麼」，觀念自然就記住了。</p></div>
-      <div class="feature"><div class="ico">🎯</div><h3>對準會考重點</h3><p>依 108 課綱章節編排，每個實驗室開頭都有「學習目標」與會考關鍵字，操作完就知道該會什麼。</p></div>
+      <div class="feature"><div class="ico">🎯</div><h3>對準會考重點</h3><p>依 108 課綱章節編排，每個實驗室都有「學習目標」、會考關鍵字，以及附詳解的「會考自我檢測」，學完馬上知道會不會。</p></div>
     </div>
   </section>
 
@@ -222,7 +222,7 @@
     <div class="steps">
       <div class="step"><h3>選一個單元</h3><p>依年級與課本章節找到正在學（或卡住）的單元，點進去就能用，電腦、平板、手機都可以。</p></div>
       <div class="step"><h3>先看學習目標</h3><p>每個實驗室一打開就會告訴你「這個單元要學會什麼」和會考常考的關鍵字。</p></div>
-      <div class="step"><h3>動手做、對照課本</h3><p>照著畫面提示操作、觀察變化，再回頭看課本或題目，原本抽象的觀念就變得具體。</p></div>
+      <div class="step"><h3>動手做，再自我檢測</h3><p>照著畫面提示操作、觀察變化，最後做「📝 會考自我檢測」，每題都有詳解，答錯就回去再操作一次。</p></div>
     </div>
   </section>
 
@@ -351,7 +351,7 @@ function renderStats() {
   const stats = [
     { n: ready, label: '個已上線單元' },
     { n: pages, label: '座 3D 互動實驗室' },
-    { n: '國一～國三', label: '生物 · 理化 · 地科' }
+    { n: '126', label: '題會考題型自我檢測' }
   ];
   document.getElementById('heroStats').innerHTML = stats.map(s => `<div class="stat"><b>${s.n}</b><span>${s.label}</span></div>`).join('');
 }

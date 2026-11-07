@@ -58,9 +58,12 @@
   .lg-k span{font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:rgba(161,103,74,.12);color:#8a4f34}
   .lg-go{width:100%;border:none;cursor:pointer;border-radius:14px;padding:12px;font:800 15px "Noto Sans TC","Microsoft JhengHei",sans-serif;color:#fff;background:#5b8a72;box-shadow:0 8px 18px rgba(79,125,92,.3)}
   .lg-go:hover{background:#4f7d65}
+  .lg-quiz{width:100%;margin-top:8px;border:1.5px solid #cfe1d5;cursor:pointer;border-radius:14px;padding:10px;font:700 13px "Noto Sans TC","Microsoft JhengHei",sans-serif;color:#3f7a5a;background:#f1f8f3}
+  .lg-quiz:hover{background:#e4f2e8}
   .lg-brand{text-align:center;font-size:11px;color:#8d7366;margin-top:10px;letter-spacing:.08em}
   @media (max-width:768px),(max-width:1100px) and (orientation:portrait){.lg-pill{right:auto;left:12px;bottom:14px;font-size:12px;padding:8px 12px}}
-  @media (prefers-reduced-motion:reduce){.lg-mask,.lg-card{transition:none}}`;
+  @media (prefers-reduced-motion:reduce){.lg-mask,.lg-card{transition:none}}
+  @media (max-width:768px),(max-width:1100px) and (orientation:portrait){body.mv-on:not(.mv-closed) .lg-pill,body.mv-on:not(.mv-closed) .qz-pill{display:none}}`;
   const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -87,7 +90,10 @@
       <ol>${G.g.map(x => `<li>${esc(x)}</li>`).join('')}</ol>
       <div class="lg-k"><b>會考關鍵字</b>${G.k.map(x => `<span>${esc(x)}</span>`).join('')}</div>
       <button class="lg-go" type="button">開始動手做 →</button>
+      ${window.LabQuiz ? `<button class="lg-quiz" type="button">📝 已經會了？直接做會考自我檢測（${window.LabQuiz.count} 題）</button>` : ''}
       <div class="lg-brand">會考 3D 自然實驗室</div></div>`;
+    const qb = mask.querySelector('.lg-quiz');
+    if (qb) qb.addEventListener('click', () => { close(); setTimeout(() => window.LabQuiz && window.LabQuiz.open(), 260); });
     // 不讓點擊、滑動穿透到後面的 3D 畫面
     ['pointerdown', 'touchstart', 'wheel', 'mousedown'].forEach(ev => mask.addEventListener(ev, e => e.stopPropagation(), { passive: true }));
     mask.addEventListener('click', e => { if (e.target === mask || e.target.closest('.lg-go')) close(); });
@@ -101,9 +107,13 @@
 
   function init() {
     document.body.appendChild(pill);
+    if (window.MobileView) document.body.classList.add('mv-on');   // 手機抽屜打開時先藏起按鈕，避免擋住面板
+    if (!document.querySelector('script[src^="quiz.js"]')) {                // 載入會考自我檢測
+      const s = document.createElement('script'); s.src = 'quiz.js'; document.body.appendChild(s);
+    }
     let seen = false;
     try { seen = localStorage.getItem('lg-seen:' + file) === '1'; localStorage.setItem('lg-seen:' + file, '1'); } catch (e) { /* 無痕模式等 */ }
-    if (!seen) setTimeout(open, 600);
+    if (!seen) setTimeout(open, 800);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
