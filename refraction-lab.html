@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>光的折射與視深實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .84rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .y { color: #b7860b; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); }
+  .legend { display: grid; gap: 4px; margin-top: 8px; font-size: .76rem; font-weight: 700; color: var(--ink-soft); }
+  .legend span { display: flex; align-items: center; gap: 8px; }
+  .legend i { flex: none; width: 30px; height: 0; border-top: 4px solid; border-radius: 2px; }
+  .legend i.dash { border-top-style: dashed; }
+  .note { background: rgba(255,248,230,.85); border: 1.5px solid #ead7a8; color: #6d4c2f; font-weight: 600; border-radius: 14px; padding: 8px 11px; margin-top: 10px; font-size: .76rem; line-height: 1.6; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(860px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .92rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .08em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.1vw, 1.7rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .red { color: #c62828; } .cap .yel { color: #b7860b; } .cap .grn { color: var(--ok); }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.real { background: #c62828; color: #fff; }
+  .tag.ghost { background: rgba(255,248,214,.95); color: #8a6200; border: 1.5px dashed #d4a514; }
+  .tag.eye { background: #5d4037; color: #fff; }
+  .tag.ang { background: rgba(255,255,255,.92); }
+  .tag.tir { background: #c62828; color: #fff; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .76rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g8">‹ 課程總覽</a>
+  <div class="title">光的折射與視深實驗室</div>
+  <div class="body">
+    <div class="tabs">
+      <button class="tab on" data-tab="vis">👁️ 視覺錯覺與視深<small>硬幣與飛鳥</small></button>
+      <button class="tab" data-tab="opt">🔴 光學玻璃折射盤<small>法線與折射角</small></button>
+    </div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="vis">
+      <div class="concept" style="--cc:#a1674a"><div class="ct">大腦以為光走直線</div><div class="cd">光在水面<b>折射</b>轉彎，但大腦把進入眼睛的光線<b>往回直直延伸</b>，在延伸線交會處「看見」虛像。</div></div>
+      <label class="lab">觀察情境</label>
+      <div class="row2">
+        <button class="btn on" data-scen="coin">🪙 從空氣看<small>水底的硬幣</small></button>
+        <button class="btn" data-scen="bird">🐦 從水底看<small>空中的飛鳥</small></button>
+      </div>
+      <label class="lab" for="eyeAng">👁 觀察角度（離開鉛直線）<b><span id="eyeAngV">30</span>°</b></label>
+      <input type="range" id="eyeAng" min="0" max="60" step="1" value="30">
+      <div class="legend">
+        <span><i style="border-color:#e53935"></i>真實光線（物體 → 水面折射 → 眼睛）</span>
+        <span><i class="dash" style="border-color:#e0b000"></i>大腦延伸線（以為光走直線）</span>
+      </div>
+      <div class="stat" id="visStat"></div>
+      <p class="desc">斜著看越多，折射越明顯，虛像偏移也越大。</p>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="opt" hidden>
+      <div class="concept" style="--cc:#c62828"><div class="ct">司乃耳定律 n₁ sinθ₁ ＝ n₂ sinθ₂</div><div class="cd">進入玻璃（光速變慢）→ <b>偏向法線</b><br>回到空氣（光速變快）→ <b>偏離法線</b></div></div>
+      <label class="lab" for="glassSel">更換玻璃</label>
+      <select id="glassSel">
+        <option value="rect">▭ 長方體玻璃磚</option>
+        <option value="semi">◓ 半圓形玻璃磚</option>
+        <option value="prism">△ 三稜鏡</option>
+      </select>
+      <label class="lab" for="incAng">入射角 θ₁<b><span id="incAngV">30</span>°</b></label>
+      <input type="range" id="incAng" min="0" max="80" step="1" value="30">
+      <div class="stat" id="optStat"></div>
+      <div class="note" id="optNote"></div>
+    </section>
+
+    <button class="btn" id="viewBtn">🔭 回到預設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const ease = (dt, k) => 1 - Math.exp(-dt * k);
+const DEG = Math.PI / 180;
+const f1 = x => x.toFixed(1);
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影（不使用 Bloom）
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(32, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+
+/* ----- 光線繪製工具：用細圓管畫光線（WebGL 的線條在多數電腦上只能 1 像素粗，教室投影看不清楚） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const CONE = new THREE.ConeGeometry(1, 1, 14);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL), cones = makePool(group, CONE);
+  return {
+    begin() { tubes.begin(); cones.begin(); },
+    end() { tubes.end(); cones.end(); },
+    ray(a, b, color, { r = 0.04, glow = true, arrow = true } = {}) {      // 實線光線（含柔和外暈與方向箭頭）
+      placeSeg(tubes.get(basic(color)), a, b, r);
+      if (glow) placeSeg(tubes.get(basic(color, 0.2)), a, b, r * 2.4);
+      const len = a.distanceTo(b);
+      if (arrow && len > 0.9) {
+        const c = cones.get(basic(color)); const dir = b.clone().sub(a).normalize();
+        c.position.copy(a).lerp(b, 0.5); c.quaternion.setFromUnitVectors(YUP, dir); c.scale.set(r * 3.2, r * 7, r * 3.2);
+      }
+    },
+    dash(a, b, color, { r = 0.03, on = 0.24, off = 0.16, opacity = 1 } = {}) {   // 虛線
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'vis', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+/* =========================================================
+   Tab 1：視覺錯覺與視深（硬幣與飛鳥）
+   光線都在水缸正中央的鉛直面（z = 0）上；1 格 ＝ 10 公分
+   ========================================================= */
+const N_W = 1.33;                                       // 水的折射率
+const TW = 12, TH = 5, TD = 3.6, WS = 2.5;              // 水缸寬、高、深；水面高度
+const VIS = { group: new THREE.Group(), scen: 'coin', ang: 30, angShow: 30, swap: 1 };
+scene.add(VIS.group);
+const COIN_P = V2(-2, 0.11), BIRD_P = V2(-2, 6.4);
+{
+  const g = VIS.group;
+  // 木製底座
+  const base = shadowed(new THREE.Mesh(new RoundedBoxGeometry(TW + 0.8, 0.3, TD + 0.8, 4, 0.12), clay(0xc9a77c)));
+  base.position.set(0, -0.1, 0); g.add(base);
+  // 玻璃缸
+  const tankGeo = new THREE.BoxGeometry(TW, TH, TD);
+  const tank = new THREE.Mesh(tankGeo, new THREE.MeshPhysicalMaterial({ color: 0xf4fbff, roughness: 0.05, clearcoat: 1, transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide }));
+  tank.position.y = TH / 2 + 0.05; tank.renderOrder = 5; g.add(tank);
+  const edges = new THREE.LineSegments(new THREE.EdgesGeometry(tankGeo), new THREE.LineBasicMaterial({ color: 0xb9c8cf, transparent: true, opacity: 0.9 }));
+  edges.position.copy(tank.position); g.add(edges);
+  // 水
+  const water = new THREE.Mesh(new THREE.BoxGeometry(TW - 0.06, WS, TD - 0.06), new THREE.MeshPhysicalMaterial({ color: 0x7dbfd6, roughness: 0.1, transparent: true, opacity: 0.34, depthWrite: false }));
+  water.position.y = WS / 2 + 0.05; water.renderOrder = 4; g.add(water);
+  const surf = new THREE.Mesh(new THREE.PlaneGeometry(TW - 0.06, TD - 0.06).rotateX(-Math.PI / 2), new THREE.MeshPhysicalMaterial({ color: 0xbfe6f2, roughness: 0.05, clearcoat: 1, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide }));
+  surf.position.y = WS + 0.05; surf.renderOrder = 4; g.add(surf);
+  // 缸底的細沙
+  const sand = new THREE.Mesh(new THREE.BoxGeometry(TW - 0.08, 0.06, TD - 0.08), clay(0xe9dcc0, { roughness: 0.95, clearcoat: 0 }));
+  sand.position.y = 0.06; sand.receiveShadow = true; g.add(sand);
+}
+VIS.group.position.y = 0;
+const OY = 0.05;                                         // 水缸內的高度基準
+const P3 = (p, z = 0) => V3(p.x, p.y + OY, z);           // 2D 光路座標 → 3D
+
+// 金幣與虛像金幣
+function makeCoin(ghost) {
+  const m = ghost
+    ? new THREE.MeshStandardMaterial({ color: 0xf2c94c, emissive: 0xc99a10, emissiveIntensity: 0.5, transparent: true, opacity: 0.6, depthWrite: false, roughness: 0.4 })
+    : metal(0xe2b33c, { metalness: 0.85, roughness: 0.3 });
+  const g = new THREE.Group();
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.1, 44), m);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.47, 0.035, 8, 44).rotateX(Math.PI / 2), m); rim.position.y = 0.05;
+  g.add(disc, rim);
+  if (!ghost) shadowed(g); else g.renderOrder = 6;
+  VIS.group.add(g); return g;
+}
+const coin = makeCoin(false), coinGhost = makeCoin(true);
+// 飛鳥與虛像飛鳥
+function makeBird(ghost) {
+  const M = c => ghost ? new THREE.MeshStandardMaterial({ color: c, transparent: true, opacity: 0.42, depthWrite: false, roughness: 0.6 }) : clay(c);
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 16), M(0x8fb3cf)); body.scale.set(1.25, 0.82, 0.82); g.add(body);
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 12), M(0xf3ead8)); belly.position.set(0.1, -0.12, 0); belly.scale.set(1.1, 0.7, 0.75); g.add(belly);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 20, 14), M(0x8fb3cf)); head.position.set(0.58, 0.25, 0); g.add(head);
+  const beak = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.26, 12).rotateZ(-Math.PI / 2), M(0xf0a04b)); beak.position.set(0.92, 0.22, 0); g.add(beak);
+  for (const z of [0.2, -0.2]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), M(0x3e2723)); e.position.set(0.76, 0.32, z); g.add(e); }
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 12).rotateZ(Math.PI / 2), M(0x6f97b6)); tail.position.set(-0.75, 0.05, 0); tail.scale.z = 0.4; g.add(tail);
+  const wings = [0.42, -0.42].map(z => {
+    const piv = new THREE.Group(); piv.position.set(0, 0.15, z * 0.6); g.add(piv);
+    const w = new THREE.Mesh(new THREE.SphereGeometry(0.5, 18, 10), M(0x6f97b6)); w.scale.set(0.75, 0.12, 0.85); w.position.z = Math.sign(z) * 0.4; piv.add(w);
+    return piv;
+  });
+  g.userData.wings = wings;
+  if (!ghost) shadowed(g); else g.renderOrder = 6;
+  VIS.group.add(g); return g;
+}
+const bird = makeBird(false), birdGhost = makeBird(true);
+// 眼睛
+const eye = new THREE.Group(); VIS.group.add(eye);
+{
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.4, 28, 18), clay(0xfffdf8, { clearcoat: 0.8 }));
+  const iris = new THREE.Mesh(new THREE.CircleGeometry(0.2, 28), clay(0x6d4c41)); iris.position.z = 0.401;
+  const pupil = new THREE.Mesh(new THREE.CircleGeometry(0.1, 24), clay(0x241612)); pupil.position.z = 0.403;
+  const lid = new THREE.Mesh(new THREE.SphereGeometry(0.43, 28, 12, 0, Math.PI * 2, 0, Math.PI * 0.42), clay(0xe8c3a8)); lid.rotation.x = -0.35;
+  eye.add(ball, iris, pupil, lid); eye.scale.setScalar(1.45); shadowed(eye);
+}
+const visDraw = Drawer(VIS.group);
+const lbReal = addLabel('vis', '', 'real', V3(0, 0, 0));
+const lbGhost = addLabel('vis', '', 'ghost', V3(0, 0, 0));
+const lbEye = addLabel('vis', '', 'eye', V3(0, 0, 0));
+addLabel('vis', '💧 水（n ＝ 1.33）', '', V3(4.6, 0.55, TD / 2 + 0.1));
+const lbAir = addLabel('vis', '空氣（n ＝ 1.00）', '', V3(4.6, 3.6, TD / 2 + 0.1));
+
+/** 在水面上找出「從 S 經水面折射到 T」的折射點（費馬原理，二分法；結果完全符合司乃耳定律） */
+function solveRay(S, ns, T, ne) {
+  let lo = Math.min(S.x, T.x), hi = Math.max(S.x, T.x);
+  if (hi - lo < 1e-9) return V2(lo, WS);
+  const f = px => ns * (px - S.x) / Math.hypot(px - S.x, WS - S.y) - ne * (T.x - px) / Math.hypot(T.x - px, T.y - WS);
+  for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (f(m) > 0) hi = m; else lo = m; }
+  return V2((lo + hi) / 2, WS);
+}
+/** 兩條「大腦延伸線」的交點 ＝ 虛像位置 */
+function crossLines(p1, u1, p2, u2) {
+  const den = u1.x * u2.y - u1.y * u2.x;
+  if (Math.abs(den) < 1e-9) return null;
+  const w = p2.clone().sub(p1);
+  const s = (w.x * u2.y - w.y * u2.x) / den;
+  return p1.clone().addScaledVector(u1, s);
+}
+function visGeometry(scen, angDeg) {
+  const a = angDeg * DEG;
+  const coinMode = scen === 'coin';
+  const S = coinMode ? COIN_P.clone() : BIRD_P.clone();
+  const ns = coinMode ? N_W : 1, ne = coinMode ? 1 : N_W;
+  let P0, E;
+  if (coinMode) {
+    const tw = Math.asin(Math.sin(a) / N_W);
+    P0 = V2(S.x + (WS - S.y) * Math.tan(tw), WS);
+    E = P0.clone().add(V2(Math.sin(a), Math.cos(a)).multiplyScalar(4.6));
+  } else {
+    const tw = Math.asin(Math.sin(a) / N_W);
+    P0 = V2(S.x + (S.y - WS) * Math.tan(a), WS);
+    E = P0.clone().add(V2(Math.sin(tw), -Math.cos(tw)).multiplyScalar(1.85));
+  }
+  const look = P0.clone().sub(E).normalize();
+  const perp = V2(-look.y, look.x);
+  const T = [E.clone().addScaledVector(perp, 0.5), E.clone().addScaledVector(perp, -0.5)];
+  const P = T.map(t => solveRay(S, ns, t, ne));
+  const U = P.map((p, i) => p.clone().sub(T[i]).normalize());
+  const I = crossLines(P[0], U[0], P[1], U[1]) || S.clone();
+  return { S, E, P0, T, P, I, look };
+}
+function setScen(s) {
+  if (VIS.scen === s) return;
+  VIS.scen = s; VIS.swap = 0;
+  document.querySelectorAll('[data-scen]').forEach(b => b.classList.toggle('on', b.dataset.scen === s));
+  const max = s === 'coin' ? 60 : 30;
+  $('eyeAng').max = max;
+  if (VIS.ang > max) { VIS.ang = max; $('eyeAng').value = max; }
+  $('eyeAngV').textContent = VIS.ang;
+  goView(TABS.vis.cam());
+}
+document.querySelectorAll('[data-scen]').forEach(b => b.addEventListener('click', () => setScen(b.dataset.scen)));
+$('eyeAng').addEventListener('input', () => { VIS.ang = +$('eyeAng').value; $('eyeAngV').textContent = VIS.ang; });
+
+const eyeTarget = V3(0, 0, 0);
+function updateVis(dt) {
+  VIS.angShow += (VIS.ang - VIS.angShow) * ease(dt, 7);
+  VIS.swap = Math.min(1, VIS.swap + dt / 0.5);
+  const coinMode = VIS.scen === 'coin';
+  const G = visGeometry(VIS.scen, VIS.angShow);
+  // 物體
+  coin.visible = coinGhost.visible = coinMode;
+  bird.visible = birdGhost.visible = !coinMode;
+  const pop = smooth(0, 1, VIS.swap);
+  if (coinMode) {
+    coin.position.copy(P3(G.S)).setY(G.S.y + OY - 0.05);
+    coinGhost.position.copy(P3(G.I)).setY(G.I.y + OY - 0.05);
+    coinGhost.scale.setScalar(pop);
+  } else {
+    const flap = Math.sin(wall * 7) * 0.55;
+    for (const b of [bird, birdGhost]) b.userData.wings.forEach((w, i) => { w.rotation.x = (i ? -1 : 1) * flap; });
+    bird.position.copy(P3(G.S)); bird.position.y += Math.sin(wall * 2) * 0.03;
+    birdGhost.position.copy(P3(G.I)); birdGhost.position.y = bird.position.y + (G.I.y - G.S.y);
+    birdGhost.scale.setScalar(pop);
+  }
+  eye.position.copy(P3(G.E));
+  eye.lookAt(eyeTarget.copy(P3(G.P0)));
+  // 光線
+  visDraw.begin();
+  for (let i = 0; i < 2; i++) {
+    const s3 = P3(G.S), p3 = P3(G.P[i]), t3 = P3(G.T[i]);
+    visDraw.ray(s3, p3, 0xe53935);
+    visDraw.ray(p3, t3, 0xe53935);
+    visDraw.dash(p3, P3(G.I), 0xf0b000, { r: 0.05, on: 0.2, off: 0.12 });              // 大腦延伸線（往物體那側延伸）
+    visDraw.dash(p3.clone().add(V3(0, -0.9, 0)), p3.clone().add(V3(0, 0.9, 0)), 0xffffff, { r: 0.016, on: 0.12, off: 0.1, opacity: 0.85 });   // 法線
+  }
+  visDraw.end();
+  // 數據
+  const depthReal = coinMode ? WS - G.S.y : G.S.y - WS;
+  const depthApp = coinMode ? WS - G.I.y : G.I.y - WS;
+  const cm = x => (x * 10).toFixed(0);
+  const aW = Math.asin(Math.sin(VIS.angShow * DEG) / N_W) / DEG;
+  if (coinMode) {
+    setLabel(lbReal, `🪙 真實金幣　深 ${cm(depthReal)} cm`); lbReal.pos.copy(P3(G.S)).add(V3(-1.6, -0.15, 0));
+    setLabel(lbGhost, `✨ 虛像　看起來只有 ${cm(depthApp)} cm 深`); lbGhost.pos.copy(P3(G.I)).add(V3(-2.3, 0.35, 0));
+    setLabel(lbEye, '👁 空氣中的眼睛'); lbEye.pos.copy(P3(G.E)).add(V3(1.9, 0, 0));
+  } else {
+    setLabel(lbReal, `🐦 真實飛鳥　離水面 ${cm(depthReal)} cm`); lbReal.pos.copy(P3(G.S)).add(V3(-2.4, -0.1, 0));
+    setLabel(lbGhost, `✨ 虛像　看起來在 ${cm(depthApp)} cm 高`); lbGhost.pos.copy(P3(G.I)).add(V3(-2.4, 0.55, 0));
+    setLabel(lbEye, '👁 水中的眼睛（像魚往上看）'); lbEye.pos.copy(P3(G.E)).add(V3(0, -0.8, 0));
+  }
+  lbGhost.show = VIS.swap > 0.6;
+  const word = coinMode ? '視深變淺' : '看起來變高';
+  setCap(`<small>視覺錯覺與視深</small><span class="huge"><span class="red">光線折射</span> ＋ <span class="yel">大腦直進錯覺</span> ＝ ${word}</span>` +
+    (coinMode ? `真實深度 <b>${cm(depthReal)} cm</b> → 看起來只有 <b>${cm(depthApp)} cm</b>（變淺了）`
+              : `真實高度 <b>${cm(depthReal)} cm</b> → 看起來有 <b>${cm(depthApp)} cm</b>（變高了）`));
+  setHTML('visStat',
+    (coinMode
+      ? `水中光線與法線夾角 ＝ <b class="b">${f1(aW)}°</b><br>進入空氣後 ＝ <b class="r">${f1(VIS.angShow)}°</b>（偏離法線）<br>`
+      : `空氣中光線與法線夾角 ＝ <b class="r">${f1(VIS.angShow)}°</b><br>進入水中後 ＝ <b class="b">${f1(aW)}°</b>（偏向法線）<br>`) +
+    `<hr style="border:none;border-top:1px dashed #e6dccd;margin:4px 0">` +
+    `實際 <b>${cm(depthReal)}</b> cm → 看起來 <b class="y">${cm(depthApp)}</b> cm（${(depthApp / depthReal).toFixed(2)} 倍）` +
+    (VIS.angShow < 1.5 ? `<br><span style="color:#8d7366">正上下方觀看：約為 ${coinMode ? '1 ÷ 1.33' : '1.33'} 倍</span>` : ''));
+}
+
+/* =========================================================
+   Tab 2：光學玻璃折射盤（2D 光路在 y ＝ RY 的水平面上，座標 (x, z)）
+   ========================================================= */
+const OPT = { group: new THREE.Group(), kind: 'rect', ang: 30, angShow: 30, pop: 1, tip: null, dir: null };
+scene.add(OPT.group);
+OPT.group.visible = false;
+const N_G = 1.5;                                        // 玻璃折射率（紅雷射）
+const DISC_R = 5.6, RY = 0.42, GH = 0.8;
+const RAINBOW = [[0xff3030, 1.500, '紅'], [0xff8c1a, 1.510, '橙'], [0xffd21a, 1.520, '黃'], [0x3fcf5a, 1.530, '綠'], [0x2b9bff, 1.540, '藍'], [0x4f55ff, 1.550, '靛'], [0xa24bff, 1.560, '紫']];
+const W3 = (p, y = RY) => V3(p.x, y, p.y);              // 2D (x, z) → 3D
+{
+  // 刻度盤
+  const c = document.createElement('canvas'); c.width = c.height = 1024;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(512, 512, 60, 512, 512, 512);
+  grd.addColorStop(0, '#59646c'); grd.addColorStop(1, '#46515a');
+  g.fillStyle = grd; g.beginPath(); g.arc(512, 512, 512, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = 'rgba(255,248,235,.22)'; g.lineWidth = 3; g.setLineDash([14, 12]);
+  g.beginPath(); g.moveTo(512, 20); g.lineTo(512, 1004); g.moveTo(20, 512); g.lineTo(1004, 512); g.stroke(); g.setLineDash([]);
+  for (let a = 0; a < 360; a += 2) {
+    const big = a % 10 === 0, r0 = big ? 452 : 474, ang = a * DEG;
+    g.strokeStyle = big ? 'rgba(255,248,235,.9)' : 'rgba(255,248,235,.5)'; g.lineWidth = big ? 4 : 2;
+    g.beginPath(); g.moveTo(512 + Math.sin(ang) * r0, 512 - Math.cos(ang) * r0); g.lineTo(512 + Math.sin(ang) * 500, 512 - Math.cos(ang) * 500); g.stroke();
+    if (big) {
+      const lab = Math.min(a % 180, 180 - (a % 180));      // 與法線（上下方向）的夾角
+      g.save(); g.translate(512 + Math.sin(ang) * 418, 512 - Math.cos(ang) * 418); g.rotate(ang);
+      g.fillStyle = 'rgba(255,248,235,.92)'; g.font = '700 26px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(lab, 0, 0); g.restore();
+    }
+  }
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(DISC_R, DISC_R + 0.05, 0.12, 96), [clay(0x3f4950), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.85 }), clay(0x3f4950)]);
+  disc.position.y = 0.06; disc.rotation.y = Math.PI / 2; disc.receiveShadow = true; OPT.group.add(disc);   // 圓柱頂面的貼圖座標轉了 90°，轉回來讓「0°」對準法線
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(DISC_R + 0.03, 0.07, 10, 120).rotateX(Math.PI / 2), clay(0xb08b63)); ring.position.y = 0.12; OPT.group.add(ring);
+}
+const DISC_TOP = 0.12;
+// 三種玻璃（2D 形狀＋3D 模型）
+const SH = {};
+function segShape(pts) { return pts.map((a, i) => ({ a, b: pts[(i + 1) % pts.length] })); }
+SH.rect = { segs: segShape([V2(-2.6, 0), V2(2.6, 0), V2(2.6, 2.3), V2(-2.6, 2.3)]), arc: null, cen: V2(0, 1.15) };
+const SR = 2.7;
+SH.semi = { segs: [{ a: V2(-SR, 0), b: V2(SR, 0) }], arc: { c: V2(0, 0), r: SR }, cen: V2(0, -1.15) };
+const PS = 4.4, PA = V2(0, -PS / Math.sqrt(3)), PB = V2(-PS / 2, PS / (2 * Math.sqrt(3))), PC = V2(PS / 2, PS / (2 * Math.sqrt(3)));
+SH.prism = { segs: segShape([PA, PC, PB]), arc: null, cen: V2(0, 0) };
+const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xe3f4f6, roughness: 0.04, clearcoat: 1, transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide });
+function extrudeShape(pts2) {
+  const s = new THREE.Shape(pts2.map(p => new THREE.Vector2(p.x, p.y)));
+  const geo = new THREE.ExtrudeGeometry(s, { depth: GH, bevelEnabled: false, curveSegments: 64 });
+  geo.rotateX(Math.PI / 2); geo.translate(0, GH + DISC_TOP, 0);   // 形狀的 y → 世界 z
+  return geo;
+}
+const GLASS = {};
+for (const k of ['rect', 'semi', 'prism']) {
+  let pts;
+  if (k === 'rect') pts = [V2(-2.6, 0), V2(2.6, 0), V2(2.6, 2.3), V2(-2.6, 2.3)];
+  else if (k === 'semi') { pts = []; for (let i = 0; i <= 64; i++) { const a = -Math.PI * i / 64; pts.push(V2(Math.cos(a) * SR, Math.sin(a) * SR)); } }
+  else pts = [PA, PC, PB];
+  const geo = extrudeShape(pts);
+  const g = new THREE.Group();
+  const m = new THREE.Mesh(geo, glassMat); m.renderOrder = 5; g.add(m);
+  g.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75 })));
+  g.visible = k === OPT.kind; OPT.group.add(g); GLASS[k] = g;
+}
+// 雷射筆
+const laser = new THREE.Group(); OPT.group.add(laser);
+const laserBody = clay(0xd84a3f, { clearcoat: 0.8 });
+{
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.8, 28).rotateZ(-Math.PI / 2), laserBody); body.position.x = -0.9 - 0.2; laser.add(body);
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.2, 20, 12), laserBody); cap.position.x = -2.0; laser.add(cap);
+  const tip = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 0.24, 24).rotateZ(-Math.PI / 2), metal()); tip.position.x = -0.12; laser.add(tip);
+  const btn = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, 0.18, 6, 10).rotateZ(Math.PI / 2), clay(0xf3ece0)); btn.position.set(-1.0, 0.2, 0); laser.add(btn);
+  shadowed(laser);
+}
+const optDraw = Drawer(OPT.group);
+const lbLaser = addLabel('opt', '', '', V3(0, 0, 0));
+const angLabs = [0, 1, 2, 3].map(() => addLabel('opt', '', 'ang', V3(0, 0, 0)));
+
+function pivotAndNormal(kind) {                          // 入射點與「指向玻璃內部」的法線
+  if (kind === 'prism') {
+    const M = PA.clone().add(PB).multiplyScalar(0.5);
+    const e = PB.clone().sub(PA); let n = V2(e.y, -e.x).normalize();
+    if (n.dot(M.clone().sub(SH.prism.cen)) > 0) n.negate();   // 改成指向內部
+    return { pivot: M, nIn: n, sign: -1 };
+  }
+  return { pivot: V2(0, 0), nIn: V2(0, 1), sign: 1 };
+}
+const rot2 = (v, a) => V2(v.x * Math.cos(a) - v.y * Math.sin(a), v.x * Math.sin(a) + v.y * Math.cos(a));
+function hitShape(sh, p, d) {
+  let best = null;
+  for (const s of sh.segs) {
+    const e = s.b.clone().sub(s.a);
+    const den = d.x * e.y - d.y * e.x; if (Math.abs(den) < 1e-10) continue;
+    const ap = s.a.clone().sub(p);
+    const t = (ap.x * e.y - ap.y * e.x) / den, u = (ap.x * d.y - ap.y * d.x) / den;
+    if (t > 1e-5 && u >= -1e-7 && u <= 1 + 1e-7 && (!best || t < best.t)) {
+      const N = V2(e.y, -e.x).normalize();
+      const mid = s.a.clone().add(s.b).multiplyScalar(0.5);
+      if (N.dot(mid.sub(sh.cen)) < 0) N.negate();
+      best = { t, N, flat: true };
+    }
+  }
+  if (sh.arc) {
+    const { c, r } = sh.arc; const pc = p.clone().sub(c);
+    const b = d.dot(pc), cc = pc.lengthSq() - r * r, disc = b * b - cc;
+    if (disc > 0) for (const t of [-b - Math.sqrt(disc), -b + Math.sqrt(disc)]) {
+      const q = p.clone().addScaledVector(d, t);
+      if (t > 1e-5 && q.y <= 1e-7 && (!best || t < best.t)) best = { t, N: q.sub(c).divideScalar(r), flat: false };
+    }
+  }
+  return best;
+}
+function exitDisc(p, d) { const b = d.dot(p), cc = p.lengthSq() - (DISC_R - 0.15) ** 2, disc = b * b - cc; return disc > 0 ? Math.max(0.3, -b + Math.sqrt(disc)) : 0.3; }
+/** 2D 光線追跡：依司乃耳定律逐面折射，超過臨界角則全反射 */
+function trace(sh, p0, d0, nG, inside0 = false) {
+  const segs = [], hits = [];
+  let p = p0.clone(), d = d0.clone().normalize(), inside = inside0;
+  for (let i = 0; i < 12; i++) {
+    const h = hitShape(sh, p, d);
+    if (!h) { segs.push({ a: p.clone(), b: p.clone().addScaledVector(d, inside ? 0.01 : exitDisc(p, d)), inside }); break; }
+    const q = p.clone().addScaledVector(d, h.t);
+    segs.push({ a: p.clone(), b: q.clone(), inside });
+    const Nf = d.dot(h.N) < 0 ? h.N.clone() : h.N.clone().negate();
+    const cosi = clamp(-d.dot(Nf), -1, 1);
+    const n1 = inside ? nG : 1, n2 = inside ? 1 : nG, eta = n1 / n2;
+    const k = 1 - eta * eta * (1 - cosi * cosi);
+    const thI = Math.acos(cosi) / DEG;
+    const dIn = d.clone();
+    if (k < 0) {
+      d.addScaledVector(Nf, 2 * cosi).normalize();
+      hits.push({ p: q, Nf, thI, tir: true, n1, n2, dIn, flat: h.flat });
+    } else {
+      const nd = d.clone().multiplyScalar(eta).addScaledVector(Nf, eta * cosi - Math.sqrt(k)).normalize();
+      hits.push({ p: q, Nf, thI, thT: Math.acos(clamp(-nd.dot(Nf), -1, 1)) / DEG, tir: false, n1, n2, dIn, flat: h.flat });
+      d = nd; inside = !inside;
+    }
+    p = q;
+  }
+  return { segs, hits };
+}
+function setKind(k) {
+  OPT.kind = k; OPT.pop = 0;
+  for (const [kk, g] of Object.entries(GLASS)) g.visible = kk === k;
+  $('glassSel').value = k;
+}
+$('glassSel').addEventListener('change', () => setKind($('glassSel').value));
+$('incAng').addEventListener('input', () => { OPT.ang = +$('incAng').value; $('incAngV').textContent = OPT.ang; });
+
+const CRIT = Math.asin(1 / N_G) / DEG;
+function updateOpt(dt) {
+  OPT.angShow += (OPT.ang - OPT.angShow) * ease(dt, 8);
+  OPT.pop = Math.min(1, OPT.pop + dt / 0.45);
+  const s = 0.86 + 0.14 * smooth(0, 1, OPT.pop);
+  GLASS[OPT.kind].scale.set(s, 1, s);
+  const sh = SH[OPT.kind], prism = OPT.kind === 'prism';
+  const { pivot, nIn, sign } = pivotAndNormal(OPT.kind);
+  const dT = rot2(nIn, sign * OPT.angShow * DEG).normalize();
+  const tipT = pivot.clone().addScaledVector(dT, -3.2);
+  // 換玻璃時雷射筆平滑移動
+  if (!OPT.tip) { OPT.tip = tipT.clone(); OPT.dir = dT.clone(); }
+  const k = ease(dt, 9);
+  OPT.tip.lerp(tipT, k); OPT.dir.lerp(dT, k).normalize();
+  const tip = OPT.tip, dir = OPT.dir;
+  laser.position.copy(W3(tip));
+  laser.rotation.set(0, -Math.atan2(dir.y, dir.x), 0);
+  laserBody.color.setHex(prism ? 0xf3ece0 : 0xd84a3f);
+  setLabel(lbLaser, prism ? '🔦 白光光源' : '🔴 紅色雷射筆'); lbLaser.pos.copy(W3(tip.clone().addScaledVector(dir, -1.3), 0.9));
+  // 光路
+  optDraw.begin();
+  let main;
+  if (prism) {
+    const traces = RAINBOW.map(([c, n]) => ({ c, tr: trace(sh, tip, dir, n) }));
+    const first = traces[0].tr.segs[0];
+    optDraw.ray(W3(first.a), W3(first.b), 0xfffaf0, { r: 0.05 });           // 入射的白光
+    for (const { c, tr } of traces) tr.segs.slice(1).forEach(sg => optDraw.ray(W3(sg.a), W3(sg.b), c, { r: 0.03, arrow: false }));
+    main = traces[3].tr;                                                        // 法線、角度用綠光那條
+    OPT.spread = traces;
+  } else {
+    main = trace(sh, tip, dir, N_G);
+    main.segs.forEach(sg => optDraw.ray(W3(sg.a), W3(sg.b), 0xff2d2d, { r: sg.inside ? 0.045 : 0.04 }));
+    // 半圓形玻璃磚：平直面上的微弱部分反射（越接近臨界角越亮，超過就變成全反射）
+    if (OPT.kind === 'semi') {
+      const hf = main.hits.find(h => h.flat);
+      if (hf && !hf.tir) {
+        const cosT = Math.cos(hf.thT * DEG), cosI = Math.cos(hf.thI * DEG);
+        const rs = ((hf.n1 * cosI - hf.n2 * cosT) / (hf.n1 * cosI + hf.n2 * cosT)) ** 2, rp = ((hf.n1 * cosT - hf.n2 * cosI) / (hf.n1 * cosT + hf.n2 * cosI)) ** 2;
+        const R = (rs + rp) / 2;
+        const rd = hf.dIn.clone().addScaledVector(hf.Nf, 2 * Math.cos(hf.thI * DEG)).normalize();
+        const tr = trace(sh, hf.p, rd, N_G, true);
+        const op = Math.round(clamp(0.15 + R * 2.5, 0.15, 0.85) * 20) / 20;   // 部分反射光的亮度 ∝ 反射率
+        tr.segs.forEach(sg => optDraw.dash(W3(sg.a), W3(sg.b), 0xff2d2d, { r: 0.026, on: 10, off: 0, opacity: op }));
+      }
+    }
+  }
+  // 法線（白色虛線）與角度標籤
+  angLabs.forEach(L => { L.show = false; });
+  let li = 0;
+  main.hits.slice(0, 4).forEach((h, i) => {
+    const a = h.p.clone().addScaledVector(h.Nf, 1.35), b = h.p.clone().addScaledVector(h.Nf, -1.35);
+    optDraw.dash(W3(a, RY + 0.02), W3(b, RY + 0.02), 0xffffff, { r: 0.022, on: 0.16, off: 0.12 });
+    if (h.thI < 0.6 && i > 0) return;                     // 沿半徑射出圓弧面：只畫法線，不再重複標示
+    const L = angLabs[li++]; L.show = true;
+    let html;
+    const where = h.n1 < h.n2 ? '空氣→玻璃' : '玻璃→空氣';
+    if (h.thI < 0.6) html = `${where}：垂直入射，不偏折`;
+    else if (h.tir) html = `入射角 ${f1(h.thI)}° ＞ 臨界角 ${f1(Math.asin(1 / h.n1) / DEG)}° → <b>全反射</b>`;
+    else html = `${where}　入射 ${f1(h.thI)}° → 折射 ${f1(h.thT)}°<br><small>${h.n1 < h.n2 ? '偏向法線' : '偏離法線'}</small>`;
+    setLabel(L, html, h.tir ? 'tir' : 'ang');
+    L.pos.copy(W3(h.p.clone().addScaledVector(h.Nf, 0.9), 1.25));
+  });
+  optDraw.end();
+  // 公式列與面板
+  const first = main.hits.find(h => h.thI >= 0.6) || main.hits[0];
+  let cap = '<small>光學玻璃折射盤</small>';
+  let note = '';
+  if (OPT.kind === 'rect') {
+    const h0 = main.hits[0];
+    cap += `<span class="huge">空氣→玻璃：<span class="red">偏向法線</span>　玻璃→空氣：<span class="grn">偏離法線</span></span>`;
+    cap += h0 ? `1.00 × sin ${f1(h0.thI)}° ＝ 1.50 × sin ${f1(h0.thT ?? 0)}°　→　出射光與入射光<b>平行</b>（只是平移）` : '';
+    note = '長方體玻璃磚兩面互相平行：進去時偏向法線、出來時偏離法線，偏折量剛好抵消，所以出射光與入射光平行。';
+  } else if (OPT.kind === 'semi') {
+    const hf = main.hits.find(h => h.flat);
+    if (hf && hf.tir) {
+      cap += `<span class="huge"><span class="red">全反射！</span>入射角 ${f1(hf.thI)}° ＞ 臨界角 ${f1(CRIT)}°</span>光從玻璃（慢）射向空氣（快），角度太大就完全反射回玻璃`;
+    } else if (hf) {
+      cap += `<span class="huge">玻璃→空氣：<span class="grn">偏離法線</span>　${f1(hf.thI)}° → ${f1(hf.thT)}°</span>` +
+        (hf.thI > CRIT - 6 ? `<b>快到臨界角 ${f1(CRIT)}° 了！</b>折射光快要貼著平面走，反射光越來越亮` : `1.50 × sin ${f1(hf.thI)}° ＝ 1.00 × sin ${f1(hf.thT)}°`);
+    }
+    note = `光沿半徑射入圓弧面時與法線重合（垂直入射）不偏折，所以真正的折射發生在<b>平直面</b>。玻璃的臨界角 ＝ sin⁻¹(1 ÷ 1.5) ≈ ${f1(CRIT)}°。`;
+  } else {
+    const tr = OPT.spread, out = tr.map(t => t.tr.segs[t.tr.segs.length - 1]);
+    const ang = s2 => Math.atan2(s2.b.y - s2.a.y, s2.b.x - s2.a.x) / DEG;
+    const spread = Math.abs(ang(out[6]) - ang(out[0]));
+    const anyTir = tr.some(t => t.tr.hits.some(h => h.tir));
+    cap += `<span class="huge">白光 → <span style="color:#e53935">紅</span><span style="color:#f57c00">橙</span><span style="color:#c9a000">黃</span><span style="color:#2e9d48">綠</span><span style="color:#1e7fd8">藍</span><span style="color:#3f45d9">靛</span><span style="color:#8e3fe0">紫</span>：色散</span>` +
+      (anyTir ? '入射角太小時，光在第二面發生<b>全反射</b>出不去；把入射角調大看看' : `紫光折射率最大、偏折最多；紅光偏折最少（色帶張開約 ${f1(spread)}°）`);
+    note = '不同顏色的光在玻璃中速度不同（折射率不同），偏折程度也不同，白光就被分開成彩虹色帶。單一顏色的紅色雷射不會色散，所以三稜鏡這裡改用<b>白光光源</b>。（色散程度稍微放大，方便觀察）';
+  }
+  setCap(cap);
+  setHTML('optNote', note);
+  setHTML('optStat',
+    `入射角 θ₁ ＝ <b class="r">${f1(OPT.angShow)}°</b><br>` +
+    (first && !first.tir && first.thT !== undefined && first.thI >= 0.6 ? `折射角 θ₂ ＝ <b class="b">${f1(first.thT)}°</b>（${first.n1 < first.n2 ? '小於' : '大於'}入射角）<br>` : '') +
+    `玻璃折射率 n ＝ <b>${prism ? '1.50（紅）～ 1.56（紫）' : '1.50'}</b><br>臨界角（玻璃→空氣）＝ <b>${f1(CRIT)}°</b>`);
+}
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  vis: { group: VIS.group, cam: () => VIS.scen === 'coin' ? { pos: [0.8, 5.9, 16], target: [0.8, 3.7, 0], fitW: 13 } : { pos: [0.8, 7.4, 22], target: [0.8, 4.9, 0], fitW: 14 }, update: updateVis },
+  opt: { group: OPT.group, cam: () => ({ pos: [0, 14.5, 9.6], target: [0, 0, 0.5], fitW: 13 }), update: updateOpt }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, setScen, setKind, VIS, OPT, SH, trace, visGeometry, solveRay, camera, controls };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'vis';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>
