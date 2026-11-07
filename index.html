@@ -3,202 +3,255 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>自然科互動動畫實驗室</title>
+<title>會考 3D 自然實驗室｜國中自然科互動 3D 動畫</title>
+<meta name="description" content="對應 108 課綱與國中會考重點的互動 3D 自然科實驗室：國一生物、國二理化、國三理化與地科。動手操作，把看不見的觀念變成看得見的動畫。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@500;700;900&display=swap" rel="stylesheet">
 <style>
-  /* ===== 色彩與基礎設定（無印風 / 莫蘭迪色系） ===== */
   :root {
-    --bg: #f4f0e8;          /* 米白底 */
-    --surface: #fbf9f5;     /* 卡片底 */
-    --ink: #3b3833;         /* 主要文字 */
-    --ink-soft: #6f6a62;    /* 次要文字 */
-    --line: #e2dccf;        /* 分隔線 */
-    --g1: #8c9a7e;          /* 國一：鼠尾草綠 */
-    --g2: #7f90a3;          /* 國二：霧藍 */
-    --g3: #b08d76;          /* 國三：陶土 */
-    --earth: #a39a6f;       /* 地科標籤：橄欖土 */
-    --shadow: 0 1px 2px rgba(59,56,51,.06), 0 2px 8px rgba(59,56,51,.05);
-    --shadow-hover: 0 6px 14px rgba(59,56,51,.10), 0 14px 32px rgba(59,56,51,.10);
-    --radius: 14px;
+    --bg: #f5f1e7;
+    --surface: #fffdf8;
+    --ink: #5d4037;
+    --ink-2: #3e2c25;
+    --ink-soft: #8d7366;
+    --line: #e8dfcf;
+    --accent: #a1674a;
+    --g1: #7f9a6f;
+    --g2: #6f8aa3;
+    --g3: #b07c5e;
+    --earth: #9a8a5c;
+    --shadow: 0 1px 2px rgba(93,64,55,.06), 0 4px 14px rgba(93,64,55,.06);
+    --shadow-hover: 0 10px 22px rgba(93,64,55,.12), 0 20px 44px rgba(93,64,55,.10);
+    --radius: 18px;
     --ease: cubic-bezier(.22,.61,.36,1);
   }
-
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
   body {
-    background: var(--bg);
-    color: var(--ink);
+    background: var(--bg); color: var(--ink);
     font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
-    line-height: 1.7;
-    letter-spacing: .02em;
-    -webkit-font-smoothing: antialiased;
+    line-height: 1.75; letter-spacing: .02em; -webkit-font-smoothing: antialiased;
   }
-  h1, h2, h3 { font-family: "Noto Serif TC", "Noto Sans TC", serif; font-weight: 700; letter-spacing: .04em; }
+  h1, h2, h3 { font-family: "Noto Serif TC", "Noto Sans TC", serif; font-weight: 900; letter-spacing: .03em; color: var(--ink-2); }
   a { color: inherit; text-decoration: none; }
   button { font: inherit; color: inherit; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 24px; }
 
   /* ===== 導覽列 ===== */
-  .navbar {
-    position: sticky; top: 0; z-index: 100;
-    background: rgba(244,240,232,.88);
-    backdrop-filter: saturate(140%) blur(10px);
-    -webkit-backdrop-filter: saturate(140%) blur(10px);
-    border-bottom: 1px solid var(--line);
-  }
-  .nav-inner {
-    max-width: 1180px; margin: 0 auto;
-    padding: 14px 24px;
-    display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  }
-  .brand { display: flex; align-items: center; gap: 10px; font-family: "Noto Serif TC", serif; font-weight: 700; font-size: 1.15rem; white-space: nowrap; }
-  .brand-mark {
-    width: 30px; height: 30px; border-radius: 50%;
-    border: 1.5px solid var(--ink); display: grid; place-items: center;
-  }
-  .brand-mark svg { width: 16px; height: 16px; }
+  .navbar { position: sticky; top: 0; z-index: 100; background: rgba(245,241,231,.86); backdrop-filter: saturate(140%) blur(12px); -webkit-backdrop-filter: saturate(140%) blur(12px); border-bottom: 1px solid var(--line); }
+  .nav-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 24px; max-width: 1180px; margin: 0 auto; }
+  .brand { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+  .logo { width: 38px; height: 38px; border-radius: 12px; background: linear-gradient(145deg, #c48a63, #8d5a40); display: grid; place-items: center; color: #fff; box-shadow: 0 4px 10px rgba(141,90,64,.3); }
+  .logo svg { width: 22px; height: 22px; }
+  .brand-name { font-family: "Noto Serif TC", serif; font-weight: 900; font-size: 1.12rem; color: var(--ink-2); line-height: 1.2; }
+  .brand-name small { display: block; font-family: "Noto Sans TC", sans-serif; font-weight: 500; font-size: .66rem; letter-spacing: .14em; color: var(--ink-soft); }
   .nav-tabs { display: flex; gap: 6px; }
-  .nav-tab {
-    border: 1px solid transparent; background: transparent;
-    padding: 7px 16px; border-radius: 999px; cursor: pointer;
-    font-size: .92rem; color: var(--ink-soft);
-    transition: background .25s var(--ease), color .25s var(--ease), border-color .25s var(--ease);
-    white-space: nowrap;
-  }
+  .nav-tab { border: 1px solid transparent; background: transparent; padding: 7px 16px; border-radius: 999px; cursor: pointer; font-size: .9rem; color: var(--ink-soft); transition: background .25s var(--ease), color .25s var(--ease), border-color .25s var(--ease); white-space: nowrap; }
   .nav-tab:hover { color: var(--ink); border-color: var(--line); }
-  .nav-tab[aria-selected="true"] { background: var(--ink); color: var(--bg); }
-  .nav-tab:focus-visible, .unit-card:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  .nav-tab[aria-selected="true"] { background: var(--ink); color: #fff; }
+  .nav-tab:focus-visible, .unit-card:focus-visible, .btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 
   /* ===== 主視覺 ===== */
-  .hero { max-width: 1180px; margin: 0 auto; padding: 72px 24px 48px; }
-  .hero-eyebrow { font-size: .8rem; letter-spacing: .3em; color: var(--ink-soft); margin-bottom: 14px; }
-  .hero h1 { font-size: clamp(1.8rem, 4.2vw, 2.8rem); line-height: 1.35; margin-bottom: 18px; }
-  .hero p { max-width: 560px; color: var(--ink-soft); font-size: 1rem; }
-  .hero-stats { display: flex; gap: 36px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--line); flex-wrap: wrap; }
-  .stat b { display: block; font-family: "Noto Serif TC", serif; font-size: 1.6rem; font-weight: 500; }
-  .stat span { font-size: .82rem; color: var(--ink-soft); }
+  .hero { padding: 72px 0 40px; display: grid; grid-template-columns: 1.15fr .85fr; gap: 40px; align-items: center; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: .78rem; font-weight: 700; letter-spacing: .18em; color: var(--accent); background: rgba(161,103,74,.1); padding: 5px 12px; border-radius: 999px; margin-bottom: 18px; }
+  .hero h1 { font-size: clamp(1.9rem, 4.4vw, 3.1rem); line-height: 1.3; margin-bottom: 18px; }
+  .hero h1 em { font-style: normal; color: var(--accent); }
+  .hero p.lead { font-size: 1.04rem; color: var(--ink-soft); max-width: 560px; }
+  .cta { display: flex; gap: 12px; margin-top: 28px; flex-wrap: wrap; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px; border-radius: 999px; font-weight: 700; font-size: .95rem; cursor: pointer; border: none; transition: transform .2s var(--ease), box-shadow .2s var(--ease), background .2s; }
+  .btn.primary { background: var(--ink); color: #fff; box-shadow: 0 8px 20px rgba(93,64,55,.25); }
+  .btn.primary:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(93,64,55,.3); }
+  .btn.ghost { background: rgba(255,255,255,.7); color: var(--ink); border: 1px solid var(--line); }
+  .btn.ghost:hover { background: #fff; }
+  .stats { display: flex; gap: 34px; margin-top: 34px; padding-top: 22px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+  .stat b { display: block; font-family: "Noto Serif TC", serif; font-size: 1.8rem; font-weight: 900; color: var(--ink-2); line-height: 1.2; }
+  .stat span { font-size: .8rem; color: var(--ink-soft); }
+  /* 主視覺插圖：木桌上的 3D 小物 */
+  .hero-art { position: relative; aspect-ratio: 1 / 1; border-radius: 32px; background: radial-gradient(120% 90% at 30% 20%, #fffaf0 0%, #f1e6d2 60%, #e7d7bd 100%); box-shadow: inset 0 0 0 1px var(--line), var(--shadow); overflow: hidden; }
+  .hero-art svg { width: 100%; height: 100%; display: block; }
+  .float { animation: float 5s ease-in-out infinite; transform-origin: center; }
+  .float.d2 { animation-delay: -1.6s; } .float.d3 { animation-delay: -3.1s; }
+  @keyframes float { 50% { transform: translateY(-8px); } }
+
+  /* ===== 特色 ===== */
+  .section { padding: 40px 0; }
+  .section-head { text-align: center; margin-bottom: 26px; }
+  .section-head h2 { font-size: clamp(1.4rem, 2.6vw, 1.9rem); }
+  .section-head p { color: var(--ink-soft); margin-top: 6px; }
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .feature { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
+  .feature .ico { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; font-size: 1.4rem; background: rgba(161,103,74,.1); margin-bottom: 14px; }
+  .feature h3 { font-size: 1.12rem; margin-bottom: 6px; }
+  .feature p { font-size: .9rem; color: var(--ink-soft); }
 
   /* ===== 年級面板 ===== */
-  main { max-width: 1180px; margin: 0 auto; padding: 0 24px 80px; }
+  #courses { scroll-margin-top: 80px; }
   .grade-panel { display: none; animation: fadeUp .45s var(--ease); }
   .grade-panel.active { display: block; }
   @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-
-  .grade-head {
-    display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap;
-    margin-bottom: 24px;
-  }
+  .grade-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 22px; }
   .grade-head h2 { font-size: 1.5rem; display: flex; align-items: center; gap: 12px; }
-  .grade-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+  .grade-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--accent-g); }
   .grade-head p { color: var(--ink-soft); font-size: .92rem; margin-top: 4px; }
   .grade-count { font-size: .85rem; color: var(--ink-soft); }
-
-  /* ===== 卡片網格 ===== */
-  .unit-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-    gap: 18px;
-  }
-  .unit-card {
-    position: relative;
-    display: flex; flex-direction: column; justify-content: space-between;
-    min-height: 168px; padding: 22px 22px 18px;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    transition: transform .35s var(--ease), box-shadow .35s var(--ease), border-color .35s var(--ease);
-    overflow: hidden;
-  }
-  .unit-card::before {   /* 頂部色條 */
-    content: ""; position: absolute; left: 0; top: 0; right: 0; height: 3px;
-    background: var(--accent); opacity: .75;
-  }
-  .unit-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); border-color: transparent; }
-
+  .grade-count b { color: var(--ink-2); }
+  .unit-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 18px; }
+  .unit-card { position: relative; display: flex; flex-direction: column; justify-content: space-between; min-height: 170px; padding: 22px 22px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); transition: transform .35s var(--ease), box-shadow .35s var(--ease), border-color .35s var(--ease); overflow: hidden; }
+  .unit-card::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 4px; background: var(--accent-g); opacity: .8; }
+  a.unit-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-hover); border-color: transparent; }
   .unit-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-  .unit-no { font-family: "Noto Serif TC", serif; font-size: 1.9rem; line-height: 1; color: var(--accent); opacity: .85; }
-  .unit-tag {
-    font-size: .72rem; padding: 3px 10px; border-radius: 999px;
-    border: 1px solid currentColor; color: var(--tag, var(--accent)); white-space: nowrap;
-  }
-  .unit-title { font-size: 1.08rem; font-weight: 500; margin: 18px 0 14px; line-height: 1.5; }
-
+  .unit-no { font-family: "Noto Serif TC", serif; font-size: 1.9rem; font-weight: 900; line-height: 1; color: var(--accent-g); opacity: .9; }
+  .unit-tag { font-size: .72rem; padding: 3px 10px; border-radius: 999px; border: 1px solid currentColor; color: var(--tag, var(--accent-g)); white-space: nowrap; }
+  .unit-title { font-family: "Noto Sans TC", sans-serif; font-size: 1.05rem; font-weight: 700; color: var(--ink-2); margin: 16px 0 12px; line-height: 1.5; letter-spacing: .02em; }
   .unit-foot { display: flex; align-items: center; justify-content: space-between; border-top: 1px dashed var(--line); padding-top: 12px; }
-  .unit-foot span { font-size: .8rem; color: var(--ink-soft); transition: color .3s var(--ease); }
-  .play-icon {
-    width: 34px; height: 34px; border-radius: 50%;
-    display: grid; place-items: center;
-    border: 1.5px solid var(--accent); color: var(--accent);
-    transition: background .3s var(--ease), color .3s var(--ease), transform .3s var(--ease);
-  }
+  .unit-foot span { font-size: .8rem; color: var(--ink-soft); }
+  .play-icon { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; border: 1.5px solid var(--accent-g); color: var(--accent-g); transition: background .3s var(--ease), color .3s var(--ease), transform .3s var(--ease); }
   .play-icon svg { width: 13px; height: 13px; margin-left: 2px; }
-  .unit-card:hover .play-icon { background: var(--accent); color: var(--surface); transform: scale(1.06); }
-  .unit-card:hover .unit-foot span { color: var(--ink); }
+  a.unit-card:hover .play-icon { background: var(--accent-g); color: #fff; transform: scale(1.06); }
+  a.unit-card:hover .unit-foot span { color: var(--ink); }
+  /* 即將推出 */
+  .unit-card.soon { background: repeating-linear-gradient(135deg, rgba(255,253,248,.7) 0 12px, rgba(245,239,226,.7) 12px 24px); border-style: dashed; box-shadow: none; cursor: default; }
+  .unit-card.soon::before { opacity: .25; }
+  .unit-card.soon .unit-no, .unit-card.soon .unit-title { opacity: .55; }
+  .soon-badge { font-size: .74rem; font-weight: 700; color: var(--ink-soft); background: rgba(255,255,255,.85); border: 1px solid var(--line); padding: 3px 10px; border-radius: 999px; }
 
-  /* ===== 頁尾 ===== */
-  footer { border-top: 1px solid var(--line); text-align: center; padding: 28px 24px; font-size: .8rem; color: var(--ink-soft); }
+  /* ===== 使用方式、家長 ===== */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; counter-reset: s; }
+  .step { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px 22px 22px 22px; box-shadow: var(--shadow); }
+  .step::before { counter-increment: s; content: counter(s); position: absolute; top: -14px; left: 20px; width: 30px; height: 30px; border-radius: 50%; background: var(--ink); color: #fff; font-weight: 900; display: grid; place-items: center; font-size: .9rem; }
+  .step h3 { font-size: 1.05rem; margin: 6px 0 4px; }
+  .step p { font-size: .9rem; color: var(--ink-soft); }
+  .parents { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; align-items: center; background: linear-gradient(135deg, #fffaf0, #f3e7d3); border: 1px solid var(--line); border-radius: 28px; padding: 34px; box-shadow: var(--shadow); }
+  .parents h2 { font-size: clamp(1.3rem, 2.4vw, 1.7rem); margin-bottom: 8px; }
+  .parents p { color: var(--ink-soft); font-size: .95rem; }
+  .checks { list-style: none; display: grid; gap: 10px; }
+  .checks li { display: flex; gap: 10px; align-items: flex-start; font-size: .95rem; }
+  .checks li::before { content: "✓"; flex: none; width: 22px; height: 22px; border-radius: 50%; background: #5b8a72; color: #fff; font-weight: 900; font-size: .78rem; display: grid; place-items: center; margin-top: 3px; }
+
+  footer { border-top: 1px solid var(--line); padding: 30px 24px 40px; text-align: center; font-size: .8rem; color: var(--ink-soft); margin-top: 30px; }
+  footer b { color: var(--ink-2); font-family: "Noto Serif TC", serif; }
 
   /* ===== 響應式 ===== */
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; padding-top: 44px; }
+    .hero-art { max-width: 420px; width: 100%; margin: 0 auto; order: -1; aspect-ratio: 16 / 10; }
+    .features, .steps { grid-template-columns: 1fr; }
+    .parents { grid-template-columns: 1fr; padding: 24px; }
+  }
   @media (max-width: 760px) {
-    .nav-inner { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px 16px; }
-    .brand { justify-content: center; font-size: 1.05rem; }
+    .wrap { padding: 0 16px; }
+    .nav-inner { flex-direction: column; align-items: stretch; gap: 10px; padding: 10px 16px; }
+    .brand { justify-content: center; }
     .nav-tabs { justify-content: center; }
-    .nav-tab { flex: 1; padding: 7px 8px; font-size: .85rem; }
-    .hero { padding: 44px 16px 32px; }
-    main { padding: 0 16px 56px; }
-    .hero-stats { gap: 24px; }
+    .nav-tab { flex: 1; padding: 7px 8px; font-size: .84rem; }
+    .stats { gap: 22px; }
   }
   @media (max-width: 480px) {
     .unit-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
     .unit-card { min-height: 150px; padding: 16px 14px 14px; }
     .unit-no { font-size: 1.5rem; }
-    .unit-title { font-size: .95rem; margin: 12px 0 10px; }
-    .unit-foot span { display: none; }
+    .unit-title { font-size: .92rem; margin: 10px 0 8px; }
+    .unit-foot span:not(.soon-badge) { display: none; }
     .unit-foot { justify-content: flex-end; }
-    .nav-tab { font-size: .8rem; }
   }
   @media (max-width: 340px) { .unit-grid { grid-template-columns: 1fr; } }
-
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation: none !important; transition: none !important; }
-    html { scroll-behavior: auto; }
-  }
+  @media (max-width: 480px) { .hero h1 { font-size: 1.75rem; } .hero h1 br { display: none; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } html { scroll-behavior: auto; } }
 </style>
 </head>
 <body>
 
-<!-- 導覽列 -->
 <header class="navbar">
   <div class="nav-inner">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/></svg>
-      </span>
-      自然科互動動畫實驗室
-    </div>
+    <a class="brand" href="#top" aria-label="會考 3D 自然實驗室 首頁">
+      <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/><path d="M7.5 14h9"/></svg></span>
+      <span class="brand-name">會考 3D 自然實驗室<small>JUNIOR HIGH SCIENCE · 3D LAB</small></span>
+    </a>
     <nav class="nav-tabs" id="navTabs" role="tablist" aria-label="年級切換"></nav>
   </div>
 </header>
 
-<!-- 主視覺 -->
-<section class="hero">
-  <p class="hero-eyebrow">108 課綱 · 國中自然科學</p>
-  <h1>把看不見的自然現象，<br>變成看得見的動畫。</h1>
-  <p>依年級與章節整理的互動動畫課程。點選任一單元，即可進入對應的 3D 動畫，從觀察出發，理解生命、物質、能量與地球的運作。</p>
-  <div class="hero-stats" id="heroStats"></div>
-</section>
+<div class="wrap" id="top">
+  <section class="hero">
+    <div>
+      <span class="eyebrow">108 課綱 · 國中會考自然科</span>
+      <h1>課本上最難想像的觀念，<br><em>動手轉一轉</em>就懂了。</h1>
+      <p class="lead">由國中自然科老師設計的互動 3D 實驗室。粒子、電流、天體、板塊……看不見的東西都能親手操作、反覆觀察，每個單元都對準會考重點。</p>
+      <div class="cta">
+        <a class="btn primary" href="#courses">▶ 開始體驗</a>
+        <a class="btn ghost" href="#parents">給家長的說明</a>
+      </div>
+      <div class="stats" id="heroStats"></div>
+    </div>
+    <div class="hero-art" aria-hidden="true">
+      <svg viewBox="0 0 400 400">
+        <defs>
+          <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e2c39b"/><stop offset="1" stop-color="#cfa97c"/></linearGradient>
+          <radialGradient id="sunG"><stop offset="0" stop-color="#ffe08a"/><stop offset="1" stop-color="#ffb84a"/></radialGradient>
+          <linearGradient id="earthG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7cb4d8"/><stop offset="1" stop-color="#4f8fb8"/></linearGradient>
+        </defs>
+        <path d="M30 300 L370 300 L340 360 L60 360 Z" fill="url(#wood)"/>
+        <path d="M30 300 L370 300 L370 308 L30 308 Z" fill="#b98a5e" opacity=".5"/>
+        <g class="float"><circle cx="120" cy="150" r="54" fill="url(#earthG)"/><path d="M84 132c18-8 30 4 44-2s26 2 30 14c-14 4-22 16-38 12s-20-10-36-24z" fill="#8fb36b"/><path d="M100 178c10-4 22 2 26 10-10 6-20 4-26-10z" fill="#8fb36b"/><ellipse cx="120" cy="150" rx="82" ry="20" fill="none" stroke="#e76f51" stroke-width="3" opacity=".75"/></g>
+        <g class="float d2"><circle cx="292" cy="96" r="30" fill="url(#sunG)"/><g stroke="#ffb020" stroke-width="5" stroke-linecap="round">
+          <path d="M292 50v-12M292 154v-12M246 96h-12M350 96h-12M260 64l-8-8M332 136l-8-8M324 64l8-8M252 136l8-8"/></g></g>
+        <g class="float d3"><path d="M250 290 h70 l-10 -70 h-50 z" fill="#eaf6fb" stroke="#9fc4d6" stroke-width="3"/><path d="M256 290 h58 l-6 -42 h-46 z" fill="#7cc3e8" opacity=".75"/>
+          <circle cx="274" cy="268" r="5" fill="#fff" opacity=".9"/><circle cx="292" cy="258" r="4" fill="#fff" opacity=".9"/><circle cx="284" cy="240" r="3" fill="#fff" opacity=".9"/></g>
+        <g class="float d2"><circle cx="120" cy="272" r="14" fill="#9b6dd6"/><circle cx="146" cy="262" r="11" fill="#e5484d"/><circle cx="98" cy="262" r="11" fill="#e5484d"/><circle cx="160" cy="284" r="16" fill="#5bb06a"/></g>
+      </svg>
+    </div>
+  </section>
 
-<!-- 課程內容（由 JS 動態渲染） -->
-<main id="courseRoot"></main>
+  <section class="section">
+    <div class="section-head"><h2>為什麼用 3D 實驗室學自然？</h2><p>不是看動畫，是自己動手做實驗</p></div>
+    <div class="features">
+      <div class="feature"><div class="ico">👀</div><h3>看見看不見的</h3><p>原子、電子、氣流、天體運動……課本只能用平面圖畫的東西，在這裡都是可以 360° 轉動的立體模型。</p></div>
+      <div class="feature"><div class="ico">🖐️</div><h3>自己動手操作</h3><p>拖曳滑桿、改變條件、按下按鈕，親眼看到「改了什麼就發生什麼」，觀念自然就記住了。</p></div>
+      <div class="feature"><div class="ico">🎯</div><h3>對準會考重點</h3><p>依 108 課綱章節編排，每個實驗室開頭都有「學習目標」與會考關鍵字，操作完就知道該會什麼。</p></div>
+    </div>
+  </section>
 
-<footer>自然科互動動畫實驗室 · 依 108 課綱國中自然科學章節編排</footer>
+  <section class="section" id="courses">
+    <div class="section-head"><h2>課程單元</h2><p>選年級、點單元，馬上開始</p></div>
+    <main id="courseRoot"></main>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>三步驟，開始學習</h2></div>
+    <div class="steps">
+      <div class="step"><h3>選一個單元</h3><p>依年級與課本章節找到正在學（或卡住）的單元，點進去就能用，電腦、平板、手機都可以。</p></div>
+      <div class="step"><h3>先看學習目標</h3><p>每個實驗室一打開就會告訴你「這個單元要學會什麼」和會考常考的關鍵字。</p></div>
+      <div class="step"><h3>動手做、對照課本</h3><p>照著畫面提示操作、觀察變化，再回頭看課本或題目，原本抽象的觀念就變得具體。</p></div>
+    </div>
+  </section>
+
+  <section class="section" id="parents">
+    <div class="parents">
+      <div>
+        <h2>給家長的說明</h2>
+        <p>這是一位國中自然科老師為了讓學生「真正看懂」而製作的互動教材。內容依照 108 課綱與會考範圍編排，適合預習、複習、考前釐清觀念。</p>
+      </div>
+      <ul class="checks">
+        <li>不需要下載 App，用瀏覽器就能開</li>
+        <li>電腦、平板、手機都能使用</li>
+        <li>沒有廣告、不需要登入帳號</li>
+        <li>物理、化學內容經過老師逐一校正</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <b>會考 3D 自然實驗室</b><br>
+  國中自然科老師製作 · 依 108 課綱國中自然科學章節編排<br>
+  © 2026 會考 3D 自然實驗室 版權所有，未經授權請勿轉載或複製
+</footer>
 
 <script>
 /* =========================================================
    課程資料：日後擴充只需修改這裡
-   - url：預設 javascript:void(0)，換成你的 3D 動畫網址即可
+   - url：DEFAULT_URL 表示「即將推出」，換成動畫網址就會變成可點的卡片
    - tag：可選，覆寫單元的學科標籤（例如國三的理化 / 地科）
    ========================================================= */
 const DEFAULT_URL = 'javascript:void(0)';
@@ -285,7 +338,6 @@ const pad = n => String(n).padStart(2, '0');
 const escapeHTML = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const isPlaceholder = url => !url || url.startsWith('javascript:');
 
-/* ===== 渲染：導覽按鈕 ===== */
 function renderTabs() {
   document.getElementById('navTabs').innerHTML = COURSES.map(c => `
     <button class="nav-tab" role="tab" id="tab-${c.id}" data-target="${c.id}"
@@ -293,99 +345,72 @@ function renderTabs() {
   `).join('');
 }
 
-/* ===== 渲染：主視覺統計 ===== */
 function renderStats() {
-  const total = COURSES.reduce((sum, c) => sum + c.units.length, 0);
+  const ready = COURSES.reduce((s, c) => s + c.units.filter(u => !isPlaceholder(u.url)).length, 0);
+  const pages = new Set(COURSES.flatMap(c => c.units.filter(u => !isPlaceholder(u.url)).map(u => u.url.split('#')[0]))).size;
   const stats = [
-    { n: COURSES.length, label: '個年級' },
-    { n: total,          label: '個互動單元' },
-    { n: '3D',           label: '動畫視覺化' }
+    { n: ready, label: '個已上線單元' },
+    { n: pages, label: '座 3D 互動實驗室' },
+    { n: '國一～國三', label: '生物 · 理化 · 地科' }
   ];
-  document.getElementById('heroStats').innerHTML = stats
-    .map(s => `<div class="stat"><b>${s.n}</b><span>${s.label}</span></div>`).join('');
+  document.getElementById('heroStats').innerHTML = stats.map(s => `<div class="stat"><b>${s.n}</b><span>${s.label}</span></div>`).join('');
 }
 
-/* ===== 渲染：年級面板與單元卡片 ===== */
 function renderCourses() {
-  document.getElementById('courseRoot').innerHTML = COURSES.map(c => `
-    <section class="grade-panel" id="panel-${c.id}" role="tabpanel"
-             aria-labelledby="tab-${c.id}" style="--accent:${c.color}">
+  document.getElementById('courseRoot').innerHTML = COURSES.map(c => {
+    const ready = c.units.filter(u => !isPlaceholder(u.url)).length;
+    return `
+    <section class="grade-panel" id="panel-${c.id}" role="tabpanel" aria-labelledby="tab-${c.id}" style="--accent-g:${c.color}">
       <div class="grade-head">
         <div>
           <h2><span class="grade-dot"></span>${escapeHTML(c.title)}</h2>
           <p>${escapeHTML(c.desc)}</p>
         </div>
-        <span class="grade-count">共 ${c.units.length} 個單元</span>
+        <span class="grade-count">已上線 <b>${ready}</b> ／ 共 ${c.units.length} 個單元</span>
       </div>
       <div class="unit-grid">
         ${c.units.map((u, i) => {
           const tag = u.tag || c.subject;
           const tagStyle = tag === '地科' ? 'style="--tag:var(--earth)"' : '';
-          // 同資料夾的動畫頁在本分頁開啟（動畫頁有「回課程總覽」）；外部網址才開新分頁
-          const external = /^https?:\/\//.test(u.url || '') ? 'target="_blank" rel="noopener"' : '';
+          const head = `<div><div class="unit-top"><span class="unit-no">${pad(i + 1)}</span><span class="unit-tag" ${tagStyle}>${escapeHTML(tag)}</span></div><h3 class="unit-title">${escapeHTML(u.title)}</h3></div>`;
+          if (isPlaceholder(u.url)) return `
+          <div class="unit-card soon" aria-disabled="true" aria-label="${escapeHTML(u.title)}（即將推出）">
+            ${head}
+            <div class="unit-foot"><span class="soon-badge">🛠️ 即將推出</span></div>
+          </div>`;
           return `
-          <a class="unit-card" href="${escapeHTML(u.url || DEFAULT_URL)}" ${external}
-             data-grade="${c.id}" data-index="${i}"
-             aria-label="播放動畫：${escapeHTML(u.title)}">
-            <div>
-              <div class="unit-top">
-                <span class="unit-no">${pad(i + 1)}</span>
-                <span class="unit-tag" ${tagStyle}>${escapeHTML(tag)}</span>
-              </div>
-              <h3 class="unit-title">${escapeHTML(u.title)}</h3>
-            </div>
-            <div class="unit-foot">
-              <span>播放動畫</span>
-              <span class="play-icon">${PLAY_SVG}</span>
-            </div>
+          <a class="unit-card" href="${escapeHTML(u.url)}" aria-label="進入實驗室：${escapeHTML(u.title)}">
+            ${head}
+            <div class="unit-foot"><span>進入實驗室</span><span class="play-icon">${PLAY_SVG}</span></div>
           </a>`;
         }).join('')}
       </div>
-    </section>
-  `).join('');
+    </section>`;
+  }).join('');
 }
 
-/* ===== 切換年級 ===== */
 function switchGrade(id, { scroll = false } = {}) {
   if (!COURSES.some(c => c.id === id)) id = COURSES[0].id;
-  document.querySelectorAll('.nav-tab').forEach(t =>
-    t.setAttribute('aria-selected', String(t.dataset.target === id)));
-  document.querySelectorAll('.grade-panel').forEach(p =>
-    p.classList.toggle('active', p.id === `panel-${id}`));
-  try { history.replaceState(null, '', `#${id}`); } catch (e) { /* 部分瀏覽器以 file:// 開啟時不允許 */ }
-  if (scroll) {
-    const top = document.getElementById('courseRoot').getBoundingClientRect().top
-              + window.scrollY - document.querySelector('.navbar').offsetHeight - 16;
-    window.scrollTo({ top, behavior: 'smooth' });
-  }
+  document.querySelectorAll('.nav-tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.target === id)));
+  document.querySelectorAll('.grade-panel').forEach(p => p.classList.toggle('active', p.id === `panel-${id}`));
+  try { history.replaceState(null, '', `#${id}`); } catch (e) { /* file:// */ }
+  if (scroll) document.getElementById('courses').scrollIntoView({ behavior: 'smooth' });
 }
 
-/* ===== 事件綁定 ===== */
 function bindEvents() {
   document.getElementById('navTabs').addEventListener('click', e => {
     const tab = e.target.closest('.nav-tab');
     if (tab) switchGrade(tab.dataset.target, { scroll: true });
   });
-
-  // 單元點擊：若尚未設定網址，可在這裡加入你自己的處理邏輯
-  document.getElementById('courseRoot').addEventListener('click', e => {
-    const card = e.target.closest('.unit-card');
-    if (!card) return;
-    const course = COURSES.find(c => c.id === card.dataset.grade);
-    const unit = course.units[Number(card.dataset.index)];
-    if (isPlaceholder(unit.url)) {
-      console.log(`[待替換] ${course.title} › ${unit.title}`);
-      // 例：window.location.href = `animations/${course.id}/${card.dataset.index}.html`;
-    }
-  });
 }
 
-/* ===== 初始化 ===== */
 renderTabs();
 renderStats();
 renderCourses();
 bindEvents();
-switchGrade(location.hash.slice(1) || COURSES[0].id);
+const startHash = location.hash.slice(1);
+switchGrade(COURSES.some(c => c.id === startHash) ? startHash : COURSES[0].id);
+if (COURSES.some(c => c.id === startHash)) window.addEventListener('load', () => setTimeout(() => window.scrollTo({ top: document.getElementById('courses').offsetTop - 70, behavior: 'instant' }), 80));
 </script>
 </body>
 </html>

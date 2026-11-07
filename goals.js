@@ -1,0 +1,109 @@
+/* =========================================================
+   學習目標卡（所有實驗室共用）
+   ---------------------------------------------------------
+   第一次打開某個實驗室時，自動跳出「本單元你會學到」；
+   之後可以點右下角（手機在左下角）的「🎯 學習目標」再打開。
+   要修改內容：直接改下面 GOALS 裡對應檔名的文字。
+   ========================================================= */
+(function () {
+  const GOALS = {
+    'enzyme-lock-key.html': { t: '養分：酵素的作用', g: ['用「鎖與鑰匙」說明酵素和受質的專一性', '知道酵素反應前後本身不會被消耗', '溫度、酸鹼度會影響酵素活性，過高溫會使酵素變性'], k: ['酵素', '專一性', '受質', '變性'] },
+    'heart.html': { t: '心臟與血液循環', g: ['說出心臟四個腔室與瓣膜的位置和功能', '描述肺循環與體循環的路徑', '說明肺泡與組織的氣體交換、葡萄糖交換'], k: ['心房', '心室', '瓣膜防止血液逆流', '肺循環', '體循環', '充氧血／缺氧血'] },
+    'clay-sim.html': { t: '細胞分裂與颱風風向', g: ['比較有絲分裂與減數分裂時染色體的變化', '說明北半球颱風逆時針、向中心旋入的氣流'], k: ['有絲分裂', '減數分裂', '染色體', '颱風'] },
+    'measure-lab.html': { t: '科學方法與基本測量', g: ['讀出長度的準確值與估計值（估計到最小刻度的下一位）', '用等臂天平「左物右碼」測量質量，讀出騎碼', '讀量筒時視線與凹液面最低處平視，用排水法測體積'], k: ['估計值', '有效位數', '左物右碼', '凹液面', '排水法'] },
+    'solution-lab.html': { t: '物質的世界：水溶液', g: ['分辨純物質與混合物', '計算重量百分濃度與 ppm', '說明溶解度與溫度、飽和溶液的關係'], k: ['純物質', '混合物', '重量百分濃度', 'ppm', '溶解度', '飽和'] },
+    'sound-lab.html': { t: '波動與聲音', g: ['分辨橫波與縱波：介質振動方向與波前進方向的關係', '波傳遞能量，介質只在原地振動', '同一介質中波速固定：V ＝ f × λ', '聲音需要介質；回聲測距 d ＝ V × t ÷ 2'], k: ['橫波', '縱波', '波速', '頻率', '波長', '真空不傳聲', '回聲'] },
+    'shadow-lab.html': { t: '光的直進與影子', g: ['比較點光源、面光源、平行光形成的影子（本影、半影）', '利用相似三角形，由影長比例求物體高度', '說明針孔成像為倒立實像，像高 ÷ 物高 ＝ 像距 ÷ 物距'], k: ['光的直進', '本影', '半影', '相似三角形', '針孔成像', '倒立實像'] },
+    'optics-lab.html': { t: '光的反射、折射與色光', g: ['針孔成像：倒立實像', '反射定律：入射角 ＝ 反射角；光的折射', '凹面鏡、凸面鏡、凸透鏡、凹透鏡的成像', '色光三原色與物體顏色的成因'], k: ['反射定律', '折射', '實像／虛像', '焦點', '色光三原色'] },
+    'refraction-lab.html': { t: '光的折射與視深', g: ['說明水中物體看起來比實際淺的原因（視深）', '比較光在空氣與水、玻璃中的折射角大小', '認識全反射與三稜鏡的色散'], k: ['折射', '視深', '虛像', '全反射', '色散'] },
+    'heat-lab.html': { t: '溫度與熱', g: ['說明溫度計的原理（熱脹冷縮）', '比熱大小與溫度變化快慢：H ＝ m × s × ΔT', '用比熱差異解釋海風與陸風', '物質三態變化與吸熱、放熱'], k: ['比熱', '熱量', '海風', '陸風', '熔化', '汽化', '凝結'] },
+    'matter-lab.html': { t: '探索物質組成', g: ['分辨原子、分子與離子', '用粒子觀點區分元素、化合物與混合物', '認識週期表：族、週期、金屬與非金屬'], k: ['原子', '分子', '離子', '元素', '化合物', '週期表'] },
+    'mass-lab.html': { t: '化學反應：質量守恆定律', g: ['化學反應是原子重新排列，原子種類與數目不變', '開放系統有氣體散失時質量看似減少，密閉系統則不變', '沉澱反應前後總質量相等'], k: ['質量守恆', '拉瓦節', '開放／密閉系統', '沉澱'] },
+    'chem-lab.html': { t: '氧化還原、電解質與有機化合物', g: ['電解質溶於水會解離出離子而導電', '高爐煉鐵：一氧化碳把氧化鐵還原成鐵（氧化還原）', '皂化反應製造肥皂，加食鹽使肥皂析出（鹽析）'], k: ['電解質', '離子', '還原劑', '氧化還原', '皂化', '鹽析'] },
+    'force-pressure-lab.html': { t: '力與壓力', g: ['虎克定律：彈簧伸長量與受力成正比', '靜摩擦力與動摩擦力', '壓力 ＝ 力 ÷ 受力面積；液體壓力隨深度增加', '大氣壓力與浮力（阿基米德原理）'], k: ['虎克定律', '摩擦力', '壓力', '液體壓力', '大氣壓力', '浮力'] },
+    'kinematics-lab.html': { t: '直線運動', g: ['分辨位移與路徑長、速度與速率', '判讀 x-t 圖、v-t 圖（斜率與面積的意義）', '自由落體與鉛直上拋的運動', '用打點計時器紙帶求速度與加速度'], k: ['位移', '速度', '加速度', 'x-t 圖', 'v-t 圖', '自由落體'] },
+    'newton-park.html': { t: '力與運動', g: ['慣性定律：物體會維持原來的運動狀態', 'F ＝ m × a：合力越大、質量越小，加速度越大', '作用力與反作用力大小相等、方向相反', '圓周運動需要向心力'], k: ['慣性', '牛頓第二運動定律', '作用力與反作用力', '向心力'] },
+    'work-energy.html': { t: '功與能', g: ['功 ＝ 力 × 沿力方向的位移', '動能與位能互相轉換，力學能守恆', '彈簧的彈力位能'], k: ['功', '動能', '位能', '力學能守恆', '彈力位能'] },
+    'static-circuit.html': { t: '靜電現象與電路', g: ['摩擦起電、靜電感應與同性相斥、異性相吸', '電流、電壓、電阻的意義與歐姆定律', '串聯與並聯電路的特性'], k: ['摩擦起電', '靜電感應', '歐姆定律', '電流', '電壓', '串聯／並聯'] },
+    'power-lab.html': { t: '電流的熱效應', g: ['電功率 P ＝ I × V ＝ I² × R ＝ V² ÷ R', '比較串聯與並聯時燈泡的亮度', '電能 E ＝ P × t，電能轉換為熱能'], k: ['電功率', '電能', '焦耳熱', '串聯／並聯亮度'] },
+    'electrochem.html': { t: '電流的化學效應', g: ['化學電池：化學能轉換成電能，電子由負極流向正極', '電解硫酸銅與電鍍的原理', '電解水：負極產生氫氣、正極產生氧氣，體積比 2 : 1'], k: ['化學電池', '電解', '電鍍', '氫氣：氧氣 ＝ 2：1'] },
+    'water-lab.html': { t: '水與陸地：地球上的水', g: ['說出地球上海水、冰川、地下水與河湖水的比例', '用受壓地下水與連通管原理說明自流井', '說明超抽地下水造成地層下陷與海水倒灌'], k: ['水資源分布', '含水層', '自流井', '地層下陷'] },
+    'plates-lab.html': { t: '地球內部與板塊運動', g: ['地球分層：地殼、地函、地核；岩石圈與軟流圈', '張裂性邊界：中洋脊與海底擴張', '聚合性邊界：海溝、火山與造山運動', '張力形成正斷層、壓力形成逆斷層'], k: ['地殼', '地函', '地核', '軟流圈', '中洋脊', '海溝', '正斷層／逆斷層'] },
+    'taiwan-earthquake.html': { t: '台灣地震', g: ['台灣位在板塊交界，受到擠壓而形成逆斷層', '擠壓累積能量，使斷層錯動而發生地震', '分辨震源、震央，以及規模與震度的不同'], k: ['板塊擠壓', '逆斷層', '震源', '震央', '規模', '震度'] },
+    'moon-phases.html': { t: '宇宙中的天體：月相', g: ['月相是因為月球被太陽照亮的一半，有多少面向地球', '農曆日期與月相的對應（新月、上弦、滿月、下弦）', '月相變化的週期約一個月'], k: ['月相', '新月', '上弦月', '滿月', '下弦月', '農曆'] },
+    'daily-motion.html': { t: '宇宙中的天體：周日運動', g: ['地球由西向東自轉，所以太陽和星星東升西落', '比較四季太陽的出沒方位與白天長短', '北極星的高度角約等於當地緯度'], k: ['周日運動', '地球自轉', '東升西落', '北極星'] },
+    'celestial-lab.html': { t: '天球與太陽視運動', g: ['認識天球、天球赤道與天球北極', '比較春秋分、夏至、冬至的太陽軌跡與竿影', '北極星仰角 ＝ 觀察者緯度；高緯度的永晝現象'], k: ['天球', '天球赤道', '太陽視運動', '竿影', '北極星仰角'] },
+    'atmo-lab.html': { t: '千變萬化的天氣', g: ['大氣分層：對流層越高越冷、平流層越高越熱（臭氧層）', '北半球高氣壓順時針向外、低氣壓逆時針向內', '冷鋒過境後下雨降溫；暖鋒過境前下雨、過境後升溫'], k: ['對流層', '平流層', '高氣壓', '低氣壓', '冷鋒', '暖鋒'] },
+    'typhoon-wind.html': { t: '颱風風向', g: ['北半球颱風逆時針旋轉、向中心輻合', '依颱風的位置判斷各地的風向'], k: ['颱風', '逆時針', '輻合', '風向'] },
+    'env-lab.html': { t: '全球氣候變遷與因應', g: ['聖嬰現象：赤道東太平洋海溫異常升高', '土石流的條件：土石鬆動 ＋ 充足雨水', '空氣品質指標 AQI 的意義與常見汙染物'], k: ['聖嬰現象', '湧升流', '土石流', 'AQI', 'PM2.5'] }
+  };
+  const file = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+  const G = GOALS[file];
+  if (!G) return;
+
+  const css = `
+  .lg-pill{position:fixed;right:16px;bottom:16px;z-index:2147483000;border:none;cursor:pointer;font:700 13px/1 "Noto Sans TC","Microsoft JhengHei",sans-serif;color:#5d4037;background:rgba(255,250,240,.92);border:1px solid #e8dfcf;padding:9px 14px;border-radius:999px;box-shadow:0 6px 16px rgba(93,64,55,.18);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .lg-pill:hover{background:#fff}
+  .lg-mask{position:fixed;inset:0;z-index:2147483600;background:rgba(62,44,37,.32);display:grid;place-items:center;padding:16px;opacity:0;transition:opacity .25s}
+  .lg-mask.show{opacity:1}
+  .lg-card{width:min(440px,100%);max-height:calc(100vh - 32px);overflow:auto;background:rgba(255,252,246,.97);border-radius:24px;padding:24px 22px 20px;box-shadow:0 24px 60px rgba(62,44,37,.3);color:#5d4037;font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;transform:translateY(12px) scale(.97);transition:transform .3s cubic-bezier(.2,1.2,.4,1)}
+  .lg-mask.show .lg-card{transform:none}
+  .lg-eyebrow{font-size:12px;font-weight:800;letter-spacing:.14em;color:#a1674a}
+  .lg-card h2{font-family:"Noto Serif TC","Noto Sans TC",serif;font-size:21px;font-weight:900;color:#3e2c25;margin:4px 0 12px;line-height:1.4}
+  .lg-card ol{margin:0 0 14px;padding:0;list-style:none;counter-reset:g}
+  .lg-card li{position:relative;padding:8px 10px 8px 40px;margin-bottom:6px;background:#fff;border:1px solid #efe6d6;border-radius:12px;font-size:14px;line-height:1.6}
+  .lg-card li::before{counter-increment:g;content:counter(g);position:absolute;left:10px;top:9px;width:22px;height:22px;border-radius:50%;background:#5d4037;color:#fff;font-weight:900;font-size:12px;display:grid;place-items:center}
+  .lg-k{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+  .lg-k b{font-size:12px;font-weight:800;color:#3e2c25;margin-right:2px;align-self:center}
+  .lg-k span{font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:rgba(161,103,74,.12);color:#8a4f34}
+  .lg-go{width:100%;border:none;cursor:pointer;border-radius:14px;padding:12px;font:800 15px "Noto Sans TC","Microsoft JhengHei",sans-serif;color:#fff;background:#5b8a72;box-shadow:0 8px 18px rgba(79,125,92,.3)}
+  .lg-go:hover{background:#4f7d65}
+  .lg-brand{text-align:center;font-size:11px;color:#8d7366;margin-top:10px;letter-spacing:.08em}
+  @media (max-width:768px),(max-width:1100px) and (orientation:portrait){.lg-pill{right:auto;left:12px;bottom:14px;font-size:12px;padding:8px 12px}}
+  @media (prefers-reduced-motion:reduce){.lg-mask,.lg-card{transition:none}}`;
+  const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  const pill = document.createElement('button');
+  pill.className = 'lg-pill'; pill.type = 'button'; pill.textContent = '🎯 學習目標';
+  pill.setAttribute('aria-label', '打開本單元的學習目標');
+
+  let mask = null;
+  function close() {
+    if (!mask) return;
+    const m = mask; mask = null; m.classList.remove('show');
+    setTimeout(() => m.remove(), 250);
+    document.removeEventListener('keydown', onKey);
+  }
+  function onKey(e) { if (e.key === 'Escape') close(); }
+  function open() {
+    if (mask) return;
+    mask = document.createElement('div');
+    mask.className = 'lg-mask';
+    mask.setAttribute('role', 'dialog'); mask.setAttribute('aria-modal', 'true'); mask.setAttribute('aria-label', '學習目標');
+    mask.innerHTML = `<div class="lg-card">
+      <div class="lg-eyebrow">🎯 本單元你會學到</div>
+      <h2>${esc(G.t)}</h2>
+      <ol>${G.g.map(x => `<li>${esc(x)}</li>`).join('')}</ol>
+      <div class="lg-k"><b>會考關鍵字</b>${G.k.map(x => `<span>${esc(x)}</span>`).join('')}</div>
+      <button class="lg-go" type="button">開始動手做 →</button>
+      <div class="lg-brand">會考 3D 自然實驗室</div></div>`;
+    // 不讓點擊、滑動穿透到後面的 3D 畫面
+    ['pointerdown', 'touchstart', 'wheel', 'mousedown'].forEach(ev => mask.addEventListener(ev, e => e.stopPropagation(), { passive: true }));
+    mask.addEventListener('click', e => { if (e.target === mask || e.target.closest('.lg-go')) close(); });
+    document.body.appendChild(mask);
+    requestAnimationFrame(() => mask && mask.classList.add('show'));
+    document.addEventListener('keydown', onKey);
+    mask.querySelector('.lg-go').focus({ preventScroll: true });
+  }
+  pill.addEventListener('click', open);
+  ['pointerdown', 'touchstart'].forEach(ev => pill.addEventListener(ev, e => e.stopPropagation(), { passive: true }));
+
+  function init() {
+    document.body.appendChild(pill);
+    let seen = false;
+    try { seen = localStorage.getItem('lg-seen:' + file) === '1'; localStorage.setItem('lg-seen:' + file, '1'); } catch (e) { /* 無痕模式等 */ }
+    if (!seen) setTimeout(open, 600);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
