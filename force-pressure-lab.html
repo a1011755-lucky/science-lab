@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>力與壓力終極實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #3b3127;
+    --ink-soft: #7a6e60;
+    --card: rgba(255,252,245,.62);
+    --accent: #c0703f;
+    --ok: #2f8a5b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(22px) saturate(160%); -webkit-backdrop-filter: blur(22px) saturate(160%);
+    border: 1px solid rgba(255,255,255,.85); box-shadow: 0 20px 50px rgba(90,60,30,.12), 0 2px 6px rgba(90,60,30,.06);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 316px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(192,112,63,.13); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.15rem; font-weight: 800; margin-top: 6px; padding-right: 62px; }
+  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .7rem; font-weight: 800; padding: 8px 2px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.62); line-height: 1.35; }
+  .tab:hover { background: rgba(255,255,255,.92); }
+  .tab.on { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(91,138,114,.35); }
+  .sec[hidden] { display: none; }
+  .concept { background: #fff; border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(90,60,30,.08); border-left: 5px solid var(--cc, #5b8a72); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #5b8a72); }
+  .concept .cd { font-size: .84rem; font-weight: 800; margin-top: 2px; line-height: 1.55; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e4d9c6; border-radius: 12px; padding: 9px 10px; background: #fffdf8; color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--accent); background: rgba(192,112,63,.13);
+    transition: background .2s, transform .1s, opacity .2s;
+  }
+  .btn:hover { background: rgba(192,112,63,.22); }
+  .btn:active { transform: scale(.98); }
+  .btn.primary { color: #fff; background: var(--accent); box-shadow: 0 6px 16px rgba(192,112,63,.3); }
+  .btn.on { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(91,138,114,.3); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c0392b; } .stat .g { color: var(--ok); } .stat .o { color: #b45309; } .stat .b { color: #1d4ed8; }
+  .note { background: #fff4d8; border: 1.5px solid #ecc46a; color: #6b4b00; font-weight: 600; border-radius: 14px; padding: 8px 11px; margin-top: 10px; font-size: .77rem; line-height: 1.6; }
+  .note b { color: #9a3b00; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 20px; text-align: center;
+          width: max-content; max-width: min(820px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .98rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .08em; }
+  .cap b { color: #9a3b00; }
+  .cap .huge { display: block; font-size: clamp(1.25rem, 2.4vw, 2rem); font-weight: 900; color: #1f6b43; line-height: 1.35; margin: 2px 0; }
+  .cap .mid { display: block; font-size: clamp(1.05rem, 1.9vw, 1.5rem); font-weight: 900; line-height: 1.4; font-variant-numeric: tabular-nums; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,253,248,.92); color: var(--ink); box-shadow: 0 4px 12px rgba(90,60,30,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag small { font-size: .66rem; color: var(--ink-soft); font-weight: 700; }
+  .tag.f1 { background: #ff8a3d; color: #fff; } .tag.f2 { background: #3d8bff; color: #fff; } .tag.net { background: #2fbf71; color: #fff; }
+  .tag.fr { background: #e5484d; color: #fff; }
+  .tag.hl { background: #5b8a72; color: #fff; }
+  .tag.boom { background: #e5484d; color: #fff; font-size: .9rem; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 760px), (max-width: 1100px) and (orientation: portrait) {
+    .tabs { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; }
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .8rem; }
+    .cap .huge { font-size: 1.05rem; } .cap .mid { font-size: .95rem; }
+    .tag { font-size: .64rem; padding: 3px 7px; }
+  }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="scene"></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g8">‹ 課程總覽</a>
+  <div class="title">力與壓力終極實驗室</div>
+  <div class="body">
+    <div class="tabs">
+      <button class="tab on" data-tab="hook">⭕<br>力的平衡</button>
+      <button class="tab" data-tab="fric">📦<br>摩擦力</button>
+      <button class="tab" data-tab="brick">🧱<br>固體壓力</button>
+      <button class="tab" data-tab="jet">⛲<br>液體壓力</button>
+      <button class="tab" data-tab="atm">🌍<br>大氣壓力</button>
+      <button class="tab" data-tab="buoy">🛟<br>浮力</button>
+    </div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="hook">
+      <div class="concept" style="--cc:#2f8a5b"><div class="ct">力的測量與平衡</div><div class="cd">虎克定律：彈簧伸長量 ∝ 拉力<br>兩力平衡：大小相等、方向相反、同一直線</div></div>
+      <label class="lab" for="hF1">⬅️ 左側拉力<b><span id="hF1V">4</span> N</b></label>
+      <input type="range" id="hF1" min="0" max="10" step="0.5" value="4">
+      <label class="lab" for="hF2">➡️ 右側拉力<b><span id="hF2V">4</span> N</b></label>
+      <input type="range" id="hF2" min="0" max="10" step="0.5" value="4">
+      <div class="stat" id="hookStat"></div>
+      <button class="btn" id="hookReset">↺ 鐵環回到中央</button>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="fric" hidden>
+      <div class="concept" style="--cc:#e5484d"><div class="ct">摩擦力探索</div><div class="cd">拉不動：靜摩擦力 ＝ 拉力<br>最大靜摩擦力 ∝ 正向力（重量）</div></div>
+      <div class="row2">
+        <button class="btn" id="wAdd">➕ 增加砝碼<small>每個 1 kg</small></button>
+        <button class="btn" id="wSub">➖ 拿掉砝碼</button>
+      </div>
+      <label class="lab" for="pullS">👉 拉動彈簧秤 F<b><span id="pullV">0.0</span> N</b></label>
+      <input type="range" id="pullS" min="0" max="25" step="0.2" value="0">
+      <div class="stat" id="fricStat"></div>
+      <button class="btn" id="fricReset">↺ 木塊回起點</button>
+      <p class="desc">慢慢拉：圖表先是 <b>45° 斜線</b>，一突破臨界點就<b>往下掉</b>變水平線。加砝碼後重來，臨界點會變高。</p>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="sec" data-tab="brick" hidden>
+      <div class="concept" style="--cc:#c26a00"><div class="ct">固體壓力 P ＝ F ÷ A</div><div class="cd">同一個物體（重量相同）<br>接觸面積越小 → 壓力越大 → 凹得越深</div></div>
+      <button class="btn" data-face="big">最大面接觸（5×3）<small>240 cm²</small></button>
+      <button class="btn on" data-face="mid">中面接觸（5×1）<small>80 cm²</small></button>
+      <button class="btn" data-face="small">最小面接觸（3×1）<small>48 cm²</small></button>
+      <div class="stat" id="brickStat"></div>
+    </section>
+
+    <!-- Tab 4 -->
+    <section class="sec" data-tab="jet" hidden>
+      <div class="concept" style="--cc:#1d6fd8"><div class="ct">液體壓力 P ＝ h × d</div><div class="cd">越深壓力越大；與容器形狀無關</div></div>
+      <label class="lab" for="jLiq">液體種類</label>
+      <select id="jLiq">
+        <option value="water">💧 水（1.0 g/cm³）</option>
+        <option value="alcohol">🧴 酒精（0.8 g/cm³）</option>
+        <option value="salt">🧂 食鹽水（1.2 g/cm³）</option>
+      </select>
+      <div class="stat" id="jetStat"></div>
+      <p class="desc">水柱放在高台上，三個洞同時噴水：A 最深、噴得最快最遠。換液體看看：<b>壓力會變，但噴出速度不變</b>（v ＝ √2gh，和密度無關）。</p>
+    </section>
+
+    <!-- 大氣壓力 -->
+    <section class="sec" data-tab="atm" hidden>
+      <div class="concept" style="--cc:#d0453a"><div class="ct">托里切利實驗</div><div class="cd">1 大氣壓 ＝ 76 cmHg<br>水銀柱的「垂直高度」只由大氣壓力決定</div></div>
+      <label class="lab" for="locS">觀測地點</label>
+      <select id="locS">
+        <option value="sea">🏖️ 平地（1 大氣壓）</option>
+        <option value="jade">⛰️ 玉山頂（約 3952 m）</option>
+        <option value="moon">🌕 月球（沒有大氣）</option>
+      </select>
+      <label class="lab" for="tiltS">📐 玻璃管傾角<b><span id="tiltV">0</span>°</b></label>
+      <input type="range" id="tiltS" min="0" max="60" step="1" value="0">
+      <div class="stat" id="atmStat"></div>
+      <p class="desc">玻璃管長 160 cm（傾斜 60° 時水銀柱長 152 cm，仍裝得下）。管子越斜，水銀柱越長，但<b>紅線（垂直高度）不變</b>。玉山頂約 47 cmHg 為概略值。</p>
+    </section>
+
+    <!-- Tab 4 -->
+    <section class="sec" data-tab="buoy" hidden>
+      <div class="concept" style="--cc:#1d6fd8"><div class="ct">阿基米德原理</div><div class="cd">浮力 B ＝ V排 × D液 ＝ 排開液體的重量</div></div>
+      <div class="row3">
+        <button class="btn" data-obj="foam">⬜<br>保麗龍</button>
+        <button class="btn" data-obj="wood">🪵<br>木塊</button>
+        <button class="btn" data-obj="iron">🔩<br>鐵塊</button>
+      </div>
+      <div class="stat" id="buoyStat"></div>
+      <button class="btn" id="buoyView">🔭 看全景</button>
+      <p class="desc">👆 把溢水槽前方的<b>積木拖進水槽</b>（或點上面按鈕）。三塊體積都是 500 cm³。溢水槽裝滿到出水口，物體<b>慢慢放入</b>後，被擠出的水從出水口流進磅秤上的燒杯——<b>磅秤增加的重量 ＝ 排開的水重 ＝ 浮力</b>（磅秤已扣除燒杯）。</p>
+    </section>
+
+    <button class="btn" id="viewBtn" style="margin-top:10px">重設視角</button>
+  </div>
+</aside>
+
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = THREE.MathUtils.clamp, lerp = THREE.MathUtils.lerp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const rnd = (a, b) => a + Math.random() * (b - a);
+
+/* =========================================================
+   共用：場景、燈光、原木桌面、材質
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.HemisphereLight(0xfffaf0, 0xd8c3a0, 1.05));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.9);
+sun.position.set(-6, 15, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -8, near: 1, far: 50 });
+sun.shadow.radius = 6;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 1.5; controls.maxDistance = 40;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const WOOD_TEX = woodTexture();
+const table = new THREE.Mesh(new RoundedBoxGeometry(30, 0.6, 14, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: WOOD_TEX, roughness: 0.72, clearcoat: 0.25, clearcoatRoughness: 0.5 }));
+table.position.y = -0.3; table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.55, metalness: 0, clearcoat: 0.35, clearcoatRoughness: 0.4, ...o });
+const frost = (color = 0xf4fbff, o = {}) => new THREE.MeshPhysicalMaterial({ color, transmission: 0.93, roughness: 0.1, thickness: 0.15, ior: 1.1, clearcoat: 1, clearcoatRoughness: 0.1, ...o });
+const glassA = (o = {}) => new THREE.MeshPhysicalMaterial({ color: 0xf6fbff, roughness: 0.05, clearcoat: 1, transparent: true, opacity: 0.18, depthWrite: false, side: THREE.DoubleSide, ...o });
+const glow = color => new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.9, roughness: 0.3, toneMapped: false });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+
+/** 發光 3D 箭頭：沿 +x 方向，setLength 改長度（箭頭長度 ∝ 力的大小） */
+function makeArrow(color, r = 0.07) {
+  const g = new THREE.Group();
+  const mat = glow(color);
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, 16).rotateZ(-Math.PI / 2).translate(0.5, 0, 0), mat);
+  const head = new THREE.Mesh(new THREE.ConeGeometry(r * 2.4, r * 5, 20).rotateZ(-Math.PI / 2).translate(r * 2.5, 0, 0), mat);
+  g.add(shaft, head);
+  g.userData.set = len => {
+    const hl = r * 5;
+    g.visible = len > 0.02;
+    const L = Math.max(len, 0.001);
+    shaft.scale.x = Math.max(0.001, L - hl * Math.min(1, L / hl));
+    head.position.x = shaft.scale.x;
+    head.scale.setScalar(Math.min(1, L / hl));
+  };
+  return g;
+}
+/** LCD 數字顯示器（canvas 貼圖） */
+function makeLcd(w, h, unit = 'g') {
+  const c = document.createElement('canvas'); c.width = 512; c.height = Math.round(512 * h / w);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+  let last = '';
+  mesh.userData.set = text => {
+    if (text === last) return; last = text;
+    const g = c.getContext('2d');
+    g.fillStyle = '#1f2a24'; g.fillRect(0, 0, c.width, c.height);
+    g.fillStyle = '#9df0c2'; g.shadowColor = '#5be59a'; g.shadowBlur = 18;
+    g.font = `700 ${c.height * 0.62}px "Consolas", "Menlo", monospace`; g.textAlign = 'right'; g.textBaseline = 'middle';
+    g.fillText(text, c.width - 50, c.height * 0.54);
+    g.shadowBlur = 0; g.font = `700 ${c.height * 0.24}px sans-serif`; g.textAlign = 'left'; g.fillStyle = '#6fbf95'; g.fillText(unit, c.width - 44, c.height * 0.7);
+    tex.needsUpdate = true;
+  };
+  return mesh;
+}
+function makeScale(w = 2.2, d = 1.8) {
+  const g = new THREE.Group();
+  const body = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w, 0.32, d, 4, 0.12), clay(0xf3ece0))); body.position.y = 0.16; g.add(body);
+  const plate = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w - 0.3, 0.07, d - 0.3, 3, 0.03), clay(0xd9dde3, { metalness: 0.5, roughness: 0.25, clearcoat: 1 })));
+  plate.position.y = 0.355; g.add(plate);
+  const lcd = makeLcd(1.1, 0.24); lcd.position.set(0.25, 0.16, d / 2 + 0.005); g.add(lcd);
+  g.userData.lcd = lcd; g.userData.top = 0.39;
+  return g;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html) { if (L.html !== html) { L.html = html; L.el.innerHTML = html; } }
+function placeLabels() {
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * window.innerWidth) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * window.innerHeight) + 'px';
+  }
+}
+let tab = 'net', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+/* =========================================================
+   Tab 1：力的測量與平衡（虎克彈簧台）
+   兩手各用一根彈簧拉鐵環；彈簧伸長量 ∝ 拉力（虎克定律）
+   ========================================================= */
+const HOOK = { group: new THREE.Group(), F1: 4, F2: 4, x: 0, glow: 0 };
+scene.add(HOOK.group);
+const SPR_L0 = 1.6, SPR_K = 0.16;                                           // 原長 1.6；每 1 N 伸長 0.16（＝ 1.6 cm）
+const RING_R = 0.36, HOOK_Y = 1.0;
+const coilPts = [];
+for (let i = 0; i <= 260; i++) { const s = i / 260, a = s * Math.PI * 2 * 12; coilPts.push(V3(s, 0.2 * Math.cos(a), 0.2 * Math.sin(a))); }
+const coilGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(coilPts), 520, 0.028, 8, false);
+const coilMat = clay(0xc9ccd2, { metalness: 0.6, roughness: 0.25, clearcoat: 1 });
+const hookRail = shadowed(new THREE.Mesh(new RoundedBoxGeometry(11, 0.12, 1.4, 3, 0.05), clay(0xe8ddcc))); hookRail.position.set(0, 0.06, 0); HOOK.group.add(hookRail);
+const ringMat = clay(0x8f969e, { metalness: 0.7, roughness: 0.25, clearcoat: 1, emissive: 0xffc23d, emissiveIntensity: 0 });
+const ring = shadowed(new THREE.Mesh(new THREE.TorusGeometry(RING_R, 0.08, 16, 48), ringMat)); HOOK.group.add(ring);
+const springs = [new THREE.Mesh(coilGeo, coilMat), new THREE.Mesh(coilGeo, coilMat)]; springs.forEach(m => { m.castShadow = true; HOOK.group.add(m); });
+const grips = [0, 1].map(() => { const g = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.6, 8, 20).rotateZ(Math.PI / 2), clay(0xb4865a))); HOOK.group.add(g); return g; });
+const hA1 = makeArrow(0xff8a3d), hA2 = makeArrow(0x3d8bff);
+hA1.rotation.y = Math.PI; HOOK.group.add(hA1, hA2);
+const lH1 = addLabel('hook', '', 'f1', V3(0, 0, 0)), lH2 = addLabel('hook', '', 'f2', V3(0, 0, 0));
+const lHok = addLabel('hook', '', 'hl', V3(0, 0, 0), ring);
+const lStretch1 = addLabel('hook', '', '', V3(0, 0, 0)), lStretch2 = addLabel('hook', '', '', V3(0, 0, 0));
+function syncHook() { HOOK.F1 = Number($('hF1').value); HOOK.F2 = Number($('hF2').value); $('hF1V').textContent = HOOK.F1; $('hF2V').textContent = HOOK.F2; }
+$('hF1').addEventListener('input', syncHook); $('hF2').addEventListener('input', syncHook);
+$('hookReset').addEventListener('click', () => { HOOK.x = 0; });
+function updateHook(dt) {
+  const net = HOOK.F2 - HOOK.F1;                                            // 向右為正
+  HOOK.x = clamp(HOOK.x + net * 0.22 * dt, -1.8, 1.8);                      // 桌面有阻力：合力不為 0 → 朝大力那邊移動
+  const L1 = SPR_L0 + HOOK.F1 * SPR_K, L2 = SPR_L0 + HOOK.F2 * SPR_K;       // 虎克定律：伸長量 ∝ 拉力
+  ring.position.set(HOOK.x, HOOK_Y, 0);
+  springs[0].position.set(HOOK.x - RING_R - L1, HOOK_Y, 0); springs[0].scale.x = L1;
+  springs[1].position.set(HOOK.x + RING_R, HOOK_Y, 0); springs[1].scale.x = L2;
+  grips[0].position.set(HOOK.x - RING_R - L1 - 0.45, HOOK_Y, 0);
+  grips[1].position.set(HOOK.x + RING_R + L2 + 0.45, HOOK_Y, 0);
+  hA1.position.set(grips[0].position.x - 0.55, HOOK_Y, 0); hA1.userData.set(HOOK.F1 * 0.14);
+  hA2.position.set(grips[1].position.x + 0.55, HOOK_Y, 0); hA2.userData.set(HOOK.F2 * 0.14);
+  lH1.pos.set(grips[0].position.x - 0.6, HOOK_Y + 0.7, 0); lH2.pos.set(grips[1].position.x + 0.6, HOOK_Y + 0.7, 0);
+  setLabel(lH1, `左拉力 ${HOOK.F1.toFixed(1)} N`); setLabel(lH2, `右拉力 ${HOOK.F2.toFixed(1)} N`);
+  lStretch1.pos.set(springs[0].position.x + L1 / 2, HOOK_Y - 0.55, 0.3); lStretch2.pos.set(springs[1].position.x + L2 / 2, HOOK_Y - 0.55, 0.3);
+  setLabel(lStretch1, `<small>伸長 ${(HOOK.F1 * SPR_K * 10).toFixed(1)} cm</small>`); setLabel(lStretch2, `<small>伸長 ${(HOOK.F2 * SPR_K * 10).toFixed(1)} cm</small>`);
+  const bal = Math.abs(net) < 1e-9 && HOOK.F1 > 0;
+  HOOK.glow += ((bal ? 1 : 0) - HOOK.glow) * (1 - Math.exp(-dt * 6));
+  ringMat.emissiveIntensity = HOOK.glow * (0.9 + 0.3 * Math.sin(wall * 5));
+  lHok.off.set(0, 0.95, 0); lHok.show = bal;
+  setLabel(lHok, '✨ 達成兩力平衡！');
+  setHTML('hookStat', `彈簧伸長量：左 <b>${(HOOK.F1 * SPR_K * 10).toFixed(1)} cm</b>、右 <b>${(HOOK.F2 * SPR_K * 10).toFixed(1)} cm</b>（每 1 N 伸長 1.6 cm）<br>合力：<b class="${bal ? 'g' : 'r'}">${Math.abs(net).toFixed(1)} N</b>${net ? (net > 0 ? ' 向右' : ' 向左') : ''}<br>${bal ? '<span class="g">大小相等、方向相反、在同一直線 → 平衡，鐵環靜止</span>' : '鐵環被拉向力量大的一方'}`);
+  setCap(bal
+    ? `<small>兩力平衡</small><span class="mid">${HOOK.F1.toFixed(1)} N ← ⭕ → ${HOOK.F2.toFixed(1)} N</span>兩力<b>大小相等、方向相反、作用在同一直線上</b> → 合力為 0，鐵環靜止`
+    : `<small>虎克定律：彈簧伸長量 ∝ 拉力</small><span class="mid">合力 ＝ ${Math.max(HOOK.F1, HOOK.F2).toFixed(1)} − ${Math.min(HOOK.F1, HOOK.F2).toFixed(1)} ＝ ${Math.abs(net).toFixed(1)} N ${net > 0 ? '向右' : '向左'}</span>兩力不平衡 → 鐵環被拉向<b>力量大</b>的一方`);
+}
+
+/* =========================================================
+   Tab 2：摩擦力探索（彈簧秤拉木塊＋砝碼）
+   最大靜摩擦力 ∝ 正向力（重量）
+   ========================================================= */
+const MU_S = 0.5, MU_K = 0.35, BLOCK_M = 1, W_KG = 1;
+const FRIC = { group: new THREE.Group(), F: 0, nW: 0, x: -3.2, v: 0, moving: false, trace: [], end: false };
+scene.add(FRIC.group); FRIC.group.visible = false;
+const FX0 = -3.2, FX_END = 2.4;
+const fStrip = shadowed(new THREE.Mesh(new RoundedBoxGeometry(9.2, 0.06, 2.0, 3, 0.03), clay(0xd9b88c, { roughness: 0.6, clearcoat: 0.2 }))); fStrip.position.set(-0.4, 0.03, 0); FRIC.group.add(fStrip);
+const fBlock = new THREE.Group(); FRIC.group.add(fBlock);
+fBlock.add(shadowed(new THREE.Mesh(new RoundedBoxGeometry(1.4, 0.8, 1.2, 4, 0.1), new THREE.MeshPhysicalMaterial({ map: woodTexture('#c99a63', '#b5834c'), roughness: 0.75, clearcoat: 0.2 }))));
+fBlock.children[0].position.y = 0.46;
+const weightMat = clay(0xc9a46a, { metalness: 0.6, roughness: 0.25, clearcoat: 1 });
+const weights = [0, 1, 2].map(i => {
+  const g = new THREE.Group();
+  g.add(shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.36, 0.26, 32), weightMat)));
+  const knob = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 12), weightMat)); knob.position.y = 0.18; g.add(knob);
+  g.position.set(0, 0.86 + 0.13 + i * 0.3, 0); g.visible = false; fBlock.add(g); return g;
+});
+// 彈簧秤（掛在木塊右側，手拉著往右）
+const scaleG = new THREE.Group(); fBlock.add(scaleG);
+const scaleBody = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 1.8, 8, 24).rotateZ(Math.PI / 2), frost(0xf3f9ff, { roughness: 0.08 })); scaleBody.position.x = 2.0; scaleG.add(scaleBody);
+const fCoil = new THREE.Mesh(coilGeo, coilMat); fCoil.scale.set(1, 0.6, 0.6); fCoil.position.set(1.15, 0, 0); scaleG.add(fCoil);
+const fHook = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 8).rotateZ(Math.PI / 2), clay(0x9aa0a8, { metalness: 0.5 })); fHook.position.x = 0.9; scaleG.add(fHook);
+const fHand = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.5, 8, 20).rotateZ(Math.PI / 2), clay(0xb4865a))); scaleG.add(fHand);
+scaleG.position.set(0, 0.5, 0);
+const aFric = makeArrow(0xe5484d); aFric.rotation.y = Math.PI; aFric.position.set(-0.2, 0.12, 0.7); fBlock.add(aFric);
+const lPull = addLabel('fric', '', 'f1', V3(2.4, 0.9, 0), fBlock);
+const lFr = addLabel('fric', '', 'fr', V3(-0.6, -0.35, 0.9), fBlock);
+const chartC = document.createElement('canvas'); chartC.width = 900; chartC.height = 560;
+const chartTex = new THREE.CanvasTexture(chartC); chartTex.colorSpace = THREE.SRGBColorSpace; chartTex.anisotropy = 8;
+const chart = new THREE.Mesh(new RoundedBoxGeometry(4.6, 2.86, 0.08, 4, 0.12), [clay(0xfffaf0), clay(0xfffaf0), clay(0xfffaf0), clay(0xfffaf0), new THREE.MeshBasicMaterial({ map: chartTex, toneMapped: false }), clay(0xfffaf0)]);
+chart.position.set(-0.6, 3.6, -0.8); FRIC.group.add(chart);
+const fMass = () => BLOCK_M + FRIC.nW * W_KG, fN = () => fMass() * 9.8;
+const FMAX = 25;
+const curFr = () => FRIC.moving ? MU_K * fN() : Math.min(FRIC.F, MU_S * fN());
+function drawFricChart() {
+  const fsMax = MU_S * fN(), fk = MU_K * fN();
+  const g = chartC.getContext('2d'), W = chartC.width, H = chartC.height;
+  g.fillStyle = '#fffaf0'; g.fillRect(0, 0, W, H);
+  const L = 92, R = 30, T = 50, B = 86, pw = W - L - R, ph = H - T - B;
+  const X = F => L + F / FMAX * pw, Y = f => T + ph - f / FMAX * ph;
+  g.font = '600 24px "PingFang TC","Microsoft JhengHei",sans-serif'; g.lineWidth = 2;
+  for (let v = 0; v <= FMAX; v += 5) {
+    g.strokeStyle = 'rgba(120,95,70,.15)';
+    g.beginPath(); g.moveTo(X(v), Y(0)); g.lineTo(X(v), Y(FMAX)); g.stroke();
+    g.beginPath(); g.moveTo(X(0), Y(v)); g.lineTo(X(FMAX), Y(v)); g.stroke();
+    g.fillStyle = '#8a7c6c'; g.textAlign = 'center'; g.fillText(v, X(v), Y(0) + 30); g.textAlign = 'right'; g.fillText(v, X(0) - 10, Y(v) + 8);
+  }
+  g.strokeStyle = '#5a4c3e'; g.lineWidth = 3; g.beginPath(); g.moveTo(X(0), Y(FMAX)); g.lineTo(X(0), Y(0)); g.lineTo(X(FMAX), Y(0)); g.stroke();
+  g.fillStyle = '#5a4c3e'; g.font = '800 26px "PingFang TC","Microsoft JhengHei",sans-serif';
+  g.textAlign = 'left'; g.fillText('摩擦力 f（N）', X(0) + 10, T - 16);
+  g.textAlign = 'right'; g.fillText('拉力 F（N）', X(FMAX), H - 18);
+  g.setLineDash([10, 8]); g.strokeStyle = 'rgba(229,72,77,.35)'; g.lineWidth = 3;
+  g.beginPath(); g.moveTo(X(0), Y(0)); g.lineTo(X(fsMax), Y(fsMax)); g.lineTo(X(fsMax), Y(fk)); g.lineTo(X(FMAX), Y(fk)); g.stroke(); g.setLineDash([]);
+  g.fillStyle = '#c0392b'; g.font = '700 22px "PingFang TC","Microsoft JhengHei",sans-serif'; g.textAlign = 'left';
+  g.fillText(`最大靜摩擦力 ${fsMax.toFixed(1)} N`, Math.min(X(fsMax) + 10, W - 260), Y(fsMax) - 10);
+  g.fillText(`動摩擦力 ${fk.toFixed(1)} N`, X(Math.min(fsMax + 1.5, 17)), Y(fk) + 30);
+  g.strokeStyle = '#e5484d'; g.lineWidth = 5; g.lineJoin = 'round';
+  g.beginPath(); FRIC.trace.forEach((p, i) => { if (i) g.lineTo(X(p[0]), Y(p[1])); else g.moveTo(X(p[0]), Y(p[1])); }); g.stroke();
+  const f = FRIC.end ? 0 : curFr();
+  g.beginPath(); g.arc(X(FRIC.F), Y(f), 13 + 3 * Math.sin(wall * 6), 0, Math.PI * 2); g.strokeStyle = FRIC.moving ? '#2f8a5b' : '#e5484d'; g.lineWidth = 4; g.stroke();
+  g.beginPath(); g.arc(X(FRIC.F), Y(f), 8, 0, Math.PI * 2); g.fillStyle = '#3b3127'; g.fill();
+  g.fillStyle = FRIC.moving ? '#2f8a5b' : '#9a3b00'; g.font = '800 26px "PingFang TC","Microsoft JhengHei",sans-serif'; g.textAlign = 'right';
+  g.fillText(FRIC.moving ? '滑動中：動摩擦力（定值）' : (FRIC.F > 0 ? '拉不動：靜摩擦力 ＝ 拉力' : ''), W - R, T - 16);
+  chartTex.needsUpdate = true;
+}
+function resetFric() { FRIC.x = FX0; FRIC.v = 0; FRIC.moving = false; FRIC.end = false; FRIC.trace = []; FRIC.F = 0; $('pullS').value = 0; $('pullV').textContent = '0.0'; }
+function setWeights(n) {
+  FRIC.nW = clamp(n, 0, 3);
+  weights.forEach((w, i) => { w.visible = i < FRIC.nW; });
+  resetFric();
+}
+$('pullS').addEventListener('input', () => { FRIC.F = Number($('pullS').value); $('pullV').textContent = FRIC.F.toFixed(1); });
+$('wAdd').addEventListener('click', () => setWeights(FRIC.nW + 1));
+$('wSub').addEventListener('click', () => setWeights(FRIC.nW - 1));
+$('fricReset').addEventListener('click', resetFric);
+let chartT = 0;
+function updateFric(dt) {
+  const fsMax = MU_S * fN(), fk = MU_K * fN(), F = FRIC.F, m = fMass();
+  if (!FRIC.moving && !FRIC.end && F > fsMax + 1e-9) FRIC.moving = true;    // 突破臨界點 → 開始滑動
+  let a = 0;
+  if (FRIC.moving) {
+    a = (F - fk) / m;
+    FRIC.v += a * 0.35 * dt;
+    if (FRIC.v <= 0) { FRIC.v = 0; FRIC.moving = F > fsMax; }
+    FRIC.x += FRIC.v * dt;
+    if (FRIC.x >= FX_END) { FRIC.x = FX_END; FRIC.v = 0; FRIC.moving = false; FRIC.end = true; }
+  }
+  fBlock.position.x = FRIC.x;
+  const f = FRIC.end ? 0 : curFr();
+  const last = FRIC.trace[FRIC.trace.length - 1];
+  if (!FRIC.end && (!last || Math.abs(last[0] - F) > 0.05 || Math.abs(last[1] - f) > 0.05)) FRIC.trace.push([F, f]);
+  const stretch = 0.5 + F * 0.03;                                           // 彈簧秤：拉力越大，彈簧越長
+  fCoil.scale.x = stretch; fHook.position.x = 0.95;
+  scaleBody.position.x = 1.15 + stretch + 0.95; fHand.position.x = scaleBody.position.x + 1.35;
+  aFric.userData.set(f * 0.12);
+  setLabel(lPull, `拉力 F ＝ ${F.toFixed(1)} N`); lPull.off.set(scaleBody.position.x, 0.95, 0);
+  setLabel(lFr, `摩擦力 ＝ ${f.toFixed(1)} N`); lFr.show = f > 0.05;
+  chartT -= dt; if (chartT <= 0) { chartT = 0.05; drawFricChart(); }
+  setHTML('fricStat', `木塊 ${BLOCK_M} kg ＋ 砝碼 ${FRIC.nW} 個（各 1 kg）＝ <b>${m} kg</b><br>正向力（重量）：<b>${fN().toFixed(1)} N</b><br>最大靜摩擦力：<b class="r">${fsMax.toFixed(1)} N</b>｜動摩擦力：<b class="o">${fk.toFixed(1)} N</b><br>${FRIC.end ? '<span class="o">到達終點</span>' : FRIC.moving ? `<span class="g">滑動中</span>：a ＝ ${a.toFixed(2)} m/s²` : F > 0 ? '<span class="r">拉不動</span>：靜摩擦力 ＝ 拉力' : '靜止'}`);
+  setCap(FRIC.moving
+    ? `<small>動摩擦力</small><span class="mid">拉力 ${F.toFixed(1)} N ＞ 動摩擦力 ${fk.toFixed(1)} N</span>突破臨界點後，摩擦力<b>掉到動摩擦力</b>，木塊<b>加速滑動</b>`
+    : F > 0 && !FRIC.end ? `<small>靜摩擦力 ＝ 拉力</small><span class="mid">${F.toFixed(1)} N ＜ 最大靜摩擦力 ${fsMax.toFixed(1)} N</span>${FRIC.nW ? `加了 ${FRIC.nW} 個砝碼，正向力變大 → <b>最大靜摩擦力也變大</b>` : '還拉不動，再拉大一點'}`
+    : `<small>最大靜摩擦力 ∝ 正向力</small>慢慢拉彈簧秤找臨界點；再加砝碼試試，要拉<b>更大的力</b>才拉得動`);
+}
+
+/* =========================================================
+   Tab 3：固體壓力（翻轉磚塊與海綿）
+   磚塊 5 : 3 : 1（20 cm × 12 cm × 4 cm），重 60 N
+   ========================================================= */
+const BRICK = { group: new THREE.Group(), face: 'mid', state: 'rest', t: 0, depth: 0, depthT: 0, y: 0, vy: 0 };
+scene.add(BRICK.group); BRICK.group.visible = false;
+const BW_N = 60;
+const FACES = {
+  big: { name: '最大面 5×3', area: 240, q: new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0)), size: [2.5, 0.5, 1.5] },
+  mid: { name: '中面 5×1', area: 80, q: new THREE.Quaternion(), size: [2.5, 1.5, 0.5] },
+  small: { name: '最小面 3×1', area: 48, q: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, Math.PI / 2)), size: [1.5, 2.5, 0.5] }
+};
+const SP = { w: 6, h: 1.4, d: 4.2, segX: 72, segY: 6, segZ: 50 };
+const spongeGeo = new THREE.BoxGeometry(SP.w, SP.h, SP.d, SP.segX, SP.segY, SP.segZ);
+const spongeBase = spongeGeo.attributes.position.array.slice();
+const spongeMat = clay(0xffd45a, { roughness: 0.9, clearcoat: 0.05, sheen: 0.6, sheenColor: new THREE.Color(0xfff2b0) });
+const sponge = new THREE.Mesh(spongeGeo, spongeMat); sponge.position.y = SP.h / 2; sponge.castShadow = true; sponge.receiveShadow = true; BRICK.group.add(sponge);
+for (let i = 0; i < 60; i++) {                                              // 海綿孔洞
+  const hole = new THREE.Mesh(new THREE.CircleGeometry(rnd(0.03, 0.07), 10), new THREE.MeshBasicMaterial({ color: 0xd9a92a }));
+  hole.position.set(rnd(-2.9, 2.9), rnd(0.15, 1.25), SP.d / 2 + 0.004); BRICK.group.add(hole);
+}
+const brick = shadowed(new THREE.Mesh(new RoundedBoxGeometry(2.5, 1.5, 0.5, 4, 0.05), clay(0x8e959e, { metalness: 0.75, roughness: 0.3, clearcoat: 0.8 })));
+BRICK.group.add(brick);
+const lBrick = addLabel('brick', '', 'hl', V3(0, 0, 0));
+const SPONGE_TOP = SP.h;
+function deformSponge(depth, hx, hz) {
+  const pos = spongeGeo.attributes.position, a = pos.array;
+  for (let i = 0; i < pos.count; i++) {
+    const x = spongeBase[i * 3], y = spongeBase[i * 3 + 1], z = spongeBase[i * 3 + 2];
+    const dx = Math.max(0, Math.abs(x) - hx), dz = Math.max(0, Math.abs(z) - hz);
+    const w = Math.exp(-(dx * dx + dz * dz) / 0.12);                       // 磚塊底面範圍內凹最深，邊緣柔和過渡
+    const k = (y + SP.h / 2) / SP.h;                                         // 越靠上面凹越多，底部不動
+    a[i * 3 + 1] = y - depth * w * k;
+  }
+  pos.needsUpdate = true; spongeGeo.computeVertexNormals();
+}
+function setFace(f) {
+  BRICK.face = f; BRICK.state = 'lift'; BRICK.t = 0; BRICK.q0 = brick.quaternion.clone(); BRICK.y0 = brick.position.y;
+  document.querySelectorAll('[data-face]').forEach(b => b.classList.toggle('on', b.dataset.face === f));
+  BRICK.depthT = 0;
+}
+document.querySelectorAll('[data-face]').forEach(b => b.addEventListener('click', () => setFace(b.dataset.face)));
+const pOf = f => BW_N / FACES[f].area;                                      // N/cm²
+function updateBrick(dt) {
+  const F = FACES[BRICK.face], half = F.size[1] / 2;
+  const restY = SPONGE_TOP - BRICK.depth + half;
+  if (BRICK.state === 'lift') {                                              // 抬起
+    BRICK.t += dt / 0.45; brick.position.y = lerp(BRICK.y0, 4.2, smooth(0, 1, BRICK.t));
+    BRICK.depthT = 0;
+    if (BRICK.t >= 1) { BRICK.state = 'flip'; BRICK.t = 0; }
+  } else if (BRICK.state === 'flip') {                                       // 在空中優雅翻轉
+    BRICK.t += dt / 0.8; brick.quaternion.slerpQuaternions(BRICK.q0, F.q, smooth(0, 1, BRICK.t));
+    brick.position.y = 4.2 + Math.sin(BRICK.t * Math.PI) * 0.4;
+    if (BRICK.t >= 1) { BRICK.state = 'drop'; BRICK.vy = 0; }
+  } else if (BRICK.state === 'drop') {                                       // 重重壓下
+    BRICK.vy -= 18 * dt; brick.position.y += BRICK.vy * dt;
+    if (brick.position.y <= SPONGE_TOP + half) { BRICK.state = 'press'; BRICK.depthT = pOf(BRICK.face) * 0.48; BRICK.depth = 0.05; }
+  } else if (BRICK.state === 'press' || BRICK.state === 'rest') {
+    brick.position.y = restY;
+  }
+  // 凹陷深度（有一點回彈）
+  const k = BRICK.state === 'press' ? 10 : 6;
+  BRICK.depth += (BRICK.depthT - BRICK.depth) * (1 - Math.exp(-dt * k));
+  if (BRICK.state === 'press' && Math.abs(BRICK.depthT - BRICK.depth) < 0.003) BRICK.state = 'rest';
+  deformSponge(BRICK.depth, F.size[0] / 2, F.size[2] / 2);
+  const P = pOf(BRICK.face);
+  lBrick.pos.set(0, brick.position.y + half + 0.6, 0);
+  setLabel(lBrick, `${F.name}：A ＝ ${F.area} cm²`);
+  const resting = BRICK.state === 'rest' || BRICK.state === 'press';
+  setHTML('brickStat', `磚塊重 <b>${BW_N} N</b>（20 × 12 × 4 cm）<br>接觸面：<b>${F.name}</b>，面積 <b>${F.area} cm²</b><br>壓力 P ＝ ${BW_N} ÷ ${F.area} ＝ <b class="r">${P.toFixed(2)} N/cm²</b><br>海綿凹陷：<b>${(BRICK.depth * 10).toFixed(1)} cm</b>`);
+  setCap(resting
+    ? `<small>壓力 P ＝ 重量 ÷ 接觸面積</small><span class="mid">P ＝ ${BW_N} N ÷ ${F.area} cm² ＝ ${P.toFixed(2)} N/cm²</span>同一塊磚，重量不變；<b>接觸面積越小 → 壓力越大 → 凹得越深</b>`
+    : '<small>翻轉中…</small>同一塊磚換一個面壓下去');
+}
+
+/* =========================================================
+   Tab 4：液體壓力（三個洞的水壓噴射）
+   噴出速度 v ＝ √(2gh)，只跟深度有關（與液體密度無關）
+   ========================================================= */
+const JET = { group: new THREE.Group(), kind: 'water', acc: [0, 0, 0] };
+scene.add(JET.group); JET.group.visible = false;
+const JLIQ = { water: { name: '水', d: 1.0, color: 0x6fbcff }, alcohol: { name: '酒精', d: 0.8, color: 0xe6f3ff }, salt: { name: '食鹽水', d: 1.2, color: 0x7aa3c4 } };
+const STAND_H = 2.5, COL_R = 0.75, COL_H = 3.2, J_SURF = STAND_H + 2.85, CMU = 20;   // 1 單位 ＝ 20 cm
+const HOLES = [{ k: 'A', y: STAND_H + 0.5, tag: '深' }, { k: 'B', y: STAND_H + 1.3, tag: '中' }, { k: 'C', y: STAND_H + 2.1, tag: '淺' }];
+const jStand = shadowed(new THREE.Mesh(new RoundedBoxGeometry(2.0, STAND_H, 2.0, 4, 0.12), clay(0xb4865a, { map: WOOD_TEX }))); jStand.position.set(-3.2, STAND_H / 2, 0); JET.group.add(jStand);
+const jGlass = new THREE.Mesh(new THREE.CylinderGeometry(COL_R, COL_R, COL_H, 48, 1, true), glassA({ opacity: 0.18 })); jGlass.position.set(-3.2, STAND_H + COL_H / 2, 0); jGlass.renderOrder = 5; JET.group.add(jGlass);
+const jWaterMat = new THREE.MeshPhysicalMaterial({ color: JLIQ.water.color, roughness: 0.05, clearcoat: 1, transparent: true, opacity: 0.5, depthWrite: false });
+const jWater = new THREE.Mesh(new THREE.CylinderGeometry(COL_R - 0.04, COL_R - 0.04, J_SURF - STAND_H, 48), jWaterMat); jWater.position.set(-3.2, (J_SURF + STAND_H) / 2, 0); jWater.renderOrder = 4; JET.group.add(jWater);
+const tray = shadowed(new THREE.Mesh(new RoundedBoxGeometry(9, 0.12, 2.6, 3, 0.05), clay(0xdfe8f0, { roughness: 0.3, clearcoat: 1 }))); tray.position.set(1.4, 0.06, 0); JET.group.add(tray);
+const jetGeo = new THREE.SphereGeometry(0.055, 8, 6);
+const jetMat = new THREE.MeshStandardMaterial({ color: 0x4fb8ff, emissive: 0x2f9bff, emissiveIntensity: 0.8, roughness: 0.2, toneMapped: false });
+const JN = 900;
+const jets = new THREE.InstancedMesh(jetGeo, jetMat, JN); jets.instanceMatrix.setUsage(THREE.DynamicDrawUsage); jets.frustumCulled = false; JET.group.add(jets);
+const jp = Array.from({ length: JN }, () => ({ on: false, p: V3(0, 0, 0), v: V3(0, 0, 0) }));
+const G_VIS = 7;
+const landMarks = HOLES.map(h => { const m = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.035, 8, 32), new THREE.MeshBasicMaterial({ color: 0x2f9bff, toneMapped: false })); m.rotation.x = Math.PI / 2; JET.group.add(m); return m; });
+const holeLabels = HOLES.map(h => addLabel('jet', '', '', V3(-3.2 - COL_R - 0.9, h.y, 0.3)));
+const landLabels = HOLES.map(h => addLabel('jet', '', '', V3(0, 0.45, 1.0)));
+HOLES.forEach(h => { const m = new THREE.Mesh(new THREE.CircleGeometry(0.06, 16), new THREE.MeshBasicMaterial({ color: 0x1f4f7a })); m.position.set(-3.2 + COL_R + 0.002, h.y, 0); m.rotation.y = Math.PI / 2; JET.group.add(m); });
+$('jLiq').addEventListener('change', () => { JET.kind = $('jLiq').value; jWaterMat.color.set(JLIQ[JET.kind].color); jetMat.color.set(JLIQ[JET.kind].color); jetMat.emissive.set(JLIQ[JET.kind].color).multiplyScalar(0.6); });
+const _m4 = new THREE.Matrix4(), _q0 = new THREE.Quaternion(), _s1 = V3(1, 1, 1), _s0 = V3(0, 0, 0);
+function updateJet(dt) {
+  const d = JLIQ[JET.kind].d;
+  HOLES.forEach((h, i) => {
+    const depth = J_SURF - h.y, v = Math.sqrt(2 * G_VIS * depth);          // 托里切利：v ＝ √(2gh)
+    JET.acc[i] += dt * 70 * v / 3;
+    while (JET.acc[i] >= 1) {
+      JET.acc[i] -= 1;
+      const p = jp.find(q => !q.on); if (!p) break;
+      p.on = true; p.p.set(-3.2 + COL_R + 0.02, h.y + rnd(-0.03, 0.03), rnd(-0.04, 0.04)); p.v.set(v * rnd(0.97, 1.03), 0, rnd(-0.05, 0.05));
+    }
+    const tFall = Math.sqrt(2 * h.y / G_VIS), R = v * tFall;                 // 落點距離
+    landMarks[i].position.set(-3.2 + COL_R + R, 0.14, 0);
+    landLabels[i].pos.set(-3.2 + COL_R + R, 0.5, 1.1 + i * 0.0);
+    setLabel(landLabels[i], `${h.k}`);
+    setLabel(holeLabels[i], `${h.k}（${h.tag}）h ＝ ${(depth * CMU).toFixed(0)} cm<br><small>P ＝ ${(depth * CMU).toFixed(0)} × ${d} ＝ ${(depth * CMU * d).toFixed(0)} gw/cm²</small>`);
+  });
+  let n = 0;
+  for (let i = 0; i < JN; i++) {
+    const p = jp[i];
+    if (p.on) {
+      p.v.y -= G_VIS * dt; p.p.addScaledVector(p.v, dt);
+      if (p.p.y < 0.14) p.on = false;
+    }
+    jets.setMatrixAt(i, _m4.compose(p.p, _q0, p.on ? _s1 : _s0));
+    n++;
+  }
+  jets.instanceMatrix.needsUpdate = true;
+  const PA = (J_SURF - HOLES[0].y) * CMU * d;
+  setHTML('jetStat', `液體：<b>${JLIQ[JET.kind].name}</b>（密度 ${d} g/cm³）<br>A 洞壓力最大：<b class="r">${PA.toFixed(0)} gw/cm²</b><br>噴出速度 v ＝ √(2gh)：<b>只看深度</b>`);
+  setCap(JET.kind === 'water'
+    ? `<small>液體壓力 P ＝ 深度 h × 密度 d</small><span class="mid">A 洞最深 → 壓力最大、噴得最快、落點最遠</span>壓力只跟深度、密度有關，和容器形狀無關`
+    : `<small>${JLIQ[JET.kind].name}：密度 ${d} g/cm³</small><span class="mid">每個洞的壓力都${d > 1 ? '變大' : '變小'}了（P ＝ h × d）</span>但液體本身也${d > 1 ? '變重' : '變輕'}，兩者抵消 → <b>噴出速度、落點都不變</b>（v ＝ √2gh）`);
+}
+
+/* =========================================================
+   Tab 3：大氣壓力與托里切利實驗（1 cm ＝ 0.04 單位長）
+   ========================================================= */
+const CM = 0.04;                                                             // 1 cm ＝ 0.04 單位長
+const LOCS = { sea: { name: '平地', H: 76 }, jade: { name: '玉山頂（約 3952 m）', H: 47 }, moon: { name: '月球（沒有大氣）', H: 0 } };
+const ATM = { group: new THREE.Group(), tilt: 0, tiltD: 0, loc: 'sea', HD: 76 };
+scene.add(ATM.group); ATM.group.visible = false;
+const TUBE_CM = 160, DIP = 0.3;                                             // 玻璃管長 160 cm；插入水銀槽 0.3 單位
+const HG_Y = 0.55;                                                           // 水銀槽液面高度
+const mercury = new THREE.MeshPhysicalMaterial({ color: 0x8e959e, metalness: 1, roughness: 0.18, clearcoat: 1, clearcoatRoughness: 0.05 });   // 深一點的銀色，桌面上才看得清楚
+const dishWall = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 1.9, 0.75, 64, 1, true), glassA({ opacity: 0.25 })); dishWall.position.y = 0.375; dishWall.renderOrder = 5; ATM.group.add(dishWall);
+const dishPool = new THREE.Mesh(new THREE.CylinderGeometry(1.94, 1.88, HG_Y - 0.02, 64), mercury); dishPool.position.y = (HG_Y - 0.02) / 2 + 0.02; ATM.group.add(dishPool);
+const tubeG = new THREE.Group(); tubeG.position.set(0, HG_Y - DIP, 0); ATM.group.add(tubeG);
+const TL = TUBE_CM * CM;
+const tubeGlass = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, TL, 32, 1, true).translate(0, TL / 2, 0), glassA({ opacity: 0.3 })); tubeGlass.renderOrder = 6; tubeG.add(tubeGlass);
+const tubeCap = new THREE.Mesh(new THREE.SphereGeometry(0.19, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), glassA({ opacity: 0.3 })); tubeCap.position.y = TL; tubeG.add(tubeCap);
+const column = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 1, 24).translate(0, 0.5, 0), mercury); tubeG.add(column);
+const meniscus = new THREE.Mesh(new THREE.SphereGeometry(0.16, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), mercury); tubeG.add(meniscus);
+const redLine = new THREE.Mesh(new THREE.BoxGeometry(7.2, 0.035, 0.035), new THREE.MeshBasicMaterial({ color: 0xff3b30, toneMapped: false })); ATM.group.add(redLine);
+const dimArrow = new THREE.Group(); ATM.group.add(dimArrow);
+const dimLine = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1, 10).translate(0, 0.5, 0), new THREE.MeshBasicMaterial({ color: 0xff3b30, toneMapped: false })); dimArrow.add(dimLine);
+const atmArrows = [-1.5, -0.8, 0.8, 1.5].map(x => { const a = makeArrow(0x3d8bff, 0.06); a.rotation.z = -Math.PI / 2; a.position.set(x, HG_Y + 0.9, 0.6); ATM.group.add(a); return a; });
+const lHeight = addLabel('atm', '', 'fr', V3(0, 0, 0));
+const lVac = addLabel('atm', '<small>真空（托里切利真空）</small>', '', V3(0, 0, 0));
+const lAtm = addLabel('atm', '<small>大氣壓力往下壓</small>', 'f2', V3(-1.15, HG_Y + 1.25, 0.6));
+const lLen = addLabel('atm', '', '', V3(0, 0, 0));
+$('tiltS').addEventListener('input', () => { ATM.tilt = Number($('tiltS').value); $('tiltV').textContent = ATM.tilt; });
+$('locS').addEventListener('change', () => { ATM.loc = $('locS').value; });
+function updateAtm(dt) {
+  ATM.tiltD += (ATM.tilt - ATM.tiltD) * (1 - Math.exp(-dt * 6));
+  const target = LOCS[ATM.loc].H;
+  const rate = ATM.loc === 'moon' ? 30 : 4;                                 // 月球：瞬間掉到底
+  ATM.HD += (target - ATM.HD) * (1 - Math.exp(-dt * rate));
+  if (Math.abs(target - ATM.HD) < 0.05) ATM.HD = target;
+  const th = ATM.tiltD * Math.PI / 180, H = ATM.HD;
+  tubeG.rotation.z = -th;
+  const vert = DIP + H * CM;                                                 // 從管底算起的垂直高度
+  const len = Math.min(TL - 0.02, vert / Math.cos(th));                      // 沿管子的水銀長度（傾斜時變長）
+  column.scale.y = len; meniscus.position.y = len;
+  const topY = HG_Y + H * CM;
+  redLine.position.set(2.2, topY, 0); redLine.visible = H > 0.5;
+  dimArrow.position.set(-2.6, HG_Y, 0); dimLine.scale.y = Math.max(0.001, H * CM); dimArrow.visible = H > 0.5;
+  lHeight.pos.set(-2.6, HG_Y + H * CM / 2, 0.2);
+  setLabel(lHeight, H > 0.5 ? `垂直高度恆為 ${H.toFixed(0)} cm` : '0 cm');
+  const tip = V3(Math.sin(th) * (TL - 0.4), HG_Y - DIP + Math.cos(th) * (TL - 0.4), 0);
+  lVac.pos.copy(tip).add(V3(0.9, 0, 0));
+  const along = V3(Math.sin(th) * len, HG_Y - DIP + Math.cos(th) * len, 0);
+  lLen.pos.copy(along).add(V3(1.2, -0.1, 0));
+  setLabel(lLen, `<small>管內水銀長 ${(H / Math.cos(th)).toFixed(1)} cm</small>`);
+  lLen.show = H > 0.5 && ATM.tiltD > 1;
+  const pk = H / 76;
+  atmArrows.forEach((a, i) => { a.visible = pk > 0.01; a.userData.set(0.25 + 0.55 * pk + 0.03 * Math.sin(wall * 4 + i)); });
+  lAtm.show = pk > 0.01;
+  const L = LOCS[ATM.loc];
+  setHTML('atmStat', `地點：<b>${L.name}</b><br>傾斜角：<b>${ATM.tilt}°</b><br>水銀柱垂直高度：<b class="r">${H.toFixed(0)} cm</b>${ATM.tiltD > 1 && H > 0.5 ? `<br>管內水銀長度：<b>${(H / Math.cos(th)).toFixed(1)} cm</b>（＝ ${H.toFixed(0)} ÷ cos ${ATM.tilt}°）` : ''}`);
+  setCap(ATM.loc === 'moon'
+    ? '<small>月球沒有大氣</small><span class="mid">大氣壓力 ＝ 0 → 水銀柱掉到 0 cm</span>沒有空氣往下壓，就撐不起任何水銀'
+    : `<small>${L.name}：大氣壓力 ＝ ${H.toFixed(0)} cmHg</small><span class="mid">${ATM.tilt > 0 ? `傾斜 ${ATM.tilt}°：水銀柱變長，但垂直高度仍是 ${H.toFixed(0)} cm` : `水銀柱垂直高度 ${H.toFixed(0)} cm`}</span>大氣壓力只撐得起固定的「垂直高度」，和管子傾斜、粗細無關${ATM.loc === 'jade' ? '；高山空氣稀薄，壓力變小' : ''}`);
+}
+
+/* =========================================================
+   Tab 4：阿基米德浮力（溢水槽＋磅秤）
+   1 單位長 ＝ 10 cm；水的密度 1 g/cm³
+   ========================================================= */
+const BUOY = { group: new THREE.Group(), obj: null, kind: null, state: 'idle', disp: 0, poured: 0, pending: 0, settleT: 0 };
+scene.add(BUOY.group); BUOY.group.visible = false;
+const TK = { cx: -1.45, half: 1.25, floor: 0.05, wl: 2.05, wallH: 2.45 };    // 槽內寬 2.5（25 cm）、水深 20 cm
+const tankGlass = new THREE.Mesh(new RoundedBoxGeometry(2 * TK.half + 0.12, TK.wallH, 2 * TK.half + 0.12, 4, 0.12), glassA({ opacity: 0.16 }));
+tankGlass.position.set(TK.cx, TK.wallH / 2, 0); tankGlass.renderOrder = 5; BUOY.group.add(tankGlass);
+const tankWaterMat = new THREE.MeshPhysicalMaterial({ color: 0x8fd0ff, transmission: 0.8, roughness: 0.03, thickness: 1.5, ior: 1.2, clearcoat: 1,
+  attenuationColor: new THREE.Color(0x3aa6ff), attenuationDistance: 2.5 });
+const tankWater = new THREE.Mesh(new RoundedBoxGeometry(2 * TK.half - 0.04, TK.wl - TK.floor, 2 * TK.half - 0.04, 3, 0.08), tankWaterMat);
+tankWater.position.set(TK.cx, (TK.wl + TK.floor) / 2, 0); BUOY.group.add(tankWater);
+// 出水口
+const SPOUT = { x0: TK.cx + TK.half + 0.06, y: TK.wl - 0.06, tipX: TK.cx + TK.half + 0.75, tipY: TK.wl - 0.32 };
+const spoutCurve = new THREE.CatmullRomCurve3([V3(SPOUT.x0 - 0.1, SPOUT.y, 0), V3(SPOUT.x0 + 0.35, SPOUT.y - 0.02, 0), V3(SPOUT.tipX - 0.05, SPOUT.tipY + 0.1, 0), V3(SPOUT.tipX, SPOUT.tipY, 0)]);
+BUOY.group.add(new THREE.Mesh(new THREE.TubeGeometry(spoutCurve, 40, 0.09, 16, false), glassA({ opacity: 0.35 })));
+// 小燒杯＋磅秤
+const bScale = makeScale(2.0, 1.7); bScale.position.set(SPOUT.tipX + 0.15, 0, 0); BUOY.group.add(bScale);
+const BK = { r: 0.75, h: 1.15, x: SPOUT.tipX + 0.15, y0: bScale.userData.top };
+{
+  const g = new THREE.Group(); g.position.set(BK.x, BK.y0, 0); BUOY.group.add(g);
+  const wallM = new THREE.Mesh(new THREE.CylinderGeometry(BK.r, BK.r * 0.97, BK.h, 48, 1, true), glassA()); wallM.position.y = BK.h / 2; wallM.renderOrder = 5; g.add(wallM);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(BK.r, 0.035, 10, 60), clay(0xffffff, { transparent: true, opacity: 0.8 })); rim.rotation.x = Math.PI / 2; rim.position.y = BK.h; g.add(rim);
+}
+const bWaterMat = tankWaterMat.clone();
+const bWater = new THREE.Mesh(new THREE.CylinderGeometry(BK.r - 0.05, BK.r - 0.05, 1, 40), bWaterMat); bWater.position.x = BK.x; BUOY.group.add(bWater);
+const BEAKER_AREA = Math.PI * Math.pow((BK.r - 0.05) * 10, 2);         // cm²
+// 水流粒子
+const dropGeo = new THREE.CapsuleGeometry(0.04, 0.08, 4, 8), dropMat = new THREE.MeshStandardMaterial({ color: 0x4fb8ff, emissive: 0x2f9bff, emissiveIntensity: 0.9, roughness: 0.2, toneMapped: false });
+const drops = Array.from({ length: 160 }, () => { const m = new THREE.Mesh(dropGeo, dropMat); m.visible = false; BUOY.group.add(m); return { m, on: false, v: V3(0, 0, 0) }; });
+let dropAcc = 0;
+// 物體
+const OBJ = {
+  foam: { name: '保麗龍', V: 500, m: 125, shape: 'box', size: [0.8, 0.78125, 0.8], mat: () => clay(0xf7f8fa, { roughness: 0.95, clearcoat: 0, sheen: 0.5 }) },
+  wood: { name: '木塊', V: 500, m: 300, shape: 'box', size: [0.8, 0.78125, 0.8], mat: () => new THREE.MeshPhysicalMaterial({ map: woodTexture('#d8b07a', '#c4955d'), roughness: 0.7, clearcoat: 0.25 }) },
+  iron: { name: '鐵塊', V: 500, m: 3950, shape: 'box', size: [0.8, 0.78125, 0.8], mat: () => clay(0x7d848d, { metalness: 0.75, roughness: 0.3, clearcoat: 0.6 }) }
+};
+/** 物體底部到水面的深度 h（單位長）→ 排開的水體積（cm³） */
+function submerged(o, h) {
+  if (h <= 0) return 0;
+  if (o.shape === 'box') { const [w, H, d] = o.size; return Math.min(h, H) * w * d * 1000; }
+  const R = o.r; h = Math.min(h, 2 * R);
+  return Math.PI * h * h * (3 * R - h) / 3 * 1000;
+}
+/** 漂浮平衡：排開水重 ＝ 物重（二分法求吃水深度）；會沉的物體回傳 null */
+function floatDepth(o) {
+  const full = o.shape === 'box' ? o.size[1] : 2 * o.r;
+  if (submerged(o, full) < o.m) return null;
+  let lo = 0, hi = full;
+  for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (submerged(o, mid) < o.m) lo = mid; else hi = mid; }
+  return (lo + hi) / 2;
+}
+const lObj = addLabel('buoy', '', 'hl', V3(0, 1.15, 0));
+addLabel('buoy', '<small>溢水槽（裝滿到出水口）</small>', '', V3(TK.cx, -0.25, 1.5));
+addLabel('buoy', '<small>磅秤（已扣除燒杯）</small>', '', V3(BK.x, -0.25, 1.3));
+function dropObject(kind, from = null) {
+  if (BUOY.obj) { BUOY.group.remove(BUOY.obj); BUOY.obj.traverse(c => { c.geometry?.dispose(); c.material?.dispose?.(); }); }
+  const o = OBJ[kind];
+  BUOY.kind = kind; BUOY.disp = 0; BUOY.poured = 0; BUOY.settleT = 0;
+  drops.forEach(d => { d.on = false; d.m.visible = false; });
+  const mesh = o.shape === 'box'
+    ? new THREE.Mesh(new RoundedBoxGeometry(...o.size, 4, 0.08), o.mat())
+    : new THREE.Mesh(new THREE.SphereGeometry(o.r, 48, 32), o.mat());
+  shadowed(mesh);
+  const g = new THREE.Group(); g.add(mesh);
+  const half = o.shape === 'box' ? o.size[1] / 2 : o.r;
+  mesh.position.y = half;                                                // 群組原點＝物體底部
+  g.position.set(from ? clamp(from.x, TK.cx - TK.half + 0.5, TK.cx + TK.half - 0.5) : TK.cx, from ? Math.max(3.0, from.y) : 3.6, from ? clamp(from.z, -TK.half + 0.5, TK.half - 0.5) : 0);
+  BUOY.group.add(g); BUOY.obj = g;
+  const fd = floatDepth(o);
+  BUOY.target = fd == null ? TK.floor + 0.02 : TK.wl - fd;               // 最終底部高度
+  BUOY.floats = fd != null;
+  BUOY.state = 'lower'; BUOY.splashed = false;
+  document.querySelectorAll('[data-obj]').forEach(b => b.classList.toggle('on', b.dataset.obj === kind));
+  lObj.follow = g; lObj.off = V3(0, (o.shape === 'box' ? o.size[1] : 2 * o.r) + 0.35, 0);
+  goView(BUOY_CLOSE);
+}
+document.querySelectorAll('[data-obj]').forEach(b => b.addEventListener('click', () => dropObject(b.dataset.obj)));
+const BUOY_CAM = { pos: [-0.4, 4.4, 10.2], target: [-0.4, 1.2, 0.6], fitW: 7.2 };
+const BUOY_CLOSE = { pos: [0.7, 3.4, 7.2], target: [0.1, 1.45, 0], fitW: 5.6 };
+$('buoyView').addEventListener('click', () => goView(BUOY_CAM));
+function updateBuoy(dt) {
+  const o = BUOY.kind ? OBJ[BUOY.kind] : null;
+  if (o && BUOY.obj) {
+    const g = BUOY.obj;
+    if (BUOY.state === 'lower' && !BUOY.splashed && g.position.y <= TK.wl) { BUOY.splashed = true; splash(g.position.x, g.position.z); }
+    if (BUOY.state === 'lower') {                                        // 慢慢放入（不激起水花，溢出量才準）
+      const speed = g.position.y > TK.wl + 0.1 ? 1.4 : 0.32;
+      g.position.y = Math.max(BUOY.target, g.position.y - speed * dt);
+      if (g.position.y <= BUOY.target + 1e-4) { BUOY.state = 'settle'; }
+    }
+    if (BUOY.state === 'settle') {
+      BUOY.settleT += dt;
+      if (BUOY.floats) g.position.y = BUOY.target + Math.sin(BUOY.settleT * 3) * 0.012 * Math.exp(-BUOY.settleT);
+    }
+    const h = TK.wl - (BUOY.state === 'settle' ? BUOY.target : g.position.y);
+    BUOY.disp = Math.max(BUOY.disp, submerged(o, h));                    // 排開的水（只增不減）
+    lObj.show = true;
+    setLabel(lObj, `${o.name}：${o.V} cm³、${o.m} g`);
+  } else lObj.show = false;
+  // 溢出：排開多少水就流出多少，經出水口流進燒杯
+  const pend = BUOY.disp - BUOY.poured;
+  if (pend > 0.01) {
+    const flow = Math.min(pend, Math.max(60, pend * 1.6) * dt);
+    BUOY.poured += flow;
+    dropAcc += flow * 0.35;
+    while (dropAcc >= 1) {
+      dropAcc -= 1;
+      const d = drops.find(q => !q.on);
+      if (d) { d.on = true; d.m.visible = true; d.m.position.set(SPOUT.tipX + rnd(-0.02, 0.02), SPOUT.tipY, rnd(-0.03, 0.03)); d.v.set(rnd(0.15, 0.4), 0, rnd(-0.05, 0.05)); }
+    }
+  }
+  const bLevel = BUOY.poured / BEAKER_AREA / 10;                          // 燒杯水深（單位長）
+  bWater.visible = bLevel > 0.002;
+  bWater.scale.y = Math.max(0.001, bLevel); bWater.position.y = BK.y0 + 0.03 + bLevel / 2;
+  const surf = BK.y0 + 0.03 + bLevel;
+  for (const d of drops) {
+    if (!d.on) continue;
+    d.v.y -= 9.8 * 0.5 * dt;
+    d.m.position.addScaledVector(d.v, dt);
+    const dx = d.m.position.x - BK.x;
+    if (d.m.position.y < surf && Math.abs(dx) < BK.r) { d.on = false; d.m.visible = false; }
+    if (d.m.position.y < 0) { d.on = false; d.m.visible = false; }
+    d.m.quaternion.setFromUnitVectors(V3(0, 1, 0), d.v.clone().normalize());
+  }
+  const reading = BUOY.poured;
+  bScale.userData.lcd.userData.set(reading.toFixed(0));
+  const done = o && BUOY.state === 'settle' && BUOY.disp - BUOY.poured < 0.5;
+  if (!o) {
+    setHTML('buoyStat', '選一個物體放入溢水槽');
+    setCap('<small>阿基米德原理</small>選一個物體放進溢水槽，看看溢出的水有多重');
+    return;
+  }
+  const B = BUOY.disp, W = o.m;
+  setHTML('buoyStat', `${o.name}：體積 <b>${o.V} cm³</b>、質量 <b>${o.m} g</b>（密度 ${(o.m / o.V).toFixed(2)} g/cm³）<br>排開的水：<b class="b">${B.toFixed(0)} cm³</b><br>磅秤讀數：<b class="g">${reading.toFixed(0)} g</b><br>${done ? (BUOY.floats ? `<span class="g">漂浮：浮力 ＝ 物重 ＝ ${W} gw</span>` : `<span class="o">沉底：浮力 ${B.toFixed(0)} gw ＜ 物重 ${W} gw</span>`) : '水正在溢出…'}`);
+  if (!done) setCap(`<small>${o.name}放入中</small><span class="mid">磅秤：${reading.toFixed(0)} g</span>物體排開的水從出水口流進燒杯…`);
+  else if (BUOY.kind === 'foam') setCap(`<small>保麗龍：密度 0.25 g/cm³ ＜ 1 → 漂浮</small><span class="huge">浮力 ＝ 減輕的重量 ＝ 排開液體重 ＝ ${B.toFixed(0)} gw</span>漂浮時 浮力 ＝ 保麗龍重 ${W} gw，只有一小部分泡在水裡`);
+  else if (BUOY.kind === 'wood') setCap(`<small>木塊：密度 0.6 g/cm³ ＜ 1 → 漂浮</small><span class="huge">浮力 ＝ 減輕的重量 ＝ 排開液體重 ＝ ${B.toFixed(0)} gw</span>木塊在水中「變輕」了 ${W} gw → 浮力 ＝ 木塊重 ${W} gw（約 ${(B / 1000 * 9.8).toFixed(2)} N）`);
+  else if (BUOY.kind === 'iron') setCap(`<small>鐵塊：密度 7.9 g/cm³ ＞ 1 → 沉底</small><span class="huge">沉體浮力 ＝ 鐵塊體積 × 液體密度 ＝ 500 cm³ × 1 g/cm³ ＝ ${B.toFixed(0)} gw</span>整塊泡進水裡，排開的水比木塊、保麗龍都多；但浮力 ＜ 鐵重 ${W} gw，所以沉底`);
+}
+
+/* ----- 浮力：三塊可拖曳的物質積木（放在溢水槽前方） ----- */
+const SHELF = ['foam', 'wood', 'iron'].map((k, i) => {
+  const o = OBJ[k];
+  const m = shadowed(new THREE.Mesh(new RoundedBoxGeometry(...o.size, 4, 0.08), o.mat())); m.position.y = o.size[1] / 2;
+  const g = new THREE.Group(); g.add(m); BUOY.group.add(g);
+  const home = V3(TK.cx - 1.1 + i * 1.1, 0, 2.35); g.position.copy(home);
+  addLabel('buoy', `<small>${o.name}<br>${(o.m / o.V).toFixed(2)} g/cm³</small>`, '', V3(home.x, -0.2, home.z + 0.75));
+  return { g, kind: k, home, from: null, t: 1 };
+});
+const raycaster = new THREE.Raycaster(), ndc = new THREE.Vector2(), hitP = V3(0, 0, 0);
+let drag = null;
+function setNdc(ev) {
+  const r = renderer.domElement.getBoundingClientRect();
+  ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+}
+function pickShelf(ev) {
+  if (tab !== 'buoy') return null;
+  setNdc(ev);
+  const hit = raycaster.intersectObjects(SHELF.map(s => s.g), true)[0];
+  return hit ? SHELF.find(s => { let o = hit.object; while (o) { if (o === s.g) return true; o = o.parent; } return false; }) : null;
+}
+const overTank = p => Math.abs(p.x - TK.cx) < TK.half + 0.15 && Math.abs(p.z) < TK.half + 0.15;   // 拿在水槽口上方就算放進去
+renderer.domElement.addEventListener('pointerdown', ev => {
+  const s = pickShelf(ev); if (!s) return;
+  drag = { s, plane: new THREE.Plane(V3(0, 1, 0), -2.75) };
+  controls.enabled = false; renderer.domElement.setPointerCapture(ev.pointerId); renderer.domElement.style.cursor = 'grabbing';
+});
+renderer.domElement.addEventListener('pointermove', ev => {
+  if (!drag) { if (!ev.buttons) renderer.domElement.style.cursor = pickShelf(ev) ? 'grab' : ''; return; }
+  setNdc(ev);
+  if (!raycaster.ray.intersectPlane(drag.plane, hitP)) return;
+  drag.s.g.position.set(clamp(hitP.x, -5, 4), 2.75, clamp(hitP.z, -2, 3.5));
+  tankGlass.material.opacity = overTank(drag.s.g.position) ? 0.32 : 0.16;   // 移到水槽上方時水槽變亮
+});
+function endShelfDrag(ev) {
+  if (!drag) return;
+  const s = drag.s; drag = null;
+  controls.enabled = true; renderer.domElement.style.cursor = ''; tankGlass.material.opacity = 0.16;
+  try { renderer.domElement.releasePointerCapture(ev.pointerId); } catch (e) { /* 已釋放 */ }
+  if (overTank(s.g.position)) { dropObject(s.kind, s.g.position.clone()); s.g.position.copy(s.home); }   // 放進水槽：從放手的位置慢慢放入
+  else { s.from = s.g.position.clone(); s.t = 0; }                                                     // 沒放到：彈回原位
+}
+renderer.domElement.addEventListener('pointerup', endShelfDrag);
+renderer.domElement.addEventListener('pointercancel', endShelfDrag);
+const splashD = Array.from({ length: 46 }, () => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), dropMat); m.visible = false; BUOY.group.add(m); return { m, v: V3(0, 0, 0), on: false }; });
+function splash(x, z) {                                                     // 入水濺起的水花（只是視覺效果）
+  splashD.forEach(p => { p.on = true; p.m.visible = true; const a = Math.random() * 6.28; p.m.position.set(x + Math.cos(a) * 0.45, TK.wl + 0.03, z + Math.sin(a) * 0.45); p.v.set(Math.cos(a) * rnd(0.6, 1.4), rnd(1.6, 3), Math.sin(a) * rnd(0.6, 1.4)); });
+}
+function updateShelf(dt) {
+  for (const p of splashD) if (p.on) { p.v.y -= 9 * dt; p.m.position.addScaledVector(p.v, dt); if (p.m.position.y < TK.wl - 0.05) { p.on = false; p.m.visible = false; } }
+  for (const s of SHELF) if (s.t < 1) { s.t = Math.min(1, s.t + dt / 0.45); s.g.position.lerpVectors(s.from, s.home, smooth(0, 1, s.t)); s.g.position.y += Math.sin(s.t * Math.PI) * 0.6; }
+}
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  hook: { group: HOOK.group, cam: { pos: [0, 3.6, 10.5], target: [0, 1.0, 0], fitW: 10.5 }, update: updateHook },
+  fric: { group: FRIC.group, cam: { pos: [-0.4, 4.2, 11.5], target: [-0.4, 1.9, 0], fitW: 10.5 }, update: updateFric },
+  brick: { group: BRICK.group, cam: { pos: [0, 4.6, 9], target: [0, 1.7, 0], fitW: 7.5 }, update: updateBrick },
+  jet: { group: JET.group, cam: { pos: [0.8, 4.2, 13], target: [0.8, 2.7, 0], fitW: 11.5 }, update: updateJet },
+  atm: { group: ATM.group, cam: { pos: [1.4, 3.9, 13.5], target: [1.4, 3.0, 0], fitW: 10.5 }, update: updateAtm },
+  buoy: { group: BUOY.group, cam: BUOY_CAM, update: dt => { updateBuoy(dt); updateShelf(dt); } }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  goView(TABS[t].cam, true);
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (window.MobileView?.isMobile()) return { pos, tgt };
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;   // 公式列在上方 → 畫面主體往下移
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant || window.MobileView?.isMobile()) {
+    camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update();
+    window.MobileView?.frame(camera, controls, 1.4);
+    return;
+  }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam, true));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.fov = 40;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam, true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.2);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, HOOK, FRIC, BRICK, JET, ATM, BUOY, SHELF, dropObject, setFace, setWeights, floatDepth, OBJ, camera };
+
+resize();
+syncHook();
+BRICK.depth = BRICK.depthT = pOf('mid') * 0.48; BRICK.state = 'rest';
+setTab(TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'hook');
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+</body>
+</html>
