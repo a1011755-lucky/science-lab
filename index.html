@@ -116,6 +116,43 @@
   .unit-card.soon .unit-no, .unit-card.soon .unit-title { opacity: .55; }
   .soon-badge { font-size: .74rem; font-weight: 700; color: var(--ink-soft); background: rgba(255,255,255,.85); border: 1px solid var(--line); padding: 3px 10px; border-radius: 999px; }
 
+  /* 分章版面（國一生物） */
+  .sem-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 30px 0 14px; padding-bottom: 10px; border-bottom: 2px solid var(--line); }
+  .sem-head:first-of-type { margin-top: 6px; }
+  .sem-head h3 { font-size: 1.2rem; display: flex; align-items: center; gap: 10px; }
+  .sem-badge { font-family: "Noto Sans TC", sans-serif; font-size: .82rem; font-weight: 900; color: #fff; background: var(--accent-g); padding: 3px 12px; border-radius: 999px; letter-spacing: .08em; }
+  .sem-list { font-size: .85rem; font-weight: 700; color: var(--accent); }
+  .sem-list:hover { text-decoration: underline; }
+  .chap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px; }
+  .chap-card { position: relative; display: flex; flex-direction: column; padding: 20px 20px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; transition: box-shadow .35s var(--ease), transform .35s var(--ease); }
+  .chap-card::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 4px; background: var(--accent-g); opacity: .8; }
+  .chap-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-3px); }
+  .chap-card .unit-title { margin: 12px 0 4px; font-size: 1.12rem; }
+  .chap-sum { font-size: .84rem; color: var(--ink-soft); line-height: 1.6; margin-bottom: 12px; }
+  .chap-labs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 0 12px; border-top: 1px dashed var(--line); border-bottom: 1px dashed var(--line); margin-bottom: 10px; }
+  .lab-btn { display: inline-flex; align-items: center; gap: 8px; padding: 5px 14px 5px 5px; border-radius: 999px; font-size: .86rem; font-weight: 700; color: #fff; background: var(--accent-g); box-shadow: 0 4px 10px rgba(93,64,55,.15); transition: transform .2s var(--ease), box-shadow .2s var(--ease); }
+  .lab-btn .play-icon { width: 28px; height: 28px; border-color: rgba(255,255,255,.8); color: #fff; background: rgba(255,255,255,.18); }
+  .lab-btn .play-icon svg { width: 10px; height: 10px; }
+  .lab-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(93,64,55,.22); }
+  .lab-btn.sub { background: rgba(255,255,255,.9); color: var(--ink); border: 1px solid var(--line); box-shadow: none; }
+  .lab-btn.sub .play-icon { border-color: var(--accent-g); color: var(--accent-g); background: transparent; }
+  .rel-link { font-size: .8rem; color: var(--ink-soft); border-bottom: 1px dotted currentColor; }
+  .rel-link:hover { color: var(--ink); }
+  .chap-card.nolab .chap-labs { background: none; }
+  .vlabel { font-size: .74rem; font-weight: 700; color: var(--ink-soft); letter-spacing: .08em; margin-bottom: 6px; }
+  .vchips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .vchip { display: inline-flex; align-items: center; gap: 5px; font-size: .8rem; line-height: 1.35; padding: 4px 10px 4px 4px; border-radius: 999px; background: #f7f1e5; border: 1px solid var(--line); color: var(--ink); transition: background .2s, border-color .2s, transform .2s; }
+  .vchip i { font-style: normal; font-size: .66rem; font-weight: 700; padding: 1px 6px; border-radius: 999px; color: #fff; background: #c0392b; }
+  .vchip.lab i { background: #2f80a8; } .vchip.ext i { background: #8e6bbf; } .vchip.warm i { background: #d08a2e; }
+  .vchip:hover { background: #fff; border-color: var(--accent-g); transform: translateY(-1px); }
+  .vmore { margin-top: 10px; }
+  .vmore summary { cursor: pointer; font-size: .78rem; font-weight: 700; color: var(--accent); list-style: none; }
+  .vmore summary::-webkit-details-marker { display: none; }
+  .vmore summary::before { content: "＋ "; }
+  .vmore[open] summary::before { content: "－ "; }
+  .vmore .vchips { margin-top: 8px; }
+  .credit { margin-top: 22px; text-align: center; font-size: .78rem; color: var(--ink-soft); }
+
   /* ===== 使用方式、家長 ===== */
   .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; counter-reset: s; }
   .step { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px 22px 22px 22px; box-shadow: var(--shadow); }
@@ -154,6 +191,11 @@
     .unit-title { font-size: .92rem; margin: 10px 0 8px; }
     .unit-foot span:not(.soon-badge) { display: none; }
     .unit-foot { justify-content: flex-end; }
+  }
+  @media (max-width: 480px) {
+    .chap-grid { grid-template-columns: 1fr; }
+    .chap-card { padding: 16px 14px 14px; }
+    .sem-head h3 { font-size: 1.05rem; }
   }
   @media (max-width: 340px) { .unit-grid { grid-template-columns: 1fr; } }
   @media (max-width: 480px) { .hero h1 { font-size: 1.75rem; } .hero h1 br { display: none; } }
@@ -264,17 +306,43 @@ const COURSES = [
     subject: '生物',
     desc: '從細胞到生態系，認識生命如何運作與彼此相連。',
     color: 'var(--g1)',
-    units: [
-      { title: '生命的特性',         url: DEFAULT_URL },
-      { title: '養分',               url: 'enzyme-lock-key.html' },
-      { title: '生物的運輸與防禦',   url: 'heart.html' },
-      { title: '生物的協調作用',     url: DEFAULT_URL },
-      { title: '生物的恆定性',       url: DEFAULT_URL },
-      { title: '生殖',               url: 'clay-sim.html#cell' },
-      { title: '遺傳',               url: 'genetics-lab.html' },
-      { title: '地球上的生物',       url: DEFAULT_URL },
-      { title: '生態系',             url: DEFAULT_URL },
-      { title: '人類與環境',         url: DEFAULT_URL }
+    /* 國一生物依「臺北酷課雲 × 均一」108 課綱影片清單分章：
+       labs＝本站 3D 實驗室（第一個是主要入口）、rel＝其他年級的相關實驗室、v＝[影片 ID, 影片標題] */
+    semesters: [
+      {
+        name: '七上', sub: '生物體的構造與運作', list: 'PLm778hWdXOZkMvx01_lO9UXyo--Dwps53',
+        chapters: [
+          { title: '生命的特性與科學方法', sum: '生物有哪些共同特徵？學會科學方法與顯微鏡的操作。', labs: [], rel: [{ t: '科學方法與基本測量（國二）', u: 'measure-lab.html' }],
+            v: [['9f8XbGE9qdQ', '【暖身】奇妙的生命世界'], ['dN9qkGt8M3U', '【觀念】科學方法'], ['tHHjtDG2Np4', '【延伸】科學方法的應用範例'], ['HDnmdz5UXCs', '【討論】解剖顯微鏡的操作與觀察'], ['2EZOemGVSa8', '【討論】複式顯微鏡的操作與觀察']] },
+          { title: '生物體的構造', sum: '細胞是生物的基本單位：構造、形態、物質進出細胞與組成層次。', labs: [],
+            v: [['Nj-F9xD2hqk', '【暖身】細胞的發現'], ['HziB4xqx958', '【討論】細胞的觀察'], ['_eiUU-U2Tj8', '【觀念】細胞的構造與功能'], ['hfaly1L4TGs', '【觀念】細胞的形態與功能'], ['cxOcurhAfA0', '【討論】物質進出細胞的觀察實驗'], ['kqX1A5Tkh_M', '【觀念】生物體的組成層次'], ['Df6-RtA7tG4', '【觀念】生物體的組成物質'], ['bB3QGthJWdg', '【延伸】系統與尺度']] },
+          { title: '養分', sum: '食物中的養分、酵素、葉子與光合作用、人體的消化。', labs: [{ t: '酵素的作用', u: 'enzyme-lock-key.html' }],
+            v: [['0adlgMaVN_c', '【暖身】好吃的食物'], ['6Jkvkq_W0h8', '【討論】食物中醣類的測定'], ['-o3vQmXv-UE', '【觀念】酵素'], ['9RUJCVSfNuY', '【討論】酵素的作用'], ['H1Ie12H1Q5k', '【觀念】葉子的構造'], ['UNGxqHlPQQw', '【觀念】光合作用'], ['7iCmY2YiN4A', '【討論】光合作用變因之探討'], ['Jqkt19SruaE', '【觀念】人體的消化系統'], ['wswVjNnHwO4', '【觀念】人體的消化作用'], ['XbtTESchO9A', '【延伸】養分的旅行']] },
+          { title: '生物的運輸與防禦', sum: '植物的運輸構造、心臟血管與血液、淋巴循環與人體的防禦。', labs: [{ t: '心臟與血液循環', u: 'heart.html' }],
+            v: [['0T0fLO0XYkA', '【暖身】生物體內養分和廢物的運送'], ['W3rbFnBbQD0', '【討論】植物體運輸構造的觀察'], ['4QFH6sxF1To', '【觀念】植物體的運輸構造'], ['2fMRcDUk-lQ', '【觀念】植物體內物質的運輸'], ['z_6zDf2hHUs', '【觀念】心臟、血管'], ['FVZJmKo_uuc', '【觀念】血液'], ['MlmNc8mSYz8', '【討論】心音與脈搏的探討'], ['-M8aFnpIBKQ', '【討論】觀察小魚尾鰭的血液流動'], ['Y8KQM_qeHN4', '【觀念】人體內的血液循環'], ['yqTWFy3-VM0', '【討論】血液循環微觀的物質交換'], ['mzWuw62mkkY', '【觀念】人體內的淋巴循環'], ['PpgjvUGNhrw', '【觀念】人體的防禦作用'], ['2bU_UTaCvSM', '【討論】疫苗'], ['bYaAq0kpFRM', '【延伸】人體的血液循環']] },
+          { title: '生物的協調作用', sum: '神經系統、內分泌系統，以及動物的行為與植物的感應。', labs: [],
+            v: [['zv4gVEc10zE', '【暖身】人體內的智能分工'], ['K8RLUdJ8FpM', '【觀念】人體的神經系統 1'], ['YB3yHn49qYw', '【觀念】人體的神經系統 2'], ['vs3Ma36ggq8', '【觀念】人體的神經系統 3'], ['HQcCNzgVtqQ', '【觀念】感覺疲勞與視覺暫留'], ['HM5Oeqe862I', '【討論】反應時間'], ['7qO4KTXLf8E', '【延伸】保持行車安全距離'], ['mLq_Txp0WLg', '【暖身】內分泌的生活現象'], ['czKEPNF4J30', '【觀念】人體的內分泌系統'], ['ND8Vk35GZmw', '【討論】神經與內分泌共同協調'], ['Cd1Mi_Hin1k', '【討論】動物的行為'], ['DHcS_2VHYvA', '【觀念】植物的感應'], ['GhFzVyVeaak', '【延伸】植物的感應']] },
+          { title: '生物的恆定性', sum: '呼吸作用與呼吸運動、排泄，以及血糖、水分、體溫的恆定。', labs: [],
+            v: [['Kt2uBaEPAtM', '【暖身】恆定性'], ['HqXk-GhT54M', '【討論】呼吸作用的觀察'], ['1X9cSFH_zP8', '【觀念】呼吸作用'], ['j6AJjD6Bdl4', '【觀念】呼吸系統與呼吸運動'], ['sgftLZWqv_s', '【觀念】動植物的呼吸構造'], ['CHAwYbgByE8', '【觀念】排泄作用'], ['xiT2FXkVJuE', '【觀念】血糖的恆定'], ['nidkbJ9ZF0M', '【觀念】水分的恆定'], ['nYXvJ8ssrws', '【觀念】體溫的恆定'], ['WRpIaGQ7NRY', '【延伸】人體內的物質運輸與代謝']] }
+        ]
+      },
+      {
+        name: '七下', sub: '生命的延續、演化與生態', list: 'PLm778hWdXOZk0XRqvBOSZwYDaTzFw7uw-',
+        chapters: [
+          { title: '生殖', sum: '遺傳物質、細胞分裂與減數分裂、無性生殖與有性生殖。', labs: [{ t: '細胞分裂與減數分裂', u: 'cell-division.html' }, { t: '分裂快速對照', u: 'clay-sim.html#cell' }],
+            v: [['DSzNEbNv5xE', '【暖身】生殖的意義'], ['FHPyBo6TEFI', '【觀念】遺傳物質'], ['npkcW0COHto', '【觀念】細胞分裂'], ['SKg1z4bZN9Q', '【觀念】減數分裂'], ['hRVsAky69jc', '【討論】植物的營養器官繁殖觀察'], ['JEmQ3eSHPHE', '【觀念】無性生殖'], ['JIL5fn_5JfI', '【討論】蛋的觀察'], ['5yGAG_CyFMg', '【觀念】動物的有性生殖 1'], ['6raEa_gapiE', '【觀念】動物的有性生殖 2'], ['j9a2IOOQi6c', '【觀念】人類的生殖'], ['EOwlSKhxAh8', '【討論】花、果實、種子的觀察'], ['2tfzmcqZjQM', '【觀念】植物的有性生殖'], ['6_SpnKPf_5o', '【延伸】有性生殖 vs 無性生殖']] },
+          { title: '遺傳', sum: '孟德爾遺傳法則、ABO 血型、性別決定、突變與生物科技。', labs: [{ t: '遺傳學與基因密碼', u: 'genetics-lab.html' }],
+            v: [['cCCTbcCRRgI', '【暖身】我們像不像'], ['ZKhdif_Xvj4', '【討論】孟德爾的豌豆實驗'], ['114sAhtz73E', '【觀念】遺傳法則'], ['yy0Le1o_NH0', '【觀念】ABO 血型'], ['-enm_uHj1EE', '【觀念】性別'], ['xxzb6hJVpYI', '【延伸】膚色、身高'], ['OXxXrmTZYKk', '【觀念】突變'], ['Jdwi4Pan2PM', '【觀念】遺傳性疾病'], ['2DtG_REkeb8', '【討論】生活中的生物科技'], ['b5cybvN9sLQ', '【觀念】生物科技'], ['Sml2SZgp2z8', '【延伸】你知道桃莉羊嗎？']] },
+          { title: '演化', sum: '化石是演化的證據，生物如何隨時間持續改變。', labs: [],
+            v: [['UfsvIeJ3Qf4', '【暖身】侏羅紀公園'], ['6yGjCOhdpME', '【觀念】化石'], ['oseLQuZbYzI', '【觀念】生物的演化']] },
+          { title: '地球上的生物', sum: '命名與分類；病毒、原核、原生、菌物、植物與動物界。', labs: [],
+            v: [['fimTnhhS4uY', '【暖身】你的名字？我的名字？'], ['qLTgw4UWVvg', '【觀念】生物的命名'], ['n9sbZIxkAUE', '【觀念】生物的分類'], ['3aZ6kcxtz48', '【觀念】病毒'], ['44bY8CEHfpk', '【觀念】原核生物界'], ['mFfzvj0hdTM', '【觀念】原生生物界'], ['c-fJkUYB4ZM', '【觀念】菌物界'], ['1QGo5rVBtBM', '【觀念】蘚苔植物'], ['yVFQsjhoBA0', '【觀念】蕨類植物'], ['UHJffqVTZ8M', '【觀念】裸子植物'], ['PAGVQvhViM0', '【觀念】被子植物'], ['BOuN18IBxrE', '【觀念】無脊椎動物 1'], ['go6inGPeRyk', '【觀念】無脊椎動物 2'], ['9D-0FEJ9H4c', '【觀念】魚類、兩生類、爬蟲類'], ['8ENtSuvpEMg', '【觀念】鳥類、哺乳類'], ['aD5LAFFMUKk', '【延伸】仿生學'], ['tegeXKBKaOI', '【延伸】微生物與我']] },
+          { title: '生態系', sum: '族群與群集、生物間的交互作用、能量流動、物質循環與生態系類型。', labs: [],
+            v: [['YU2JbBbFEJQ', '【暖身】生物圈'], ['B0n-pU3nH6Q', '【觀念】生態系的組成層次'], ['kPOerSNGXwo', '【討論】估算族群的大小'], ['tL8ubdMOfgo', '【觀念】生物間的交互作用'], ['Y-HWHlIg4jU', '【觀念】生態系的組成'], ['Ld7381QEzuM', '【觀念】能量的流動'], ['fQJxfeq0z_g', '【觀念】物質的循環'], ['YBFndkdeKqM', '【觀念】陸域生態系'], ['kbg65pC57Go', '【觀念】水域生態系']] },
+          { title: '人類與環境', sum: '生物多樣性、人類對環境的衝擊，以及生態保育。', labs: [], rel: [{ t: '全球氣候變遷（國三）', u: 'env-lab.html' }],
+            v: [['4PGujz6_f1A', '【暖身】人類與環境的關係'], ['J3u-WayXR3A', '【觀念】生物多樣性'], ['WN-_Y0rxygE', '【討論】生物多樣性的危機'], ['MQUoCbN6YNY', '【觀念】人類對環境的衝擊'], ['UWHaJNK88pk', '【延伸】垃圾大戰'], ['xNUl8ubc11Q', '【延伸】生態保育的現在與未來']] }
+        ]
+      }
     ]
   },
   {
@@ -332,6 +400,11 @@ const COURSES = [
   }
 ];
 
+// 分章的年級：每一章算一個單元（有 3D 實驗室才算已上線）
+COURSES.forEach(c => {
+  if (c.semesters) c.units = c.semesters.flatMap(s => s.chapters.map(ch => ({ title: ch.title, url: ch.labs[0]?.u || DEFAULT_URL })));
+});
+
 /* ===== 工具函式 ===== */
 const PLAY_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z"/></svg>';
 const pad = n => String(n).padStart(2, '0');
@@ -356,9 +429,61 @@ function renderStats() {
   document.getElementById('heroStats').innerHTML = stats.map(s => `<div class="stat"><b>${s.n}</b><span>${s.label}</span></div>`).join('');
 }
 
+/* ----- 分章版面（國一生物）：每章一張卡，含 3D 實驗室與觀念影片 ----- */
+const VTYPE = { '觀念': 'concept', '討論': 'lab', '延伸': 'ext', '暖身': 'warm' };
+function parseVideo([id, raw]) {
+  const m = raw.match(/^【(.+?)】(.*)$/);
+  return { id, kind: m ? m[1] : '', title: m ? m[2] : raw };
+}
+function videoChip(v, list) {
+  const href = `https://www.youtube.com/watch?v=${encodeURIComponent(v.id)}&list=${encodeURIComponent(list)}`;
+  return `<a class="vchip ${VTYPE[v.kind] || ''}" href="${href}" target="_blank" rel="noopener" title="【${escapeHTML(v.kind)}】${escapeHTML(v.title)}（YouTube）"><i>${escapeHTML(v.kind)}</i>${escapeHTML(v.title)}</a>`;
+}
+function renderChapters(c) {
+  let no = 0;
+  return c.semesters.map(s => `
+    <div class="sem-head">
+      <h3><span class="sem-badge">${escapeHTML(s.name)}</span>${escapeHTML(s.sub)}</h3>
+      <a class="sem-list" href="https://www.youtube.com/playlist?list=${encodeURIComponent(s.list)}" target="_blank" rel="noopener">📺 ${escapeHTML(s.name)}完整影片清單 ›</a>
+    </div>
+    <div class="chap-grid">
+      ${s.chapters.map((ch, i) => {
+        no++;
+        const vids = ch.v.map(parseVideo);
+        const main = vids.filter(v => v.kind === '觀念');
+        const more = vids.filter(v => v.kind !== '觀念');
+        const labs = ch.labs.length
+          ? ch.labs.map((l, k) => `<a class="lab-btn${k ? ' sub' : ''}" href="${escapeHTML(l.u)}"><span class="play-icon">${PLAY_SVG}</span>${k ? '' : '3D 實驗室：'}${escapeHTML(l.t)}</a>`).join('')
+          : '<span class="soon-badge">🛠️ 3D 實驗室製作中</span>';
+        const rel = (ch.rel || []).map(l => `<a class="rel-link" href="${escapeHTML(l.u)}">🔗 相關：${escapeHTML(l.t)}</a>`).join('');
+        return `
+        <article class="chap-card${ch.labs.length ? '' : ' nolab'}">
+          <div class="unit-top"><span class="unit-no">${pad(no)}</span><span class="unit-tag">${escapeHTML(s.name)} · 第 ${i + 1} 章</span></div>
+          <h3 class="unit-title">${escapeHTML(ch.title)}</h3>
+          <p class="chap-sum">${escapeHTML(ch.sum)}</p>
+          <div class="chap-labs">${labs}${rel}</div>
+          <div class="vlabel">📺 觀念影片</div>
+          <div class="vchips">${main.map(v => videoChip(v, s.list)).join('')}</div>
+          ${more.length ? `<details class="vmore"><summary>暖身・實驗討論・延伸影片（${more.length}）</summary><div class="vchips">${more.map(v => videoChip(v, s.list)).join('')}</div></details>` : ''}
+        </article>`;
+      }).join('')}
+    </div>`).join('') + `<p class="credit">影片來源：臺北酷課雲 × 均一教育平台「108 新課綱國中生物」（點擊會在 YouTube 開新分頁）</p>`;
+}
+
 function renderCourses() {
   document.getElementById('courseRoot').innerHTML = COURSES.map(c => {
     const ready = c.units.filter(u => !isPlaceholder(u.url)).length;
+    if (c.semesters) return `
+    <section class="grade-panel" id="panel-${c.id}" role="tabpanel" aria-labelledby="tab-${c.id}" style="--accent-g:${c.color}">
+      <div class="grade-head">
+        <div>
+          <h2><span class="grade-dot"></span>${escapeHTML(c.title)}</h2>
+          <p>${escapeHTML(c.desc)}</p>
+        </div>
+        <span class="grade-count">3D 實驗室 <b>${ready}</b> ／ 共 ${c.units.length} 章 · 教學影片 <b>${c.semesters.reduce((n, s) => n + s.chapters.reduce((m, ch) => m + ch.v.length, 0), 0)}</b> 支</span>
+      </div>
+      ${renderChapters(c)}
+    </section>`;
     return `
     <section class="grade-panel" id="panel-${c.id}" role="tabpanel" aria-labelledby="tab-${c.id}" style="--accent-g:${c.color}">
       <div class="grade-head">

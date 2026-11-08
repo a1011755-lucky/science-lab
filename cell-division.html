@@ -70,6 +70,19 @@
   .ticks span { text-align: center; border-left: 1px solid var(--track); }
   .ticks span:first-child { border-left: none; }
   .ticks.two { grid-template-columns: 1fr 1fr 1fr; }
+  .ticks.five { grid-template-columns: repeat(5, 1fr); }
+  .ticks.five span:first-child { text-align: left; } .ticks.five span:last-child { text-align: right; }
+  .sum { width: 100%; border-collapse: collapse; font-size: .74rem; margin-top: 10px; background: rgba(255,255,255,.75); border-radius: 12px; overflow: hidden; }
+  .sum caption { text-align: left; font-weight: 800; font-size: .82rem; color: var(--teal); padding: 0 0 6px; }
+  .sum th, .sum td { padding: 5px 6px; border-bottom: 1px solid var(--line); text-align: center; line-height: 1.35; }
+  .sum th { font-weight: 700; color: var(--ink-soft); text-align: left; white-space: nowrap; }
+  .sum thead th { color: var(--ink); text-align: center; background: rgba(14,165,164,.1); }
+  .sum tr { transition: background .3s; }
+  .sum tr.hl { background: rgba(250,204,21,.4); }
+  .sum b { color: #c2410c; }
+  .chk { display: flex; align-items: center; gap: 8px; font-size: .82rem; font-weight: 700; margin: 10px 2px 0; cursor: pointer; }
+  .chk input { width: 18px; height: 18px; accent-color: var(--teal); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 
   .btn {
     width: 100%; border: none; border-radius: 12px; padding: 10px; cursor: pointer; margin-top: 6px;
@@ -80,6 +93,7 @@
   .btn:active { transform: scale(.98); }
   .btn.primary { color: #fff; background: var(--teal); }
   .btn.primary:hover { background: #0b8f8e; }
+  .btn:disabled { opacity: .4; cursor: default; transform: none; }
   .legend { display: flex; gap: 14px; font-size: .74rem; color: var(--ink-soft); margin-top: 8px; }
   .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
 
@@ -134,18 +148,20 @@
   <button class="collapse" data-target="panel">收合</button>
   <a class="back" href="index.html#g7">‹ 課程總覽</a>
   <div class="title">細胞分裂與配子形成</div>
-  <div class="sub">3D 模擬器 · 以 2n = 4 的細胞為例</div>
+  <div class="sub">3D 模擬器 · 以 4 條染色體（2 對）的細胞為例</div>
 
   <div class="body">
     <div class="tabs" role="tablist">
       <button class="tab on" data-mode="m1">1. 染色體成形</button>
-      <button class="tab" data-mode="m2">2. 中期排列對決</button>
-      <button class="tab" data-mode="m3">3. 精卵分裂差異</button>
+      <button class="tab" data-mode="m4">2. 細胞分裂 vs 減數分裂</button>
+      <button class="tab" data-mode="m2">3. 中期排列對決</button>
+      <button class="tab" data-mode="m3">4. 精卵分裂差異</button>
+      <button class="tab" data-mode="m5">5. 受精與胚胎發育</button>
     </div>
 
     <!-- 模組一 -->
     <section class="section" data-mode="m1">
-      <p class="desc">拖曳滑桿走過細胞週期：<b>S 期</b>DNA 複製、<b>前期</b>染色質螺旋濃縮成 X 形染色體。</p>
+      <p class="desc">遺傳物質 <b>DNA</b>（雙股螺旋）平常是細長的染色質，分裂前會<b>複製</b>，再螺旋濃縮成 X 形<b>染色體</b>。<br>同種生物的染色體數目都相同：人類有 <b>46 條（23 對）</b>，每一對<b>同源染色體</b>一條來自父親、一條來自母親。</p>
       <div class="card">
         <div class="head"><span>細胞週期</span><span class="phase" id="m1Phase">G1 期</span></div>
         <input type="range" id="cycle" min="0" max="100" step="0.5" value="0" aria-label="細胞週期">
@@ -174,13 +190,51 @@
       <button class="btn primary" id="m3Play">▶ 播放分裂過程</button>
     </section>
 
+    <!-- 模組四：全程比較 -->
+    <section class="section" data-mode="m4" hidden>
+      <p class="desc">上方<b>細胞分裂</b>（身體長高、皮膚修補、胚胎發育）、下方<b>減數分裂</b>（產生精子、卵）。兩者染色體都只<b>複製 1 次</b>，但減數分裂連續<b>分裂 2 次</b>。</p>
+      <div class="card">
+        <div class="head"><span>分裂進度</span><span class="phase" id="m4Phase">原始細胞</span></div>
+        <input type="range" id="m4t" min="0" max="4" step="0.01" value="0" aria-label="分裂進度">
+        <div class="ticks five"><span>原始</span><span>複製</span><span>排列</span><span>分裂 1</span><span>分裂 2</span></div>
+      </div>
+      <button class="btn primary" id="m4Play">▶ 播放全程</button>
+      <table class="sum">
+        <caption>📋 重點整理</caption>
+        <thead><tr><th></th><th>細胞分裂</th><th>減數分裂</th></tr></thead>
+        <tbody>
+          <tr id="sPlace"><th>發生位置</th><td>身體各處（體細胞）</td><td>生殖器官（睪丸、卵巢）</td></tr>
+          <tr id="sRep"><th>染色體複製</th><td>1 次</td><td>1 次</td></tr>
+          <tr id="sDiv"><th>細胞分裂</th><td>1 次</td><td><b>2 次</b></td></tr>
+          <tr id="sNum"><th>子細胞數目</th><td>2 個</td><td><b>4 個</b></td></tr>
+          <tr id="sChr"><th>子細胞染色體</th><td>與原細胞<b>相同</b></td><td>只有原細胞的<b>一半</b></td></tr>
+          <tr id="sPair"><th>同源染色體</th><td>成對</td><td>不成對</td></tr>
+          <tr id="sUse"><th>目的</th><td>生長、修補、胚胎發育</td><td>產生生殖細胞（精子、卵）</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 模組五：受精與胚胎發育 -->
+    <section class="section" data-mode="m5" hidden>
+      <p class="desc">精子和卵經過減數分裂，染色體只有一半；<b>受精</b>後，受精卵的染色體又恢復成對。受精卵再不斷進行<b>細胞分裂</b>，細胞越來越多，但<b>每個細胞的染色體數目都和受精卵一樣</b>。</p>
+      <div class="row2">
+        <button class="btn primary" id="m5Fert">💞 受精</button>
+        <button class="btn primary" id="m5Div">➗ 分裂一次</button>
+      </div>
+      <div class="row2">
+        <button class="btn" id="m5Auto">⏩ 連續分裂</button>
+        <button class="btn" id="m5Reset">↺ 重來</button>
+      </div>
+      <label class="chk"><input type="checkbox" id="m5Human"> 以人類為例（精子 23 條 + 卵 23 條）</label>
+    </section>
+
     <button class="btn" id="viewBtn" style="margin-top:12px">重設視角</button>
   </div>
 </aside>
 
 <aside class="monitor glass" id="monitor" aria-live="polite">
   <button class="collapse" data-target="monitor">收合</button>
-  <div class="mt">STATUS MONITOR</div>
+  <div class="mt">狀態監測儀</div>
   <div class="body">
     <div class="stage" id="monStage">—</div>
     <div class="readouts" id="monBody"></div>
@@ -272,7 +326,7 @@ function placeLabels() {
 }
 
 /* ----- 染色分體（膠囊管狀）與 X 形染色體 ----- */
-/** 一條姐妹染色分體的路徑：中間（著絲點）向內收，兩端向外張 → 兩條合起來成 X 形 */
+/** 一條姊妹染色分體的路徑：中間（著絲點）向內收，兩端向外張 → 兩條合起來成 X 形 */
 function chromatidPath(L, side, k = 14) {
   const pts = [];
   for (let i = 0; i < k; i++) {
@@ -286,7 +340,7 @@ function tubeFrom(pts, r) {
   const curve = new THREE.CatmullRomCurve3(pts);
   return new THREE.TubeGeometry(curve, Math.max(24, pts.length * 4), r, 10, false);
 }
-/** 建立一條姐妹染色分體（管 + 兩端圓帽），中心在原點 */
+/** 建立一條姊妹染色分體（管 + 兩端圓帽），中心在原點 */
 function makeChromatid(L, side, color, r = 0.13) {
   const g = new THREE.Group();
   const mat = plastic(color);
@@ -299,7 +353,7 @@ function makeChromatid(L, side, color, r = 0.13) {
   }
   return g;
 }
-/** X 形染色體：兩條姐妹染色分體 + 著絲點 */
+/** X 形染色體：兩條姊妹染色分體 + 著絲點 */
 function makeX(L, color) {
   const g = new THREE.Group();
   const left = makeChromatid(L, -1, color);
@@ -411,17 +465,17 @@ const M1 = (() => {
     nucleusMat.opacity = 0.55 * (1 - 0.75 * c);
     $('m1Phase').textContent = st.name;
     lMsg.el.innerHTML = c > 0.95
-      ? '4 條 X 形染色體<small>每條由 2 條<b>姐妹染色分體</b>組成（二分體）</small>'
+      ? '4 條 X 形染色體<small>每條由 2 條<b>姊妹染色分體</b>組成（二分體）</small>'
       : st.s > 0 && st.s < 1 ? 'DNA 複製中…<small>每條染色質旁長出一模一樣的副本</small>'
       : v < 25 ? '細長的染色質（像麵條）<small>兩長兩短：藍＝父系、紅＝母系</small>'
       : st.c > 0 ? '染色質螺旋、摺疊、濃縮中…<small>核膜逐漸消失</small>'
       : '複製完成，準備進入分裂<small>每條染色質都有一條相同的副本</small>';
 
     // 狀態監測儀
-    const a = st.s >= 1 ? '4a' : st.s > 0 ? `${(2 + 2 * st.s).toFixed(1)}a` : '2a';
     monitor(st.name, [
-      { k: '套數 n · DNA 含量 a', n: '2n', a, note: st.s > 0 && st.s < 1 ? 'DNA 正在複製：2a → 4a（套數不變）' : st.s >= 1 ? 'DNA 已加倍；染色體數仍是 4 條（2n）' : '每條染色質只有 1 個 DNA 分子' },
-      { k: '染色體數 · 每條的分體數', n: '4', ln: '條', a: st.s >= 1 ? '2' : '1', la: '分體／條', note: '2n = 4：兩長兩短（同源成對）' }
+      { k: '這個細胞的染色體', n: '4', ln: '條', a: '2', la: '對同源', note: '兩長兩短：長的一對、短的一對，每對一條來自父、一條來自母' },
+      { k: 'DNA 複製狀態', n: st.s >= 1 ? '已複製' : st.s > 0 ? '複製中' : '未複製', ln: '', a: st.s >= 1 ? '2' : '1', la: '分體／條', note: st.s > 0 && st.s < 1 ? '每條染色質旁長出一模一樣的副本' : st.s >= 1 ? '複製後仍算 4 條染色體，每條有 2 條姊妹染色分體' : '每條染色質只有 1 個 DNA 分子' },
+      { k: '對照：人類的體細胞', n: '46', ln: '條', a: '23', la: '對同源', note: '同種生物的染色體數目都相同' }
     ]);
   }
   $('cycle').addEventListener('input', e => { paint(e.target); rebuild(wobbleT); });
@@ -500,7 +554,7 @@ const M2 = (() => {
     { L: 1.25, color: COLORS.blue, y: 1.65 }, { L: 1.25, color: COLORS.red, y: 0.55 },
     { L: 0.8, color: COLORS.blue, y: -0.55 }, { L: 0.8, color: COLORS.red, y: -1.65 }
   ].map(c => {
-    // 一條 X 形染色體：左右兩條姐妹染色分體分別面向兩極，著絲點在赤道板上
+    // 一條 X 形染色體：左右兩條姊妹染色分體分別面向兩極，著絲點在赤道板上
     const holder = new THREE.Group();
     holder.position.y = c.y;
     mit.cell.add(holder);
@@ -539,7 +593,7 @@ const M2 = (() => {
 
   function update() {
     const e = ease(p);
-    // 有絲分裂：同一條 X 被拆成兩半（姐妹染色分體分離）
+    // 有絲分裂：同一條 X 被拆成兩半（姊妹染色分體分離）
     MIT.forEach(m => {
       const dx = 0.16 + 2.25 * e;
       m.L.position.x = -dx + 0.07;
@@ -566,12 +620,12 @@ const M2 = (() => {
     });
     const done = p > 0.95;
     lMitR.visible = lMeiR.visible = p > 0.05;
-    lMitR.el.innerHTML = done ? '姐妹染色分體分離<small>每個子細胞：2n（4 條）· 2a</small>' : '姐妹染色分體分開中…';
-    lMeiR.el.innerHTML = done ? '同源染色體分離<small>每個子細胞：n（2 條，每條仍是 X 形）· 2a</small>' : '同源染色體分開中…';
+    lMitR.el.innerHTML = done ? '姊妹染色分體分離<small>每個子細胞：4 條染色體（2 對），和原來一樣</small>' : '姊妹染色分體分開中…';
+    lMeiR.el.innerHTML = done ? '同源染色體分離<small>每個子細胞：2 條染色體（0 對），每條仍是 X 形</small>' : '同源染色體分開中…';
 
-    monitor(done ? '分裂後（各一個子細胞）' : p > 0.02 ? '後期：拉扯分離中…' : '中期：準備分離', [
-      { k: '有絲分裂（左）', n: done ? '2n' : '2n', a: done ? '2a' : '4a', note: done ? '套數不變，DNA 減半' : '紡錘絲黏在同一條 X 的左右兩側' },
-      { k: '減數分裂 I（右）', n: done ? 'n' : '2n', a: done ? '2a' : '4a', note: done ? '套數減半！同源染色體分到不同細胞' : '紡錘絲左黏左、右黏右' }
+    monitor(done ? '分裂後（每個子細胞）' : p > 0.02 ? '後期：拉扯分離中…' : '中期：準備分離', [
+      { k: '有絲分裂（左）', n: '4', ln: '條', a: '2', la: '對同源', note: done ? '染色體數目不變，和原細胞一樣' : '紡錘絲黏在同一條 X 的左右兩側' },
+      { k: '減數分裂 I（右）', n: done ? '2' : '4', ln: '條', a: done ? '0' : '2', la: '對同源', note: done ? '數目減半！同源染色體分到不同細胞' : '紡錘絲左黏左、右黏右' }
     ]);
   }
   function tick(t, dt) {
@@ -682,10 +736,10 @@ const M3 = (() => {
     lEggR.el.innerHTML = t < 0.02 ? '初級卵母細胞' : t < 1.02 ? '不均等分配 → 1 個次級卵母細胞 + 1 個極體' : t < 1.98 ? '細胞質再次集中給同一個細胞' : '<b>1 個大卵 + 3 個極體</b>（極體退化）<small>卵保留幾乎所有細胞質與養分</small>';
 
     const stage = t < 1 ? 0 : t < 1.98 ? 1 : 2;
-    const NA = [['2n', '4a', '複製後的原始細胞'], ['n', '2a', '減數分裂 I 後：套數減半'], ['n', 'a', '減數分裂 II 後：DNA 再減半']][stage];
+    const NA = [['4', '2', '複製後的原始細胞（4 條 X 形染色體）'], ['2', '0', '第一次分裂後：同源染色體分開，數目減半'], ['2', '0', '第二次分裂後：姊妹染色分體分開']][stage];
     monitor(phase, [
-      { k: '精子這一側（每個細胞）', n: NA[0], a: NA[1], note: stage === 2 ? '4 個精子，大小相同' : NA[2] },
-      { k: '卵這一側（每個細胞）', n: NA[0], a: NA[1], note: stage === 2 ? '1 個卵（大）+ 3 個極體（小）' : NA[2] }
+      { k: '精子這一側（每個細胞）', n: NA[0], ln: '條', a: NA[1], la: '對同源', note: stage === 2 ? '4 個精子，大小相同' : NA[2] },
+      { k: '卵這一側（每個細胞）', n: NA[0], ln: '條', a: NA[1], la: '對同源', note: stage === 2 ? '1 個卵（大）+ 3 個極體（小）' : NA[2] }
     ]);
   }
 
@@ -708,6 +762,245 @@ const M3 = (() => {
 })();
 
 /* =========================================================
+   模組四：細胞分裂 vs 減數分裂（全程比較，依均一影片的流程）
+   ========================================================= */
+const M4 = (() => {
+  const group = new THREE.Group();
+  const ROW = { mit: 2.75, mei: -2.75 };
+  const C1 = 2.7, C2 = 1.3, R0 = 1.9, R1 = 1.4, R2 = 1.05, OFF = 0, XA = 0.3;
+  const mats = { [COLORS.blue]: plastic(COLORS.blue), [COLORS.red]: plastic(COLORS.red) };
+  const geos = {};
+  const rodGeo = L => geos[L] || (geos[L] = new THREE.CapsuleGeometry(0.085, L, 4, 12));
+  // 兩長兩短；mit＝有絲分裂排一直列的高度，mei＝減數分裂同源配對的位置
+  const CH = [
+    { L: 0.62, color: COLORS.blue, p0: [-0.75, 0.4], tilt: 0.5, mit: 1.2, mei: [-0.34, 0.5], g: [-0.34, 0.4] },
+    { L: 0.62, color: COLORS.red, p0: [0.6, 0.6], tilt: -0.6, mit: 0.4, mei: [0.34, 0.5], g: [0.34, 0.4] },
+    { L: 0.40, color: COLORS.blue, p0: [-0.5, -0.65], tilt: -0.4, mit: -0.4, mei: [0.34, -0.5], g: [-0.34, -0.4] },
+    { L: 0.40, color: COLORS.red, p0: [0.7, -0.5], tilt: 0.7, mit: -1.2, mei: [-0.34, -0.5], g: [0.34, -0.4] }
+  ];
+  function makeRow(y, kind) {
+    const row = new THREE.Group();
+    row.position.y = y;
+    group.add(row);
+    const mk = () => { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 32), jelly(0xd8ecff, { opacity: 0.42 })); row.add(m); return m; };
+    const g0 = mk(), g1 = [mk(), mk()], g2 = kind === 'mei' ? [mk(), mk(), mk(), mk()] : [];
+    const chs = CH.map(c => {
+      const A = new THREE.Mesh(rodGeo(c.L), mats[c.color]);
+      const B = new THREE.Mesh(rodGeo(c.L), mats[c.color]);
+      const cen = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 10), centroMat);
+      row.add(A, B, cen);
+      return { c, A, B, cen };
+    });
+    return { kind, row, g0, g1, g2, chs };
+  }
+  const mit = makeRow(ROW.mit, 'mit'), mei = makeRow(ROW.mei, 'mei');
+
+  const lMit = addLabel('m4', '細胞分裂<small>體細胞 · 分裂 1 次</small>', 'big'); lMit.pos.set(-5.2, ROW.mit + 1.75, 0);
+  const lMei = addLabel('m4', '減數分裂<small>生殖細胞 · 分裂 2 次</small>', 'big'); lMei.pos.set(-5.2, ROW.mei + 1.75, 0);
+  const rMit = addLabel('m4', '', 'warn'); rMit.pos.set(0, ROW.mit - 2.2, 0);
+  const rMei = addLabel('m4', '', 'warn'); rMei.pos.set(0, ROW.mei - 2.2, 0);
+
+  const lerp = (a, b, k) => a + (b - a) * k;
+  const setCell = (m, x, r, on) => { m.visible = on; m.position.set(x, 0, 0); m.scale.setScalar(r); };
+  // 一條染色體的兩條分體：中心 (cx, cy)、整體傾斜 tilt、分體間距 off、X 張角 xa
+  function setX(e, cx, cy, tilt, off, xa, rep) {
+    const cs = Math.cos(tilt), sn = Math.sin(tilt);
+    e.A.position.set(cx - off * cs, cy - off * sn, 0); e.A.rotation.z = tilt + xa;
+    e.B.position.set(cx + off * cs, cy + off * sn, 0); e.B.rotation.z = tilt - xa;
+    e.B.visible = rep > 0.02; e.B.scale.set(1, Math.max(0.02, rep), 1);
+    e.cen.position.set(cx, cy, 0); e.cen.visible = rep > 0.8;
+  }
+  function update(t) {
+    const rep = ease(t), al = ease(t - 1), d1 = ease((t - 2) / 0.8), s1 = S(t, 2.35, 3), d2 = ease((t - 3) / 0.8), s2 = S(t, 3.35, 4);
+    [mit, mei].forEach(R => {
+      R.chs.forEach(e => {
+        const c = e.c;
+        const tx = R.kind === 'mit' ? 0 : c.mei[0], ty = R.kind === 'mit' ? c.mit : c.mei[1];
+        const cx = lerp(c.p0[0], tx, al), cy = lerp(c.p0[1], ty, al), tilt = lerp(c.tilt, 0, al);
+        if (d1 <= 0) { setX(e, cx, cy, tilt, OFF * rep, XA * rep, rep); return; }
+        if (R.kind === 'mit') {
+          // 姊妹染色分體分開，各自走向兩個子細胞
+          // 分開後在子細胞裡散開成「兩長兩短」，看得出和原來一樣
+          const y = ty * lerp(1, 0.75, d1), rl = ease((t - 2.85) / 0.6);
+          const gx = c.g[0], gy = c.g[1];
+          e.A.position.set(lerp(lerp(-OFF, -C1, d1), -C1 + gx, rl), lerp(y, gy, rl), 0); e.A.rotation.z = XA * (1 - d1);
+          e.B.position.set(lerp(lerp(OFF, C1, d1), C1 + gx, rl), lerp(y, gy, rl), 0); e.B.rotation.z = -XA * (1 - d1);
+          e.B.visible = true; e.B.scale.set(1, 1, 1); e.cen.visible = false;
+          return;
+        }
+        // 減數分裂 I：整條 X（同源染色體）分開；II：X 再拆成兩條分體
+        const side = Math.sign(c.mei[0]);
+        const y1 = c.L > 0.5 ? 0.5 : -0.5;
+        const x1 = lerp(c.mei[0], side * C1, d1), yy = lerp(c.mei[1], y1, d1);
+        if (d2 <= 0) { setX(e, x1, yy, 0, OFF, XA, 1); return; }
+        e.A.position.set(lerp(x1 - OFF, x1 - C2, d2), y1, 0); e.A.rotation.z = XA * (1 - d2);
+        e.B.position.set(lerp(x1 + OFF, x1 + C2, d2), y1, 0); e.B.rotation.z = -XA * (1 - d2);
+        e.B.visible = true; e.B.scale.set(1, 1, 1); e.cen.visible = false;
+      });
+      setCell(R.g0, 0, R0, s1 <= 0);
+      const g1on = s1 > 0 && (R.kind === 'mit' || s2 <= 0);
+      R.g1.forEach((m, i) => setCell(m, (i ? 1 : -1) * C1 * s1, lerp(R0, R1, s1), g1on));
+      R.g2.forEach((m, i) => setCell(m, (i < 2 ? -C1 : C1) + (i % 2 ? 1 : -1) * C2 * s2, lerp(R1, R2, s2), s2 > 0));
+    });
+
+    const phase = t < 0.03 ? '原始細胞' : t < 1 ? '① 染色體複製' : t < 2 ? '② 染色體排列' : t < 3 ? '③ 第一次分裂' : t < 3.97 ? '④ 第二次分裂（只有減數分裂）' : '完成！';
+    $('m4Phase').textContent = phase;
+    const start = '原始細胞：4 條染色體<small>2 對同源染色體（兩長兩短）</small>';
+    rMit.el.innerHTML = t < 0.03 ? start : t < 1 ? '染色體複製中…<small>每條長出一模一樣的副本，變成 X 形</small>' : t < 2 ? '染色體在中間<b>排成一直列</b>' : t < 2.9 ? '姊妹染色分體分開 → 2 個細胞' : '<b>與原始細胞一樣</b><small>每個細胞 4 條染色體（2 對同源染色體）</small>';
+    rMei.el.innerHTML = t < 0.03 ? start : t < 1 ? '染色體複製中…<small>一樣只複製 1 次</small>' : t < 2 ? '同源染色體<b>兩兩配對</b>排在中間' : t < 2.9 ? '第一次分裂：<b>同源染色體</b>分開' : t < 3.9 ? '第二次分裂：<b>姊妹染色分體</b>分開' : '<b>與原始細胞不一樣</b><small>每個細胞 2 條染色體（0 對同源染色體），只剩一半</small>';
+
+    const cm = s1 > 0.5 ? 2 : 1, ce = s2 > 0.5 ? 4 : s1 > 0.5 ? 2 : 1;
+    monitor(phase, [
+      { k: '細胞分裂：每個細胞', n: '4', ln: '條', a: '2', la: '對同源', note: `細胞數：${cm} 個` + (t >= 3.97 ? '（染色體數目不變）' : '') },
+      { k: '減數分裂：每個細胞', n: d1 > 0.5 ? '2' : '4', ln: '條', a: d1 > 0.5 ? '0' : '2', la: '對同源', note: `細胞數：${ce} 個` + (d1 > 0.5 ? '（染色體數目減半）' : '') }
+    ]);
+    const hl = { sRep: t > 0.03 && t < 1, sDiv: t >= 2 && t < 3.97, sNum: t >= 3.97, sChr: t >= 3.97, sPair: t >= 3.97 };
+    Object.entries(hl).forEach(([id, on]) => $(id).classList.toggle('hl', on));
+  }
+
+  let playing = false;
+  $('m4t').addEventListener('input', e => { paint(e.target); update(Number(e.target.value)); });
+  $('m4Play').addEventListener('click', () => {
+    playing = !playing;
+    if (playing && Number($('m4t').value) >= 4) $('m4t').value = 0;
+    $('m4Play').textContent = playing ? '⏸ 暫停' : '▶ 播放全程';
+  });
+  function tick(t, dt) {
+    if (playing) {
+      const v = Math.min(4, Number($('m4t').value) + dt * 0.36);
+      $('m4t').value = v; paint($('m4t'));
+      if (v >= 4) { playing = false; $('m4Play').textContent = '▶ 播放全程'; }
+    }
+    update(Number($('m4t').value));
+  }
+  return { group, tick, enter: () => update(Number($('m4t').value)), camera: { pos: [-1.2, 0, 17.5], target: [-1.2, 0, 0] } };
+})();
+
+/* =========================================================
+   模組五：受精 → 受精卵 → 細胞分裂（胚胎發育）
+   ========================================================= */
+const M5 = (() => {
+  const group = new THREE.Group();
+  const R0 = 1.6;
+  const AX = [V3(1, 0, 0), V3(0, 1, 0), V3(0, 0, 1), V3(1, 0, 0)];
+  const D = [1.05, 0.85, 0.7, 0.5];
+  const RAD = k => R0 * Math.pow(0.5, k / 3);
+  const POS = [[V3(0, 0, 0)]];
+  for (let k = 0; k < 4; k++) {
+    const prev = POS[k], n = prev.length, next = [];
+    for (let i = 0; i < n; i++) { next[i] = prev[i].clone().addScaledVector(AX[k], -D[k]); next[i + n] = prev[i].clone().addScaledVector(AX[k], D[k]); }
+    POS.push(next);
+  }
+  const cluster = new THREE.Group();
+  group.add(cluster);
+  const rod = (L, color) => new THREE.Mesh(new THREE.CapsuleGeometry(0.075, L, 4, 10), plastic(color));
+  // 受精後的 4 條：長的一對、短的一對（藍＝精子帶來、紅＝卵原有）
+  const SLOT = [{ L: 0.5, c: COLORS.blue, x: -0.17, y: 0.32 }, { L: 0.5, c: COLORS.red, x: 0.17, y: 0.32 }, { L: 0.3, c: COLORS.blue, x: -0.17, y: -0.32 }, { L: 0.3, c: COLORS.red, x: 0.17, y: -0.32 }];
+  const cells = [];
+  for (let i = 0; i < 16; i++) {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.SphereGeometry(R0, 40, 28), jelly(0xffdbe4, { opacity: 0.55 }));
+    const rods = SLOT.map(s => { const m = rod(s.L, s.c); m.position.set(s.x, s.y, 0); g.add(m); return m; });
+    g.add(body);
+    cluster.add(g);
+    cells.push({ g, body, rods });
+  }
+  // 精子：頭 + 擺動的尾巴 + 2 條藍色染色體
+  const sperm = new THREE.Group();
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 16), jelly(0xbfe3ff, { opacity: 0.9 }));
+  head.scale.set(1.4, 1, 1);
+  sperm.add(head);
+  const tail = [];
+  for (let i = 0; i < 16; i++) { const s = new THREE.Mesh(new THREE.SphereGeometry(0.06 - i * 0.0025, 10, 8), plastic(0x93c5fd)); sperm.add(s); tail.push(s); }
+  group.add(sperm);
+  const spRods = [rod(0.5, COLORS.blue), rod(0.3, COLORS.blue)];
+  spRods.forEach(m => group.add(m));
+
+  const lSperm = addLabel('m5', '', ''); lSperm.obj = sperm; lSperm.pos.set(0, 0.75, 0);
+  const lEgg = addLabel('m5', '', 'big'); lEgg.pos.set(0, R0 + 0.75, 0);
+  const lCount = addLabel('m5', '', 'warn'); lCount.pos.set(0, -2.9, 0);
+
+  let f = 0, fTarget = 0, level = 0, divP = 0, dividing = false, auto = false;
+  const human = () => $('m5Human').checked;
+  const lerp = (a, b, k) => a + (b - a) * k;
+
+  function update(time) {
+    const fe = ease(f);
+    // 精子游向卵
+    const sx = lerp(-7.2, -1.85, ease(f / 0.55)), sy = lerp(0.9, 0.25, ease(f / 0.55));
+    sperm.position.set(sx, sy, 0);
+    sperm.visible = f < 0.78;
+    head.material.opacity = 0.9 * (1 - S(f, 0.55, 0.78));
+    tail.forEach((s, k) => { s.position.set(-0.42 - k * 0.1, Math.sin(time * 10 - k * 0.6) * 0.1 * (k / 16), 0); s.visible = f < 0.6; });
+    // 精子的兩條染色體進入卵，和卵的染色體配對
+    const m = S(f, 0.55, 1);
+    [0, 2].forEach((si, j) => {
+      const s = SLOT[si], r = spRods[j];
+      r.position.set(lerp(sx + 0.05, s.x, m), lerp(sy + (j ? -0.06 : 0.06), s.y, m), 0);
+      r.rotation.z = lerp(Math.PI / 2, 0, m);
+      r.scale.setScalar(lerp(0.45, 1, m));
+      r.visible = f < 1 && f > 0.001 || fTarget === 0;
+    });
+    if (f >= 1) spRods.forEach(r => { r.visible = false; });
+
+    const n = 1 << level, p = ease(divP);
+    cells.forEach((c, i) => {
+      let on = false, pos = null, r = 0;
+      if (i < n) { on = true; pos = divP > 0 ? POS[level][i].clone().lerp(POS[level + 1][i], p) : POS[level][i]; r = divP > 0 ? lerp(RAD(level), RAD(level + 1), p) : RAD(level); }
+      else if (divP > 0 && i < 2 * n) { on = true; pos = POS[level][i - n].clone().lerp(POS[level + 1][i], p); r = lerp(RAD(level), RAD(level + 1), p); }
+      c.g.visible = on;
+      if (!on) return;
+      c.g.position.copy(pos);
+      c.g.scale.setScalar(r / R0);
+      // 受精前，卵只有自己的 2 條（紅）；藍色由精子帶進來
+      c.rods.forEach((rd, k) => {
+        const blue = SLOT[k].c === COLORS.blue;
+        rd.visible = !blue || f >= 1;
+        rd.position.x = blue ? SLOT[k].x : lerp(0, SLOT[k].x, fe);
+      });
+    });
+    cluster.rotation.y = f >= 1 ? Math.sin(time * 0.3) * 0.5 + 0.35 : 0;
+    cluster.rotation.x = f >= 1 ? 0.25 : 0;
+
+    const H = human();
+    const g = H ? 23 : 2, z = H ? 46 : 4, zp = H ? 23 : 2;
+    lSperm.visible = f < 0.55;
+    lSperm.el.innerHTML = `精子<small>${g} 條染色體（不成對）</small>`;
+    const count = n * (divP > 0.5 ? 2 : 1);
+    lEgg.el.innerHTML = f < 1 ? `卵<small>${g} 條染色體（不成對）</small>` : level === 0 && divP === 0 ? `受精卵<small>${g} + ${g} = ${z} 條（${zp} 對）</small>` : '胚胎（細胞分裂中）';
+    lEgg.pos.set(0, (level === 0 && divP === 0 ? R0 : 2.1) + 0.75, 0);
+    lCount.visible = f >= 1;
+    lCount.el.innerHTML = `細胞數：<b>${count}</b> 個<small>每個細胞都是 ${z} 條染色體（${zp} 對）</small>`;
+
+    const stage = f < 0.01 ? '受精前' : f < 1 ? '受精中…' : count === 1 ? '受精卵' : `細胞分裂：${count} 個細胞`;
+    monitor(stage, f < 1 ? [
+      { k: '精子（減數分裂產生）', n: String(g), ln: '條', a: '0', la: '對同源', note: '只有體細胞的一半' },
+      { k: '卵（減數分裂產生）', n: String(g), ln: '條', a: '0', la: '對同源', note: '受精後才會恢復成對' }
+    ] : [
+      { k: '細胞數目', n: String(count), ln: '個', note: count >= 16 ? '一直分裂下去，人體由數十兆個細胞組成！' : '每分裂一次，細胞數變成 2 倍' },
+      { k: '每個細胞的染色體', n: String(z), ln: '條', a: String(zp), la: '對同源', note: '細胞分裂後，染色體數目和受精卵一樣' }
+    ]);
+    $('m5Div').disabled = f < 1 || level >= 4 || dividing;
+    $('m5Fert').disabled = fTarget > 0;
+  }
+  function startDiv() { if (f >= 1 && level < 4 && !dividing) { dividing = true; divP = 0.0001; } }
+  $('m5Fert').addEventListener('click', () => { fTarget = 1; });
+  $('m5Div').addEventListener('click', startDiv);
+  $('m5Auto').addEventListener('click', () => { auto = true; fTarget = 1; if (f >= 1) startDiv(); });
+  $('m5Reset').addEventListener('click', () => { f = 0; fTarget = 0; level = 0; divP = 0; dividing = false; auto = false; lastSig = ''; });
+  $('m5Human').addEventListener('change', () => { lastSig = ''; });
+  function tick(t, dt) {
+    if (f < fTarget) { f = Math.min(1, f + dt * 0.42); if (f >= 1 && auto) startDiv(); }
+    if (dividing) {
+      divP = Math.min(1, divP + dt * 0.75);
+      if (divP >= 1) { level++; divP = 0; dividing = false; if (auto && level < 4) startDiv(); else auto = false; }
+    }
+    update(t);
+  }
+  return { group, tick, enter: () => update(clock.elapsedTime), get camera() { const x = window.innerWidth < 768 ? 0 : -1.6; return { pos: [x, 1.4, 13], target: [x, 0, 0] }; } };
+})();
+
+/* =========================================================
    狀態監測儀
    ========================================================= */
 let lastSig = '';
@@ -720,7 +1013,7 @@ function monitor(stage, rows) {
   const old = [...document.querySelectorAll('.ro')].map(el => el.dataset.v);
   $('monBody').innerHTML = rows.map(r =>
     `<div class="ro" data-v="${r.n}|${r.a}"><div class="k">${r.k}</div>
-      <div class="vals"><span class="v n">${r.n}<small>${r.ln ?? '套數'}</small></span><span class="v a">${r.a}<small>${r.la ?? 'DNA'}</small></span></div>
+      <div class="vals"><span class="v n">${r.n}<small>${r.ln ?? ''}</small></span>${r.a === undefined ? '' : `<span class="v a">${r.a}<small>${r.la ?? ''}</small></span>`}</div>
       <div class="note">${r.note}</div></div>`).join('');
   // 數值改變時閃一下，提醒學生注意
   if (prev) [...document.querySelectorAll('.ro')].forEach((el, i) => { if (old[i] && old[i] !== el.dataset.v) el.classList.add('flash'); });
@@ -732,7 +1025,7 @@ function monitor(stage, rows) {
 function paint(el) { el.style.setProperty('--fill', ((el.value - el.min) / (el.max - el.min) * 100) + '%'); }
 document.querySelectorAll('input[type=range]').forEach(paint);
 
-const MODES = { m1: M1, m2: M2, m3: M3 };
+const MODES = { m1: M1, m2: M2, m3: M3, m4: M4, m5: M5 };
 Object.values(MODES).forEach(m => scene.add(m.group));
 let mode = 'm1';
 function resetView() {
@@ -780,7 +1073,7 @@ function animate() {
   requestAnimationFrame(animate);
 }
 
-window.cellSim = { setMode };   // 除錯 / 驗證用
+window.cellSim = { setMode, M4, M5, camera, controls, renderer, scene, placeLabels };   // 除錯 / 驗證用
 
 resize();
 setMode('m1');
