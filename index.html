@@ -304,7 +304,7 @@ const COURSES = [
             k: ['科學方法'] },
           { title: '生物體的構造', sum: '細胞是生物的基本單位：構造、形態、物質進出細胞與組成層次。', labs: [{ t: '生物體的構造', u: 'cell-lab.html' }],
             k: ['細胞的構造與功能', '細胞的形態與功能', '生物體的組成層次', '生物體的組成物質'] },
-          { title: '養分', sum: '食物中的養分、酵素、葉子與光合作用、人體的消化。', labs: [{ t: '酵素的作用', u: 'enzyme-lock-key.html' }],
+          { title: '養分', sum: '食物中的養分、酵素、葉子與光合作用、人體的消化。', labs: [{ t: '養分', u: 'nutrition-lab.html' }, { t: '酵素的作用', u: 'enzyme-lock-key.html' }],
             k: ['酵素', '葉子的構造', '光合作用', '人體的消化系統', '人體的消化作用'] },
           { title: '生物的運輸與防禦', sum: '植物的運輸構造、心臟血管與血液、淋巴循環與人體的防禦。', labs: [{ t: '心臟與血液循環', u: 'heart.html' }],
             k: ['植物體的運輸構造', '植物體內物質的運輸', '心臟、血管', '血液', '人體內的血液循環', '人體內的淋巴循環', '人體的防禦作用'] },
@@ -412,7 +412,7 @@ function renderStats() {
   const stats = [
     { n: ready, label: '個已上線單元' },
     { n: pages, label: '座 3D 互動實驗室' },
-    { n: '151', label: '題會考題型自我檢測' }
+    { n: '156', label: '題會考題型自我檢測' }
   ];
   document.getElementById('heroStats').innerHTML = stats.map(s => `<div class="stat"><b>${s.n}</b><span>${s.label}</span></div>`).join('');
 }
