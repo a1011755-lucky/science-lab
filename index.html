@@ -317,7 +317,7 @@ const COURSES = [
       {
         name: '七下', sub: '生命的延續、演化與生態',
         chapters: [
-          { title: '生殖', sum: '遺傳物質、細胞分裂與減數分裂、無性生殖與有性生殖。', labs: [{ t: '細胞分裂與減數分裂', u: 'cell-division.html' }, { t: '分裂快速對照', u: 'clay-sim.html#cell' }],
+          { title: '生殖', sum: '遺傳物質、細胞分裂與減數分裂、無性生殖與有性生殖。', labs: [{ t: '生殖', u: 'reproduction-lab.html' }, { t: '細胞分裂與減數分裂', u: 'cell-division.html' }, { t: '分裂快速對照', u: 'clay-sim.html#cell' }],
             k: ['遺傳物質', '細胞分裂', '減數分裂', '無性生殖', '動物的有性生殖', '人類的生殖', '植物的有性生殖'] },
           { title: '遺傳', sum: '孟德爾遺傳法則、ABO 血型、性別決定、突變與生物科技。', labs: [{ t: '遺傳學與基因密碼', u: 'genetics-lab.html' }],
             k: ['遺傳法則', 'ABO 血型', '性別', '突變', '遺傳性疾病', '生物科技'] },
@@ -412,7 +412,7 @@ function renderStats() {
   const stats = [
     { n: ready, label: '個已上線單元' },
     { n: pages, label: '座 3D 互動實驗室' },
-    { n: '166', label: '題會考題型自我檢測' }
+    { n: '171', label: '題會考題型自我檢測' }
   ];
   document.getElementById('heroStats').innerHTML = stats.map(s => `<div class="stat"><b>${s.n}</b><span>${s.label}</span></div>`).join('');
 }

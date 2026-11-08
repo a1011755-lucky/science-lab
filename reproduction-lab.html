@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生殖實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+  .tabs.three .tab { font-size: .74rem; padding: 9px 2px; }
+  .objs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .objs .btn { padding: 8px 4px; font-size: .78rem; margin-top: 0; text-align: left; }
+  .objs .btn small { display: block; }
+  .chk { display: flex; align-items: center; gap: 8px; font-size: .8rem; font-weight: 800; margin: 10px 2px 0; cursor: pointer; }
+  .chk input { width: 18px; height: 18px; accent-color: #a1674a; flex: none; }
+  .orgcard { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin-top: 8px; font-size: .8rem; line-height: 1.65; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
+  .orgcard:empty { display: none; }
+  .orgcard h4 { font-size: .98rem; font-weight: 900; margin-bottom: 2px; }
+  .orgcard .pill { display: inline-block; font-size: .72rem; font-weight: 800; color: #fff; background: #4f7d5c; border-radius: 999px; padding: 1px 9px; margin: 2px 4px 2px 0; }
+  .orgcard table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .orgcard td, .orgcard th { padding: 3px 4px; border-bottom: 1px solid #efe6d8; text-align: left; font-size: .76rem; }
+  .orgcard th { color: var(--ink-soft); white-space: nowrap; }
+  .steps { display: grid; gap: 3px; background: rgba(255,255,255,.8); border-radius: 14px; padding: 8px 10px; margin-top: 8px; font-size: .76rem; font-weight: 700; line-height: 1.45; }
+  .steps div { color: #a8998a; }
+  .steps div.done { color: var(--ok); }
+  .steps div.now { color: var(--ink); background: #fff3d6; border-radius: 8px; padding: 2px 6px; margin: 0 -6px; }
+  .tag.part { font-size: .66rem; padding: 2px 7px; background: rgba(62,44,37,.82); color: #fff; }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g7">‹ 課程總覽</a>
+  <div class="title">生殖實驗室</div>
+  <div class="body">
+    <div class="tabs three">
+      <button class="tab on" data-tab="asx">🧫 無性生殖<small>一個親代</small></button>
+      <button class="tab" data-tab="ani">🐟 動物生殖<small>受精與發育</small></button>
+      <button class="tab" data-tab="flw">🌸 開花結果<small>植物有性生殖</small></button>
+    </div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="asx">
+      <div class="concept" style="--cc:#4f7d5c"><div class="ct">無性生殖</div><div class="cd">不需要<b>配子結合</b>，只有一個親代<br>子代和親代的特徵<b>幾乎一模一樣</b></div></div>
+      <label class="lab">選一種生殖方式</label>
+      <div class="objs" id="axBtns"></div>
+      <button class="btn primary" id="axPlay">▶ 播放</button>
+      <div class="orgcard" id="axCard"></div>
+      <p class="desc">優點：繁殖快、保留親代的優良特徵（品種）。<br>缺點：子代都很像，環境改變時容易一起被淘汰。<br>人類也利用<b>組織培養</b>大量繁殖蘭花等植物。</p>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="ani" hidden>
+      <div class="concept" style="--cc:#1e6aa8"><div class="ct">有性生殖</div><div class="cd">精子 ＋ 卵 → <b>受精卵</b> → 新個體</div></div>
+      <label class="lab">選一種動物</label>
+      <div class="objs" id="anBtns"></div>
+      <button class="btn primary" id="anPlay">▶ 播放受精與發育</button>
+      <div class="orgcard" id="anCard"></div>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="sec" data-tab="flw" hidden>
+      <div class="concept" style="--cc:#d81b60"><div class="ct">開花 → 授粉 → 受精 → 結果</div><div class="cd">受精後：<b>胚珠 → 種子</b>，<b>子房 → 果實</b></div></div>
+      <label class="lab" for="ovN">子房裡的胚珠數<b id="ovV"></b></label>
+      <input type="range" id="ovN" min="1" max="8" step="1" value="1">
+      <div class="ticks"><span>1（李子、櫻桃）</span><span>多個（番茄、西瓜）</span></div>
+      <div class="row2"><button class="btn pbtn on" data-p="bee">🐝 蟲媒花</button><button class="btn pbtn" data-p="wind">🌬️ 風媒花</button></div>
+      <div class="row2"><button class="btn primary" id="flPlay">▶ 開始授粉</button><button class="btn" id="flReset">↺ 重來</button></div>
+      <label class="chk"><input type="checkbox" id="flLab" checked> 顯示構造名稱</label>
+      <div class="steps" id="flSteps"></div>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'asx', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+/* =========================================================
+   共用小工具
+   ========================================================= */
+const lerp = (a, b, k) => a + (b - a) * k;
+const sphere = (r, mat, seg = 24) => new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg * 0.6 | 0)), mat);
+const cyl = (r1, r2, h, mat, seg = 32) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg), mat);
+const rbox = (w, h, d, mat, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001)), mat);
+const cap = (r, len, mat) => new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 6, 14), mat);
+const shellM = (c, op) => new THREE.MeshPhysicalMaterial({ color: c, transparent: true, opacity: op, roughness: 0.35, clearcoat: 0.6, side: THREE.DoubleSide, depthWrite: false });
+const C3 = (a, b, k) => new THREE.Color(a).lerp(new THREE.Color(b), clamp(k, 0, 1));
+let rs = 61;
+const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+table.scale.set(1.6, 1, 2.4); table.position.z = 13.6;
+const glowSprite = (rgb, s = 0.5) => { const g = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(rgb), transparent: true, depthWrite: false })); g.scale.setScalar(s); return g; };
+const vis = (o, v) => { o.visible = v; return o; };
+
+/* =========================================================
+   Tab 1：無性生殖
+   ========================================================= */
+const AX = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const ped = shadowed(cyl(2.6, 2.8, 0.3, clay(0xf3ebdd), 64)); ped.position.y = 0.15; group.add(ped);
+  const Y = 1.7;
+  const kinds = {};
+  // 分裂生殖：草履蟲
+  { const g = new THREE.Group(); g.position.y = Y; group.add(g); const m = shellM(0xb7d7a8, 0.75);
+    const A = sphere(0.5, m, 32), Bm = sphere(0.5, m, 32); g.add(A, Bm);
+    const nA = sphere(0.14, clay(0x8e6bbf), 16), nB = sphere(0.14, clay(0x8e6bbf), 16); g.add(nA, nB);
+    kinds.split = { g, n: '分裂生殖', sub: '細菌、草履蟲、變形蟲', d: '單細胞生物經過<b>細胞分裂</b>，一個個體變成兩個大致相同的新個體。', u: t => {
+      const s = smooth(0.2, 0.9, t), d = 0.05 + 1.15 * s;
+      A.position.x = -d; Bm.position.x = d; const L = lerp(2.4, 1.6, s); A.scale.set(L, 0.75, 0.75); Bm.scale.set(L, 0.75, 0.75);
+      A.position.x = -lerp(0.55, 1.4, s); Bm.position.x = lerp(0.55, 1.4, s); nA.position.copy(A.position); nB.position.copy(Bm.position); } };
+  }
+  // 出芽生殖：酵母菌
+  { const g = new THREE.Group(); g.position.y = Y; group.add(g); const m = shellM(0xf3d9a4, 0.85);
+    const mom = sphere(0.9, m, 32); g.add(mom); const bud = sphere(0.85, m, 32); g.add(bud);
+    const n1 = sphere(0.2, clay(0x8e6bbf), 16); g.add(n1); const n2 = sphere(0.18, clay(0x8e6bbf), 16); g.add(n2);
+    kinds.bud = { g, n: '出芽生殖', sub: '酵母菌、水螅', d: '母體旁長出一個<b>芽體</b>，芽體由母體供給養分，長到和母體差不多大時脫離，成為新個體。', u: t => {
+      const gr = smooth(0.05, 0.7, t), off = smooth(0.75, 1, t);
+      bud.scale.setScalar(Math.max(0.05, gr)); bud.position.set(0.9 + 0.75 * gr + 0.8 * off, 0.25 * gr, 0); mom.position.x = -0.6 * off;
+      n1.position.copy(mom.position); n2.position.copy(bud.position); n2.visible = gr > 0.5; } };
+  }
+  // 孢子繁殖：黑黴菌
+  { const g = new THREE.Group(); g.position.y = 0.3; group.add(g);
+    const bread = shadowed(rbox(3.4, 0.4, 2.0, clay(0xe8c48a), 0.15)); bread.position.y = 0.2; g.add(bread);
+    const stalks = [], heads = [];
+    for (let i = 0; i < 6; i++) { const x = -1.3 + i * 0.25, z = (i % 2 - 0.5) * 0.4; const st = cyl(0.025, 0.025, 1.0, clay(0xeeeeee), 6); st.position.set(x, 0.9, z); g.add(st); const h = sphere(0.12, clay(0x222222), 12); h.position.set(x, 1.42, z); g.add(h); stalks.push(st); heads.push(h); }
+    const spores = Array.from({ length: 40 }, () => { const s = sphere(0.03, clay(0x333333), 6); s.userData = { d: V3(0.5 + rnd() * 1.5, rnd() * 0.8, (rnd() - 0.5) * 1.2), z: (rnd() - 0.5) * 0.4 }; g.add(s); return s; });
+    const newS = [], newH = [];
+    for (let i = 0; i < 5; i++) { const x = 0.5 + i * 0.22, z = (i % 2 - 0.5) * 0.5; const st = cyl(0.02, 0.02, 1, clay(0xeeeeee), 6); st.position.set(x, 0.4, z); g.add(st); const h = sphere(0.09, clay(0x222222), 10); h.position.set(x, 0.4, z); g.add(h); newS.push(st); newH.push(h); }
+    kinds.spore = { g, n: '孢子繁殖', sub: '黑黴菌、青黴菌、蕨類', d: '產生大量又輕的<b>孢子</b>，隨風散播，落到適合的環境就萌發長成新個體。麵包上的黑點就是成熟的孢子囊。', u: t => {
+      const b = smooth(0.15, 0.55, t), gr = smooth(0.6, 1, t);
+      heads.forEach(h => h.scale.setScalar(1 - 0.4 * b));
+      spores.forEach((s, i) => { const h = heads[i % 6]; s.visible = b > 0.02 && gr < 0.95; const k = clamp(b * 1.4 - (i % 7) * 0.05, 0, 1); s.position.set(h.position.x + s.userData.d.x * k, h.position.y + Math.sin(k * Math.PI) * 0.8 - (h.position.y - 0.45) * k, h.position.z + s.userData.d.z * k); });
+      newS.forEach((st, i) => { const v = Math.max(0.01, gr); st.scale.y = v; st.position.y = 0.4 + 0.45 * v; newH[i].position.y = 0.4 + 0.92 * v; newH[i].visible = gr > 0.1; st.visible = gr > 0.02; }); } };
+  }
+  // 斷裂生殖：海星
+  { const g = new THREE.Group(); g.position.y = 0.55; group.add(g); const m = clay(0xff8a65);
+    const mk = (n, sc) => { const s = new THREE.Group(); s.add(sphere(0.35, m, 20)); const arms = []; for (let i = 0; i < 5; i++) { const pv = new THREE.Group(); pv.rotation.y = i / 5 * TAU; s.add(pv); const a = cap(0.17, 0.8, m); a.rotation.z = Math.PI / 2; a.position.x = 0.7; a.scale.y = 1; pv.add(a); arms.push(a); } s.scale.setScalar(sc); g.add(s); return { s, arms }; };
+    const A = mk(5, 1), Bs = mk(5, 1);
+    kinds.frag = { g, n: '斷裂生殖', sub: '海星、渦蟲、水綿', d: '身體斷成片段後，每個片段經<b>細胞分裂</b>長回完整的新個體。', u: t => {
+      const br = smooth(0.1, 0.35, t), gr = smooth(0.4, 1, t);
+      A.s.position.x = -0.6 * br; A.arms[0].scale.set(1, br > 0.5 ? Math.max(0.05, gr) : 1, 1); A.arms[0].visible = br < 0.5 || gr > 0.05;
+      Bs.s.position.x = 1.2 * br + 0.0; Bs.s.rotation.y = Math.PI; Bs.s.visible = br > 0.5;
+      Bs.arms.forEach((a, i) => { if (i === 0) a.scale.y = 1; else { a.scale.y = Math.max(0.05, gr); } });
+      Bs.s.children[0].scale.setScalar(Math.max(0.3, gr)); } };
+  }
+  // 營養器官繁殖：地瓜（根）
+  { const g = new THREE.Group(); g.position.y = 0.3; group.add(g);
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.8, 1.2, 32, 1, true), shellM(0xffffff, 0.3)); cup.position.y = 0.6; g.add(cup);
+    const water = cyl(0.86, 0.8, 0.7, shellM(0x8fd0f0, 0.35)); water.position.y = 0.35; g.add(water);
+    const sp = sphere(0.55, clay(0xa0522d), 24); sp.scale.set(1.6, 0.8, 0.8); sp.position.y = 1.15; sp.rotation.z = 0.3; g.add(sp);
+    const shoots = [[-0.5, 1.5, 0.2], [0.2, 1.55, -0.1], [0.7, 1.45, 0.2]].map(([x, y, z]) => { const s = new THREE.Group(); s.position.set(x, y, z); g.add(s); const st = cyl(0.04, 0.05, 1, clay(0x7cb342), 8); st.geometry.translate(0, 0.5, 0); s.add(st); const lf = sphere(0.18, clay(0x4caf50), 12); lf.scale.set(1.4, 0.2, 0.8); s.add(lf); s.userData = { st, lf }; return s; });
+    const roots = Array.from({ length: 6 }, (_, i) => { const r = cyl(0.015, 0.015, 1, clay(0xf5f0e6), 5); r.geometry.translate(0, -0.5, 0); r.position.set(-0.6 + i * 0.25, 0.85, 0); r.rotation.z = (i - 2.5) * 0.15; g.add(r); return r; });
+    kinds.veg = { g, n: '營養器官繁殖', sub: '地瓜（根）、馬鈴薯（莖）、落地生根（葉）', d: '植物用<b>根、莖、葉</b>這些營養器官長出新個體。地瓜用根、馬鈴薯用塊莖、草莓用匍匐莖、落地生根用葉繁殖。', u: t => {
+      const gr = smooth(0.1, 1, t);
+      shoots.forEach((s, i) => { const v = Math.max(0.02, gr - i * 0.1); s.userData.st.scale.y = v; s.userData.lf.position.y = v; s.userData.lf.scale.set(1.4 * v + 0.1, 0.2, 0.8 * v + 0.1); });
+      roots.forEach(r => { r.scale.y = Math.max(0.02, gr * 0.7); }); } };
+  }
+  const st = { k: 'split', t: 0, play: false };
+  $('axBtns').innerHTML = Object.entries(kinds).map(([k, o]) => `<button class="btn" data-k="${k}">${o.n}<small>${o.sub}</small></button>`).join('');
+  const sel = k => { st.k = k; st.t = 0; st.play = true; document.querySelectorAll('#axBtns .btn').forEach(b => b.classList.toggle('on', b.dataset.k === k)); };
+  document.querySelectorAll('#axBtns .btn').forEach(b => b.addEventListener('click', () => sel(b.dataset.k)));
+  $('axPlay').addEventListener('click', () => { st.t = 0; st.play = true; });
+  sel('split'); st.play = false;
+  const lN = addLabel('asx', '', 'yel', V3(0, 0.0, 2.2));
+  function update(dt) {
+    if (st.play) { st.t = Math.min(1, st.t + dt / 4.5); if (st.t >= 1) st.play = false; }
+    for (const [k, o] of Object.entries(kinds)) { o.g.visible = k === st.k; }
+    const o = kinds[st.k]; o.u(st.t);
+    setLabel(lN, `${o.n}・${o.sub}`);
+    setHTML('axCard', `<h4>${o.n}</h4><span class="pill">${o.sub}</span><div>${o.d}</div>`);
+    setCap(`<small>無性生殖・${o.n}</small>${st.t >= 1 ? '新個體的特徵和親代<b>幾乎一模一樣</b>' : st.t > 0 ? '繁殖中…' : '按「播放」看看新個體怎麼產生'}`);
+  }
+  return { group, update, st, sel };
+})();
+function updateAsx(dt) { AX.update(dt); }
+
+/* =========================================================
+   Tab 2：動物的有性生殖
+   ========================================================= */
+const AN = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  // 左：受精場所
+  const tank = new THREE.Mesh(new RoundedBoxGeometry(4.2, 2.6, 2.2, 4, 0.15), shellM(0x8fd0f0, 0.25)); tank.position.set(-2.7, 1.5, 0); group.add(tank);
+  const bodyS = new THREE.Mesh(new THREE.SphereGeometry(1.3, 40, 28), shellM(0xf3c9a6, 0.3)); bodyS.scale.set(1.5, 1, 1); bodyS.position.set(-2.7, 1.6, 0); group.add(bodyS);
+  const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(-4.3, 1.1, 0.3), V3(-3.3, 1.5, 0.3), V3(-2.4, 1.7, 0.3), V3(-1.6, 1.9, 0.3)]), 30, 0.12, 8), shellM(0xf48fb1, 0.45)); group.add(tube);
+  const eggs = Array.from({ length: 40 }, () => { const e = sphere(0.09, clay(0xff8a3d, { transparent: true, opacity: 0.95 }), 10); e.userData.p = V3(-2.7 + (rnd() - 0.5) * 2.4, 0.5 + rnd() * 0.35, (rnd() - 0.5) * 1.4); e.userData.fert = rnd(); group.add(e); return e; });
+  const sperm = Array.from({ length: 50 }, () => { const s = sphere(0.025, clay(0x1e6aa8), 6); s.userData = { a: rnd() * TAU, r: rnd(), y: rnd() }; group.add(s); return s; });
+  const ovum = sphere(0.18, clay(0xff8a3d), 16); ovum.position.set(-1.7, 1.9, 0.3); group.add(ovum);
+  // 右：發育方式
+  const egg = new THREE.Group(); egg.position.set(2.5, 1.6, 0); group.add(egg);
+  const shell = new THREE.Mesh(new THREE.SphereGeometry(1.0, 40, 28, 0, TAU, 0, Math.PI), shellM(0xfff8e1, 0.45)); shell.scale.set(0.85, 1.15, 0.85); egg.add(shell);
+  const yolk = sphere(0.5, clay(0xffb300), 24); yolk.position.y = -0.1; egg.add(yolk);
+  const embE = sphere(0.2, clay(0xef9a9a), 16); embE.position.set(0, 0.35, 0.25); egg.add(embE);
+  const uterus = new THREE.Group(); uterus.position.set(2.5, 1.6, 0); group.add(uterus);
+  const ut = new THREE.Mesh(new THREE.SphereGeometry(1.1, 40, 28), shellM(0xf48fb1, 0.35)); ut.scale.set(1, 1.1, 0.9); uterus.add(ut);
+  const plac = cyl(0.45, 0.45, 0.14, clay(0xc62828), 24); plac.position.set(0.6, 0.55, 0); plac.rotation.z = -0.8; uterus.add(plac);
+  const cord = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(0.5, 0.45, 0), V3(0.3, 0.1, 0.2), V3(0.05, -0.05, 0.1)]), 20, 0.05, 8), clay(0xe57373)); uterus.add(cord);
+  const fetus = new THREE.Group(); fetus.position.set(-0.15, -0.15, 0); uterus.add(fetus);
+  { const h = sphere(0.22, clay(0xf3b49a), 16); h.position.y = 0.25; fetus.add(h); const b = sphere(0.25, clay(0xf3b49a), 16); b.scale.set(0.9, 1.1, 0.9); fetus.add(b); }
+  const A = {
+    salmon: { n: '鮭魚', ico: '🐟', fert: '體外受精', dev: '卵生', eggs: '很多', food: '卵黃', shell: false, d: '雌魚在水中產下大量的卵，雄魚把精子噴灑在卵上。沒有交配行為，受精機率低，所以產卵數目多。' },
+    frog: { n: '青蛙', ico: '🐸', fert: '體外受精', dev: '卵生', eggs: '很多', food: '卵黃', shell: false, d: '公青蛙趴在母青蛙背上，是幫助母蛙排卵，再排出精子在水中受精，叫做<b>假交配</b>（不是交配）。卵沒有卵殼，要在水中發育。' },
+    hen: { n: '雞', ico: '🐔', fert: '體內受精', dev: '卵生', eggs: '較少', food: '卵黃', shell: true, d: '交配後精子在母雞體內和卵結合。蛋有<b>卵殼</b>保護，可以產在陸地上，胚胎靠豐富的卵黃發育。' },
+    human: { n: '人類', ico: '🧑', fert: '體內受精', dev: '胎生', eggs: '很少', food: '母體（胎盤、臍帶）', shell: false, d: '精子和卵在<b>輸卵管</b>結合，受精卵在<b>子宮</b>內發育，經由<b>胎盤、臍帶</b>從母體獲得養分。' },
+    guppy: { n: '孔雀魚', ico: '🐠', fert: '體內受精', dev: '胎生', eggs: '較少', food: '母體', shell: false, d: '大部分魚類是卵生，但孔雀魚、大肚魚是<b>胎生</b>的魚，直接生出小魚。' },
+    platypus: { n: '鴨嘴獸', ico: '🦫', fert: '體內受精', dev: '卵生', eggs: '少', food: '卵黃', shell: true, d: '大部分哺乳類是胎生，但鴨嘴獸、針鼴是<b>會產卵的哺乳類</b>，卵孵化後再由母體哺乳。' }
+  };
+  const st = { k: 'salmon', t: 0, play: false };
+  $('anBtns').innerHTML = Object.entries(A).map(([k, a]) => `<button class="btn" data-k="${k}">${a.ico} ${a.n}<small>${a.fert}・${a.dev}</small></button>`).join('');
+  const sel = k => { st.k = k; st.t = 0; st.play = true; document.querySelectorAll('#anBtns .btn').forEach(b => b.classList.toggle('on', b.dataset.k === k)); };
+  document.querySelectorAll('#anBtns .btn').forEach(b => b.addEventListener('click', () => sel(b.dataset.k)));
+  $('anPlay').addEventListener('click', () => { st.t = 0; st.play = true; });
+  sel('salmon'); st.play = false; st.t = 1;
+  const lF = addLabel('ani', '', 'yel', V3(-2.7, 3.2, 0)), lD = addLabel('ani', '', 'yel', V3(2.5, 3.2, 0));
+  function update(dt) {
+    if (st.play) { st.t = Math.min(1, st.t + dt / 6); if (st.t >= 1) st.play = false; }
+    const a = A[st.k], ext = a.fert === '體外受精', ovi = a.dev === '卵生';
+    const f = smooth(0, 0.5, st.t), dv = smooth(0.5, 1, st.t);
+    tank.visible = ext; bodyS.visible = tube.visible = ovum.visible = !ext;
+    eggs.forEach((e, i) => { e.visible = ext && i < (a.eggs === '很多' ? 40 : 10); e.position.copy(e.userData.p); const fert = f > 0.6 && e.userData.fert < 0.45; e.material.color.setHex(fert ? 0xff5722 : 0xffcc80); e.scale.setScalar(fert ? 1.15 : 1); });
+    sperm.forEach((s, i) => {
+      const u = s.userData; s.visible = f > 0.02 && f < 0.98;
+      if (ext) { const r = 0.4 + u.r * 1.4; s.position.set(-2.7 + Math.cos(u.a + wall * 1.5) * r, 0.6 + u.y * 1.2, Math.sin(u.a + wall * 1.5) * r * 0.6); }
+      else { const k = clamp(f * 1.2 - u.r * 0.25, 0, 1); const p = tube.geometry.parameters.path.getPoint(k * 0.92); s.position.copy(p).add(V3(Math.sin(i + wall * 9) * 0.05, Math.cos(i * 2 + wall * 7) * 0.05, 0)); }
+    });
+    ovum.material.color.setHex(f > 0.85 ? 0xff5722 : 0xff8a3d); ovum.scale.setScalar(f > 0.85 ? 1.2 : 1);
+    egg.visible = ovi; uterus.visible = !ovi;
+    shell.material.opacity = a.shell ? 0.55 : 0.18; shell.material.color.setHex(a.shell ? 0xfff8e1 : 0xd6eef8);
+    embE.scale.setScalar(0.4 + 2.2 * dv); yolk.scale.setScalar(1 - 0.55 * dv);
+    fetus.scale.setScalar(0.3 + 0.9 * dv);
+    setLabel(lF, `受精：${a.fert}${ext ? '（在水中）' : '（在母體內）'}`); setLabel(lD, `發育：${a.dev}${ovi ? (a.shell ? '（有卵殼）' : '（無卵殼）') : '（胎盤、臍帶）'}`);
+    setHTML('anCard', `<h4>${a.ico} ${a.n}</h4><table><tr><th>受精場所</th><td>${a.fert}</td></tr><tr><th>發育方式</th><td>${a.dev}</td></tr><tr><th>產卵數目</th><td>${a.eggs}</td></tr><tr><th>胚胎養分</th><td>${a.food}</td></tr></table><div style="margin-top:4px">${a.d}</div>`);
+    setCap(st.t < 0.5 ? `<small>${a.n}・受精作用</small>精子（雄配子）和卵（雌配子）結合成<b>受精卵</b>` : `<small>${a.n}・胚胎發育</small>${ovi ? '<b>卵生</b>：胚胎在母體外的卵中發育，養分來自<b>卵黃</b>' : '<b>胎生</b>：胚胎在母體內發育，養分由母體經<b>胎盤、臍帶</b>供給'}`);
+  }
+  return { group, update, st, sel };
+})();
+function updateAni(dt) { AN.update(dt); }
+
+/* =========================================================
+   Tab 3：植物的有性生殖（開花結果）
+   ========================================================= */
+const FL = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const F = new THREE.Group(); F.position.set(0, 0.9, 0); group.add(F);
+  const stem = cyl(0.06, 0.08, 1.0, clay(0x689f38), 10); stem.position.y = -0.5; F.add(stem);
+  const recep = sphere(0.25, clay(0x7cb342), 20); recep.scale.set(1, 0.5, 1); recep.position.y = 0.05; F.add(recep);
+  const pShape = new THREE.Shape(); pShape.moveTo(0, 0); pShape.bezierCurveTo(0.5, 0.15, 0.6, 0.9, 0.12, 1.15); pShape.lineTo(0, 1.05); pShape.lineTo(-0.12, 1.15); pShape.bezierCurveTo(-0.6, 0.9, -0.5, 0.15, 0, 0);
+  const pGeo = new THREE.ShapeGeometry(pShape, 16);
+  const petals = [], sepals = [];
+  for (let i = 0; i < 5; i++) {
+    const a = i / 5 * TAU + 0.3;
+    const pv = new THREE.Group(); pv.rotation.y = a; pv.position.y = 0.1; F.add(pv);
+    const p = new THREE.Mesh(pGeo, new THREE.MeshPhysicalMaterial({ color: 0xf8bbd0, side: THREE.DoubleSide, transparent: true, opacity: 0.92, roughness: 0.5 })); p.rotation.set(-0.55, 0, 0); p.rotation.order = 'YXZ'; p.position.z = 0.15; p.rotation.x = -1.0; pv.add(p); petals.push({ pv, p });
+    const sv = new THREE.Group(); sv.rotation.y = a + 0.6; sv.position.y = 0.0; F.add(sv);
+    const s = new THREE.Mesh(pGeo, clay(0x7cb342, { side: THREE.DoubleSide })); s.scale.setScalar(0.45); s.position.z = 0.15; s.rotation.x = -1.9; sv.add(s); sepals.push(s);
+  }
+  const stamens = [];
+  for (let i = 0; i < 10; i++) { const a = i / 10 * TAU; const g = new THREE.Group(); g.position.set(Math.cos(a) * 0.32, 0.1, Math.sin(a) * 0.32); g.rotation.set(Math.sin(a) * 0.3, 0, -Math.cos(a) * 0.3); F.add(g); const fil = cyl(0.015, 0.015, 0.9, clay(0xfff9c4), 6); fil.position.y = 0.45; g.add(fil); const an = sphere(0.06, clay(0xfbc02d), 10); an.scale.set(1, 1.5, 1); an.position.y = 0.92; g.add(an); stamens.push({ g, fil, an }); }
+  const ovary = new THREE.Mesh(new THREE.SphereGeometry(0.28, 32, 24), shellM(0x9ccc65, 0.55)); ovary.scale.set(1, 1.2, 1); ovary.position.y = 0.35; F.add(ovary);
+  const style = cyl(0.04, 0.05, 0.75, clay(0xc5e1a5), 10); style.position.y = 0.95; F.add(style);
+  const stigma = sphere(0.09, clay(0xaed581, { clearcoat: 1 }), 14); stigma.scale.set(1.3, 0.6, 1.3); stigma.position.y = 1.35; F.add(stigma);
+  let ovules = [];
+  const ovM = clay(0xfff176);
+  function buildOvules(n) {
+    ovules.forEach(o => F.remove(o)); ovules = [];
+    for (let i = 0; i < n; i++) { const a = i / n * TAU, r = n === 1 ? 0 : 0.14; const o = sphere(0.06, ovM.clone(), 12); o.scale.set(1, 1.3, 1); o.position.set(Math.cos(a) * r, 0.33 + (n > 4 ? (i % 2) * 0.12 - 0.06 : 0), Math.sin(a) * r); F.add(o); ovules.push(o); }
+  }
+  const tubes = [];
+  const fruit = sphere(0.3, clay(0xd32f2f, { transparent: true, opacity: 0.6, clearcoat: 1 }), 32); fruit.position.y = 0.35; F.add(fruit);
+  const bee = new THREE.Group(); group.add(bee);
+  { const b = sphere(0.14, clay(0xfbc02d), 14); b.scale.set(1.5, 1, 1); bee.add(b); [-0.06, 0.06].forEach(x => { const s = cyl(0.142, 0.142, 0.04, clay(0x333333), 14); s.rotation.z = Math.PI / 2; s.position.x = x; s.scale.set(1, 1, 1); bee.add(s); }); [-1, 1].forEach(s => { const w = sphere(0.12, shellM(0xffffff, 0.6), 10); w.scale.set(1, 0.2, 0.6); w.position.set(0, 0.12, s * 0.12); bee.add(w); }); }
+  const pollen = Array.from({ length: 30 }, () => { const p = sphere(0.025, clay(0xffd54f), 6); p.userData = { o: V3((rnd() - 0.5) * 3, rnd() * 1.5, (rnd() - 0.5) * 1.5) }; group.add(p); return p; });
+  const sperm = sphere(0.035, clay(0x1e6aa8), 8); group.add(sperm);
+  const P = (t, p) => addLabel('flw', t, 'part', p);
+  const labels = [P('花瓣', V3(-1.3, 1.6, 0.4)), P('萼片', V3(-1.0, 0.75, 0.5)), P('雄蕊：花藥', V3(1.3, 2.05, 0.2)), P('雄蕊：花絲', V3(1.25, 1.5, 0.2)), P('雌蕊：柱頭', V3(-0.95, 2.35, 0)), P('雌蕊：花柱', V3(-0.95, 1.9, 0)), P('雌蕊：子房', V3(0.95, 1.2, 0.5)), P('胚珠（內有卵）', V3(-1.05, 1.15, 0.5))];
+  const st = { phase: -1, k: 0, n: 1, mode: 'bee' };
+  const STEPS = ['授粉：花粉從雄蕊的花藥傳到雌蕊的柱頭', '花粉粒萌發出花粉管，沿花柱伸到胚珠', '精細胞經花粉管進入胚珠，和卵結合（受精）', '花瓣、雄蕊凋謝；子房 → 果實，胚珠 → 種子'];
+  const ovV = () => { st.n = Number($('ovN').value); $('ovV').textContent = st.n + ' 個'; };
+  $('ovN').addEventListener('input', () => { ovV(); buildOvules(st.n); reset(); });
+  document.querySelectorAll('.pbtn').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('.pbtn').forEach(x => x.classList.toggle('on', x === b)); st.mode = b.dataset.p; reset(); }));
+  $('flPlay').addEventListener('click', () => { if (st.phase < 0 || st.phase >= 4) { reset(); st.phase = 0; } });
+  $('flReset').addEventListener('click', reset);
+  function reset() { st.phase = -1; st.k = 0; tubes.forEach(t => F.remove(t)); tubes.length = 0; }
+  ovV(); buildOvules(1);
+  const tubeTo = o => new THREE.CatmullRomCurve3([V3(0, 1.35, 0), V3(0, 1.0, 0), V3(0, 0.62, 0), V3(o.position.x * 0.5, 0.48, o.position.z * 0.5), o.position.clone()]);
+  function update(dt) {
+    if (st.phase >= 0 && st.phase < 4) { st.k += dt / (st.phase === 2 ? 2.4 : 2.8); if (st.k >= 1) { st.k = 0; st.phase++; if (st.phase === 1) ovules.forEach(o => { const t = new THREE.Mesh(new THREE.TubeGeometry(tubeTo(o), 30, 0.012, 6), clay(0xffe082)); F.add(t); tubes.push(t); t.userData.drawRange = 0; }); } }
+    const ph = st.phase, k = smooth(0, 1, st.k);
+    // 授粉
+    const anW = stamens[2].an.getWorldPosition(V3(0, 0, 0)), stW = stigma.getWorldPosition(V3(0, 0, 0));
+    bee.visible = st.mode === 'bee' && ph === 0;
+    if (bee.visible) { const p = anW.clone().lerp(stW, smooth(0.2, 0.8, st.k)); p.y += 0.25 + Math.sin(st.k * Math.PI) * 0.6; bee.position.copy(p); bee.rotation.y = -0.8; bee.children.slice(-2).forEach((w, i) => { w.rotation.x = Math.sin(wall * 40) * 0.5; }); }
+    pollen.forEach((p, i) => {
+      if (ph !== 0) { p.visible = ph > 0 && ph < 4 && i < 3; if (p.visible) p.position.copy(stW).add(V3((i - 1) * 0.05, 0.06, 0)); return; }
+      p.visible = st.mode === 'wind' || i < 4;
+      if (st.mode === 'wind') { const s = (st.k + i / 30) % 1; p.position.set(-3 + 5.5 * s + p.userData.o.x * 0.2, 1.4 + p.userData.o.y + Math.sin(s * 6 + i) * 0.2, p.userData.o.z); if (i < 3 && st.k > 0.7) p.position.copy(stW).add(V3((i - 1) * 0.05, 0.06, 0)); }
+      else p.position.copy(bee.position).add(V3((i - 1.5) * 0.06, -0.12, 0.05));
+    });
+    // 花粉管
+    tubes.forEach((t, i) => { t.visible = ph >= 1 && ph < 4; const r = ph === 1 ? k : 1; t.geometry.setDrawRange(0, Math.floor(t.geometry.index.count * r / 6) * 6); });
+    // 精細胞
+    sperm.visible = ph === 2; if (ph === 2 && ovules.length) { const ci = Math.min(ovules.length - 1, Math.floor(st.k * ovules.length)), kk = (st.k * ovules.length) % 1; F.localToWorld(sperm.position.copy(tubeTo(ovules[ci]).getPoint(kk))); }
+    ovules.forEach((o, i) => { const fert = ph > 2 || (ph === 2 && st.k * ovules.length > i + 0.9); o.material.color.setHex(ph >= 3 ? (ph === 3 ? (C3(0xfff176, 0x6d4c41, k).getHex()) : 0x6d4c41) : fert ? 0xffa000 : 0xfff176); o.scale.set(1, 1.3, 1).multiplyScalar(ph >= 3 ? 1 + 0.6 * (ph === 3 ? k : 1) : 1); });
+    // 結果
+    const fr = ph === 3 ? k : ph >= 4 ? 1 : 0;
+    petals.forEach(({ p, pv }, i) => { p.visible = fr < 0.95; pv.position.y = 0.1 - 1.2 * smooth(0.0, 0.6, fr) * (0.6 + 0.1 * i); p.material.opacity = 0.92 * (1 - fr); });
+    stamens.forEach(s => { s.g.visible = fr < 0.8; s.g.scale.y = 1 - 0.5 * fr; });
+    style.visible = stigma.visible = fr < 0.9; style.scale.y = 1 - 0.6 * fr;
+    ovary.visible = fr < 0.3; fruit.visible = fr > 0.05; fruit.scale.setScalar(Math.max(0.01, (0.9 + 1.8 * fr)) * (st.n > 4 ? 1.1 : 1)); fruit.material.color.copy(C3(0x9ccc65, st.n > 4 ? 0xe53935 : 0xb71c1c, fr));
+    ovules.forEach(o => { o.position.multiplyScalar(1); });
+    if (fr > 0) ovules.forEach((o, i) => { const a = i / ovules.length * TAU, r = ovules.length === 1 ? 0 : 0.14 + 0.25 * fr; o.position.set(Math.cos(a) * r, 0.33 + (ovules.length > 4 ? (i % 2) * 0.12 - 0.06 : 0), Math.sin(a) * r); });
+    labels.forEach((L, i) => { L.show = $('flLab').checked && (fr < 0.5 || i >= 6); });
+    if (fr > 0.5) { setLabel(labels[6], '子房 → 果實'); setLabel(labels[7], '胚珠 → 種子'); } else { setLabel(labels[6], '雌蕊：子房'); setLabel(labels[7], '胚珠（內有卵）'); }
+    setHTML('flSteps', '<b>🌸 過程</b>' + STEPS.map((s, i) => `<div class="${i < ph ? 'done' : i === ph ? 'now' : ''}">${i < ph ? '✔' : '○'} ${i + 1}. ${s}</div>`).join(''));
+    setCap(ph < 0 ? `<small>花的構造</small>雄蕊（花藥裡有<b>花粉</b>）、雌蕊（子房裡有 <b>${st.n}</b> 個胚珠）。按「開始授粉」` : ph >= 4 ? `<small>結果</small>${st.n} 個胚珠 → <b>${st.n} 顆種子</b>；子房 → <b>果實</b>。一個胚珠只有一個卵，只會長成一顆種子` : `<small>步驟 ${ph + 1}</small>${STEPS[ph]}${ph === 0 ? (st.mode === 'bee' ? '（蟲媒花：靠昆蟲傳粉）' : '（風媒花：靠風傳粉，如玉米、水稻）') : ''}`);
+  }
+  return { group, update, st };
+})();
+function updateFlw(dt) { FL.update(dt); }
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  asx: { group: AX.group, cam: () => ({ pos: [0, 3.6, 8.5], target: [0, 1.4, 0], fitW: window.innerWidth < window.innerHeight ? 5.6 : 6.5 }), update: updateAsx },
+  ani: { group: AN.group, cam: () => ({ pos: [0, 3.4, 10], target: [0, 1.6, 0], fitW: window.innerWidth < window.innerHeight ? 9.5 : 10 }), update: updateAni },
+  flw: { group: FL.group, cam: () => ({ pos: [1.2, 3.0, 5.6], target: [0, 1.7, 0], fitW: window.innerWidth < window.innerHeight ? 3.6 : 4.6 }), update: updateFlw }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, AX, AN, FL, camera, controls, renderer, scene, placeLabels };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'asx';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+<script src="goals.js" defer></script>
+</body>
+</html>
