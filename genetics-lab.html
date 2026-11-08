@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>遺傳學與基因密碼實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs .tab { font-size: .74rem; padding: 9px 3px; }
+  .ticks.four span { flex: 1; text-align: center; } .ticks.four span:first-child { text-align: left; } .ticks.four span:last-child { text-align: right; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-top: 8px; }
+  .legend i { display: inline-block; width: 11px; height: 11px; border-radius: 4px; margin-right: 4px; vertical-align: -1px; }
+  .chain { display: flex; align-items: center; justify-content: space-between; gap: 2px; background: rgba(255,255,255,.8); border-radius: 14px; padding: 7px 8px; margin-top: 8px; }
+  .chain span { font-size: .76rem; font-weight: 900; padding: 4px 7px; border-radius: 10px; color: var(--ink-soft); transition: all .3s; }
+  .chain span.on { background: #5b7fd1; color: #fff; transform: scale(1.1); box-shadow: 0 4px 12px rgba(91,127,209,.35); }
+  .chain i { font-style: normal; color: #bca98f; font-weight: 900; }
+  .linkbtn { display: block; text-align: center; text-decoration: none; margin-top: 8px; font-size: .8rem; }
+  .genecard { position: fixed; z-index: 30; right: 4%; top: 18%; max-width: 300px; padding: 16px 20px; border-radius: 22px; background: linear-gradient(135deg, #fff8d6, #ffe58a); color: #6d4c00; font-weight: 800; font-size: 1.02rem; line-height: 1.6; box-shadow: 0 14px 40px rgba(180,130,0,.35), 0 0 0 3px rgba(255,210,60,.6); opacity: 0; transform: translateY(-14px) scale(.9); transition: all .45s cubic-bezier(.2,1.5,.4,1); pointer-events: none; }
+  .genecard b { font-size: 1.15rem; color: #8a5a00; }
+  .genecard.on { opacity: 1; transform: none; }
+  .bigboard { position: fixed; z-index: 30; right: 18px; top: 84px; transform: translate(20px, 0) scale(.92); width: 300px; padding: 16px 22px 14px; border-radius: 24px; background: rgba(255,255,255,.86); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 18px 50px rgba(93,64,55,.25), 0 0 0 3px rgba(145,71,224,.35); color: #5d4037; opacity: 0; pointer-events: none; transition: all .5s cubic-bezier(.2,1.4,.4,1); text-align: center; }
+  .bigboard.on { opacity: 1; transform: none; pointer-events: auto; }
+  .bb-t { font-weight: 900; font-size: .9rem; color: #7b3fc4; margin-bottom: 6px; }
+  .bb-row { display: flex; flex-direction: column; align-items: center; gap: 0; margin: 6px 0; }
+  .bb-row small { font-size: .78rem; font-weight: 800; color: #8d6e63; }
+  .bb-row b { font-size: 1.45rem; font-weight: 900; letter-spacing: .02em; }
+  .bb-sub { font-size: .78rem; font-weight: 700; margin-top: 6px; line-height: 1.6; color: #6d5a4e; }
+  .bb-x { position: absolute; right: 10px; top: 8px; border: none; background: rgba(93,64,55,.08); width: 28px; height: 28px; border-radius: 50%; cursor: pointer; color: #5d4037; font-weight: 900; }
+  .tag.pink { background: #f3d1e6; color: #8a3a6e; }
+  .tag.al { width: 30px; height: 30px; padding: 0; display: grid; place-items: center; border-radius: 50%; font-size: 1.05rem; font-weight: 900; background: #ffc94a; color: #5d4037; border: 2px solid #fff; box-shadow: 0 3px 8px rgba(93,64,55,.3); }
+  .tag.al.small2 { background: #fff3c4; }
+  .tag.egg { background: #f6c6d6; color: #8a2d52; }
+  .tag.sperm { background: #c9dcf5; color: #1e4f8a; }
+  .tag.hot { background: #ffcf3f; color: #5d4037; transform: translate(-50%, -50%) scale(1.25); box-shadow: 0 0 0 4px rgba(255,207,63,.4); }
+  .tag.gp { background: #9147e0; color: #fff; }
+  .tag.gw { background: #fff; color: #5d4037; border: 1.5px solid #d7ccc8; }
+  .tag.grd { background: #7cb342; color: #fff; text-align: center; line-height: 1.25; }
+  .tag.gwr { background: #a1887f; color: #fff; text-align: center; line-height: 1.25; }
+  .stat hr { border: none; border-top: 1px dashed #e4d9c6; margin: 4px 0; }
+  @media (max-width: 767px) {
+    .genecard { top: 70px; right: 50%; transform: translate(50%, -14px) scale(.9); font-size: .9rem; max-width: 86vw; }
+    .genecard.on { transform: translate(50%, 0); }
+    .bigboard { right: auto; left: 50%; top: 64px; width: 92vw; padding: 10px 14px; transform: translate(-50%, -20px) scale(.92); }
+    .bigboard.on { transform: translate(-50%, 0); }
+    .bb-row { flex-direction: row; gap: 8px; justify-content: center; margin: 2px 0; }
+    .bb-row b { font-size: 1.1rem; }
+  }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+<div class="genecard" id="geneCard">🧬 <b>基因（等位基因）</b><br>DNA 上控制性狀的特定片段！</div>
+<div class="bigboard" id="bigBoard">
+  <button class="bb-x" id="bbClose" aria-label="關閉">✕</button>
+  <div class="bb-t">🎰 棋盤方格統計看板</div>
+  <div class="bb-row"><small>基因型比例</small><b>AA : Aa : aa ＝ 1 : 2 : 1</b></div>
+  <div class="bb-row"><small>表現型比例</small><b><span style="color:#7b3fc4">紫花</span> : 白花 ＝ 3 : 1</b></div>
+  <div class="bb-sub" id="bbSub"></div>
+</div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g7">‹ 課程總覽</a>
+  <div class="title">遺傳學與基因密碼實驗室</div>
+  <div class="body">
+    <div class="tabs">
+      <button class="tab on" data-tab="anat">🔬 遺傳物質解剖室<small>核→染色體→DNA→基因</small></button>
+      <button class="tab" data-tab="meio">🧬 減數分裂與分離律<small>結合原本的細胞分裂</small></button>
+      <button class="tab" data-tab="pea">🌱 孟德爾豌豆農場<small>基因型與表現型</small></button>
+      <button class="tab" data-tab="pun">🎰 棋盤方格扭蛋機<small>Aa × Aa 的機率</small></button>
+    </div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="anat">
+      <div class="concept" style="--cc:#5b7fd1"><div class="ct">包含關係（由大到小）</div><div class="cd">細胞核 ＞ 染色體 ＞ DNA ＞ 基因</div></div>
+      <label class="lab" for="zoom">🔍 微觀放大倍率<b id="zoomV">× 1</b></label>
+      <input class="big" type="range" id="zoom" min="0" max="3" step="0.01" value="0">
+      <div class="ticks four"><span>細胞核</span><span>染色質</span><span>染色體</span><span>DNA</span></div>
+      <button class="btn" id="zoomPlay">▶ 自動放大</button>
+      <div class="chain" id="chain">
+        <span data-k="0">細胞核</span><i>›</i><span data-k="1">染色體</span><i>›</i><span data-k="2">DNA</span><i>›</i><span data-k="3">基因</span>
+      </div>
+      <div class="stat" id="anatStat"></div>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="meio" hidden>
+      <div class="concept" style="--cc:#c0504d"><div class="ct">分離律</div><div class="cd">成對的等位基因在形成配子時<b>分離</b>，<br>每個配子只得到其中一個</div></div>
+      <label class="lab" for="meio">🧫 分裂進度<b id="meioV">原始細胞</b></label>
+      <input class="big" type="range" id="meio" min="0" max="3" step="0.01" value="0">
+      <div class="ticks four"><span>原始</span><span>複製</span><span>分裂Ⅰ</span><span>分裂Ⅱ</span></div>
+      <button class="btn primary" id="meioPlay">▶ 播放減數分裂</button>
+      <div class="legend"><span><i style="background:#4f7fd8"></i>來自父親（帶 A）</span><span><i style="background:#e0605a"></i>來自母親（帶 a）</span></div>
+      <div class="stat" id="meioStat"></div>
+      <a class="btn linkbtn" href="cell-division.html">🔬 開啟完整版「細胞分裂與配子形成」模擬器 ›</a>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="sec" data-tab="pea" hidden>
+      <div class="concept" style="--cc:#5a9e3a"><div class="ct">圓皮 R 是顯性、皺皮 r 是隱性</div><div class="cd">RR、Rr → 圓皮；只有 rr → 皺皮</div></div>
+      <label class="lab" for="cross">👨‍🌾 親代基因型</label>
+      <select class="sel" id="cross">
+        <option value="0">(1) RR（圓皮）× rr（皺皮）</option>
+        <option value="1">(2) Rr（圓皮）× Rr（圓皮）</option>
+      </select>
+      <div class="row2">
+        <button class="btn primary" id="polBtn">🐝 人工授粉</button>
+        <button class="btn" id="peaReset">🧹 清除紀錄</button>
+      </div>
+      <div class="stat" id="peaStat"></div>
+      <p class="desc">每次授粉產生一個豆莢（6 顆種子）。多做幾次，看看 Rr × Rr 的圓皮：皺皮是不是接近 <b>3 : 1</b>。</p>
+    </section>
+
+    <!-- Tab 4 -->
+    <section class="sec" data-tab="pun" hidden>
+      <div class="concept" style="--cc:#7b3fc4"><div class="ct">Aa × Aa（紫花 A 為顯性）</div><div class="cd">上方投幣孔＝卵（A 或 a 各 1/2）<br>左側投幣孔＝精子（A 或 a 各 1/2）</div></div>
+      <div class="row2">
+        <button class="btn primary" id="punBtn">🎰 產生子代</button>
+        <button class="btn" id="punFast">⚡ 連續 20 次</button>
+      </div>
+      <button class="btn" id="punReset">↺ 清空棋盤</button>
+      <div class="stat" id="punStat"></div>
+      <p class="desc">四個格子出現的機會<b>各是 1/4</b>：AA 一格、Aa 兩格、aa 一格，所以是 1 : 2 : 1。</p>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'anat', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+/* ----- 共用小工具 ----- */
+const lerp = THREE.MathUtils.lerp;
+const easeOutBack = x => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+const texCache = {};
+/** 帶字母的發光球貼圖（配子、扭蛋球用） */
+function ballTex(text, fill, ink, glow) {
+  const k = [text, fill, ink, glow].join('|');
+  if (texCache[k]) return texCache[k];
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  if (glow) {
+    const grd = g.createRadialGradient(64, 64, 10, 64, 64, 64);
+    grd.addColorStop(0, `rgba(${glow},.9)`); grd.addColorStop(0.55, `rgba(${glow},.35)`); grd.addColorStop(1, `rgba(${glow},0)`);
+    g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  }
+  if (fill) {
+    const r = glow ? 34 : 56;
+    const grd = g.createRadialGradient(54, 50, 4, 64, 64, r);
+    grd.addColorStop(0, '#ffffff'); grd.addColorStop(0.35, fill); grd.addColorStop(1, fill);
+    g.beginPath(); g.arc(64, 64, r, 0, TAU); g.fillStyle = grd; g.fill();
+  }
+  g.font = `900 ${text.length > 1 ? 40 : 52}px "Noto Sans TC", sans-serif`;
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.lineWidth = 7; g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeText(text, 64, 68);
+  g.fillStyle = ink; g.fillText(text, 64, 68);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return (texCache[k] = t);
+}
+function spriteOf(tex, s = 1) {
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false }));
+  sp.scale.setScalar(s); sp.renderOrder = 6; return sp;
+}
+/** 桌面上的柔和影子 */
+function blobShadow(group, x, z, r, a = 0.28) {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(90,60,30,${a})`); grd.addColorStop(1, 'rgba(90,60,30,0)');
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(r * 2, r * 2), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
+  m.rotation.x = -Math.PI / 2; m.position.set(x, 0.012, z); group.add(m); return m;
+}
+/** 粒子爆發（Particle System） */
+function makeBurst(group, color, n = 90) {
+  const pos = new Float32Array(n * 3), vel = new Float32Array(n * 3), life = new Float32Array(n);
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const mat = new THREE.PointsMaterial({ color, size: 0.16, map: glowTexture('255,255,255'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 1 });
+  const pts = new THREE.Points(geo, mat); pts.frustumCulled = false; group.add(pts);
+  for (let i = 0; i < n; i++) pos[i * 3 + 1] = -99;
+  let head = 0;
+  return {
+    pts, mat,
+    fire(p, count = 30, speed = 2.2) {
+      for (let j = 0; j < count; j++) {
+        const i = head; head = (head + 1) % n;
+        pos[i * 3] = p.x; pos[i * 3 + 1] = p.y; pos[i * 3 + 2] = p.z;
+        const u = Math.random() * 2 - 1, th = Math.random() * TAU, s = speed * (0.4 + Math.random() * 0.8), q = Math.sqrt(1 - u * u);
+        vel[i * 3] = q * Math.cos(th) * s; vel[i * 3 + 1] = Math.abs(u) * s + 0.6; vel[i * 3 + 2] = q * Math.sin(th) * s;
+        life[i] = 0.7 + Math.random() * 0.6;
+      }
+    },
+    update(dt) {
+      for (let i = 0; i < n; i++) {
+        if (life[i] <= 0) { pos[i * 3 + 1] = -99; continue; }
+        life[i] -= dt;
+        vel[i * 3 + 1] -= 3.2 * dt;
+        pos[i * 3] += vel[i * 3] * dt; pos[i * 3 + 1] += vel[i * 3 + 1] * dt; pos[i * 3 + 2] += vel[i * 3 + 2] * dt;
+      }
+      geo.attributes.position.needsUpdate = true;
+    }
+  };
+}
+/** 沿著軸線產生「緊密螺旋」的曲線（濃縮的染色體臂） */
+class CoilCurve extends THREE.Curve {
+  constructor(a, b, coilR, turns) { super(); this.a = a; this.b = b; this.r = coilR; this.turns = turns;
+    this.d = b.clone().sub(a); const L = this.d.length(); this.d.divideScalar(L); this.L = L;
+    this.n = Math.abs(this.d.y) < 0.9 ? V3(0, 1, 0).cross(this.d).normalize() : V3(1, 0, 0).cross(this.d).normalize();
+    this.m = this.d.clone().cross(this.n); }
+  getPoint(t, target = new THREE.Vector3()) {
+    const th = t * this.turns * TAU, taper = Math.min(1, t * 8, (1 - t) * 8) * 0.6 + 0.4;
+    return target.copy(this.a).addScaledVector(this.d, t * this.L)
+      .addScaledVector(this.n, Math.cos(th) * this.r * taper).addScaledVector(this.m, Math.sin(th) * this.r * taper);
+  }
+}
+
+/* =========================================================
+   Tab 1：微觀遺傳物質解剖室
+   細胞 → 細胞核 → 染色質 → X 型染色體 → DNA ＋ 蛋白質 → 基因
+   ========================================================= */
+const AN = { group: new THREE.Group(), z: 0, follow: false, play: false, want: null };
+scene.add(AN.group);
+const AC = V3(0, 4.5, 0);
+const anCore = new THREE.Group(); anCore.position.copy(AC); AN.group.add(anCore);
+blobShadow(AN.group, 0, 0.3, 4.6, 0.22);
+// 細胞（外層）與細胞質裡的小胞器
+const cellMat = clay(0xf6d7c3, { transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide, roughness: 0.35, clearcoat: 0.8 });
+const cellM = new THREE.Mesh(new THREE.SphereGeometry(4.3, 64, 40), cellMat);
+cellM.scale.set(1.12, 0.94, 1); cellM.position.copy(AC); cellM.renderOrder = 3; AN.group.add(cellM);
+const orgMat = clay(0xf0a35e, { transparent: true, opacity: 1 });
+const organelles = [];
+for (let i = 0; i < 9; i++) {
+  const o = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.55, 6, 12), orgMat);
+  const a = i / 9 * TAU + 0.3, r = 3.1 + (i % 3) * 0.25;
+  o.position.set(AC.x + Math.cos(a) * r * 1.05, AC.y + Math.sin(a * 1.7) * 1.2, Math.sin(a) * r * 0.75);
+  o.rotation.set(a, a * 2, 0.5); AN.group.add(o); organelles.push(o);
+}
+// 細胞核：雙層核膜＋核孔＋核仁
+const nucMat = clay(0x9db4ea, { transparent: true, opacity: 0.4, depthWrite: false, side: THREE.DoubleSide, roughness: 0.3, clearcoat: 1 });
+const nucM = new THREE.Mesh(new THREE.SphereGeometry(2.15, 64, 40), nucMat); nucM.renderOrder = 4; anCore.add(nucM);
+const poreMat = clay(0x5d78c0, { transparent: true, opacity: 1 });
+const pores = new THREE.InstancedMesh(new THREE.TorusGeometry(0.09, 0.035, 6, 14), poreMat, 46);
+{ const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), p = V3(0, 0, 0);
+  for (let i = 0; i < 46; i++) {
+    const y = 1 - (i + 0.5) / 46 * 2, rr = Math.sqrt(1 - y * y), th = i * 2.39996;
+    p.set(Math.cos(th) * rr, y, Math.sin(th) * rr);
+    q.setFromUnitVectors(V3(0, 0, 1), p);
+    m4.compose(p.clone().multiplyScalar(2.16), q, V3(1, 1, 1)); pores.setMatrixAt(i, m4);
+  } }
+anCore.add(pores);
+const nucleolus = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 20), clay(0x7c6bb8, { transparent: true, opacity: 1 }));
+nucleolus.position.set(0.75, -0.55, -0.6); anCore.add(nucleolus);
+
+// 染色質：12 條鬆散細絲；用 MorphTargets 變形成濃縮的染色體
+const chromMat = clay(0x5f83d6, { transparent: true, opacity: 1, roughness: 0.45 });
+const sideMat = clay(0x86a3e0, { transparent: true, opacity: 1, roughness: 0.5 });
+const TUBE_SEG = 240, TUBE_RAD = 7;
+const rnd = (() => { let s = 7; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
+function wanderCurve(seed) {
+  const pts = []; let p = V3((rnd() - 0.5) * 2.2, (rnd() - 0.5) * 2.2, (rnd() - 0.5) * 2.2);
+  for (let i = 0; i < 9; i++) {
+    pts.push(p.clone());
+    p.add(V3((rnd() - 0.5) * 1.5, (rnd() - 0.5) * 1.5, (rnd() - 0.5) * 1.5));
+    if (p.length() > 1.75) p.multiplyScalar(1.5 / p.length());
+  }
+  return new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+}
+function morphTube(fromCurve, fromR, toCurve, toR, mat) {
+  const g0 = new THREE.TubeGeometry(fromCurve, TUBE_SEG, fromR, TUBE_RAD, false);
+  const g1 = new THREE.TubeGeometry(toCurve, TUBE_SEG, toR, TUBE_RAD, false);
+  g0.morphAttributes.position = [g1.attributes.position];
+  g0.morphAttributes.normal = [g1.attributes.normal];
+  const m = new THREE.Mesh(g0, mat); m.castShadow = true; return m;
+}
+// X 型染色體：左右兩條相同的染色分體（姊妹染色分體），中間由著絲點相連
+const ARMS = [
+  [V3(-0.07, 0.06, 0), V3(-0.36, 1.12, 0.05)], [V3(-0.07, -0.06, 0), V3(-0.3, -0.98, 0.05)],
+  [V3(0.07, 0.06, 0), V3(0.36, 1.12, -0.05)], [V3(0.07, -0.06, 0), V3(0.3, -0.98, -0.05)]
+];
+const chromatin = [];
+const xGroup = new THREE.Group(); anCore.add(xGroup);
+for (let i = 0; i < 12; i++) {
+  const main = i < 4;
+  let toCurve;
+  if (main) toCurve = new CoilCurve(ARMS[i][0], ARMS[i][1], 0.11, 15);
+  else {
+    const c = wanderCurve(i); const mid = c.getPoint(0.5).multiplyScalar(1.05);
+    if (mid.length() < 1.0) mid.setLength(1.25);
+    const dir = V3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize().multiplyScalar(0.28);
+    toCurve = new CoilCurve(mid.clone().sub(dir), mid.clone().add(dir), 0.06, 7);
+  }
+  const m = morphTube(wanderCurve(i), 0.028, toCurve, main ? 0.075 : 0.05, main ? chromMat : sideMat);
+  (main ? xGroup : anCore).add(m); chromatin.push(m);
+}
+const centro = new THREE.Mesh(new THREE.SphereGeometry(0.14, 24, 16), clay(0xffc94a, { transparent: true, opacity: 1 }));
+xGroup.add(centro);
+
+// DNA 雙股螺旋＋球狀蛋白質（組蛋白），中間那段長長的 DNA 就是「基因」
+const dnaG = new THREE.Group(); dnaG.position.copy(AC); AN.group.add(dnaG);
+const HIST = [-2.75, -1.35, 1.35, 2.75], RW = 0.52;
+const dnaMats = [];
+{
+  const pts = [V3(-3.9, -RW, 0.2)];
+  for (let h = 0; h < HIST.length; h++) {
+    const hx = HIST[h], N = 26;
+    for (let j = 0; j <= N; j++) {
+      const th = j / N * 1.65 * TAU;
+      pts.push(V3(hx - 0.24 + 0.48 * j / N, -RW * Math.cos(th), RW * Math.sin(th)));
+    }
+    if (h === 1) for (let j = 1; j < 6; j++) { const k = j / 6; pts.push(V3(lerp(-1.0, 1.0, k), lerp(0.3, -RW, k) + Math.sin(k * Math.PI) * 0.12, lerp(-0.42, 0, k))); }
+  }
+  pts.push(V3(3.9, 0.35, -0.4));
+  const axis = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+  const M = 1700, fr = axis.computeFrenetFrames(M, false), L = axis.getLength();
+  const s1 = [], s2 = [], isGene = [];
+  const rr = 0.1, pitch = 0.36;
+  for (let i = 0; i <= M; i++) {
+    const p = axis.getPointAt(i / M), ph = (i / M) * L / pitch * TAU;
+    const N = fr.normals[i], B = fr.binormals[i];
+    s1.push(p.clone().addScaledVector(N, Math.cos(ph) * rr).addScaledVector(B, Math.sin(ph) * rr));
+    s2.push(p.clone().addScaledVector(N, Math.cos(ph + 2.4) * rr).addScaledVector(B, Math.sin(ph + 2.4) * rr));
+    isGene.push(Math.abs(p.x) < 0.78);
+  }
+  const bbMat1 = clay(0x4a6fc8, { transparent: true, opacity: 1 }), bbMat2 = clay(0x2f9e8f, { transparent: true, opacity: 1 });
+  const geneMat = new THREE.MeshStandardMaterial({ color: 0xffd23f, emissive: 0xff9d00, emissiveIntensity: 0, roughness: 0.4, transparent: true, opacity: 1 });
+  dnaMats.push(bbMat1, bbMat2, geneMat);
+  dnaG.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(s1), M, 0.03, 5), bbMat1));
+  dnaG.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(s2), M, 0.03, 5), bbMat2));
+  // 鹼基對（梯子的橫桿）
+  const BASE = [0xf2a65a, 0x6cc3a0, 0xe57373, 0x64b5f6];
+  const ids = [], gids = [];
+  for (let i = 0; i <= M; i += 5) (isGene[i] ? gids : ids).push(i);
+  const rungMat = new THREE.MeshStandardMaterial({ roughness: 0.5, transparent: true, opacity: 1 });
+  dnaMats.push(rungMat);
+  const rungs = new THREE.InstancedMesh(UNIT_CYL, rungMat, ids.length);
+  const grungs = new THREE.InstancedMesh(UNIT_CYL, geneMat, gids.length);
+  const dummy = new THREE.Mesh();
+  const col = new THREE.Color();
+  ids.forEach((i, n) => { placeSeg(dummy, s1[i], s2[i], 0.018); dummy.updateMatrix(); rungs.setMatrixAt(n, dummy.matrix); rungs.setColorAt(n, col.setHex(BASE[(i * 7 + (i >> 3)) % 4])); });
+  gids.forEach((i, n) => { placeSeg(dummy, s1[i], s2[i], 0.03); dummy.updateMatrix(); grungs.setMatrixAt(n, dummy.matrix); });
+  dnaG.add(rungs, grungs);
+  // 基因段的外框光管
+  const a = isGene.indexOf(true), b = isGene.lastIndexOf(true);
+  const gTube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.filter(p => Math.abs(p.x) < 0.8)), 60, 0.2, 16), new THREE.MeshBasicMaterial({ color: 0xffe066, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }));
+  dnaG.add(gTube); AN.gTube = gTube;
+  for (const st of [s1, s2]) dnaG.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(st.slice(a, b + 1)), (b - a), 0.036, 6), geneMat));
+  AN.geneMid = axis.getPointAt(((a + b) / 2) / M);
+  const histMat = clay(0xd9a3c7, { transparent: true, opacity: 1, roughness: 0.55 });
+  dnaMats.push(histMat);
+  for (const hx of HIST) {
+    const h = new THREE.Mesh(new THREE.SphereGeometry(0.4, 32, 20), histMat); h.scale.set(0.75, 1, 1); h.position.set(hx, 0, 0); dnaG.add(h);
+  }
+  AN.geneMat = geneMat;
+}
+const geneGlow = spriteOf(glowTexture('255,210,60'), 0); geneGlow.material.blending = THREE.AdditiveBlending; dnaG.add(geneGlow);
+const DNA_S = 0.42, GENE_Y = new THREE.Color(0xffd23f);
+
+const lCell = addLabel('anat', '細胞', '', V3(-3.4, 8.6, 0));
+const lNuc = addLabel('anat', '細胞核（遺傳物質在這裡）', 'lam', V3(1.4, AC.y + 2.45, 0));
+const lChr = addLabel('anat', '染色質：DNA 鬆散的細絲', '', V3(0, AC.y + 1.9, 0));
+const lX = addLabel('anat', '染色體（X 型）<br><small>複製後的兩條染色分體</small>', 'lam', V3(0, AC.y + 1.5, 0));
+const lCen = addLabel('anat', '著絲點', 'yel small', V3(0.45, AC.y, 0));
+const lDNA = addLabel('anat', 'DNA 雙股螺旋', 'lam', V3(-1.2, AC.y + 0.55, 0));
+const lPro = addLabel('anat', '蛋白質（球狀）', 'pink', V3(1.45, AC.y - 0.5, 0));
+const lGene = addLabel('anat', '⭐ 基因', 'yel', V3(0, AC.y + 0.5, 0));
+
+/** 依放大倍率決定鏡頭位置（細胞 → 細胞核內 → 染色體 → DNA） */
+const ZK = [
+  { d: 19, y: 2.0, fit: 11.5 }, { d: 7.2, y: 0.9, fit: 5 }, { d: 5.8, y: 0.5, fit: 3.4 }, { d: 4.6, y: 0.4, fit: 4.4 }
+];
+function camForZoom(z) {
+  const i = Math.min(2, Math.floor(z)), k = smooth(0, 1, z - i), a = ZK[i], b = ZK[i + 1];
+  const d = lerp(a.d, b.d, k), y = lerp(a.y, b.y, k);
+  return { pos: [AC.x, AC.y + y, AC.z + d], target: [AC.x, AC.y, AC.z], fitW: lerp(a.fit, b.fit, k) };
+}
+function setZoom(z, follow = true) {
+  AN.z = z; $('zoom').value = z;
+  if (follow) { AN.follow = true; AN.want = viewFor(camForZoom(z)); camTw = null; }
+}
+$('zoom').addEventListener('input', e => { AN.play = false; setZoom(+e.target.value); });
+$('zoomPlay').addEventListener('click', () => {
+  if (AN.z >= 2.99) setZoom(0);
+  AN.play = !AN.play;
+});
+const LEVEL_TXT = [
+  ['細胞核', '細胞裡面的<b>細胞核</b>，就是存放遺傳物質的地方。'],
+  ['染色質', '細胞核內有許多細細長長的<b>染色質</b>，由 DNA 和蛋白質組成。'],
+  ['染色體', '細胞要分裂時，染色質<b>捲曲濃縮</b>成 X 型的<b>染色體</b>。'],
+  ['DNA', '染色體展開來看，是<b>DNA 雙股螺旋</b>纏繞在<b>球狀蛋白質</b>上。'],
+  ['基因', 'DNA 上控制某一種性狀的<b>特定片段</b>，就是<b>基因</b>！']
+];
+function updateAnat(dt) {
+  if (AN.play) {
+    const z = Math.min(3, AN.z + dt * 0.32); setZoom(z);
+    if (z >= 3) AN.play = false;
+  }
+  const z = AN.z;
+  if (AN.follow && AN.want) {
+    const k = 1 - Math.exp(-dt * 4.5);
+    camera.position.lerp(AN.want.pos, k); controls.target.lerp(AN.want.tgt, k);
+    if (camera.position.distanceTo(AN.want.pos) < 0.01) AN.follow = false;
+  }
+  $('zoomPlay').textContent = AN.play ? '⏸ 暫停' : (z >= 2.99 ? '↺ 重新放大' : '▶ 自動放大');
+  // 細胞、細胞核淡出
+  cellMat.opacity = 0.3 * (1 - smooth(0.1, 0.6, z)); cellM.visible = cellMat.opacity > 0.005;
+  orgMat.opacity = 1 - smooth(0.1, 0.5, z); for (const o of organelles) o.visible = orgMat.opacity > 0.01;
+  nucMat.opacity = 0.4 * (1 - smooth(0.55, 1.05, z)); nucM.visible = nucMat.opacity > 0.005;
+  poreMat.opacity = 1 - smooth(0.5, 1.0, z); pores.visible = poreMat.opacity > 0.01;
+  nucleolus.material.opacity = 1 - smooth(0.9, 1.4, z); nucleolus.visible = nucleolus.material.opacity > 0.01;
+  // 染色質 → X 型染色體（MorphTargets）
+  const cond = smooth(1.05, 1.95, z);
+  for (const m of chromatin) m.morphTargetInfluences[0] = cond;
+  sideMat.opacity = 1 - smooth(1.35, 1.85, z);
+  for (let i = 4; i < 12; i++) chromatin[i].visible = sideMat.opacity > 0.01;
+  const open = smooth(2.1, 2.75, z);
+  chromMat.opacity = 1 - smooth(2.15, 2.6, z);
+  centro.material.opacity = chromMat.opacity; centro.scale.setScalar(smooth(1.5, 1.95, z) + 0.001);
+  xGroup.visible = chromMat.opacity > 0.01;
+  xGroup.scale.setScalar(1 + open * 2.4);
+  anCore.rotation.y = (1 - smooth(1.6, 2.1, z)) * Math.sin(wall * 0.25) * 0.6;
+  // DNA 淡入
+  const dIn = smooth(2.3, 2.8, z);
+  for (const m of dnaMats) m.opacity = dIn;
+  dnaG.visible = dIn > 0.01;
+  dnaG.scale.setScalar(DNA_S * (0.3 + 0.7 * smooth(2.1, 2.8, z)));
+  // 基因發光
+  const g = smooth(2.82, 2.97, z), pulse = 0.65 + 0.35 * Math.sin(wall * 4);
+  AN.geneMat.emissiveIntensity = g * (0.35 + 0.35 * pulse);
+  AN.geneMat.color.setHex(0x8fa7d8).lerp(GENE_Y, g);
+  AN.gTube.material.opacity = g * 0.12 * pulse;
+  geneGlow.position.copy(AN.geneMid); geneGlow.scale.set(g * (3.4 + pulse * 0.4), g * (1.3 + pulse * 0.2), 1); geneGlow.material.opacity = 0.3;
+  $('geneCard').classList.toggle('on', g > 0.5);
+  // 標籤
+  lCell.show = z < 0.45; lNuc.show = z < 0.9; lChr.show = z > 0.75 && z < 1.4;
+  lX.show = z > 1.8 && z < 2.25; lCen.show = lX.show;
+  lDNA.show = z > 2.6; lPro.show = z > 2.6; lGene.show = g > 0.5;
+  lDNA.pos.copy(AC).add(V3(-1.25 * DNA_S / 0.52, 0.55, 0)); lPro.pos.copy(AC).add(V3(1.38, -0.42, 0));
+  lGene.pos.copy(AN.geneMid).multiplyScalar(dnaG.scale.x).add(AC).add(V3(0, 0.42, 0));
+  const lv = z < 0.75 ? 0 : z < 1.6 ? 1 : z < 2.45 ? 2 : g > 0.5 ? 4 : 3;
+  $('zoomV').textContent = '× ' + Math.round(Math.pow(10, z * 1.6)).toLocaleString();
+  const ck = lv === 0 ? 0 : lv <= 2 ? 1 : lv === 3 ? 2 : 3;
+  document.querySelectorAll('#chain span').forEach(s => s.classList.toggle('on', +s.dataset.k === ck));
+  setHTML('anatStat', `目前看到：<b>${LEVEL_TXT[lv][0]}</b><br>${LEVEL_TXT[lv][1]}`);
+  setCap(lv === 4 ? '<b>基因</b>是 DNA 上的一小段；一條 DNA 上有很多個基因' : `🔍 拖曳「放大倍率」滑桿，一層一層看進細胞核（${LEVEL_TXT[lv][0]}）`);
+}
+
+/* =========================================================
+   Tab 2：減數分裂與分離律（結合原本的「細胞分裂與配子形成」）
+   一對同源染色體：父系帶 A、母系帶 a
+   ========================================================= */
+const ME = { group: new THREE.Group(), s: 0, play: false };
+scene.add(ME.group); ME.group.visible = false;
+const MY = 3.4;
+const meCellMat = clay(0xf7d6c8, { transparent: true, opacity: 0.32, depthWrite: false, roughness: 0.35, clearcoat: 0.8 });
+const meCells = [];
+for (let i = 0; i < 4; i++) { const c = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 32), meCellMat); c.renderOrder = 3; ME.group.add(c); meCells.push(c); }
+const meShadows = meCells.map(() => blobShadow(ME.group, 0, 0, 1, 0.2));
+const chrGeo = new THREE.CapsuleGeometry(0.19, 1.6, 8, 16), bandGeo = new THREE.CylinderGeometry(0.215, 0.215, 0.26, 24);
+const bandMat = clay(0xffc94a, { emissive: 0x8a5a00, emissiveIntensity: 0.25 });
+function chromatid(color, allele) {
+  const g = new THREE.Group();
+  g.add(shadowed(new THREE.Mesh(chrGeo, clay(color))));
+  const b = new THREE.Mesh(bandGeo, bandMat); b.position.y = 0.42; g.add(b);
+  ME.group.add(g);
+  g.userData.lab = addLabel('meio', allele, 'al ' + (allele === 'A' ? 'big' : 'small2'), V3(0, 0, 0.45), b);
+  return g;
+}
+const CT = { B1: chromatid(0x4f7fd8, 'A'), B2: chromatid(0x4f7fd8, 'A'), R1: chromatid(0xe0605a, 'a'), R2: chromatid(0xe0605a, 'a') };
+const cenB = new THREE.Mesh(new THREE.SphereGeometry(0.11, 16, 12), clay(0xfff1c1)), cenR = cenB.clone();
+ME.group.add(cenB, cenR);
+const meDraw = Drawer(ME.group);
+const lMeCells = [0, 1, 2, 3].map(i => addLabel('meio', '', 'small', V3(0, 0, 0)));
+const lMeRes = addLabel('meio', '', 'yel', V3(0, MY - 2.4, 1.2));
+function placeCell(i, x, r, show) {
+  const c = meCells[i]; c.visible = show; meShadows[i].visible = show;
+  c.position.set(x, MY, 0); c.scale.set(r * 1.05, r, r);
+  meShadows[i].position.x = x; meShadows[i].scale.setScalar(r * 1.1);
+  lMeCells[i].show = show; lMeCells[i].pos.set(x, MY + r + 0.35, 0);
+}
+function updateMeio(dt) {
+  if (ME.play) { ME.s = Math.min(3, ME.s + dt * 0.36); $('meio').value = ME.s; if (ME.s >= 3) ME.play = false; }
+  const s = ME.s;
+  $('meioPlay').textContent = ME.play ? '⏸ 暫停' : (s >= 2.99 ? '↺ 重新播放' : '▶ 播放減數分裂');
+  const rep = smooth(0.2, 0.85, s), syn = smooth(0.95, 1.2, s), k1 = smooth(1.25, 1.95, s), k2 = smooth(2.2, 2.95, s);
+  // 細胞
+  if (s < 2.1) {
+    const r = lerp(2.35, 1.75, k1), x = 2.6 * k1;
+    placeCell(0, -x, r, true); placeCell(1, x, r, k1 > 0.02); placeCell(2, 0, 1, false); placeCell(3, 0, 1, false);
+    if (k1 <= 0.02) meCells[0].position.x = 0;
+  } else {
+    const r = lerp(1.75, 1.36, k2);
+    placeCell(0, -2.6 - 1.6 * k2, r, true); placeCell(1, -2.6 + 1.2 * k2, r, k2 > 0.02);
+    placeCell(2, 2.6 - 1.2 * k2, r, k2 > 0.02); placeCell(3, 2.6 + 1.6 * k2, r, true);
+  }
+  // 染色體位置
+  const d = 0.22 * rep * (1 - k2);
+  const bx = lerp(-1.0, -0.42, syn) - 2.27 * k1, rx = -bx;
+  const tilt = 0.25 * (1 - syn);
+  CT.B1.position.set(bx - d - 1.6 * k2 + d, MY, 0.05); CT.B2.position.set(bx + d + 1.2 * k2 - d * 0, MY, -0.05);
+  CT.B1.position.x = s < 2.1 ? bx - d : -2.6 - 1.6 * k2; CT.B2.position.x = s < 2.1 ? bx + d : -2.6 + 1.2 * k2;
+  CT.R1.position.set(s < 2.1 ? rx - d : 2.6 - 1.2 * k2, MY, 0.05); CT.R2.position.set(s < 2.1 ? rx + d : 2.6 + 1.6 * k2, MY, -0.05);
+  CT.B1.rotation.z = CT.B2.rotation.z = tilt; CT.R1.rotation.z = CT.R2.rotation.z = -tilt;
+  CT.B2.visible = CT.R2.visible = rep > 0.02;
+  const sc = 0.4 + 0.6 * rep;
+  const s2 = 1 - 0.15 * k2;
+  for (const c of Object.values(CT)) c.scale.setScalar(s2);
+  CT.B2.scale.setScalar(sc * s2); CT.R2.scale.setScalar(sc * s2);
+  CT.B2.userData.lab.show = CT.R2.userData.lab.show = rep > 0.5;
+  CT.B1.userData.lab.show = CT.R1.userData.lab.show = true;
+  const joined = rep > 0.5 && k2 < 0.05;
+  cenB.visible = cenR.visible = joined;
+  cenB.position.set((CT.B1.position.x + CT.B2.position.x) / 2, MY, 0.2); cenR.position.set((CT.R1.position.x + CT.R2.position.x) / 2, MY, 0.2);
+  // 紡錘絲
+  meDraw.begin();
+  const fib = (p, q) => meDraw.dash(p, q, 0x9b8a74, { r: 0.016, on: 0.14, off: 0.09, opacity: 0.8 });
+  if (k1 > 0.01 && k1 < 0.99 || (s > 1.1 && s < 1.25)) {
+    const pl = V3(meCells[0].position.x - meCells[0].scale.y * 0.85, MY, 0), pr = V3(meCells[1].visible ? meCells[1].position.x + meCells[1].scale.y * 0.85 : 2.0, MY, 0);
+    fib(pl, cenB.position); fib(pr, cenR.position);
+  }
+  if (k2 > 0.01 && k2 < 0.99) {
+    for (const [a, b, cx] of [[CT.B1, CT.B2, -2.6], [CT.R1, CT.R2, 2.6]]) {
+      const half = 1.4 + 1.45 * k2;
+      fib(V3(cx - half, MY, 0), a.position); fib(V3(cx + half, MY, 0), b.position);
+    }
+  }
+  meDraw.end();
+  // 文字
+  let ph, txt;
+  if (s < 0.15) { ph = '原始細胞（2n）'; txt = '一對<b>同源染色體</b>：一條來自父親（帶 <b>A</b>）、一條來自母親（帶 <b>a</b>），位置相同的基因叫<b>等位基因</b>。'; }
+  else if (s < 1.0) { ph = 'DNA 複製'; txt = '每條染色體複製成兩條相同的<b>染色分體</b>，所以藍色兩條都是 A、紅色兩條都是 a。'; }
+  else if (s < 2.05) { ph = '減數分裂Ⅰ'; txt = '<b>同源染色體分離</b>：A 和 a 被拉到不同的細胞 → <b>等位基因分離</b>！'; }
+  else if (s < 2.97) { ph = '減數分裂Ⅱ'; txt = '<b>染色分體分離</b>：每個細胞再一分為二。'; }
+  else { ph = '形成 4 個配子（n）'; txt = '4 個配子：<b>A、A、a、a</b>。每個配子只帶<b>一個</b>等位基因，帶 A、帶 a 的各占 <b>1/2</b>。'; }
+  $('meioV').textContent = ph;
+  const n = s < 2.05 ? (s < 1.95 ? '2n' : 'n') : 'n';
+  lMeCells.forEach((L, i) => setLabel(L, s >= 2.97 ? '配子 ' + ['A', 'A', 'a', 'a'][i] : (s < 1.3 ? '2n 細胞' : n + ' 細胞'), 'small'));
+  if (s < 1.3) lMeCells[1].show = false;
+  lMeRes.show = s >= 2.97; setLabel(lMeRes, '成對的 A 與 a 分離 → 配子 A : a ＝ 1 : 1');
+  setHTML('meioStat', `<b>${ph}</b><br>${txt}`);
+  setCap(s >= 2.97 ? '這就是孟德爾的<b>分離律</b>：Aa 的個體產生 A、a 兩種配子，機會各半' : '🧬 拖曳「分裂進度」，看等位基因 <b>A</b> 和 <b>a</b> 怎麼分到配子裡');
+}
+$('meio').addEventListener('input', e => { ME.play = false; ME.s = +e.target.value; });
+$('meioPlay').addEventListener('click', () => { if (ME.s >= 2.99) ME.s = 0; ME.play = !ME.play; });
+
+/* =========================================================
+   Tab 3：孟德爾的豌豆農場
+   ========================================================= */
+const PE = { group: new THREE.Group(), cross: 0, anim: null, tot: { RR: 0, Rr: 0, rr: 0 }, pods: 0 };
+scene.add(PE.group); PE.group.visible = false;
+// 種子：圓皮球體，MorphTarget 變成表面凹凸的皺皮
+const seedGeo = new THREE.SphereGeometry(1, 48, 32);
+{
+  const w = seedGeo.clone(), p = w.attributes.position, v = V3(0, 0, 0);
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    const n = Math.abs(Math.sin(v.x * 6.3 + 1.1) * Math.sin(v.y * 5.7 + 2.3) * Math.sin(v.z * 7.1 + 0.4))
+      + 0.5 * Math.abs(Math.sin(v.x * 11 + v.z * 9) * Math.sin(v.y * 12 - v.x * 4));
+    v.multiplyScalar(1 - 0.17 * n); v.y *= 0.82; v.x *= 1.04;
+    p.setXYZ(i, v.x, v.y, v.z);
+  }
+  w.computeVertexNormals();
+  seedGeo.morphAttributes.position = [w.attributes.position];
+  seedGeo.morphAttributes.normal = [w.attributes.normal];
+}
+const seedRound = clay(0xd9cf5e, { roughness: 0.45, clearcoat: 0.6 }), seedWrinkle = clay(0xb9ad4c, { roughness: 0.7, clearcoat: 0.2 });
+function makeSeed(wr) { const m = new THREE.Mesh(seedGeo, wr ? seedWrinkle : seedRound); m.castShadow = true; m.morphTargetInfluences[0] = wr ? 1 : 0; return m; }
+// 豌豆植株
+const leafGeo = new THREE.SphereGeometry(1, 24, 12);
+function makePlant(x) {
+  const g = new THREE.Group(); g.position.set(x, 0, -0.4); PE.group.add(g);
+  const prof = [V2(0, 0), V2(0.62, 0), V2(0.7, 0.1), V2(0.82, 1.0), V2(0.9, 1.08), V2(0.86, 1.14), V2(0.74, 1.05)];
+  g.add(shadowed(new THREE.Mesh(new THREE.LatheGeometry(prof, 40), clay(0xc8714a, { roughness: 0.8, clearcoat: 0 }))));
+  add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.76, 0.76, 0.06, 32), clay(0x6b4a33, { roughness: 1 })), 0, 0.98, 0);
+  const stemC = new THREE.CatmullRomCurve3([V3(0, 0.98, 0), V3(0.12, 1.9, 0.05), V3(-0.1, 2.8, -0.05), V3(0.08, 3.7, 0.04), V3(-0.05, 4.4, 0)]);
+  const green = clay(0x6aa84f, { roughness: 0.55 }), leafM = clay(0x83c15f, { roughness: 0.5, side: THREE.DoubleSide });
+  g.add(shadowed(new THREE.Mesh(new THREE.TubeGeometry(stemC, 60, 0.07, 8), green)));
+  for (let i = 0; i < 6; i++) {
+    const t = 0.18 + i * 0.13, p = stemC.getPointAt(t), side = i % 2 ? 1 : -1;
+    for (let j = 0; j < 2; j++) {
+      const l = new THREE.Mesh(leafGeo, leafM); l.scale.set(0.42, 0.05, 0.24);
+      l.position.set(p.x + side * (0.35 + j * 0.05), p.y + j * 0.12, p.z + (j ? 0.22 : -0.22));
+      l.rotation.set(0.2 * side, j ? 0.5 : -0.5, side * 0.35); g.add(shadowed(l));
+    }
+    // 捲鬚
+    if (i % 2 === 0) {
+      const tc = new THREE.Curve(); tc.getPoint = (u, tg = V3(0, 0, 0)) => tg.set(p.x + side * (0.5 + u * 0.4) + Math.cos(u * 14) * 0.06 * u, p.y + 0.2 + u * 0.35, p.z + Math.sin(u * 14) * 0.06 * u);
+      g.add(new THREE.Mesh(new THREE.TubeGeometry(tc, 40, 0.016, 5), green));
+    }
+  }
+  // 花（白色，像蝴蝶）
+  const flowers = [];
+  const petal = clay(0xfffdf6, { roughness: 0.4, clearcoat: 0.6, side: THREE.DoubleSide });
+  for (const [t, sx] of [[0.86, 1], [0.97, -1]]) {
+    const p = stemC.getPointAt(t), f = new THREE.Group(); f.position.set(p.x + sx * 0.32, p.y + 0.08, p.z + 0.15);
+    const banner = new THREE.Mesh(leafGeo, petal); banner.scale.set(0.24, 0.24, 0.05); banner.position.set(0, 0.1, -0.05); f.add(banner);
+    for (const s of [-1, 1]) { const w = new THREE.Mesh(leafGeo, petal); w.scale.set(0.13, 0.08, 0.18); w.position.set(s * 0.08, -0.04, 0.08); w.rotation.z = s * 0.4; f.add(w); }
+    const keel = new THREE.Mesh(leafGeo, clay(0xd9ecc8)); keel.scale.set(0.06, 0.06, 0.15); keel.position.set(0, -0.08, 0.1); f.add(keel);
+    f.rotation.y = sx * 0.4; g.add(f); flowers.push(f);
+  }
+  const glow = spriteOf(glowTexture('255,230,120'), 0); glow.material.blending = THREE.AdditiveBlending; g.add(glow);
+  glow.position.copy(flowers[0].position);
+  // 前方的小碟子：展示親代的種子外觀
+  const dish = add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.5, 0.1, 32), clay(0xfbf7ee, { clearcoat: 0.8 })), 0, 0.05, 1.55);
+  dish.receiveShadow = true;
+  const seeds = [];
+  for (let i = 0; i < 3; i++) { const s = makeSeed(false); s.scale.setScalar(0.17); s.position.set(-0.24 + i * 0.24, 0.24, 1.55 + (i === 1 ? -0.12 : 0.08)); g.add(s); seeds.push(s); }
+  return { g, flowers, glow, seeds, lab: addLabel('pea', '', 'lam', V3(x, 5.15, -0.4)) };
+}
+const PL = [makePlant(-5.9), makePlant(5.9)];
+// 透明培育槽
+const TS = 1.5;
+const tank = new THREE.Group(); tank.scale.setScalar(TS); PE.group.add(tank);
+const tankGlass = new THREE.Mesh(new RoundedBoxGeometry(4.6, 2.5, 2.6, 4, 0.18), clay(0xe6f4f1, { transparent: true, opacity: 0.12, depthWrite: false, roughness: 0.05, clearcoat: 1, side: THREE.DoubleSide }));
+tankGlass.position.y = 1.27; tankGlass.renderOrder = 4; tank.add(tankGlass);
+add(tank, new THREE.Mesh(new RoundedBoxGeometry(4.4, 0.22, 2.4, 3, 0.08), clay(0x8a6a4a, { roughness: 1 })), 0, 0.13, 0).receiveShadow = true;
+add(tank, new THREE.Mesh(new RoundedBoxGeometry(4.3, 0.08, 2.3, 3, 0.04), clay(0x9ccf7a, { roughness: 1 })), 0, 0.27, 0).receiveShadow = true;
+blobShadow(PE.group, 0, 0.2, 5, 0.22);
+const lTank = addLabel('pea', '培育槽（子代）', '', V3(0, 4.3, 0));
+// 豆莢：前後兩片，從下方的縫打開
+const podMat = clay(0x8cc152, { roughness: 0.5, clearcoat: 0.5, side: THREE.DoubleSide });
+const POD_Y = 1.1;
+const pod = new THREE.Group(); pod.position.set(0, POD_Y, 0); tank.add(pod);
+const podHalves = [0, Math.PI].map((ph, i) => {
+  const pv = new THREE.Group(); pv.position.y = -0.42; pod.add(pv);
+  const m = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 20, ph, Math.PI), podMat);
+  m.scale.set(1.75, 0.42, 0.4); m.position.y = 0.42; m.castShadow = true; pv.add(m); return pv;
+});
+const podStem = add(pod, new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.4, 8), clay(0x6aa84f)), -1.85, 0.12, 0);
+podStem.rotation.z = 1.1;
+const peaSeeds = [], peaSeedLabs = [];
+for (let i = 0; i < 6; i++) {
+  const s = makeSeed(false); s.position.set(-1.25 + i * 0.5, POD_Y, 0); s.scale.setScalar(0.001); tank.add(s); peaSeeds.push(s);
+  peaSeedLabs.push(addLabel('pea', '', 'small', V3(0, 0.75, 0), s));
+}
+// 配子光球與受精卵
+const orbs = [], zyg = [];
+for (let i = 0; i < 12; i++) { const o = spriteOf(ballTex('R', null, '#2e7d32', '120,200,90'), 0.7); o.visible = false; PE.group.add(o); orbs.push(o); }
+for (let i = 0; i < 6; i++) { const o = spriteOf(ballTex('Rr', '#c5e1a5', '#33691e', '160,220,120'), 0.8); o.visible = false; PE.group.add(o); zyg.push(o); }
+const peBurst = makeBurst(PE.group, 0xfff1a8);
+const CROSS = [['RR', 'rr'], ['Rr', 'Rr']];
+const isWr = gt => gt === 'rr';
+function setCross(c) {
+  PE.cross = c; PE.anim = null;
+  CROSS[c].forEach((gt, i) => {
+    const P = PL[i];
+    setLabel(P.lab, `${i ? '♀' : '♂'} 親代 <b>${gt}</b>（${isWr(gt) ? '皺皮' : '圓皮'}）`, isWr(gt) ? 'red' : 'lam');
+    P.seeds.forEach(s => { s.morphTargetInfluences[0] = isWr(gt) ? 1 : 0; s.material = isWr(gt) ? seedWrinkle : seedRound; });
+  });
+  resetPod();
+}
+function resetPod() {
+  peaSeeds.forEach(s => (s.position.y = POD_Y));
+  pod.scale.setScalar(0.001); podHalves[0].rotation.x = podHalves[1].rotation.x = 0;
+  peaSeeds.forEach(s => s.scale.setScalar(0.001)); peaSeedLabs.forEach(L => (L.show = false));
+  orbs.forEach(o => (o.visible = false)); zyg.forEach(o => (o.visible = false));
+}
+const gam = gt => gt[Math.random() < 0.5 ? 0 : 1];
+function pollinate() {
+  resetPod();
+  const [p1, p2] = CROSS[PE.cross];
+  const kids = [];
+  for (let i = 0; i < 6; i++) {
+    const a = gam(p1), b = gam(p2);
+    kids.push({ a, b, gt: [a, b].sort().join('') });   // 大寫排前面：RR、Rr、rr
+  }
+  kids.forEach((k, i) => {
+    orbs[i * 2].material.map = ballTex(k.a, null, k.a === 'R' ? '#2e7d32' : '#8d6e63', k.a === 'R' ? '120,200,90' : '230,200,140');
+    orbs[i * 2 + 1].material.map = ballTex(k.b, null, k.b === 'R' ? '#2e7d32' : '#8d6e63', k.b === 'R' ? '120,200,90' : '230,200,140');
+    zyg[i].material.map = ballTex(k.gt, isWr(k.gt) ? '#e8dcc0' : '#d4ec9c', isWr(k.gt) ? '#8d6e63' : '#33691e', '255,240,170');
+  });
+  PE.anim = { t: 0, kids, done: false };
+  if (PE.zoomed) { PE.zoomed = false; goView(TABS.pea.cam()); }
+}
+$('cross').addEventListener('change', e => setCross(+e.target.value));
+$('polBtn').addEventListener('click', pollinate);
+$('peaReset').addEventListener('click', () => { PE.tot = { RR: 0, Rr: 0, rr: 0 }; PE.pods = 0; resetPod(); PE.anim = null; });
+const tmpF = V3(0, 0, 0);
+function bez(out, a, c, b, t) { const u = 1 - t; return out.set(u * u * a.x + 2 * u * t * c.x + t * t * b.x, u * u * a.y + 2 * u * t * c.y + t * t * b.y, u * u * a.z + 2 * u * t * c.z + t * t * b.z); }
+function updatePea(dt) {
+  peBurst.update(dt);
+  const A = PE.anim;
+  const T = A ? A.t : -1;
+  PL.forEach(P => { const gl = A ? smooth(0, 0.3, T) * (1 - smooth(1.4, 1.8, T)) : 0; P.glow.scale.setScalar(gl * (1.6 + Math.sin(wall * 8) * 0.2)); P.flowers.forEach(f => (f.rotation.z = Math.sin(wall * 1.3 + f.position.x) * 0.05)); });
+  if (A) {
+    A.t += dt; const t = A.t;
+    A.kids.forEach((k, i) => {
+      const t0 = 0.2 + i * 0.22, u = clamp((t - t0) / 1.3, 0, 1), e = smooth(0, 1, u);
+      const dst = V3((-1.25 + i * 0.5) * TS, 1.8 * TS, 0);
+      [0, 1].forEach(side => {
+        const o = orbs[i * 2 + side], P = PL[side];
+        P.flowers[i % 2].getWorldPosition(tmpF);
+        const ctrl = V3((tmpF.x + dst.x) / 2, 5.6 + (i % 3) * 0.3, 0.6);
+        o.visible = t > t0 && u < 1; bez(o.position, tmpF, ctrl, dst, e);
+        o.scale.setScalar(0.9 + Math.sin(wall * 10 + i) * 0.05);
+      });
+      const z = zyg[i];
+      if (u >= 1 && !k.merged) { k.merged = true; peBurst.fire(dst, 14, 1.6); }
+      const shrink = smooth(2.8, 3.3, t);
+      z.visible = u >= 1 && shrink < 1;
+      z.position.copy(dst).lerp(V3(dst.x, POD_Y * TS, 0), shrink);
+      z.scale.setScalar(0.78 * (1 - shrink) * easeOutBack(clamp((t - t0 - 1.3) / 0.35, 0, 1)) + 0.001);
+      // 種子：出現、皺縮
+      const sIn = clamp((t - 3.3 - i * 0.06) / 0.4, 0, 1);
+      peaSeeds[i].scale.setScalar(0.25 * easeOutBack(sIn) + 0.001);
+      peaSeeds[i].position.y = POD_Y + 0.28 * smooth(4.3, 4.9, t);
+      peaSeeds[i].material = isWr(k.gt) ? seedWrinkle : seedRound;
+      peaSeeds[i].morphTargetInfluences[0] = isWr(k.gt) ? smooth(4.9, 5.9, t) : 0;
+      const L = peaSeedLabs[i]; L.show = t > 4.7;
+      setLabel(L, `${k.gt}<br>${isWr(k.gt) ? '皺' : '圓'}`, 'small ' + (isWr(k.gt) ? 'gwr' : 'grd'));
+    });
+    // 豆莢：長出、打開
+    const grow = clamp((t - 2.7) / 0.9, 0, 1);
+    pod.scale.setScalar(easeOutBack(grow) + 0.001);
+    const op = smooth(3.9, 4.7, t) * 1.15;
+    podHalves[0].rotation.x = op; podHalves[1].rotation.x = -op;
+    if (t > 4.3 && !PE.zoomed && !A.zoomDone) { A.zoomDone = PE.zoomed = true; goView({ pos: [0, 6.0, 9.8], target: [0, 1.5, 0.2], fitW: 8.5 }); }
+    if (t > 6 && !A.done) {
+      A.done = true; PE.pods++;
+      A.kids.forEach(k => PE.tot[k.gt]++);
+    }
+  }
+  const [p1, p2] = CROSS[PE.cross], tot = PE.tot, n = tot.RR + tot.Rr + tot.rr, round = tot.RR + tot.Rr;
+  const gm = gt => gt[0] === gt[1] ? `只產生 <b>${gt[0]}</b>` : `<b>${gt[0]}</b>、<b>${gt[1]}</b> 各 1/2`;
+  let last = '';
+  if (A && A.done) { const r = A.kids.filter(k => !isWr(k.gt)).length; last = `這一莢：圓皮 <b>${r}</b> 顆、皺皮 <b>${6 - r}</b> 顆<hr>`; }
+  setHTML('peaStat', `${last}配子：${p1} ${gm(p1)}；${p2} ${gm(p2)}<hr>累計 ${PE.pods} 莢、${n} 顆：<br>RR <b>${tot.RR}</b>　Rr <b>${tot.Rr}</b>　rr <b>${tot.rr}</b><br>圓皮 <b class="g">${round}</b>：皺皮 <b class="r">${tot.rr}</b>${tot.rr ? `（約 ${(round / tot.rr).toFixed(1)} : 1）` : ''}`);
+  setCap(!A ? '🐝 按「人工授粉」：把一株的花粉放到另一株的柱頭上' : !A.done ? '配子（光球）飛進培育槽結合成受精卵 → 長成種子' :
+    (PE.cross === 0 ? 'RR × rr 的子代全部是 <b>Rr</b>，全部<b>圓皮</b>（皺皮的性狀被隱藏了）' : 'Rr × Rr：子代出現 RR、Rr、rr；<b>圓皮 : 皺皮 ≈ 3 : 1</b>'));
+}
+
+/* =========================================================
+   Tab 4：棋盤方格機率扭蛋機（Aa × Aa）
+   ========================================================= */
+const PU = { group: new THREE.Group(), queue: 0, cur: null, fast: false, cnt: [0, 0, 0, 0], closed: false };
+scene.add(PU.group); PU.group.visible = false;
+const BC = V3(0.9, 0, 0.9), CS = 2.4;
+const colX = c => BC.x + (c - 0.5) * CS, rowZ = r => BC.z + (r - 0.5) * CS;
+const ALL = ['A', 'a'];
+// 木製棋盤
+add(PU.group, shadowed(new THREE.Mesh(new RoundedBoxGeometry(5.3, 0.36, 5.3, 4, 0.12), clay(0xc99a6b, { roughness: 0.7 }))), BC.x, 0.18, BC.z);
+const cellFloor = [];
+for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) {
+  const purple = !(r === 1 && c === 1);
+  const f = add(PU.group, new THREE.Mesh(new RoundedBoxGeometry(2.15, 0.06, 2.15, 2, 0.03), clay(purple ? 0xefe4f7 : 0xfaf7f1, { roughness: 0.6 })), colX(c), 0.39, rowZ(r));
+  f.receiveShadow = true; cellFloor.push(f);
+}
+const wallM = clay(0xf4ebe0, { transparent: true, opacity: 0.85 });
+add(PU.group, shadowed(new THREE.Mesh(new RoundedBoxGeometry(0.12, 0.5, 4.9, 2, 0.05), wallM)), BC.x, 0.6, BC.z);
+add(PU.group, shadowed(new THREE.Mesh(new RoundedBoxGeometry(4.9, 0.5, 0.12, 2, 0.05), wallM)), BC.x, 0.6, BC.z);
+// 表頭軌道（上方＝卵，左側＝精子）
+const railM = clay(0xe8d6bf, { roughness: 0.6 });
+add(PU.group, shadowed(new THREE.Mesh(new RoundedBoxGeometry(5.0, 0.3, 0.9, 3, 0.1), railM)), BC.x, 0.15, BC.z - 3.25);
+add(PU.group, shadowed(new THREE.Mesh(new RoundedBoxGeometry(0.9, 0.3, 5.0, 3, 0.1), railM)), BC.x - 3.25, 0.15, BC.z);
+const hdr = [];
+ALL.forEach((g, i) => {
+  hdr.push(addLabel('pun', '♀ ' + g, 'egg', V3(colX(i), 0.75, BC.z - 3.25)));
+  hdr.push(addLabel('pun', '♂ ' + g, 'sperm', V3(BC.x - 3.25, 0.75, rowZ(i))));
+});
+// 扭蛋機
+function gacha(x, z, color, label, cls) {
+  const g = new THREE.Group(); g.position.set(x, 0, z); PU.group.add(g);
+  g.add(shadowed(add(g, new THREE.Mesh(new RoundedBoxGeometry(1.5, 1.15, 1.5, 4, 0.2), clay(color, { clearcoat: 0.7 })), 0, 0.58, 0)));
+  add(g, new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.12, 0.08, 2, 0.03), clay(0x3e2f28)), 0, 0.85, 0.76);
+  add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.12, 24), metal(0xe8e8ec)), 0, 0.5, 0.76).rotation.x = Math.PI / 2;
+  const dome = add(g, new THREE.Mesh(new THREE.SphereGeometry(0.85, 40, 24), clay(0xffffff, { transparent: true, opacity: 0.22, depthWrite: false, roughness: 0.05, clearcoat: 1 })), 0, 1.95, 0);
+  dome.renderOrder = 4;
+  const balls = [];
+  for (let i = 0; i < 12; i++) {
+    const dom = i % 2 === 0;
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.18, 20, 14), clay(dom ? 0x7b4fc8 : 0xf7f1e6, { clearcoat: 0.8 }));
+    const a = i * 2.4, rr = 0.25 + (i % 3) * 0.17;
+    b.position.set(Math.cos(a) * rr, 1.38 + Math.floor(i / 4) * 0.27, Math.sin(a) * rr); g.add(b); balls.push(b);
+  }
+  addLabel('pun', label, cls, V3(x, 3.2, z));
+  return { g, balls };
+}
+const GE = gacha(BC.x, BC.z - 5.0, 0xe88aa8, '♀ 卵子投幣孔（Aa）', 'egg');
+const GS = gacha(BC.x - 5.0, BC.z, 0x6fa0d8, '♂ 精子投幣孔（Aa）', 'sperm');
+// 扭蛋球（3D 球＋字母）
+function gameteBall() {
+  const g = new THREE.Group();
+  const m = new THREE.Mesh(new THREE.SphereGeometry(0.28, 28, 18), clay(0x7b4fc8, { clearcoat: 0.9 })); m.castShadow = true; g.add(m);
+  const s = spriteOf(ballTex('A', null, '#3a1d6e', null), 0.5); s.position.y = 0.02; s.material.depthTest = false; g.add(s);
+  g.visible = false; PU.group.add(g); return { g, m, s };
+}
+const ballE = gameteBall(), ballS = gameteBall();
+function setBall(b, al) { b.m.material.color.setHex(al === 'A' ? 0x7b4fc8 : 0xf7f1e6); b.s.material.map = ballTex(al, null, al === 'A' ? '#ffffff' : '#5d4037', null); }
+// 花朵
+const petalGeo = new THREE.SphereGeometry(1, 24, 14);
+function makeFlower(purple) {
+  const g = new THREE.Group();
+  const stemM = clay(0x5e9e45);
+  add(g, new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.0, 8), stemM), 0, 0.5, 0).castShadow = true;
+  for (const s of [-1, 1]) { const l = add(g, new THREE.Mesh(petalGeo, clay(0x7cbc5a, { side: THREE.DoubleSide })), s * 0.22, 0.35, 0); l.scale.set(0.26, 0.04, 0.12); l.rotation.z = s * 0.5; l.castShadow = true; }
+  const pm = purple ? new THREE.MeshPhysicalMaterial({ color: 0x9147e0, emissive: 0x6a1fc4, emissiveIntensity: 0.55, roughness: 0.35, clearcoat: 1, side: THREE.DoubleSide })
+    : clay(0xfffdf8, { roughness: 0.4, clearcoat: 0.8, side: THREE.DoubleSide });
+  const head = new THREE.Group(); head.position.y = 1.02; g.add(head);
+  for (let i = 0; i < 5; i++) {
+    const a = i / 5 * TAU, p = new THREE.Mesh(petalGeo, pm);
+    p.scale.set(0.34, 0.07, 0.19); p.position.set(Math.cos(a) * 0.3, 0.04, Math.sin(a) * 0.3);
+    p.rotation.set(0, -a, 0.35); p.castShadow = true; head.add(p);
+  }
+  add(head, new THREE.Mesh(new THREE.SphereGeometry(0.12, 20, 14), clay(0xffcc33, { emissive: 0xffaa00, emissiveIntensity: 0.3 })), 0, 0.1, 0);
+  let glow = null;
+  if (purple) { glow = spriteOf(glowTexture('170,90,255'), 2.0); glow.material.blending = THREE.AdditiveBlending; glow.position.y = 1.05; g.add(glow); }
+  g.scale.setScalar(0.001); PU.group.add(g);
+  return { g, head, glow, grow: 0, bump: 0 };
+}
+const CELLS = [];
+for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) {
+  const gt = [ALL[r], ALL[c]].sort().join('');
+  const fl = makeFlower(gt !== 'aa'); fl.g.position.set(colX(c), 0.42, rowZ(r));
+  CELLS.push({ r, c, gt, fl, lab: addLabel('pun', '', 'small', V3(colX(c) + 0.62, 0.55, rowZ(r) + 0.75)) });
+}
+const puBurst = makeBurst(PU.group, 0xd8b4ff, 140);
+const flash = spriteOf(glowTexture('255,255,255'), 0); flash.material.blending = THREE.AdditiveBlending; PU.group.add(flash);
+function spawn() {
+  const e = Math.random() < 0.5 ? 0 : 1, s = Math.random() < 0.5 ? 0 : 1;
+  setBall(ballE, ALL[e]); setBall(ballS, ALL[s]);
+  PU.cur = { t: 0, e, s, cell: CELLS[s * 2 + e], hit: false };
+}
+$('punBtn').addEventListener('click', () => { PU.fast = false; PU.queue++; });
+$('punFast').addEventListener('click', () => { PU.fast = true; PU.queue += 20; });
+$('punReset').addEventListener('click', () => {
+  PU.queue = 0; PU.cur = null; PU.cnt = [0, 0, 0, 0]; PU.closed = false;
+  ballE.g.visible = ballS.g.visible = false;
+  CELLS.forEach(C => { C.fl.grow = 0; C.fl.g.scale.setScalar(0.001); });
+});
+$('bbClose').addEventListener('click', () => { PU.closed = true; });
+const pathE = (c, k, out) => {
+  const P0 = V3(BC.x, 0.95, BC.z - 4.2), P1 = V3(colX(c), 0.75, BC.z - 3.25), P2 = V3(colX(c), 0.8, rowZ(0) - 0.0);
+  return k < 0.5 ? out.lerpVectors(P0, P1, smooth(0, 1, k * 2)) : out.copy(P1).lerp(P2, smooth(0, 1, (k - 0.5) * 2));
+};
+function updatePun(dt) {
+  puBurst.update(dt);
+  const sp = PU.fast ? 3.2 : 1;
+  if (!PU.cur && PU.queue > 0) { PU.queue--; spawn(); }
+  const C = PU.cur;
+  // 扭蛋機裡的球在出球時會晃動
+  [GE, GS].forEach(G => G.balls.forEach((b, i) => { b.position.y += (C && C.t < 0.4 ? Math.sin(wall * 30 + i) * 0.01 : 0); }));
+  if (C) {
+    C.t += dt * sp; const t = C.t;
+    const cell = C.cell, tx = colX(cell.c), tz = rowZ(cell.r);
+    const k = clamp(t / 1.15, 0, 1);
+    const PE0 = V3(BC.x, 0.95, BC.z - 4.2), PE1 = V3(tx, 0.75, BC.z - 3.25), PEc = V3(tx, 0.8, tz);
+    const PS0 = V3(BC.x - 4.2, 0.95, BC.z), PS1 = V3(BC.x - 3.25, 0.75, tz), PSc = V3(tx, 0.8, tz);
+    const leg = (a, b, c, kk, out) => kk < 0.5 ? out.lerpVectors(a, b, smooth(0, 1, kk * 2)) : out.lerpVectors(b, c, smooth(0, 1, kk * 2 - 1));
+    ballE.g.visible = ballS.g.visible = t < 1.35;
+    leg(PE0, PE1, PEc.clone().add(V3(0, 0, -0.32)), k, ballE.g.position);
+    leg(PS0, PS1, PSc.clone().add(V3(-0.32, 0, 0)), k, ballS.g.position);
+    ballE.g.position.y += Math.abs(Math.sin(k * 9)) * 0.25 * (1 - k);
+    ballS.g.position.y += Math.abs(Math.sin(k * 9 + 1)) * 0.25 * (1 - k);
+    const m = smooth(1.15, 1.35, t);
+    ballE.g.position.lerp(PEc, m); ballS.g.position.lerp(PSc, m);
+    ballE.g.scale.setScalar(1 - m * 0.7); ballS.g.scale.setScalar(1 - m * 0.7);
+    hdr[C.e * 2].el.classList.toggle('hot', t < 1.3); hdr[C.s * 2 + 1].el.classList.toggle('hot', t < 1.3);
+    if (t >= 1.3 && !C.hit) {
+      C.hit = true; PU.cnt[C.s * 2 + C.e]++;
+      puBurst.fire(V3(tx, 1.4, tz), PU.fast ? 16 : 40, 2.4);
+      flash.position.set(tx, 1.0, tz); flash.userData.t = 0;
+      cell.fl.bump = 1;
+    }
+    if (t > (PU.fast ? 1.6 : 2.2)) { PU.cur = null; hdr.forEach(h => h.el.classList.remove('hot')); }
+  }
+  if (flash.userData.t !== undefined) { flash.userData.t += dt * sp; const ft = flash.userData.t; flash.scale.setScalar(Math.max(0, 3.2 * Math.sin(Math.min(1, ft / 0.4) * Math.PI))); }
+  CELLS.forEach((Q, i) => {
+    const F = Q.fl, n = PU.cnt[i];
+    F.grow = Math.min(1, F.grow + (n > 0 ? dt * 1.6 * sp : 0));
+    F.bump = Math.max(0, F.bump - dt * 2.5);
+    F.g.scale.setScalar(easeOutBack(F.grow) * (1 + Math.sin(F.bump * Math.PI) * 0.15) + 0.001);
+    F.head.rotation.y = wall * 0.4 + i;
+    if (F.glow) F.glow.material.opacity = 0.55 + 0.25 * Math.sin(wall * 3 + i);
+    Q.lab.show = n > 0;
+    setLabel(Q.lab, `${Q.gt} ×${n}`, 'small ' + (Q.gt === 'aa' ? 'gw' : 'gp'));
+  });
+  const c = PU.cnt, AA = c[0], Aa = c[1] + c[2], aa = c[3], N = AA + Aa + aa;
+  const full = c.every(v => v > 0);
+  $('bigBoard').classList.toggle('on', full && !PU.closed);
+  setHTML('bbSub', `實際抽了 <b>${N}</b> 次：AA ${AA}、Aa ${Aa}、aa ${aa}　→　紫花 ${AA + Aa}：白花 ${aa}<br><small>次數越多，越接近理論的 3 : 1</small>`);
+  setHTML('punStat', `已產生 <b>${N}</b> 個子代${PU.queue ? `（還有 ${PU.queue} 個）` : ''}<br>AA <b>${AA}</b>　Aa <b>${Aa}</b>　aa <b>${aa}</b><br>紫花 <b style="color:#7b3fc4">${AA + Aa}</b>：白花 <b>${aa}</b>${aa ? `（約 ${((AA + Aa) / aa).toFixed(1)} : 1）` : ''}<hr>理論：AA : Aa : aa ＝ 1 : 2 : 1；紫 : 白 ＝ 3 : 1`);
+  setCap(!N ? '🎰 按「產生子代」：卵和精子各從投幣孔隨機滾出 A 或 a' : C ? `${ALL[C.s]}（精子）＋ ${ALL[C.e]}（卵）→ <b>${C.cell.gt}</b>，${C.cell.gt === 'aa' ? '白花' : '紫花'}` :
+    (full ? '四格都出現了：AA、Aa、Aa、aa → 紫花 3 格、白花 1 格' : '再多抽幾次，把四個格子都填滿'));
+}
+setCross(0);
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  anat: { group: AN.group, cam: () => camForZoom(AN.z), update: updateAnat },
+  meio: { group: ME.group, cam: () => ({ pos: [0, 6.2, 15], target: [0, 3.2, 0], fitW: 12.5 }), update: updateMeio },
+  pea: { group: PE.group, cam: () => ({ pos: [0, 7.4, 15.5], target: [0, 2.2, 0.3], fitW: 16 }), update: updatePea },
+  pun: { group: PU.group, cam: () => ({ pos: [-0.8, 12, 10.5], target: [-0.6, 0.3, -0.6], fitW: 10.5 }), update: updatePun }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  $('geneCard').classList.remove('on'); $('bigBoard').classList.remove('on'); AN.play = ME.play = false; AN.follow = false;
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, AN, ME, PE, PU, setZoom, pollinate, CELLS, camera, controls };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'anat';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+<script src="goals.js" defer></script>
+</body>
+</html>
