@@ -340,21 +340,41 @@ const COURSES = [
     subject: '理化',
     desc: '從測量與物質出發，探索波、光、熱與化學反應的規律。',
     color: 'var(--g2)',
-    units: [
-      { title: '科學方法與基本測量', url: 'measure-lab.html' },
-      { title: '物質的世界',         url: 'solution-lab.html' },
-      { title: '波動與聲音',         url: 'sound-lab.html' },
-      { title: '光的直進與影子',     url: 'shadow-lab.html' },
-      { title: '光',                 url: 'optics-lab.html' },
-      { title: '光的折射與視深',     url: 'refraction-lab.html' },
-      { title: '溫度與熱',           url: 'heat-lab.html' },
-      { title: '探索物質組成',       url: 'matter-lab.html' },
-      { title: '化學反應：質量守恆定律', url: 'mass-lab.html' },
-      { title: '氧化與還原',         url: 'chem-lab.html#furnace' },
-      { title: '電解質與酸鹼反應',   url: 'chem-lab.html#elec' },
-      { title: '反應速率與平衡',     url: 'rate-lab.html' },
-      { title: '有機化合物',         url: 'chem-lab.html#soap' },
-      { title: '力與壓力',           url: 'force-pressure-lab.html' }
+    semesters: [
+      {
+        name: '八上', sub: '測量、物質、波動、光與熱',
+        chapters: [
+          { title: '基本測量與科學概念', sum: '實驗室安全、控制變因，長度、體積、質量與密度的測量。', labs: [{ t: '科學方法與基本測量', u: 'measure-lab.html' }],
+            k: ['實驗室安全', '變因的控制', '長度的測量', '體積的測量', '質量的測量（天平）', '密度'] },
+          { title: '物質的世界', sum: '純物質與混合物、水溶液的濃度與溶解度、空氣的組成與氧氣。', labs: [{ t: '物質的世界：水溶液', u: 'solution-lab.html' }],
+            k: ['純物質與混合物', '混合物的分離', '水溶液的組成', '濃度', '溶解度', '空氣的組成', '氧氣的製備'] },
+          { title: '波動與聲音', sum: '波的種類與性質，聲音的產生、傳播與三要素。', labs: [{ t: '波動與聲音', u: 'sound-lab.html' }],
+            k: ['橫波與縱波', '波長、頻率、波速', '聲音的產生與傳播', '頻率與音調', '振幅與響度', '聲速與回聲', '共振'] },
+          { title: '光', sum: '光的直進、反射與折射，面鏡、透鏡成像與顏色。', labs: [{ t: '光的反射、折射與色光', u: 'optics-lab.html' }, { t: '光的直進與影子', u: 'shadow-lab.html' }, { t: '光的折射與視深', u: 'refraction-lab.html' }],
+            k: ['光的直進與光速', '光的反射', '平面鏡與曲面鏡', '光的折射', '凸透鏡與凹透鏡', '透鏡的應用', '色光與顏色'] },
+          { title: '溫度與熱', sum: '溫度與溫標，熱量、比熱與熱平衡，熱的傳播與對物質的影響。', labs: [{ t: '溫度與熱', u: 'heat-lab.html' }],
+            k: ['溫度計與溫標', '熱量', '比熱', '熱平衡', '傳導、對流、輻射', '熱脹冷縮', '三態變化'] },
+          { title: '探索物質組成', sum: '元素與化合物、原子的結構、週期表、分子與化學式。', labs: [{ t: '探索物質組成', u: 'matter-lab.html' }],
+            k: ['元素與化合物', '金屬與非金屬', '元素符號', '原子說', '原子的結構', '元素週期表', '分子與化學式'] }
+        ]
+      },
+      {
+        name: '八下', sub: '化學反應、酸鹼、有機物與力',
+        chapters: [
+          { title: '化學反應', sum: '常見的化學反應、質量守恆、原子量與化學計量。', labs: [{ t: '化學反應：質量守恆定律', u: 'mass-lab.html' }],
+            k: ['化學反應的現象', '質量守恆定律', '原子量與分子量', '化學反應式', '化學計量（莫耳）'] },
+          { title: '氧化與還原', sum: '燃燒與氧化物、元素的活性、氧化還原與金屬的冶煉。', labs: [{ t: '氧化與還原：高爐煉鐵', u: 'chem-lab.html#furnace' }],
+            k: ['金屬與非金屬的燃燒', '氧化物的酸鹼性', '元素的活性', '氧化與還原', '金屬的冶煉', '氧化劑與還原劑'] },
+          { title: '電解質與酸鹼鹽', sum: '電解質與電離說、酸鹼的性質、pH 值與酸鹼中和。', labs: [{ t: '電解質與酸鹼反應', u: 'chem-lab.html#elec' }],
+            k: ['電解質與非電解質', '電離說', '酸與鹼的性質', '常見的酸與鹼', 'pH 值', '酸鹼中和', '常見的鹽類'] },
+          { title: '反應速率與平衡', sum: '影響反應速率的因素，可逆反應與化學平衡。', labs: [{ t: '反應速率與化學平衡', u: 'rate-lab.html' }],
+            k: ['反應速率', '接觸面積', '濃度', '溫度', '催化劑', '可逆反應', '化學平衡的移動'] },
+          { title: '有機化合物', sum: '認識有機化合物、酯化反應、聚合物、肥皂與清潔劑。', labs: [{ t: '有機化合物：皂化反應', u: 'chem-lab.html#soap' }],
+            k: ['有機化合物', '常見的有機化合物', '酯化反應', '聚合物', '肥皂與合成清潔劑', '衣料纖維'] },
+          { title: '力與壓力', sum: '力的表示與平衡、摩擦力，壓力、液體壓力、大氣壓力與浮力。', labs: [{ t: '力與壓力', u: 'force-pressure-lab.html' }],
+            k: ['力的表示與力平衡', '摩擦力', '壓力', '液體壓力', '大氣壓力', '浮力'] }
+        ]
+      }
     ]
   },
   {
@@ -364,26 +384,44 @@ const COURSES = [
     subject: '理化',
     desc: '運動、能量與電磁，再延伸到地球、天氣與浩瀚宇宙。',
     color: 'var(--g3)',
-    units: [
-      { title: '直線運動',                 url: 'kinematics-lab.html' },
-      { title: '力與運動',                 url: 'newton-park.html' },
-      { title: '功與能',                   url: 'work-energy.html' },
-      { title: '基本的靜電現象與電路',     url: 'static-circuit.html' },
-      { title: '水與陸地',                 url: 'water-lab.html', tag: '地科' },
-      { title: '板塊運動與地球歷史：地球內部與板塊運動', url: 'plates-lab.html', tag: '地科' },
-      { title: '板塊運動與地球歷史：台灣地震',       url: 'taiwan-earthquake.html', tag: '地科' },
-      { title: '宇宙中的天體：月相',       url: 'moon-phases.html',  tag: '地科' },
-      { title: '宇宙中的天體：周日運動',   url: 'daily-motion.html', tag: '地科' },
-      { title: '宇宙中的天體：天球與太陽視運動', url: 'celestial-lab.html', tag: '地科' },
-      { title: '電的應用：電流的熱效應',   url: 'power-lab.html' },
-      { title: '電的應用：電流的化學效應', url: 'electrochem.html' },
-      { title: '電與磁現象',               url: 'em-lab.html' },
-      { title: '千變萬化的天氣：大氣分層', url: 'atmo-lab.html#layers', tag: '地科' },
-      { title: '千變萬化的天氣：高低氣壓', url: 'atmo-lab.html#pressure', tag: '地科' },
-      { title: '千變萬化的天氣：鋒面',     url: 'atmo-lab.html#front',   tag: '地科' },
-      { title: '千變萬化的天氣：颱風風向', url: 'typhoon-wind.html',     tag: '地科' },
-      { title: '千變萬化的天氣：颱風風量', url: 'clay-sim.html#typhoon', tag: '地科' },
-      { title: '全球氣候變遷與因應',       url: 'env-lab.html', tag: '地科' }
+    semesters: [
+      {
+        name: '九上理化', sub: '運動、力、能量與電路',
+        chapters: [
+          { title: '直線運動', sum: '位移與路徑長、速度與加速度，運動圖形與自由落體。', labs: [{ t: '直線運動', u: 'kinematics-lab.html' }],
+            k: ['位移與路徑長', '速率與速度', '加速度', 'x-t 圖、v-t 圖', '自由落體'] },
+          { title: '力與運動', sum: '牛頓三大運動定律與圓周運動。', labs: [{ t: '力與運動', u: 'newton-park.html' }],
+            k: ['慣性定律', 'F ＝ m × a', '作用力與反作用力', '圓周運動與向心力'] },
+          { title: '功與能', sum: '功與功率、動能與位能、力學能守恆與簡單機械。', labs: [{ t: '功與能', u: 'work-energy.html' }],
+            k: ['功與功率', '動能', '位能', '力學能守恆', '槓桿與滑輪'] },
+          { title: '基本的靜電現象與電路', sum: '靜電、電流、電壓、電阻與歐姆定律，串聯與並聯。', labs: [{ t: '靜電現象與電路', u: 'static-circuit.html' }],
+            k: ['摩擦起電與靜電感應', '電流', '電壓', '電阻', '歐姆定律', '串聯與並聯'] }
+        ]
+      },
+      {
+        name: '九下理化', sub: '電的應用與電磁',
+        chapters: [
+          { title: '電的應用', sum: '電能與電功率、安全用電，電池、電解與電鍍。', labs: [{ t: '電流的熱效應', u: 'power-lab.html' }, { t: '電流的化學效應', u: 'electrochem.html' }],
+            k: ['電能與電功率', '直流電與交流電', '安全用電', '伏打電池與鋅銅電池', '電解與電鍍'] },
+          { title: '電與磁', sum: '磁力線與地磁、電流磁效應、電動機與發電機。', labs: [{ t: '電與磁', u: 'em-lab.html' }],
+            k: ['磁鐵與磁力線', '地球磁場', '電流磁效應', '安培右手定則', '電磁鐵', '右手開掌定則', '電動機', '電磁感應與發電機'] }
+        ]
+      },
+      {
+        name: '地球科學', sub: '地球、天氣與宇宙',
+        chapters: [
+          { title: '水與陸地', sum: '地球上的水、水循環與地表的變化。', labs: [{ t: '水與陸地', u: 'water-lab.html' }], tag: '地科',
+            k: ['水循環', '地表水與地下水', '海水的運動', '風化、侵蝕、搬運、沉積', '岩石與礦物'] },
+          { title: '板塊運動與地球歷史', sum: '地球內部構造、板塊運動、地震與台灣的地質。', labs: [{ t: '地球內部與板塊運動', u: 'plates-lab.html' }, { t: '台灣地震', u: 'taiwan-earthquake.html' }], tag: '地科',
+            k: ['地球內部構造', '板塊運動', '地震與火山', '褶皺與斷層', '地層與化石'] },
+          { title: '宇宙中的天體', sum: '月相、周日運動、天球與太陽的視運動、四季。', labs: [{ t: '月相', u: 'moon-phases.html' }, { t: '周日運動', u: 'daily-motion.html' }, { t: '天球與太陽視運動', u: 'celestial-lab.html' }], tag: '地科',
+            k: ['月相變化', '周日運動', '天球', '太陽視運動', '晝夜與四季', '日食與月食'] },
+          { title: '千變萬化的天氣', sum: '大氣分層、氣壓與風、鋒面與颱風。', labs: [{ t: '大氣分層', u: 'atmo-lab.html#layers' }, { t: '高低氣壓', u: 'atmo-lab.html#pressure' }, { t: '鋒面', u: 'atmo-lab.html#front' }, { t: '颱風風向', u: 'typhoon-wind.html' }, { t: '颱風風量', u: 'clay-sim.html#typhoon' }], tag: '地科',
+            k: ['大氣分層', '氣壓與風', '高氣壓與低氣壓', '冷鋒與暖鋒', '颱風', '天氣圖'] },
+          { title: '全球氣候變遷與因應', sum: '溫室效應、全球暖化與節能減碳。', labs: [{ t: '全球氣候變遷與因應', u: 'env-lab.html' }], tag: '地科',
+            k: ['溫室效應', '全球暖化', '極端氣候', '節能減碳'] }
+        ]
+      }
     ]
   }
 ];
@@ -408,7 +446,7 @@ function renderTabs() {
 
 function renderStats() {
   const ready = COURSES.reduce((s, c) => s + c.units.filter(u => !isPlaceholder(u.url)).length, 0);
-  const pages = new Set(COURSES.flatMap(c => c.units.filter(u => !isPlaceholder(u.url)).map(u => u.url.split('#')[0]))).size;
+  const pages = new Set(COURSES.flatMap(c => c.semesters ? c.semesters.flatMap(s => s.chapters.flatMap(ch => ch.labs.map(l => l.u.split('#')[0]))) : c.units.filter(u => !isPlaceholder(u.url)).map(u => u.url.split('#')[0]))).size;
   const stats = [
     { n: ready, label: '個已上線單元' },
     { n: pages, label: '座 3D 互動實驗室' },
