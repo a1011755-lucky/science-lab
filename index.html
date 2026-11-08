@@ -300,7 +300,7 @@ const COURSES = [
       {
         name: '七上', sub: '生物體的構造與運作',
         chapters: [
-          { title: '生命的特性與科學方法', sum: '生物有哪些共同特徵？學會科學方法與顯微鏡的操作。', labs: [], rel: [{ t: '科學方法與基本測量（國二）', u: 'measure-lab.html' }],
+          { title: '生命的特性與科學方法', sum: '生物有哪些共同特徵？學會科學方法與顯微鏡的操作。', labs: [{ t: '生命世界與科學方法', u: 'life-lab.html' }], rel: [{ t: '科學方法與基本測量（國二）', u: 'measure-lab.html' }],
             k: ['科學方法'] },
           { title: '生物體的構造', sum: '細胞是生物的基本單位：構造、形態、物質進出細胞與組成層次。', labs: [],
             k: ['細胞的構造與功能', '細胞的形態與功能', '生物體的組成層次', '生物體的組成物質'] },
@@ -412,7 +412,7 @@ function renderStats() {
   const stats = [
     { n: ready, label: '個已上線單元' },
     { n: pages, label: '座 3D 互動實驗室' },
-    { n: '141', label: '題會考題型自我檢測' }
+    { n: '146', label: '題會考題型自我檢測' }
   ];
   document.getElementById('heroStats').innerHTML = stats.map(s => `<div class="stat"><b>${s.n}</b><span>${s.label}</span></div>`).join('');
 }

@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生命世界與科學方法實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+  .tabs.three .tab { font-size: .74rem; padding: 9px 2px; }
+  .three-btn { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .three-btn .btn { padding: 8px 2px; font-size: .8rem; }
+  .objs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .objs .btn { padding: 8px 2px; font-size: .8rem; margin-top: 0; }
+  .objs .btn i { display: block; font-style: normal; font-size: 1.3rem; line-height: 1.2; }
+  .objs .btn.done::after { content: " ✓"; color: var(--ok); font-weight: 900; }
+  .btn.tbtn.done { box-shadow: inset 0 0 0 2px rgba(79,125,92,.5); }
+  .btn.tbtn.run { color: #fff; background: #d08a2e; }
+  .res { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: baseline; }
+  .res b { white-space: nowrap; }
+  .res .y { color: var(--ok); } .res .n { color: #c62828; } .res .q { color: #b9aa98; }
+  .res span { font-size: .76rem; line-height: 1.5; }
+  .judge { border-radius: 14px; padding: 0; margin-top: 6px; font-size: .84rem; font-weight: 700; line-height: 1.6; }
+  .judge.ok { background: #e3f1e6; color: #2e6b3f; padding: 10px 12px; }
+  .judge.bad { background: #fde5e2; color: #a5311f; padding: 10px 12px; }
+  .judge.hint { background: #fff3d6; color: #8a5a00; padding: 10px 12px; }
+  .flow { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0 6px; }
+  .flow span { font-size: .7rem; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: rgba(255,255,255,.7); color: #b9aa98; }
+  .flow span.done { background: #dcebdf; color: #3c6e4c; }
+  .flow span.cur { background: #d08a2e; color: #fff; box-shadow: 0 3px 10px rgba(208,138,46,.35); }
+  .hypnote { font-size: .76rem; font-weight: 700; line-height: 1.55; margin-top: 4px; }
+  .hypnote.bad { color: #c62828; } .hypnote.ok { color: var(--ok); }
+  table.cfg { width: 100%; border-collapse: separate; border-spacing: 4px; margin-top: 2px; font-size: .78rem; }
+  table.cfg th { font-weight: 800; color: var(--ink-soft); text-align: left; white-space: nowrap; }
+  table.cfg thead th { text-align: center; font-size: .76rem; padding: 3px; border-radius: 8px; color: #fff; }
+  table.cfg th.ca { background: #d9822b; } table.cfg th.cb { background: #3f74c9; }
+  table.cfg select { margin: 0; padding: 6px 4px; font-size: .78rem; }
+  table.cfg select.diff { border-color: #d08a2e; box-shadow: 0 0 0 2px rgba(208,138,46,.35); }
+  .concl { border-radius: 14px; margin-top: 8px; font-size: .82rem; font-weight: 700; line-height: 1.6; }
+  .concl:not(:empty) { padding: 10px 12px; background: rgba(255,255,255,.85); }
+  .concl.ok { background: #e3f1e6 !important; color: #2e6b3f; }
+  .concl.bad { background: #fde5e2 !important; color: #a5311f; }
+  .chk { display: flex; align-items: center; gap: 8px; font-size: .82rem; font-weight: 800; margin: 10px 2px 0; cursor: pointer; }
+  .chk input { width: 18px; height: 18px; accent-color: #a1674a; }
+  .dpad { display: grid; grid-template-columns: repeat(3, 46px); grid-template-rows: repeat(3, 40px); gap: 4px; justify-content: center; margin-top: 4px; }
+  .dpad button { border: none; border-radius: 12px; font: inherit; font-size: 1rem; font-weight: 900; color: var(--ink); background: rgba(255,255,255,.8); cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
+  .dpad button:active, .dpad button.on { background: #a1674a; color: #fff; }
+  .dpad .dc { display: grid; place-items: center; font-size: .7rem; font-weight: 800; color: var(--ink-soft); }
+  .steps { display: grid; gap: 3px; background: rgba(255,255,255,.8); border-radius: 14px; padding: 8px 10px; margin-top: 8px; font-size: .76rem; font-weight: 700; line-height: 1.45; }
+  .steps div { color: #a8998a; }
+  .steps div.done { color: var(--ok); }
+  .steps div.now { color: var(--ink); background: #fff3d6; border-radius: 8px; padding: 2px 6px; margin: 0 -6px; }
+  .scope-view { position: absolute; z-index: 8; right: 22px; top: 50%; transform: translateY(-50%); width: min(34vw, 340px); text-align: center; pointer-events: none; }
+  .scope-view[hidden] { display: none; }
+  .scope-view .eye { position: relative; width: 100%; aspect-ratio: 1; border-radius: 50%; overflow: hidden; background: #111; box-shadow: 0 0 0 10px #2d2a28, 0 0 0 13px #6d6259, 0 18px 40px rgba(0,0,0,.35); }
+  .scope-view canvas { width: 100%; height: 100%; display: block; }
+  .scope-cap { margin-top: 22px; font-size: .8rem; font-weight: 800; line-height: 1.5; background: rgba(255,255,255,.88); border-radius: 14px; padding: 6px 10px; box-shadow: 0 4px 14px rgba(93,64,55,.12); }
+  .scope-cap b { color: #a1674a; }
+  .cap .warn { color: #c62828; animation: pop .45s cubic-bezier(.2,1.6,.4,1); display: inline-block; }
+  .tag.ok { background: #4f7d5c; color: #fff; } .tag.no { background: #c62828; color: #fff; } .tag.unk { background: rgba(255,255,255,.88); color: #8d7366; }
+  .tag.ga { background: #d9822b; color: #fff; } .tag.gb { background: #3f74c9; color: #fff; }
+  .tag.part { font-size: .66rem; padding: 2px 7px; background: rgba(62,44,37,.82); color: #fff; }
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .scope-view { top: 64px; right: 8px; transform: none; width: 150px; }
+    .scope-view .eye { box-shadow: 0 0 0 5px #2d2a28, 0 0 0 7px #6d6259, 0 8px 20px rgba(0,0,0,.3); }
+    .scope-cap { margin-top: 10px; font-size: .62rem; padding: 4px 6px; }
+  }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+<div class="scope-view" id="scopeView" hidden>
+  <div class="eye"><canvas id="eyeCv" width="420" height="420"></canvas></div>
+  <div class="scope-cap" id="scopeCap"></div>
+</div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g7">‹ 課程總覽</a>
+  <div class="title">生命世界與科學方法實驗室</div>
+  <div class="body">
+    <div class="tabs three">
+      <button class="tab on" data-tab="life">🌱 生命現象<small>生物或非生物</small></button>
+      <button class="tab" data-tab="sci">🍞 科學方法<small>麵包發霉實驗</small></button>
+      <button class="tab" data-tab="scope">🔬 顯微鏡<small>操作與成像</small></button>
+    </div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="life">
+      <div class="concept" style="--cc:#4f7d5c"><div class="ct">會表現生命現象的就是生物</div><div class="cd">生命現象：<b>代謝、生長、感應、生殖</b><br>生物不一定要同時表現出全部的生命現象</div></div>
+      <label class="lab">① 選一個樣本放上檢測台</label>
+      <div class="objs" id="lfObjs"></div>
+      <label class="lab">② 檢測生命現象</label>
+      <div class="row2">
+        <button class="btn tbtn" data-t="met">🍽️ 代謝<small>給水和養分</small></button>
+        <button class="btn tbtn" data-t="grow">🌱 生長<small>時間快轉</small></button>
+        <button class="btn tbtn" data-t="sense">👆 感應<small>給它刺激</small></button>
+        <button class="btn tbtn" data-t="repro">🐣 生殖<small>等待下一代</small></button>
+      </div>
+      <button class="btn primary" id="lfAll">▶ 四項一起檢測</button>
+      <div class="stat" id="lfStat"></div>
+      <label class="lab">③ 你的判斷</label>
+      <div class="row2">
+        <button class="btn" id="jAlive">🌿 是生物</button>
+        <button class="btn" id="jNot">🪨 是非生物</button>
+      </div>
+      <div class="judge" id="lfJudge"></div>
+      <p class="desc">🌍 地球上的生物要生存，需要<b>陽光、空氣、水、養分</b>。</p>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="sci" hidden>
+      <div class="flow" id="flow"></div>
+      <p class="desc">👀 <b>觀察</b>：忘在書包裡的麵包發霉了！<br>❓ <b>問題</b>：是什麼原因讓麵包發霉？<br>📚 <b>查資料</b>：黴菌來自空氣，喜歡潮濕、有養分的地方。</p>
+      <label class="lab">④ 提出假說</label>
+      <select id="hyp">
+        <option value="">請選擇一個假說…</option>
+        <option value="h1">溫暖潮濕的環境適合黴菌生長</option>
+        <option value="h2">有光照的地方，麵包比較容易發霉</option>
+        <option value="h3">環境中的黴菌會自行生長</option>
+      </select>
+      <div class="hypnote" id="hypNote"></div>
+      <label class="lab">⑤ 設計實驗：兩組只能有<b>一個</b>條件不同</label>
+      <table class="cfg">
+        <thead><tr><th></th><th class="ca">A 實驗組</th><th class="cb">B 對照組</th></tr></thead>
+        <tbody>
+          <tr><th>水分</th><td><select id="aWater"><option value="wet">💧 噴水</option><option value="dry">不噴水</option></select></td><td><select id="bWater"><option value="wet">💧 噴水</option><option value="dry" selected>不噴水</option></select></td></tr>
+          <tr><th>溫度</th><td><select id="aTemp"><option value="warm">🌡️ 室溫</option><option value="cold">❄️ 冰箱</option></select></td><td><select id="bTemp"><option value="warm">🌡️ 室溫</option><option value="cold">❄️ 冰箱</option></select></td></tr>
+          <tr><th>光線</th><td><select id="aLight"><option value="light">☀️ 有光</option><option value="dark">🌑 陰暗</option></select></td><td><select id="bLight"><option value="light">☀️ 有光</option><option value="dark">🌑 陰暗</option></select></td></tr>
+        </tbody>
+      </table>
+      <div class="stat" id="scFair"></div>
+      <label class="lab" for="day">⑥ 實驗觀察天數<b><span id="dayV">0</span> 天</b></label>
+      <input type="range" id="day" min="0" max="7" step="0.05" value="0">
+      <div class="row2">
+        <button class="btn primary" id="scPlay">▶ 觀察 7 天</button>
+        <button class="btn" id="scReset">↺ 換新麵包</button>
+      </div>
+      <div class="mapbox"><p>📈 發霉面積（應變變因）</p><canvas id="moldChart" width="600" height="300"></canvas></div>
+      <div class="concl" id="scConc"></div>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="sec" data-tab="scope" hidden>
+      <div class="row2">
+        <button class="btn mbtn on" data-m="comp">🔬 複式顯微鏡</button>
+        <button class="btn mbtn" data-m="ster">🔍 解剖顯微鏡</button>
+      </div>
+      <label class="lab">觀察的標本</label>
+      <div class="three-btn">
+        <button class="btn sbtn on" data-s="ap">「ap」字<small>玻片</small></button>
+        <button class="btn sbtn" data-s="para">草履蟲<small>水滴玻片</small></button>
+        <button class="btn sbtn" data-s="beetle">金龜子<small>不透光</small></button>
+      </div>
+      <div id="compCtl">
+        <label class="lab">目鏡</label>
+        <div class="row2"><button class="btn ebtn on" data-e="10">10×</button><button class="btn ebtn" data-e="15">15×</button></div>
+        <label class="lab">物鏡（轉動旋轉盤）</label>
+        <div class="three-btn"><button class="btn obtn on" data-o="4">4×<small>低倍</small></button><button class="btn obtn" data-o="10">10×</button><button class="btn obtn" data-o="40">40×<small>高倍</small></button></div>
+      </div>
+      <div id="sterCtl" hidden>
+        <label class="lab">倍率調整輪（目鏡 10×）</label>
+        <div class="row2"><button class="btn zbtn on" data-z="2">物鏡 2×</button><button class="btn zbtn" data-z="4">物鏡 4×</button></div>
+      </div>
+      <label class="lab" for="coarse"><span id="coarseLab">粗調節輪</span><b id="coarseV"></b></label>
+      <input class="big" type="range" id="coarse" min="0" max="200" step="1" value="60">
+      <div id="fineBox">
+        <label class="lab" for="fine">細調節輪<b id="fineV"></b></label>
+        <input class="big" type="range" id="fine" min="-100" max="100" step="1" value="0">
+      </div>
+      <label class="lab" for="aper"><span id="aperLab">光圈（進光量）</span><b id="aperV"></b></label>
+      <input type="range" id="aper" min="5" max="100" step="1" value="55">
+      <label class="lab">移動玻片（按住箭頭推玻片）</label>
+      <div class="dpad">
+        <span></span><button data-d="0,1" aria-label="往前推">▲</button><span></span>
+        <button data-d="-1,0" aria-label="往左推">◀</button><span class="dc">玻片</span><button data-d="1,0" aria-label="往右推">▶</button>
+        <span></span><button data-d="0,-1" aria-label="往後拉">▼</button><span></span>
+      </div>
+      <label class="chk"><input type="checkbox" id="partLab" checked> 顯示構造名稱</label>
+      <div class="stat" id="msStat"></div>
+      <div class="steps" id="msSteps"></div>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'life', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+/* =========================================================
+   共用小工具
+   ========================================================= */
+const lerp = (a, b, k) => a + (b - a) * k;
+const glass = (o = {}) => new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.92, thickness: 0.2, roughness: 0.05, ior: 1.4, transparent: true, opacity: 0.4, depthWrite: false, side: THREE.DoubleSide, ...o });
+const sphere = (r, mat, seg = 24) => new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg * 0.6 | 0)), mat);
+const cyl = (r1, r2, h, mat, seg = 32) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg), mat);
+const rbox = (w, h, d, mat, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(r, w / 2, h / 2, d / 2)), mat);
+// 桌面加大：手機直式鏡頭拉遠時，下方不會露出桌子外的空白
+table.scale.set(1.6, 1, 2.4); table.position.z = 13.6;
+let rs = 11;
+const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+
+/* =========================================================
+   Tab 1：生命現象偵測站
+   ========================================================= */
+const LF = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const ped = shadowed(cyl(2.5, 2.7, 0.35, clay(0xf3ebdd), 64)); ped.position.y = 0.175; group.add(ped);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(2.52, 0.05, 10, 96), clay(0xa1674a)); rim.rotation.x = Math.PI / 2; rim.position.y = 0.35; group.add(rim);
+  // 生命現象檢測儀（四盞燈）
+  const board = shadowed(rbox(7.0, 1.5, 0.3, clay(0xfffaf0), 0.12)); board.position.set(0, 3.2, -3.0); group.add(board);
+  [-3.0, 3.0].forEach(x => { const leg = shadowed(cyl(0.08, 0.1, 2.5, metal())); leg.position.set(x, 1.25, -3.0); group.add(leg); });
+  const TESTS = [{ k: 'met', n: '代謝', ico: '🍽️' }, { k: 'grow', n: '生長', ico: '🌱' }, { k: 'sense', n: '感應', ico: '👆' }, { k: 'repro', n: '生殖', ico: '🐣' }];
+  const lamps = TESTS.map((t, i) => {
+    const x = -2.55 + i * 1.7;
+    const m = sphere(0.3, new THREE.MeshPhysicalMaterial({ color: 0xcfc6b8, emissive: 0x000000, roughness: 0.3, clearcoat: 1 }), 32);
+    m.position.set(x, 3.35, -2.8); group.add(m);
+    const L = addLabel('life', `${t.ico} ${t.n}`, 'unk', V3(x, 2.75, -2.75));
+    return { m, L, t };
+  });
+  const lName = addLabel('life', '', 'yel', V3(0, -0.2, 2.4));
+
+  // 刺激用的道具：側燈（植物）與手指（動物、物品）
+  const lamp = new THREE.Group(); group.add(lamp);
+  const lampHead = shadowed(cyl(0.18, 0.42, 0.5, clay(0xf2c14e))); lampHead.rotation.z = Math.PI / 2 + 0.5; lamp.add(lampHead);
+  const lampPole = shadowed(cyl(0.05, 0.05, 2.2, metal())); lampPole.position.set(0.35, -1.0, 0); lamp.add(lampPole);
+  const lampGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('255,210,90'), transparent: true, depthWrite: false, opacity: 0 }));
+  lampGlow.scale.setScalar(3.2); lampGlow.position.set(-0.6, -0.4, 0); lamp.add(lampGlow);
+  lamp.position.set(1.65, 1.55, 0.3);
+  const finger = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.7, 6, 12), clay(0xf0b48c)));
+  finger.rotation.z = Math.PI / 2; group.add(finger);
+  const drops = Array.from({ length: 8 }, () => { const d = sphere(0.06, clay(0x4fa3e0, { roughness: 0.1, clearcoat: 1 }), 12); group.add(d); return d; });
+  const flakes = Array.from({ length: 10 }, () => { const f = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.02, 0.08), clay(0xe9b44c)); group.add(f); return f; });
+
+  /* ----- 樣本 ----- */
+  function makeBean() {
+    const g = new THREE.Group();
+    const dish = cyl(1.1, 1.1, 0.18, glass({ opacity: 0.3 }), 48); dish.position.y = 0.09; g.add(dish);
+    const cotton = cyl(1.0, 1.0, 0.1, clay(0xffffff, { roughness: 1 }), 40); cotton.position.y = 0.06; g.add(cotton);
+    const seed = sphere(0.2, clay(0x5c9e3c)); seed.position.y = 0.2; g.add(seed);
+    const plant = new THREE.Group(); plant.position.y = 0.22; g.add(plant);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.06, 1, 12), clay(0xb5d98a)); stem.geometry.translate(0, 0.5, 0); plant.add(stem);
+    const top = new THREE.Group(); plant.add(top);
+    const leafM = clay(0x4caf50);
+    [-1, 1].forEach(s => { const lf = sphere(0.24, leafM, 18); lf.scale.set(1.3, 0.22, 0.75); lf.position.set(s * 0.24, 0.02, 0); lf.rotation.z = s * 0.4; top.add(lf); });
+    const pod = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.5, 4, 12), clay(0x7cb342)); pod.position.set(0.28, -0.25, 0.05); pod.rotation.z = 0.5; top.add(pod);
+    const flower = sphere(0.1, clay(0xf5e663), 14); flower.position.set(-0.2, 0.12, 0.12); top.add(flower);
+    const babies = [[0.55, 0.4], [-0.5, 0.35], [0.1, -0.6]].map(([x, z]) => { const b = sphere(0.13, clay(0x5c9e3c), 16); b.scale.set(1.25, 0.85, 1); b.position.set(x, 0.17, z); g.add(b); return b; });
+    return {
+      g, stim: 'lamp', dropY: 0.3,
+      update(s, test, k) {
+        seed.scale.set(1.25, 0.85, 1).multiplyScalar(1 + 0.25 * s.met);
+        const h = 0.35 + 1.45 * s.grow;
+        stem.scale.y = h; top.position.y = h; top.scale.setScalar(0.45 + 0.55 * s.grow);
+        plant.rotation.z = -0.6 * s.sense;
+        pod.visible = s.repro > 0.05; pod.scale.setScalar(Math.max(0.01, smooth(0, 0.6, s.repro)));
+        flower.visible = s.repro > 0.02 && s.repro < 0.5;
+        babies.forEach((b, i) => { const v = smooth(0.55 + i * 0.12, 0.8 + i * 0.07, s.repro); b.visible = v > 0.01; b.scale.set(1.25, 0.85, 1).multiplyScalar(Math.max(0.01, v)); });
+      }
+    };
+  }
+  function makeFish() {
+    const g = new THREE.Group();
+    const gravel = cyl(0.85, 0.85, 0.12, clay(0xd9c3a0, { roughness: 1 }), 32); gravel.position.y = 0.16; g.add(gravel);
+    const bowl = new THREE.Mesh(new THREE.SphereGeometry(1.2, 48, 32, 0, TAU, 0.42, Math.PI - 0.42), glass({ opacity: 0.25 })); bowl.position.y = 1.15; g.add(bowl);
+    const water = new THREE.Mesh(new THREE.SphereGeometry(1.13, 40, 24, 0, TAU, 0.8, Math.PI - 0.8), new THREE.MeshPhysicalMaterial({ color: 0x8fd0f0, transparent: true, opacity: 0.22, roughness: 0.1, depthWrite: false })); water.position.y = 1.15; g.add(water);
+    [[-0.45, 0.2], [0.4, -0.35]].forEach(([x, z]) => { const p = cyl(0.04, 0.05, 0.7, clay(0x5fa35a), 8); p.position.set(x, 0.55, z); p.rotation.z = x * 0.4; g.add(p); });
+    const mkFish = sc => {
+      const f = new THREE.Group();
+      const body = sphere(0.3, clay(0xff8a3d), 24); body.scale.set(1.5, 0.95, 0.6); f.add(body);
+      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.32, 14), clay(0xffa65c)); tail.rotation.z = Math.PI / 2; tail.position.x = -0.55; f.add(tail);
+      [-1, 1].forEach(s => { const e = sphere(0.045, clay(0x222222), 10); e.position.set(0.3, 0.07, s * 0.15); f.add(e); });
+      f.scale.setScalar(sc); g.add(f); return f;
+    };
+    const fish = mkFish(0.72);
+    const fry = [0, 1, 2].map(() => mkFish(0.32));
+    const eggs = Array.from({ length: 14 }, () => { const e = sphere(0.045, clay(0xfff2b3, { transparent: true, opacity: 0.9 }), 10); e.position.set(-0.25 + rnd() * 0.4, 0.27 + rnd() * 0.08, 0.1 + rnd() * 0.35); g.add(e); return e; });
+    let a = 0, b = 0;
+    return {
+      g, stim: 'poke', dropY: 1.75,
+      update(s, test, k, dt, tt) {
+        const dart = test === 'sense' && k > 0.25 && k < 0.75;
+        a += dt * (dart ? 4.2 : 0.9);
+        const eat = test === 'met' ? Math.sin(Math.PI * clamp(k * 1.2, 0, 1)) : 0;
+        fish.position.set(Math.cos(a) * 0.5, 1.0 + 0.35 * eat + Math.sin(tt * 1.3) * 0.06, Math.sin(a) * 0.5);
+        fish.rotation.y = -(a + Math.PI / 2);
+        fish.scale.setScalar(0.72 * (1 + 0.4 * s.grow));
+        eggs.forEach(e => { e.visible = s.repro > 0.05 && s.repro < 0.75; });
+        b += dt * 1.6;
+        fry.forEach((f, i) => {
+          const v = smooth(0.55, 0.9, s.repro); f.visible = v > 0.01;
+          const ang = b + i * 2.1; f.position.set(Math.cos(ang) * 0.3, 0.55 + i * 0.15, Math.sin(ang) * 0.3);
+          f.rotation.y = -(ang + Math.PI / 2); f.scale.setScalar(0.3 * Math.max(0.01, v));
+        });
+      }
+    };
+  }
+  function makeBeads() {
+    const g = new THREE.Group();
+    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.78, 0.66, 1.15, 40, 1, true), glass({ opacity: 0.3 })); cup.position.y = 0.575; g.add(cup);
+    const bottom = cyl(0.66, 0.66, 0.04, glass({ opacity: 0.35 })); bottom.position.y = 0.02; g.add(bottom);
+    const water = cyl(0.72, 0.65, 0.7, new THREE.MeshPhysicalMaterial({ color: 0x8fd0f0, transparent: true, opacity: 0.25, depthWrite: false })); water.position.y = 0.37; g.add(water);
+    const COLS = [0xff8fb1, 0x8fd3ff, 0xc5a3ff, 0x9ff0b5, 0xffe08a, 0xffb38a, 0x8fd3ff];
+    const beads = COLS.map((c, i) => {
+      const m = sphere(0.12, new THREE.MeshPhysicalMaterial({ color: c, transmission: 0.5, roughness: 0.05, clearcoat: 1, transparent: true, opacity: 0.85 }), 20);
+      const ang = i / COLS.length * TAU; m.userData.p = V3(Math.cos(ang) * 0.32, 0.16, Math.sin(ang) * 0.32);
+      if (i === 6) m.userData.p.set(0, 0.16, 0);
+      g.add(m); return m;
+    });
+    const frags = beads.flatMap(bd => [0, 1, 2].map(j => {
+      const f = new THREE.Mesh(new THREE.TetrahedronGeometry(0.1, 1), bd.material); f.userData.base = bd; f.userData.j = j; f.rotation.set(rnd() * 3, rnd() * 3, 0); g.add(f); return f;
+    }));
+    return {
+      g, stim: 'poke', dropY: 1.0,
+      update(s) {
+        water.visible = s.met > 0.02 || s.grow > 0.02;
+        water.scale.y = Math.max(0.05, Math.max(s.met, s.grow)); water.position.y = 0.04 + 0.35 * water.scale.y;
+        const sw = 1 + 1.3 * s.grow, broken = s.repro > 0.5;
+        beads.forEach(b => { b.visible = !broken; b.scale.setScalar(sw); b.position.copy(b.userData.p).multiplyScalar(1 + 0.2 * s.grow); b.position.y = 0.16 * sw; });
+        frags.forEach(f => {
+          const b = f.userData.base, j = f.userData.j;
+          f.visible = broken;
+          const ang = j * 2.1 + b.position.x * 3;
+          f.position.copy(b.position).add(V3(Math.cos(ang) * 0.08 * sw, 0.02, Math.sin(ang) * 0.08 * sw));
+          f.scale.setScalar(sw * 0.6);
+        });
+      }
+    };
+  }
+  function makeCar() {
+    const g = new THREE.Group();
+    const car = new THREE.Group(); g.add(car);
+    const body = shadowed(rbox(1.5, 0.4, 0.8, clay(0xe53935), 0.14)); body.position.y = 0.45; car.add(body);
+    const cab = shadowed(rbox(0.8, 0.36, 0.7, clay(0x90caf9, { clearcoat: 1 }), 0.12)); cab.position.set(-0.1, 0.82, 0); car.add(cab);
+    const wheels = [[-0.5, 0.42], [0.5, 0.42], [-0.5, -0.42], [0.5, -0.42]].map(([x, z]) => { const w = cyl(0.21, 0.21, 0.16, clay(0x333333), 20); w.rotation.x = Math.PI / 2; w.position.set(x, 0.21, z); car.add(w); return w; });
+    let spin = 0;
+    return {
+      g, stim: 'poke', dropY: 1.3,
+      update(s, test, k, dt) {
+        const drive = test === 'met' ? Math.sin(k * TAU) * 0.6 * smooth(0.25, 0.4, k) : 0;
+        const prev = car.position.x; car.position.x = drive;
+        spin -= (car.position.x - prev) / 0.21; wheels.forEach(w => { w.rotation.y = spin; });
+      }
+    };
+  }
+  function makeEraser() {
+    const g = new THREE.Group();
+    const L = shadowed(rbox(0.66, 0.36, 0.62, clay(0xf7f7f2), 0.05)), R = shadowed(rbox(0.66, 0.36, 0.62, clay(0xf7f7f2), 0.05));
+    const sleeve = rbox(0.5, 0.38, 0.64, clay(0x3f74c9), 0.04); sleeve.position.x = 0.08; R.add(sleeve);
+    g.add(L, R);
+    const knife = shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.8, 1.0), metal())); g.add(knife);
+    return {
+      g, stim: 'poke', dropY: 0.8,
+      update(s, test, k) {
+        const cut = test === 'repro' ? smooth(0.1, 0.4, k) : s.repro > 0.5 ? 1 : 0;
+        const sep = test === 'repro' ? smooth(0.45, 0.8, k) : s.repro;
+        L.position.set(-0.33 - 0.3 * sep, 0.18, 0); R.position.set(0.33 + 0.3 * sep, 0.18, 0);
+        knife.visible = test === 'repro' && k < 0.5; knife.position.set(0, 1.2 - 0.85 * cut, 0);
+      }
+    };
+  }
+  function makeFlower() {
+    const g = new THREE.Group();
+    const vase = shadowed(cyl(0.22, 0.3, 0.7, clay(0x9fb8c8), 28)); vase.position.y = 0.35; g.add(vase);
+    const stem = cyl(0.03, 0.035, 1.3, clay(0x8a6a45), 8); stem.position.y = 1.2; g.add(stem);
+    const head = new THREE.Group(); head.position.y = 1.85; g.add(head);
+    const petal = clay(0xc9a27e, { roughness: 0.9 });
+    for (let i = 0; i < 7; i++) { const p = sphere(0.14, petal, 12); p.scale.set(1.4, 0.35, 0.8); const a = i / 7 * TAU; p.position.set(Math.cos(a) * 0.17, 0, Math.sin(a) * 0.17); p.rotation.y = -a; p.rotation.z = 0.5; head.add(p); }
+    head.add(sphere(0.09, clay(0x6d4c2f), 12));
+    head.rotation.z = 0.35;
+    return { g, stim: 'lamp', dropY: 2.2, update() {} };
+  }
+
+  const SAMPLES = {
+    bean: { name: '綠豆芽', ico: '🌱', alive: true, make: makeBean,
+      res: { met: [1, '吸收水分和養分，轉換成生長需要的物質與能量'], grow: [1, '幼苗長高、長出葉子'], sense: [1, '向光性：朝著光源彎曲生長'], repro: [1, '長大後開花、結出豆莢和新的種子'] } },
+    fish: { name: '金魚', ico: '🐟', alive: true, make: makeFish,
+      res: { met: [1, '吃飼料獲得養分與能量'], grow: [1, '小魚慢慢長大'], sense: [1, '敲魚缸，金魚受到驚嚇快速游開'], repro: [1, '產卵、孵出小魚'] } },
+    beads: { name: '水晶寶寶', ico: '🔮', alive: false, make: makeBeads,
+      res: { met: [0, '只是吸水，不會把養分變成能量或身體的物質'], grow: [0, '吸水膨脹變大，不是「發育」的生長'], sense: [0, '碰它、敲它都沒有反應'], repro: [0, '碎裂成小塊不是生殖，碎塊不會長成新個體'] } },
+    car: { name: '玩具車', ico: '🚗', alive: false, make: makeCar,
+      res: { met: [0, '燃料（電池）只提供動力，車子不會用它長出或修補自己'], grow: [0, '不會長大'], sense: [0, '搔它癢也沒反應；會動是因為有動力，不是感應'], repro: [0, '不會產生新的車子'] } },
+    eraser: { name: '橡皮擦', ico: '✏️', alive: false, make: makeEraser,
+      res: { met: [0, '不會吸收養分'], grow: [0, '不會長大'], sense: [0, '對刺激沒有反應'], repro: [0, '切成兩半不是生殖，兩塊都不會再長大'] } },
+    flower: { name: '乾燥花', ico: '🥀', alive: false, make: makeFlower, note: '乾燥花「曾經」是生物，但現在已經不再表現生命現象，所以是非生物。',
+      res: { met: [0, '已經不會吸收水分和養分'], grow: [0, '不會再長大'], sense: [0, '照光也不會朝光彎曲'], repro: [0, '不會開花結果'] } }
+  };
+  const holder = new THREE.Group(); holder.position.y = 0.35; holder.scale.setScalar(1.4); group.add(holder);
+  holder.add(lamp, finger, ...drops, ...flakes);
+  for (const [key, S] of Object.entries(SAMPLES)) { S.obj = S.make(); S.obj.g.visible = false; S.key = key; holder.add(S.obj.g); shadowed(S.obj.g); }
+
+  const st = { cur: 'bean', s: null, done: {}, test: null, k: 0, queue: [], judged: {}, judgeMsg: null };
+  const fresh = () => ({ met: 0, grow: 0, sense: 0, repro: 0 });
+  function select(key) {
+    st.cur = key; st.s = fresh(); st.done = {}; st.test = null; st.k = 0; st.queue = []; st.judgeMsg = null;
+    for (const S of Object.values(SAMPLES)) S.obj.g.visible = S.key === key;
+    document.querySelectorAll('#lfObjs .btn').forEach(b => b.classList.toggle('on', b.dataset.k === key));
+    renderStat();
+  }
+  function run(t) { if (st.done[t] || st.test === t || st.queue.includes(t)) return; if (st.test) st.queue.push(t); else { st.test = t; st.k = 0; } renderStat(); }
+  $('lfObjs').innerHTML = Object.entries(SAMPLES).map(([k, S]) => `<button class="btn" data-k="${k}"><i>${S.ico}</i>${S.name}</button>`).join('');
+  document.querySelectorAll('#lfObjs .btn').forEach(b => b.addEventListener('click', () => select(b.dataset.k)));
+  document.querySelectorAll('.tbtn').forEach(b => b.addEventListener('click', () => run(b.dataset.t)));
+  $('lfAll').addEventListener('click', () => TESTS.forEach(t => run(t.k)));
+  function judge(alive) {
+    const S = SAMPLES[st.cur], n = Object.keys(st.done).length;
+    if (!n) { st.judgeMsg = ['hint', '先做至少一項檢測，再根據結果判斷喔！']; renderStat(); return; }
+    const right = alive === S.alive;
+    if (right) st.judged[st.cur] = true;
+    const why = S.alive ? `${S.name}會表現出代謝、生長、感應、生殖等生命現象，所以是<b>生物</b>。` : `${S.name}沒有表現出任何生命現象，所以是<b>非生物</b>。`;
+    st.judgeMsg = right ? ['ok', '✅ 答對了！' + why + (S.note ? '<br>' + S.note : '')] : ['bad', '❌ 再想想看：' + (S.alive ? '看看檢測燈，它有沒有亮綠燈？' : '它雖然會變大、會動或會變成兩塊，但那些都不是真正的生命現象。')];
+    renderStat();
+  }
+  $('jAlive').addEventListener('click', () => judge(true));
+  $('jNot').addEventListener('click', () => judge(false));
+
+  const STIM = { met: '🍽️ 給它水和養分（食物），看它會不會吸收、利用？', grow: '⏩ 時間快轉，看它會不會長大、發育？', sense: { lamp: '💡 從旁邊照光，看它會不會對光產生反應？', poke: '👆 敲一敲、碰一碰，看它會不會有反應？' }, repro: '⏳ 再等一段時間，看它會不會產生新的個體？' };
+  function renderStat() {
+    const S = SAMPLES[st.cur];
+    setHTML('lfStat', `<div class="res">${TESTS.map(t => {
+      const d = st.done[t.k];
+      if (!d) return `<b class="q">${t.ico} ${t.n} ？</b><span class="q">${st.test === t.k ? '檢測中…' : '尚未檢測'}</span>`;
+      const r = S.res[t.k];
+      return `<b class="${r[0] ? 'y' : 'n'}">${t.ico} ${t.n} ${r[0] ? '✔' : '✘'}</b><span>${r[1]}</span>`;
+    }).join('')}</div>`);
+    document.querySelectorAll('.tbtn').forEach(b => { b.classList.toggle('done', !!st.done[b.dataset.t]); b.classList.toggle('run', st.test === b.dataset.t); });
+    document.querySelectorAll('#lfObjs .btn').forEach(b => b.classList.toggle('done', !!st.judged[b.dataset.k]));
+    const j = $('lfJudge');
+    j.className = 'judge' + (st.judgeMsg ? ' ' + st.judgeMsg[0] : '');
+    setHTML('lfJudge', st.judgeMsg ? st.judgeMsg[1] : '');
+    lamps.forEach(l => {
+      const d = st.done[l.t.k], ok = d && S.res[l.t.k][0];
+      l.m.material.color.setHex(!d ? 0xcfc6b8 : ok ? 0x43a047 : 0xe53935);
+      l.m.material.emissive.setHex(!d ? 0x000000 : ok ? 0x2e7d32 : 0xb71c1c);
+      setLabel(l.L, `${l.t.ico} ${l.t.n} ${!d ? '？' : ok ? '✔' : '✘'}`, !d ? 'unk' : ok ? 'ok' : 'no');
+    });
+    setLabel(lName, `${S.ico} ${S.name}`);
+  }
+
+  function update(dt) {
+    const S = SAMPLES[st.cur], O = S.obj;
+    if (st.test) {
+      st.k += dt / 2.6;
+      st.s[st.test] = Math.min(1, st.k);
+      if (st.k >= 1) { st.done[st.test] = true; st.s[st.test] = 1; st.test = st.queue.shift() || null; st.k = 0; st.judgeMsg = null; renderStat(); }
+    }
+    const test = st.test, k = st.k;
+    O.update(st.s, test, k, dt, wall);
+    // 道具動畫
+    const showLamp = O.stim === 'lamp' && (test === 'sense' || st.done.sense);
+    lamp.visible = showLamp;
+    lampGlow.material.opacity = test === 'sense' ? 0.9 * smooth(0, 0.2, k) : st.done.sense ? 0.6 : 0;
+    const poke = O.stim === 'poke' && test === 'sense';
+    finger.visible = poke;
+    if (poke) { const tap = Math.max(0, Math.sin(clamp((k - 0.1) / 0.3, 0, 1) * Math.PI)); finger.position.set(1.7 - 0.55 * tap, S.key === 'fish' ? 1.0 : 0.45, 0.15); }
+    drops.forEach((d, i) => {
+      const on = test === 'met' && S.key !== 'fish' && k < 0.8;
+      d.visible = on; if (!on) return;
+      const f = (k * 3 + i / drops.length) % 1;
+      d.position.set(Math.sin(i * 2.3) * 0.35, O.dropY + 1.2 * (1 - f), Math.cos(i * 1.7) * 0.3);
+    });
+    flakes.forEach((f, i) => {
+      const on = test === 'met' && S.key === 'fish' && k < 0.85;
+      f.visible = on; if (!on) return;
+      const y = 2.4 - 1.2 * clamp(k * 1.6 - i * 0.05, 0, 1);
+      f.position.set(Math.sin(i * 2.1) * 0.3, y, Math.cos(i * 1.3) * 0.3); f.rotation.y = wall * 2 + i;
+    });
+    holder.rotation.y = Math.sin(wall * 0.25) * 0.25;
+    // 說明列
+    if (test) setCap(`<small>${S.ico} ${S.name}・生命現象檢測</small>${test === 'sense' ? STIM.sense[O.stim] : STIM[test]}`);
+    else {
+      const n = Object.keys(st.done).length;
+      const any = TESTS.some(t => st.done[t.k] && S.res[t.k][0]);
+      setCap(n ? `<small>${S.ico} ${S.name}・已檢測 ${n} / 4 項</small>${any ? '亮了<b class="grn">綠燈</b>：表現出生命現象！' : '目前都是<b class="red">紅燈</b>：沒有表現出生命現象'}<br>判斷看看：它是生物還是非生物？` : '<small>生命現象偵測站</small>選一個樣本，按下檢測按鈕，看它有沒有表現出<b>生命現象</b>');
+    }
+  }
+  select('bean');
+  return { group, update, select, run, SAMPLES, st };
+})();
+function updateLife(dt) { $('scopeView').hidden = true; LF.update(dt); }
+
+/* =========================================================
+   Tab 2：科學方法──麵包發霉實驗
+   ========================================================= */
+const SC = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const sh = new THREE.Shape();
+  sh.moveTo(-0.8, 0); sh.lineTo(0.8, 0); sh.lineTo(0.8, 1.35);
+  sh.bezierCurveTo(0.98, 1.78, 0.45, 1.98, 0, 1.82); sh.bezierCurveTo(-0.45, 1.98, -0.98, 1.78, -0.8, 1.35); sh.lineTo(-0.8, 0);
+  const crustGeo = new THREE.ExtrudeGeometry(sh, { depth: 0.24, bevelEnabled: true, bevelSize: 0.05, bevelThickness: 0.05, bevelSegments: 3, curveSegments: 24 });
+  crustGeo.translate(0, 0, -0.12);
+  const faceGeo = new THREE.ShapeGeometry(sh, 24);
+  { const uv = faceGeo.attributes.uv, p = faceGeo.attributes.position; for (let i = 0; i < uv.count; i++) uv.setXY(i, (p.getX(i) + 0.85) / 1.7, p.getY(i) / 1.95); }
+  const crustM = clay(0xc98a4b, { roughness: 0.8 });
+
+  function moldCanvas(seed) {
+    const c = document.createElement('canvas'); c.width = 256; c.height = 300;
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+    let s = seed; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    const pores = Array.from({ length: 140 }, () => [r() * 256, r() * 300, 1 + r() * 3.5, r()]);
+    const blobs = Array.from({ length: 70 }, () => [16 + r() * 224, 14 + r() * 260, 8 + r() * 22, r()]);
+    return { c, tex, pores, blobs, last: -1 };
+  }
+  const COLS = ['47,74,46', '34,46,36', '106,128,92', '150,160,118', '58,62,48'];
+  function paintMold(M, cov) {
+    if (Math.abs(cov - M.last) < 0.004) return;
+    M.last = cov;
+    const g = M.c.getContext('2d');
+    g.fillStyle = '#f5e2b6'; g.fillRect(0, 0, 256, 300);
+    for (const [x, y, rr, v] of M.pores) { g.fillStyle = `rgba(190,150,90,${0.15 + v * 0.25})`; g.beginPath(); g.ellipse(x, y, rr, rr * 0.7, v * 3, 0, TAU); g.fill(); }
+    const n = Math.min(M.blobs.length, Math.ceil(cov * M.blobs.length * 1.15));
+    for (let i = 0; i < n; i++) {
+      const [x, y, r0, v] = M.blobs[i];
+      const rad = r0 * (0.35 + 2.3 * cov);
+      const col = COLS[Math.floor(v * COLS.length)];
+      const grd = g.createRadialGradient(x, y, 0, x, y, rad);
+      grd.addColorStop(0, `rgba(${col},.95)`); grd.addColorStop(0.6, `rgba(${col},.7)`); grd.addColorStop(1, `rgba(${col},0)`);
+      g.fillStyle = grd; g.beginPath(); g.arc(x, y, rad, 0, TAU); g.fill();
+      if (cov > 0.3) { g.fillStyle = 'rgba(245,245,235,.5)'; for (let k = 0; k < 6; k++) { const a = k + v * 9; g.beginPath(); g.arc(x + Math.cos(a) * rad * 0.5, y + Math.sin(a) * rad * 0.5, 1.5, 0, TAU); g.fill(); } }
+    }
+    M.tex.needsUpdate = true;
+  }
+
+  function makeBag(x, seed, color) {
+    const G = new THREE.Group(); G.position.x = x; group.add(G);
+    const bread = new THREE.Group(); bread.position.y = 0.1; G.add(bread);
+    bread.add(shadowed(new THREE.Mesh(crustGeo, crustM)));
+    const M = moldCanvas(seed);
+    const faceM = new THREE.MeshStandardMaterial({ map: M.tex, roughness: 0.95 });
+    const f1 = new THREE.Mesh(faceGeo, faceM); f1.position.z = 0.175; bread.add(f1);
+    const f2 = new THREE.Mesh(faceGeo, faceM); f2.position.z = -0.175; f2.rotation.y = Math.PI; bread.add(f2);
+    const bag = new THREE.Mesh(new RoundedBoxGeometry(2.25, 2.5, 0.75, 4, 0.12), glass({ opacity: 0.22 })); bag.position.y = 1.25; G.add(bag);
+    const zip = new THREE.Mesh(new THREE.BoxGeometry(2.25, 0.09, 0.78), clay(color)); zip.position.y = 2.42; G.add(zip);
+    const drops = Array.from({ length: 22 }, () => { const d = sphere(0.035 + rnd() * 0.03, glass({ opacity: 0.6, color: 0xd8f0ff }), 10); d.position.set(-1.0 + rnd() * 2.0, 0.2 + rnd() * 2.1, 0.38); G.add(d); return d; });
+    const fridge = new THREE.Mesh(new RoundedBoxGeometry(2.7, 3.0, 1.2, 4, 0.15), new THREE.MeshPhysicalMaterial({ color: 0xbfe3ff, transparent: true, opacity: 0.28, roughness: 0.2, depthWrite: false, side: THREE.DoubleSide })); fridge.position.y = 1.45; G.add(fridge);
+    const frost = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.12, 1.2), clay(0xeaf6ff)); frost.position.y = 2.98; G.add(frost);
+    const cab = new THREE.Mesh(new RoundedBoxGeometry(2.85, 3.15, 1.35, 4, 0.1), new THREE.MeshStandardMaterial({ color: 0x3a3230, transparent: true, opacity: 0.38, depthWrite: false, side: THREE.DoubleSide })); cab.position.y = 1.5; G.add(cab);
+    const sun = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('255,214,110'), transparent: true, depthWrite: false })); sun.scale.setScalar(2.4); sun.position.set(0.9, 3.0, 0.3); G.add(sun);
+    return { G, M, drops, fridge, frost, cab, sun };
+  }
+  const A = makeBag(-2.0, 7, 0xd9822b), B = makeBag(2.0, 19, 0x3f74c9);
+  const lA = addLabel('sci', '', 'ga', V3(-2.0, -0.35, 0.6)), lB = addLabel('sci', '', 'gb', V3(2.0, -0.35, 0.6));
+  const lCA = addLabel('sci', '', 'yel', V3(-2.0, 3.45, 0)), lCB = addLabel('sci', '', 'yel', V3(2.0, 3.45, 0));
+
+  const VARS = [{ k: 'Water', n: '水分', on: 'wet' }, { k: 'Temp', n: '溫度', on: 'warm' }, { k: 'Light', n: '光線', on: 'light' }];
+  const NAMES = { wet: '💧 噴水', dry: '不噴水', warm: '🌡️ 室溫', cold: '❄️ 冰箱', light: '☀️ 有光', dark: '🌑 陰暗' };
+  const cfg = g => ({ Water: $(g + 'Water').value, Temp: $(g + 'Temp').value, Light: $(g + 'Light').value });
+  const rate = c => 0.3 * (c.Water === 'wet' ? 1 : 0.25) * (c.Temp === 'warm' ? 1 : 0.15);
+  const cover = (c, d) => 1 - Math.exp(-Math.pow(rate(c) * d, 2.2) * 0.45);
+  let day = 0, playing = false;
+  const STEPS = ['觀察', '產生問題', '文獻探討', '提出假說', '實驗', '結果分析', '提出結論'];
+
+  function analyze() {
+    const a = cfg('a'), b = cfg('b');
+    const diff = VARS.filter(v => a[v.k] !== b[v.k]);
+    return { a, b, diff };
+  }
+  function drawChart(a, b) {
+    const c = $('moldChart'), g = c.getContext('2d'), W = c.width, H = c.height;
+    const L = 64, R = W - 16, T = 16, Bm = H - 42;
+    g.clearRect(0, 0, W, H);
+    g.font = 'bold 20px sans-serif'; g.fillStyle = '#8d7366'; g.strokeStyle = '#e6dccd'; g.lineWidth = 2;
+    for (let p = 0; p <= 100; p += 25) { const y = Bm - (Bm - T) * p / 100; g.beginPath(); g.moveTo(L, y); g.lineTo(R, y); g.stroke(); g.textAlign = 'right'; g.fillText(p + '%', L - 8, y + 7); }
+    g.textAlign = 'center';
+    for (let d = 0; d <= 7; d++) { const x = L + (R - L) * d / 7; g.fillText(d, x, Bm + 26); }
+    g.fillText('天', R - 4, H - 2);
+    [[a, '#d9822b'], [b, '#3f74c9']].forEach(([c0, col]) => {
+      g.strokeStyle = col; g.lineWidth = 5; g.beginPath();
+      for (let d = 0; d <= day + 1e-6; d += 0.05) { const x = L + (R - L) * d / 7, y = Bm - (Bm - T) * cover(c0, d); if (d) g.lineTo(x, y); else g.moveTo(x, y); }
+      g.stroke();
+      const x = L + (R - L) * day / 7, y = Bm - (Bm - T) * cover(c0, day);
+      g.fillStyle = col; g.beginPath(); g.arc(x, y, 8, 0, TAU); g.fill();
+    });
+  }
+  function refresh() {
+    const { a, b, diff } = analyze();
+    VARS.forEach(v => { ['a', 'b'].forEach(gk => $(gk + v.k).classList.toggle('diff', a[v.k] !== b[v.k])); });
+    const hyp = $('hyp').value;
+    const HN = { '': ['', ''], h1: ['ok', '✔ 好的假說：有明確的條件（溫暖、潮濕），可以用實驗驗證。'], h2: ['ok', '✔ 可以驗證的假說：條件是「光照」。'], h3: ['bad', '✘ 這個句子沒有明確的條件，無法設計實驗來驗證。試試別的假說！'] };
+    $('hypNote').className = 'hypnote ' + HN[hyp][0]; setHTML('hypNote', HN[hyp][1]);
+    // 公平測試
+    let fair;
+    if (!diff.length) fair = '<b class="o">⚠️ 兩組條件完全一樣</b>：沒有任何變因不同，無法比較出結果。';
+    else if (diff.length > 1) fair = `<b class="r">⚠️ 不公平的實驗！</b>有 ${diff.length} 個條件不同（${diff.map(v => v.n).join('、')}），就算結果不同，也不知道是哪一個造成的。`;
+    else {
+      const m = diff[0];
+      fair = `<b class="g">✔ 公平的實驗（只有一個變因不同）</b><br>操縱變因：<b class="o">${m.n}</b><br>控制變因：${VARS.filter(v => v !== m).map(v => v.n).join('、')}、麵包大小、密封袋、放置天數<br>應變變因：<b class="b">發霉面積</b>`;
+    }
+    setHTML('scFair', fair);
+    // 科學方法流程
+    const cur = !hyp || hyp === 'h3' ? 3 : day < 7 ? 4 : 6;
+    setHTML('flow', STEPS.map((s, i) => `<span class="${i < cur ? 'done' : i === cur ? 'cur' : ''}">${i + 1}. ${s}</span>`).join(''));
+    // 3D 狀態
+    [[A, a, lA, lCA, 'A 實驗組'], [B, b, lB, lCB, 'B 對照組']].forEach(([O, c, L, LC, nm]) => {
+      O.drops.forEach(d => { d.visible = c.Water === 'wet'; });
+      O.fridge.visible = O.frost.visible = c.Temp === 'cold';
+      O.cab.visible = c.Light === 'dark'; O.sun.visible = c.Light === 'light';
+      const cv = cover(c, day);
+      paintMold(O.M, cv);
+      setLabel(L, `${nm}<br><span style="font-weight:600">${NAMES[c.Water]}｜${NAMES[c.Temp]}｜${NAMES[c.Light]}</span>`);
+      setLabel(LC, `第 ${day.toFixed(1).replace('.0', '')} 天・發霉 ${Math.round(cv * 100)}%`);
+    });
+    $('dayV').textContent = day.toFixed(1).replace('.0', '');
+    drawChart(a, b);
+    // 結論
+    const box = $('scConc');
+    let cls = '', html = '';
+    if (day >= 7) {
+      const ca = cover(a, 7), cb = cover(b, 7);
+      if (!hyp) html = '先在 ④ 選一個假說，才能判斷實驗結果支不支持它喔！';
+      else if (hyp === 'h3') { cls = 'bad'; html = '這個假說無法驗證，請重新提出一個有明確條件的假說。'; }
+      else if (diff.length !== 1) { cls = 'bad'; html = '實驗設計不公平（或兩組完全相同），無法得到可靠的結論。請回到 ⑤ 修改實驗設計！'; }
+      else {
+        const m = diff[0].k, want = hyp === 'h1' ? ['Water', 'Temp'] : ['Light'];
+        const hi = ca > cb ? 'A' : 'B', gap = Math.abs(ca - cb);
+        if (!want.includes(m)) { cls = 'bad'; html = `你的實驗操縱的是「${diff[0].n}」，但假說談的是「${hyp === 'h1' ? '溫度、水分' : '光線'}」，這個實驗沒有檢驗到你的假說。`; }
+        else if (gap < 0.12) { cls = 'bad'; html = `兩組發霉程度幾乎一樣（A ${Math.round(ca * 100)}%、B ${Math.round(cb * 100)}%）→ 結果<b>不支持</b>假說。<br>👉 實驗結果與假說不符時，要<b>修改假說，再重新設計實驗</b>。`; }
+        else {
+          const c = hi === 'A' ? a : b, good = hyp === 'h1' ? (c.Water === 'wet' && c.Temp === 'warm') : c.Light === 'light';
+          if (good) { cls = 'ok'; html = `📝 結論：${hi} 組發霉 ${Math.round(Math.max(ca, cb) * 100)}%，另一組只有 ${Math.round(Math.min(ca, cb) * 100)}%。實驗結果<b>支持假說</b>：${hyp === 'h1' ? (m === 'Water' ? '潮濕' : '溫暖') + '的環境適合黴菌生長！' : '光照讓麵包更容易發霉。'}<br>多次實驗都符合時，就可以形成學說。`; }
+          else { cls = 'bad'; html = '結果和假說預期的方向相反 → <b>不支持</b>假說，要修改假說再重新實驗。'; }
+        }
+      }
+    }
+    box.className = 'concl ' + cls; setHTML('scConc', html);
+    // 說明列
+    setCap(day >= 7 ? '<small>⑦ 提出結論</small>比較兩組的<b>發霉面積</b>，看看結果支不支持你的假說' : day > 0 ? `<small>⑤ 實驗進行中・第 ${$('dayV').textContent} 天</small>每天觀察並記錄兩片麵包的發霉情形` : !hyp ? '<small>科學方法</small>先在左側 ④ 選一個<b>假說</b>' : '<small>⑤ 設計實驗</small>實驗組與對照組<b>只能有一個條件不同</b>，其他條件都要相同');
+  }
+  ['hyp', 'aWater', 'aTemp', 'aLight', 'bWater', 'bTemp', 'bLight'].forEach(id => $(id).addEventListener('change', () => { if (id !== 'hyp') { day = 0; $('day').value = 0; playing = false; $('scPlay').textContent = '▶ 觀察 7 天'; } refresh(); }));
+  $('day').addEventListener('input', e => { day = Number(e.target.value); refresh(); });
+  $('scPlay').addEventListener('click', () => { playing = !playing; if (playing && day >= 7) day = 0; $('scPlay').textContent = playing ? '⏸ 暫停' : '▶ 觀察 7 天'; });
+  $('scReset').addEventListener('click', () => { day = 0; $('day').value = 0; playing = false; $('scPlay').textContent = '▶ 觀察 7 天'; refresh(); });
+  function update(dt) {
+    if (playing) {
+      day = Math.min(7, day + dt * 0.9); $('day').value = day;
+      if (day >= 7) { playing = false; $('scPlay').textContent = '▶ 觀察 7 天'; }
+      refresh();
+    }
+    A.G.rotation.y = Math.sin(wall * 0.3) * 0.06; B.G.rotation.y = -Math.sin(wall * 0.3) * 0.06;
+  }
+  refresh();
+  return { group, update, refresh, setDay: d => { day = d; $('day').value = d; refresh(); }, cover };
+})();
+function updateSci(dt) { $('scopeView').hidden = true; SC.update(dt); }
+
+/* =========================================================
+   Tab 3：顯微鏡操作與成像
+   ========================================================= */
+const MS = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const comp = new THREE.Group(); comp.position.set(-1.6, 0, 0); group.add(comp);
+  const ster = new THREE.Group(); ster.position.set(-1.6, 0, 0); group.add(ster);
+  const cream = clay(0xefe9df), dark = clay(0x2c2f35, { roughness: 0.45 }), black = clay(0x1d1f23, { roughness: 0.5 });
+
+  /* ----- 複式顯微鏡 ----- */
+  const base = shadowed(rbox(2.4, 0.36, 2.8, cream, 0.14)); base.position.set(0, 0.18, 0.1); comp.add(base);
+  const lamp = cyl(0.32, 0.36, 0.12, new THREE.MeshStandardMaterial({ color: 0xfff6d8, emissive: 0xffe9a8, emissiveIntensity: 0.6 })); lamp.position.set(0, 0.42, 0.25); comp.add(lamp);
+  const armCurve = new THREE.CatmullRomCurve3([V3(0, 0.3, -0.95), V3(0, 1.4, -1.2), V3(0, 2.7, -1.08), V3(0, 3.55, -0.6), V3(0, 3.75, -0.15)]);
+  const arm = shadowed(new THREE.Mesh(new THREE.TubeGeometry(armCurve, 40, 0.26, 18), cream)); comp.add(arm);
+  const pillar = shadowed(rbox(0.5, 1.6, 0.5, cream, 0.1)); pillar.position.set(0, 1.25, -0.85); comp.add(pillar);
+  // 載物臺（會上下移動）
+  const stage = new THREE.Group(); comp.add(stage);
+  const stagePlate = shadowed(rbox(2.0, 0.12, 1.8, black, 0.05)); stagePlate.position.set(0, -0.06, 0.2); stage.add(stagePlate);
+  const stageArm = shadowed(rbox(0.36, 0.5, 0.7, black, 0.06)); stageArm.position.set(0, -0.25, -0.6); stage.add(stageArm);
+  const hole = cyl(0.16, 0.16, 0.13, new THREE.MeshStandardMaterial({ color: 0xfff3c4, emissive: 0xffe9a8, emissiveIntensity: 0.5 })); hole.position.set(0, -0.055, 0.25); stage.add(hole);
+  const diaph = new THREE.Group(); diaph.position.set(0, -0.2, 0.25); stage.add(diaph);
+  diaph.add(cyl(0.36, 0.36, 0.08, dark));
+  const lever = rbox(0.5, 0.05, 0.08, clay(0x8d8d8d)); lever.position.x = 0.4; diaph.add(lever);
+  // 玻片 + 玻片夾
+  const slide = new THREE.Group(); stage.add(slide);
+  const slideGlass = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.03, 0.62), glass({ opacity: 0.45, color: 0xe8f6ff })); slideGlass.position.y = 0.015; slide.add(slideGlass);
+  const specCv = document.createElement('canvas'); specCv.width = 256; specCv.height = 128;
+  const specTex = new THREE.CanvasTexture(specCv); specTex.colorSpace = THREE.SRGBColorSpace;
+  const specPlane = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.25), new THREE.MeshBasicMaterial({ map: specTex, transparent: true, depthWrite: false }));
+  specPlane.rotation.x = -Math.PI / 2; specPlane.position.y = 0.032; slide.add(specPlane);
+  const cover = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.01, 0.42), glass({ opacity: 0.35 })); cover.position.y = 0.036; slide.add(cover);
+  [-0.6, 0.6].forEach(x => { const c = shadowed(rbox(0.5, 0.04, 0.12, metal(0xd9dce2), 0.02)); c.position.set(x, 0.05, 0.05); stage.add(c); });
+  // 旋轉盤與物鏡
+  const RV_Y = 3.32;
+  const revolver = new THREE.Group(); revolver.position.set(0, RV_Y, -0.07); comp.add(revolver);
+  const rvDisk = shadowed(cyl(0.6, 0.5, 0.18, dark, 40)); revolver.add(rvDisk);
+  const OBJ = { 4: { L: 0.45, wd: 0.55, col: 0xe53935, dof: 0.05 }, 10: { L: 0.65, wd: 0.335, col: 0xfbc02d, dof: 0.02 }, 40: { L: 0.9, wd: 0.08, col: 0x1e88e5, dof: 0.0065 } };
+  const objOrder = [4, 10, 40];
+  const turret = new THREE.Group(); revolver.add(turret);
+  objOrder.forEach((m, i) => {
+    const o = OBJ[m]; const holder = new THREE.Group(); holder.rotation.y = i * TAU / 3; turret.add(holder);
+    const lens = new THREE.Group(); lens.position.set(0, -0.09, 0.32); holder.add(lens);
+    const body = shadowed(cyl(0.13, 0.1, o.L, metal(0xd5d8de))); body.position.y = -o.L / 2; lens.add(body);
+    const band = cyl(0.135, 0.135, 0.05, clay(o.col)); band.position.y = -o.L * 0.35; lens.add(band);
+    o.lens = lens;
+  });
+  // 鏡筒、目鏡
+  const tube = shadowed(cyl(0.22, 0.22, 1.05, cream)); tube.position.set(0, RV_Y + 0.62, 0.25); comp.add(tube);
+  const neck = shadowed(rbox(0.44, 0.5, 0.9, cream, 0.12)); neck.position.set(0, RV_Y + 0.35, -0.2); comp.add(neck);
+  const eyes = { 10: shadowed(cyl(0.17, 0.17, 0.45, black)), 15: shadowed(cyl(0.17, 0.17, 0.3, black)) };
+  Object.values(eyes).forEach(e => comp.add(e));
+  // 調節輪（左右兩側）
+  const knobs = [];
+  [-1, 1].forEach(s => {
+    const k = new THREE.Group(); k.position.set(s * 0.35, 1.3, -0.85); k.rotation.z = Math.PI / 2; comp.add(k);
+    const big = shadowed(cyl(0.34, 0.34, 0.14, dark, 28)); big.position.y = -s * 0.12; k.add(big);
+    const small = shadowed(cyl(0.2, 0.2, 0.12, clay(0x7a7f87), 24)); small.position.y = -s * 0.27; k.add(small);
+    for (let i = 0; i < 12; i++) { const r = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.15, 0.04), dark); const a = i / 12 * TAU; r.position.set(Math.cos(a) * 0.35, -s * 0.12, Math.sin(a) * 0.35); big.parent.add(r); r.userData.big = true; }
+    knobs.push({ k, big, small });
+  });
+
+  /* ----- 解剖顯微鏡 ----- */
+  const sBase = shadowed(rbox(2.6, 0.4, 2.4, cream, 0.16)); sBase.position.set(0, 0.2, 0.2); ster.add(sBase);
+  const plate = cyl(0.75, 0.75, 0.04, new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff8e0, emissiveIntensity: 0.25 }), 40); plate.position.set(0, 0.42, 0.3); ster.add(plate);
+  const sClips = [-0.55, 0.55].map(x => { const c = shadowed(rbox(0.12, 0.04, 0.45, metal(0xd9dce2), 0.02)); c.position.set(x, 0.46, 0.15); ster.add(c); return c; });
+  const sPost = shadowed(cyl(0.12, 0.12, 3.4, metal(0xdfe2e7))); sPost.position.set(0, 1.9, -0.75); ster.add(sPost);
+  const sHead = new THREE.Group(); ster.add(sHead);
+  const sCarrier = shadowed(rbox(0.5, 0.5, 0.6, cream, 0.1)); sCarrier.position.set(0, 0, -0.5); sHead.add(sCarrier);
+  const sBody = shadowed(rbox(1.0, 0.7, 0.9, cream, 0.2)); sBody.position.set(0, 0, 0.15); sHead.add(sBody);
+  const sZoom = shadowed(cyl(0.42, 0.42, 0.16, dark, 32)); sZoom.position.set(0, -0.32, 0.25); sHead.add(sZoom);
+  const sObj = shadowed(cyl(0.3, 0.24, 0.35, black, 24)); sObj.position.set(0, -0.55, 0.3); sHead.add(sObj);
+  [-1, 1].forEach(s => { const e = shadowed(cyl(0.12, 0.13, 0.6, black, 20)); e.position.set(s * 0.22, 0.55, 0.0); e.rotation.x = -0.6; sHead.add(e); });
+  const sKnob = shadowed(cyl(0.3, 0.3, 0.16, dark, 28)); sKnob.rotation.z = Math.PI / 2; sKnob.position.set(0.38, 0, -0.5); sHead.add(sKnob);
+  const sLampArm = shadowed(cyl(0.04, 0.04, 1.2, metal())); sLampArm.position.set(0.7, 1.55, 0.0); sLampArm.rotation.z = 0.7; ster.add(sLampArm);
+  const sLamp = cyl(0.12, 0.2, 0.22, new THREE.MeshStandardMaterial({ color: 0xfff6d8, emissive: 0xffe9a8, emissiveIntensity: 0.7 })); sLamp.position.set(0.95, 1.1, 0.15); sLamp.rotation.z = 0.9; ster.add(sLamp);
+  const beetle3d = new THREE.Group(); beetle3d.position.set(0, 0.47, 0.3); ster.add(beetle3d);
+  { const b = sphere(0.14, clay(0x2e7d32, { metalness: 0.5, roughness: 0.25, clearcoat: 1 })); b.scale.set(0.8, 0.45, 1.2); beetle3d.add(b); const h = sphere(0.07, clay(0x1b5e20, { metalness: 0.5, roughness: 0.3 })); h.position.z = 0.18; beetle3d.add(h); }
+  const slide2 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.03, 0.42), glass({ opacity: 0.45, color: 0xe8f6ff })); slide2.position.set(0, 0.46, 0.3); ster.add(slide2);
+  const slide2Spec = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.25), specPlane.material); slide2Spec.rotation.x = -Math.PI / 2; slide2Spec.position.set(0, 0.48, 0.3); ster.add(slide2Spec);
+
+  /* ----- 構造名稱 ----- */
+  const P = (tabk, txt, obj, off) => { const L = addLabel('scope', txt, 'part', off, obj); L.mode = tabk; return L; };
+  const parts = [
+    P('comp', '目鏡', comp, V3(0.75, 4.75, 0.25)), P('comp', '鏡筒', comp, V3(-0.65, 3.95, 0.25)), P('comp', '旋轉盤', revolver, V3(-0.95, 0.05, 0)),
+    P('comp', '物鏡', comp, V3(0.75, 2.85, 0.6)), P('comp', '鏡臂', comp, V3(0, 2.75, -1.55)), P('comp', '載物臺', stage, V3(-1.35, 0, 0.5)),
+    P('comp', '玻片夾', stage, V3(1.15, 0.2, 0.55)), P('comp', '光圈', stage, V3(1.15, -0.25, 0.3)), P('comp', '粗調節輪', comp, V3(-0.95, 1.3, -0.85)),
+    P('comp', '細調節輪', comp, V3(1.05, 1.3, -0.85)), P('comp', '鏡座', comp, V3(0.9, 0.2, 1.4)), P('comp', '光源', comp, V3(-0.75, 0.55, 0.9)),
+    P('ster', '目鏡', sHead, V3(0, 1.05, 0.15)), P('ster', '倍率調整輪', sHead, V3(-0.95, -0.3, 0.25)), P('ster', '物鏡', sHead, V3(0.7, -0.6, 0.35)),
+    P('ster', '調節輪', sHead, V3(0.95, 0.15, -0.5)), P('ster', '載物板', ster, V3(-1.15, 0.5, 0.6)), P('ster', '燈源', ster, V3(1.45, 1.05, 0.15)),
+    P('ster', '鏡座', ster, V3(0.9, 0.2, 1.4)), P('ster', '固定夾', ster, V3(-0.8, 0.55, -0.2))
+  ];
+
+  /* ----- 狀態 ----- */
+  const S = { mode: 'comp', spec: 'ap', eye: 10, obj: 4, sobj: 2, coarse: 60, fine: 0, ap: 55, off: { x: 0.8, y: 0.5 }, turret: 0, warn: '', warnT: 0, done: {}, fineTouched: false };
+  const SLIDE_SCALE = 0.05;   // 1 mm 在 3D 模型中移動的距離
+  const hOf = () => clamp(S.coarse / 200 + (S.mode === 'comp' ? S.fine * 0.0005 : 0), 0, 1.05);
+  const stageTop = () => 1.2 + 1.2 * hOf();
+  const slideTop = () => stageTop() + 0.03;
+  const objBottom = m => RV_Y - 0.09 - OBJ[m].L;
+  const focusErr = () => S.mode === 'comp' ? (slideTop() - (objBottom(S.obj) - OBJ[S.obj].wd)) / OBJ[S.obj].dof : (hOf() - 0.55) / (S.sobj === 2 ? 0.07 : 0.04);
+  const field = () => S.mode === 'comp' ? (S.eye === 10 ? 18 : 13) / S.obj : 20 / S.sobj;
+  const totalMag = () => S.mode === 'comp' ? S.eye * S.obj : 10 * S.sobj;
+  const warn = msg => { S.warn = msg; S.warnT = 3.2; };
+
+  // 草履蟲（玻片座標，mm）
+  const paras = [[0.6, -0.5], [-0.9, 0.7], [1.3, 1.0], [-1.4, -1.1]].map(([x, y], i) => ({ x, y, a: i * 1.7, v: 0.035 + i * 0.008, wig: i }));
+  const target = () => S.spec === 'ap' ? { x: 0, y: 0 } : S.spec === 'para' ? paras[0] : { x: 0, y: 0 };
+
+  /* ----- 目鏡視野（2D canvas） ----- */
+  const cv = $('eyeCv'), cx = cv.getContext('2d'), SZ = cv.width;
+  const off = document.createElement('canvas'); off.width = off.height = SZ; const ox = off.getContext('2d');
+  const small = document.createElement('canvas'); small.width = small.height = SZ; const sx = small.getContext('2d');
+  const dust = Array.from({ length: 40 }, () => [(rnd() - 0.5) * 9, (rnd() - 0.5) * 9, 0.004 + rnd() * 0.02]);
+  function drawSpecimen(g, k, opaqueBlock) {
+    for (const [x, y, r] of dust) { g.fillStyle = 'rgba(90,80,70,.35)'; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); }
+    if (S.spec === 'ap') {
+      g.save(); g.scale(1, -1);
+      g.font = 'italic 900 2.2px "Comic Sans MS", "Segoe Print", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      if (S.mode === 'ster') { g.fillStyle = 'rgba(0,0,0,.25)'; g.fillText('ap', 0.06, 0.08); }
+      g.fillStyle = S.mode === 'ster' ? '#1f3fb0' : 'rgba(25,40,120,.88)'; g.fillText('ap', 0, 0);
+      g.restore();
+    } else if (S.spec === 'para') {
+      g.fillStyle = 'rgba(160,210,230,.18)'; g.beginPath(); g.arc(0, 0, 3.2, 0, TAU); g.fill();
+      for (const p of paras) {
+        g.save(); g.translate(p.x, p.y); g.rotate(p.a);
+        const Lp = 0.22, Wp = 0.07;
+        g.beginPath(); g.moveTo(Lp / 2, 0);
+        g.bezierCurveTo(Lp / 2, Wp * 0.8, -Lp / 2, Wp * 0.9, -Lp / 2, 0);
+        g.bezierCurveTo(-Lp / 2, -Wp * 0.9, -Lp * 0.05, -Wp * 0.5, 0, -Wp * 0.35);
+        g.bezierCurveTo(Lp * 0.15, -Wp * 0.8, Lp / 2, -Wp * 0.8, Lp / 2, 0);
+        g.fillStyle = 'rgba(150,190,110,.55)'; g.fill();
+        g.lineWidth = 0.006; g.strokeStyle = 'rgba(60,90,40,.8)'; g.stroke();
+        if (k > 600) { g.strokeStyle = 'rgba(60,90,40,.5)'; g.lineWidth = 0.002; for (let i = 0; i < 28; i++) { const a = i / 28 * TAU, ex = Math.cos(a) * Lp / 2, ey = Math.sin(a) * Wp * 0.8; g.beginPath(); g.moveTo(ex, ey); g.lineTo(ex * 1.08 + Math.sin(wall * 20 + i) * 0.004, ey * 1.25); g.stroke(); } }
+        g.fillStyle = 'rgba(80,120,60,.5)'; [[0.04, 0.01, 0.014], [-0.05, -0.01, 0.012], [0, 0.015, 0.008]].forEach(([a, b, r]) => { g.beginPath(); g.arc(a, b, r, 0, TAU); g.fill(); });
+        g.restore();
+      }
+    } else {
+      g.save(); g.rotate(Math.PI / 2);
+      const body = (fill, stroke) => {
+        g.lineWidth = 0.12; g.strokeStyle = stroke;
+        for (const s of [-1, 1]) for (const y of [-0.9, 0.2, 1.2]) { g.beginPath(); g.moveTo(s * 1.2, y); g.lineTo(s * 2.3, y + 0.5 * Math.sign(y + 0.3)); g.lineTo(s * 2.7, y + 1.1 * Math.sign(y + 0.3)); g.stroke(); }
+        for (const s of [-1, 1]) { g.beginPath(); g.moveTo(s * 0.3, 2.9); g.lineTo(s * 0.9, 3.7); g.stroke(); }
+        g.fillStyle = fill; g.beginPath(); g.ellipse(0, -0.6, 1.5, 2.3, 0, 0, TAU); g.fill();
+        g.beginPath(); g.ellipse(0, 1.85, 1.05, 0.75, 0, 0, TAU); g.fill();
+        g.beginPath(); g.ellipse(0, 2.75, 0.55, 0.4, 0, 0, TAU); g.fill();
+      };
+      if (opaqueBlock) body('rgba(15,15,15,.96)', 'rgba(15,15,15,.96)');
+      else {
+        body('#2e7d32', '#3e2f1c');
+        const grd = g.createLinearGradient(-1.5, 0, 1.5, 0); grd.addColorStop(0, '#1b5e20'); grd.addColorStop(0.45, '#66bb6a'); grd.addColorStop(1, '#1b5e20');
+        g.fillStyle = grd; g.beginPath(); g.ellipse(0, -0.6, 1.45, 2.25, 0, 0, TAU); g.fill();
+        g.strokeStyle = 'rgba(10,40,10,.7)'; g.lineWidth = 0.06; g.beginPath(); g.moveTo(0, 1.6); g.lineTo(0, -2.85); g.stroke();
+        g.fillStyle = 'rgba(255,255,255,.35)'; g.beginPath(); g.ellipse(-0.6, -0.2, 0.25, 1.1, 0.1, 0, TAU); g.fill(); g.beginPath(); g.ellipse(0.6, -0.2, 0.25, 1.1, -0.1, 0, TAU); g.fill();
+        g.fillStyle = '#1b5e20'; g.beginPath(); g.ellipse(0, 1.85, 1.0, 0.7, 0, 0, TAU); g.fill();
+        g.fillStyle = 'rgba(255,255,255,.3)'; g.beginPath(); g.ellipse(-0.3, 1.95, 0.35, 0.18, 0, 0, TAU); g.fill();
+      }
+      g.restore();
+    }
+  }
+  function drawView() {
+    const F = field(), k = SZ / F;
+    const isComp = S.mode === 'comp';
+    const opaque = S.spec === 'beetle';
+    let light = isComp ? S.ap / 100 * 1.9 * { 4: 1, 10: 0.72, 40: 0.45 }[S.obj] * (S.eye === 10 ? 1 : 0.85) : S.ap / 100 * 1.6 * (S.sobj === 2 ? 1 : 0.85);
+    const lv = clamp(light, 0, 1);
+    // 背景：複式＝透射光；解剖＝白色載物板反光
+    const bg = isComp ? `rgb(${255 * lv | 0},${246 * lv | 0},${220 * lv | 0})` : `rgb(${236 * lv | 0},${232 * lv | 0},${224 * lv | 0})`;
+    ox.setTransform(1, 0, 0, 1, 0, 0); ox.fillStyle = bg; ox.fillRect(0, 0, SZ, SZ);
+    const blur = Math.abs(focusErr());
+    if (blur < 14) {
+      ox.save(); ox.globalAlpha = clamp(1.25 - blur / 14, 0, 1);
+      ox.translate(SZ / 2, SZ / 2); ox.scale(k, -k);
+      if (isComp) ox.rotate(Math.PI);          // 複式顯微鏡：上下顛倒、左右相反
+      ox.translate(S.off.x, S.off.y);
+      drawSpecimen(ox, k, isComp && opaque);
+      ox.restore();
+    }
+    // 失焦：縮小再放大 → 模糊
+    cx.setTransform(1, 0, 0, 1, 0, 0); cx.imageSmoothingEnabled = true;
+    if (blur > 0.6) {
+      const ss = Math.max(6, Math.round(SZ / (1 + blur * 1.4)));
+      sx.clearRect(0, 0, SZ, SZ); sx.imageSmoothingEnabled = true; sx.drawImage(off, 0, 0, ss, ss);
+      cx.drawImage(small, 0, 0, ss, ss, 0, 0, SZ, SZ);
+    } else cx.drawImage(off, 0, 0);
+    if (light < 1) { cx.fillStyle = `rgba(0,0,0,${(1 - light) * 0.55})`; cx.fillRect(0, 0, SZ, SZ); }
+    if (light > 1.35) { cx.fillStyle = `rgba(255,252,240,${clamp((light - 1.35) * 0.9, 0, 0.75)})`; cx.fillRect(0, 0, SZ, SZ); }
+    const vg = cx.createRadialGradient(SZ / 2, SZ / 2, SZ * 0.3, SZ / 2, SZ / 2, SZ * 0.5);
+    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.55)');
+    cx.fillStyle = vg; cx.fillRect(0, 0, SZ, SZ);
+    // 指針（中央十字）
+    cx.strokeStyle = 'rgba(0,0,0,.18)'; cx.lineWidth = 1; cx.beginPath(); cx.moveTo(SZ / 2 - 10, SZ / 2); cx.lineTo(SZ / 2 + 10, SZ / 2); cx.moveTo(SZ / 2, SZ / 2 - 10); cx.lineTo(SZ / 2, SZ / 2 + 10); cx.stroke();
+    return { light, blur, F };
+  }
+  function drawSlideTex() {
+    const g = specCv.getContext('2d'); g.clearRect(0, 0, 256, 128);
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    if (S.spec === 'ap') { g.font = 'italic 900 70px "Comic Sans MS", sans-serif'; g.fillStyle = 'rgba(25,40,120,.9)'; g.fillText('ap', 128, 64); }
+    else if (S.spec === 'para') { g.fillStyle = 'rgba(150,200,230,.6)'; g.beginPath(); g.ellipse(128, 64, 60, 44, 0, 0, TAU); g.fill(); }
+    specTex.needsUpdate = true;
+  }
+
+  /* ----- 介面 ----- */
+  const seg = (sel, key, fn) => document.querySelectorAll(sel).forEach(b => b.addEventListener('click', () => { document.querySelectorAll(sel).forEach(x => x.classList.toggle('on', x === b)); fn(b.dataset[key]); }));
+  seg('.mbtn', 'm', m => { S.mode = m; S.warn = ''; syncUI(); goView(TABS.scope.cam()); });
+  seg('.sbtn', 's', s => { S.spec = s; drawSlideTex(); syncUI(); });
+  seg('.ebtn', 'e', e => { S.eye = Number(e); });
+  seg('.zbtn', 'z', z => { S.sobj = Number(z); });
+  document.querySelectorAll('.obtn').forEach(b => b.addEventListener('click', () => {
+    const m = Number(b.dataset.o);
+    // 換物鏡時檢查會不會撞到玻片
+    if (slideTop() > objBottom(m) - 0.004) { warn(`⚠️ 轉到 ${m}× 會撞到玻片！先把載物臺降低一點。`); return; }
+    S.obj = m; document.querySelectorAll('.obtn').forEach(x => x.classList.toggle('on', x === b));
+    if (m > 4) { const t = target(), d = Math.hypot(t.x + S.off.x, t.y + S.off.y); if (d > field() * 0.5) warn('🔍 換高倍後找不到標本？要先在低倍時把它移到視野正中央！'); }
+  }));
+  const coarse = $('coarse'), fine = $('fine'), aper = $('aper');
+  coarse.addEventListener('input', () => {
+    const v = Number(coarse.value);
+    if (S.mode === 'comp' && S.obj === 40) { coarse.value = S.coarse; warn('⚠️ 使用高倍物鏡時，不可以轉動粗調節輪，只能用細調節輪！'); return; }
+    const prev = S.coarse; S.coarse = v;
+    if (S.mode === 'comp' && slideTop() > objBottom(S.obj) - 0.004) { S.coarse = prev; coarse.value = prev; warn('⚠️ 玻片快要碰到物鏡了！不能再往上。'); }
+  });
+  fine.addEventListener('input', () => {
+    const prev = S.fine; S.fine = Number(fine.value); S.fineTouched = true;
+    if (slideTop() > objBottom(S.obj) - 0.004) { S.fine = prev; fine.value = prev; warn('⚠️ 玻片快要碰到物鏡了！'); }
+  });
+  aper.addEventListener('input', () => { S.ap = Number(aper.value); });
+  let mv = null, mvTimer = null;
+  document.querySelectorAll('.dpad button').forEach(b => {
+    const start = e => { e.preventDefault(); mv = b.dataset.d.split(',').map(Number); b.classList.add('on'); };
+    const stop = () => { mv = null; b.classList.remove('on'); };
+    b.addEventListener('pointerdown', start); b.addEventListener('pointerup', stop); b.addEventListener('pointerleave', stop); b.addEventListener('pointercancel', stop);
+  });
+  function syncUI() {
+    const c = S.mode === 'comp';
+    $('compCtl').hidden = !c; $('sterCtl').hidden = c; $('fineBox').hidden = !c;
+    setHTML('coarseLab', c ? '粗調節輪（載物臺升降）' : '調節輪（鏡頭升降）');
+    setHTML('aperLab', c ? '光圈（進光量）' : '燈源亮度');
+    comp.visible = c; ster.visible = !c;
+  }
+
+  /* ----- 每一幀 ----- */
+  function update(dt) {
+    $('scopeView').hidden = false;
+    if (mv) { const step = field() * 0.25 * dt; S.off.x = clamp(S.off.x + mv[0] * step, -4, 4); S.off.y = clamp(S.off.y + mv[1] * step, -4, 4); }
+    // 草履蟲游動
+    for (const p of paras) {
+      p.a += Math.sin(wall * 0.7 + p.wig * 2) * dt * 0.6;
+      p.x += Math.cos(p.a) * p.v * dt; p.y += Math.sin(p.a) * p.v * dt;
+      const r = Math.hypot(p.x, p.y); if (r > 2.2) { p.a = Math.atan2(-p.y, -p.x) + (rnd() - 0.5); }
+    }
+    // 3D 模型
+    stage.position.y = stageTop();
+    slide.position.set(S.off.x * SLIDE_SCALE, 0, 0.25 - S.off.y * SLIDE_SCALE);
+    const want = objOrder.indexOf(S.obj) * TAU / 3;
+    S.turret += (want - S.turret) * Math.min(1, dt * 6);
+    turret.rotation.y = -S.turret;
+    eyes[10].visible = S.eye === 10; eyes[15].visible = S.eye === 15;
+    eyes[10].position.set(0, RV_Y + 1.36, 0.25); eyes[15].position.set(0, RV_Y + 1.29, 0.25);
+    knobs.forEach(n => { n.big.rotation.y = S.coarse * 0.05; n.small.rotation.y = S.fine * 0.08; });
+    lever.parent.rotation.y = (S.ap / 100 - 0.5) * 1.6;
+    lamp.material.emissiveIntensity = 0.2 + S.ap / 100; sLamp.material.emissiveIntensity = 0.2 + S.ap / 100;
+    sHead.position.set(0, 2.25 + (1 - hOf()) * 0.9, 0.3);
+    sZoom.rotation.y = S.sobj === 2 ? 0 : 1.2;
+    beetle3d.visible = S.spec === 'beetle' && S.mode === 'ster'; slide2.visible = slide2Spec.visible = S.spec !== 'beetle';
+    sClips.forEach(c => { c.visible = S.spec !== 'beetle'; });
+    specPlane.visible = S.spec !== 'beetle';
+    const showParts = $('partLab').checked;
+    parts.forEach(L => { L.show = showParts && L.mode === S.mode; });
+    // 目鏡視野
+    const v = drawView();
+    const t = target(), dist = Math.hypot(t.x + S.off.x, t.y + S.off.y), centered = dist < v.F * 0.12, inView = dist < v.F * 0.5;
+    const sharp = v.blur < 0.7, seen = v.blur < 3;
+    // 操作步驟
+    const D = S.done;
+    let steps;
+    if (S.mode === 'comp') {
+      if (S.obj === 4 && hOf() >= 0.93) D.c2 = true;
+      if (D.c2 && S.obj === 4 && seen) D.c3 = true;
+      if (D.c3 && sharp && S.fineTouched) D.c4 = true;
+      if (D.c4 && centered && sharp) D.c5 = true;
+      if (D.c5 && S.obj > 4 && sharp && inView) D.c6 = true;
+      steps = [['c1', '① 轉旋轉盤，先用低倍物鏡（4×）', true], ['c2', '② 從側面看：粗調節輪讓載物臺上升到最靠近物鏡'], ['c3', '③ 眼睛看目鏡：粗調節輪慢慢讓載物臺下降，直到看見影像'], ['c4', '④ 換細調節輪，把影像調到最清楚'], ['c5', '⑤ 移動玻片，把要放大的部位移到視野中央'], ['c6', '⑥ 轉成高倍物鏡，只用細調節輪對焦']];
+    } else {
+      if (S.sobj === 2 && sharp) D.s2 = true;
+      if (D.s2 && S.sobj === 4 && sharp) D.s3 = true;
+      steps = [['s1', '① 先用低倍（物鏡 2×）觀察', true], ['s2', '② 轉調節輪，直到影像清楚'], ['s3', '③ 轉倍率調整輪換成高倍（4×），再對焦']];
+    }
+    let nowSet = false;
+    setHTML('msSteps', '<b>📋 操作步驟</b>' + steps.map(([id, txt, auto]) => {
+      const ok = auto || D[id]; let cls = ok ? 'done' : '';
+      if (!ok && !nowSet) { cls = 'now'; nowSet = true; }
+      return `<div class="${cls}">${ok ? '✔' : '○'} ${txt}</div>`;
+    }).join(''));
+    const isComp = S.mode === 'comp';
+    setHTML('coarseV', isComp ? `載物臺 ${Math.round(hOf() * 100)}` : `鏡頭 ${Math.round((1 - hOf()) * 100)}`);
+    setHTML('fineV', S.fine > 0 ? '+' + S.fine : String(S.fine));
+    setHTML('aperV', S.ap + '%');
+    const mag = totalMag();
+    setHTML('msStat', `總放大倍率 ＝ 目鏡 × 物鏡 ＝ <b>${isComp ? S.eye : 10} × ${isComp ? S.obj : S.sobj} ＝ <span class="o">${mag} 倍</span></b><br>成像：${isComp ? '<b class="r">上下顛倒、左右相反</b>（反像）・平面' : '<b class="g">與標本方向相同</b>（正像）・立體'}<br>視野直徑約 ${v.F.toFixed(v.F < 1 ? 2 : 1)} mm${isComp ? '・倍率越高，視野越小、越暗' : ''}`);
+    setHTML('scopeCap', `${isComp ? '複式' : '解剖'}顯微鏡・<b>${mag} 倍</b><br>${!seen ? '影像模糊，轉動調節輪對焦' : v.light < 0.45 ? '視野太暗，調大' + (isComp ? '光圈' : '燈源') : v.light > 1.5 ? '視野太亮，調小' + (isComp ? '光圈' : '燈源') : !inView ? '標本不在視野裡，移動玻片找找看' : sharp ? '清楚！' : '再用' + (isComp ? '細' : '') + '調節輪微調'}`);
+    // 說明列
+    if (S.warnT > 0) { S.warnT -= dt; setCap(`<small>注意</small><span class="warn">${S.warn}</span>`); }
+    else if (isComp && S.spec === 'beetle') setCap('<small>複式顯微鏡</small>金龜子不透光，光線穿不過去，只看到<b class="red">黑影</b>！<br>複式顯微鏡只能觀察<b>透光、很薄</b>的標本 → 改用解剖顯微鏡');
+    else if (isComp && S.spec === 'para' && !inView && v.blur < 3) setCap('<small>移動玻片</small>草履蟲跑出視野了！影像是<b>上下顛倒、左右相反</b>的，<br>草履蟲往哪邊跑出視野，玻片就要往<b>同一個方向</b>推');
+    else if (isComp) setCap(`<small>複式顯微鏡・${mag} 倍</small>按住「推玻片」箭頭：玻片往右推，視野中的影像卻往<b class="red">左</b>移動！`);
+    else setCap(`<small>解剖顯微鏡・${mag} 倍</small>看到的是<b class="grn">正像</b>而且有<b>立體感</b>，可以觀察不透光、有厚度的標本`);
+  }
+  syncUI(); drawSlideTex();
+  return { group, update, S, focusErr, field, hOf, slideTop, objBottom };
+})();
+function updateScope(dt) { MS.update(dt); }
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  life: { group: LF.group, cam: () => ({ pos: [0, 4.6, 10.5], target: [0, 1.7, 0], fitW: 8.6 }), update: updateLife },
+  sci: { group: SC.group, cam: () => ({ pos: [0, 3.4, 10], target: [0, 1.5, 0], fitW: 8.4 }), update: updateSci },
+  scope: { group: MS.group, cam: () => ({ pos: [5.2, 4.6, 7.4], target: [-1.0, 2.3, 0], fitW: window.MobileView?.isMobile() ? 4.2 : 9.5 }), update: updateScope }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  $('scopeView').hidden = t !== 'scope';
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, LF, SC, MS, camera, controls, renderer, scene, placeLabels };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'life';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+<script src="goals.js" defer></script>
+</body>
+</html>
