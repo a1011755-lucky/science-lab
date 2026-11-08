@@ -502,9 +502,9 @@ function updateCyc(dt) { CY.update(dt); }
    Tab 切換、鏡頭
    ========================================================= */
 const TABS = {
-  pop: { group: PO.group, cam: () => ({ pos: [0, 6.5, 8], target: [0, 0.4, 0], fitW: window.innerWidth < window.innerHeight ? 8.5 : 9.5 }), update: updatePop },
-  ene: { group: EN.group, cam: () => ({ pos: [0.6, 3.4, 10], target: [0.3, 1.7, 0], fitW: window.innerWidth < window.innerHeight ? 10 : 12 }), update: updateEne },
-  cyc: { group: CY.group, cam: () => ({ pos: [0, 3.6, 10.5], target: [0, 2.0, 0], fitW: window.innerWidth < window.innerHeight ? 9.5 : 10.5 }), update: updateCyc }
+  pop: { group: PO.group, cam: () => ({ pos: [0, 6.5, 8], target: [0, 0.4, 0], fitW: window.innerWidth < window.innerHeight ? 9.6 : 9.5 }), update: updatePop },
+  ene: { group: EN.group, cam: () => ({ pos: [0.6, 3.4, 10], target: [0.3, 1.7, 0], fitW: window.innerWidth < window.innerHeight ? 12 : 12 }), update: updateEne },
+  cyc: { group: CY.group, cam: () => ({ pos: [0, 3.6, 10.5], target: [0, 2.0, 0], fitW: window.innerWidth < window.innerHeight ? 10.6 : 10.5 }), update: updateCyc }
 };
 function setTab(t) {
   tab = t;

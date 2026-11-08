@@ -559,9 +559,9 @@ function updateGrp(dt) { GP.update(dt); }
    Tab 切換、鏡頭
    ========================================================= */
 const TABS = {
-  rank: { group: RK.group, cam: () => ({ pos: [0.8, 4.0, 10.5], target: [0.6, 2.0, 0], fitW: window.innerWidth < window.innerHeight ? 10 : 12.8 }), update: updateRank },
-  king: { group: KG.group, cam: () => ({ pos: [0, 4.4, 9.5], target: [0, 1.4, 0], fitW: window.innerWidth < window.innerHeight ? 8 : 9.5 }), update: updateKing },
-  grp: { group: GP.group, cam: () => ({ pos: [0, 5.2, 9.5], target: [0, 1.5, 0.4], fitW: window.innerWidth < window.innerHeight ? 9 : 10.5 }), update: updateGrp }
+  rank: { group: RK.group, cam: () => ({ pos: [0.8, 4.0, 10.5], target: [0.6, 2.0, 0], fitW: window.innerWidth < window.innerHeight ? 12.5 : 12.8 }), update: updateRank },
+  king: { group: KG.group, cam: () => ({ pos: [0, 4.4, 9.5], target: [0, 1.4, 0], fitW: window.innerWidth < window.innerHeight ? 9.6 : 9.5 }), update: updateKing },
+  grp: { group: GP.group, cam: () => ({ pos: [0, 5.2, 9.5], target: [0, 1.5, 0.4], fitW: window.innerWidth < window.innerHeight ? 10.2 : 10.5 }), update: updateGrp }
 };
 function setTab(t) {
   tab = t;

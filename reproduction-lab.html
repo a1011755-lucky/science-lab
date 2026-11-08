@@ -599,7 +599,7 @@ function updateFlw(dt) { FL.update(dt); }
    ========================================================= */
 const TABS = {
   asx: { group: AX.group, cam: () => ({ pos: [0, 3.6, 8.5], target: [0, 1.4, 0], fitW: window.innerWidth < window.innerHeight ? 5.6 : 6.5 }), update: updateAsx },
-  ani: { group: AN.group, cam: () => ({ pos: [0, 3.4, 10], target: [0, 1.6, 0], fitW: window.innerWidth < window.innerHeight ? 9.5 : 10 }), update: updateAni },
+  ani: { group: AN.group, cam: () => ({ pos: [0, 3.4, 10], target: [0, 1.6, 0], fitW: window.innerWidth < window.innerHeight ? 7.6 : 10 }), update: updateAni },
   flw: { group: FL.group, cam: () => ({ pos: [1.2, 3.0, 5.6], target: [0, 1.7, 0], fitW: window.innerWidth < window.innerHeight ? 3.6 : 4.6 }), update: updateFlw }
 };
 function setTab(t) {

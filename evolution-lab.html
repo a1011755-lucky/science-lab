@@ -380,8 +380,8 @@ const FO = (() => {
     const lab = addLabel('fos', `${l.n}・${l.age}`, 'small', V3(-W / 2 - 1.2, y0 + H / 2, D / 2));
     return { g, b, fg, y0, lab };
   });
-  const lF = addLabel('fos', '', 'yel', V3(0, 0, 0));
-  const lOld = addLabel('fos', '⬆ 較新　⬇ 較古老', 'small', V3(-W / 2 - 1.2, 3.95, D / 2));
+  const lF = addLabel('fos', '', 'yel', V3(0, 0, 0)); let lOldRef;
+  lOldRef = addLabel('fos', '⬆ 較新　⬇ 較古老', 'small', V3(-W / 2 - 1.2, 3.95, D / 2));
   const ITEMS = [['恐龍骨骼化石', 1, '古代生物遺體經漫長地質作用形成'], ['琥珀裡的昆蟲', 1, '古代昆蟲被樹脂包住，經長時間形成'], ['恐龍的足跡（印痕）', 1, '古代生物的<b>活動痕跡</b>也算化石'], ['永凍層裡的猛瑪象', 1, '被冰雪保存很久的古代生物遺體'], ['冷凍庫裡的豬肉', 0, '沒有經過長時間的地質作用，只是遺體'], ['午餐吃剩的文蛤殼', 0, '現代生物的殘骸，不是化石']];
   $('fqBtns').innerHTML = ITEMS.map((x, i) => `<button class="btn" data-i="${i}">${x[0]}</button>`).join('');
   document.querySelectorAll('#fqBtns .btn').forEach(b => b.addEventListener('click', () => { const x = ITEMS[Number(b.dataset.i)]; b.classList.add(x[1] ? 'yes' : 'no'); setHTML('fqRes', `<b>${x[0]}</b>：${x[1] ? '✔ 是化石' : '✘ 不是化石'}<br>${x[2]}`); }));
@@ -392,6 +392,7 @@ const FO = (() => {
     layers.forEach((Ly, i) => {
       const gone = smooth(i + 0.5, i + 1, d);
       Ly.g.position.y = gone * 2.5; Ly.b.material.opacity = 1 - gone; Ly.g.visible = gone < 0.99; Ly.lab.show = gone < 0.5;
+      Ly.lab.pos.set(window.innerWidth < window.innerHeight ? 0 : -W / 2 - 1.2, Ly.y0 + H / 2, D / 2 + 0.05);
       const exposed = i === 0 ? 1 : smooth(i - 0.5, i, d);
       Ly.fg.visible = exposed > 0.05 && gone < 0.9; Ly.fg.position.y = Ly.y0 + H + 0.02 + 2.5 * gone; Ly.fg.scale.setScalar(Math.max(0.01, exposed));
     });
@@ -542,7 +543,7 @@ function updateSel(dt) { SE.update(dt); }
    Tab 切換、鏡頭
    ========================================================= */
 const TABS = {
-  fos: { group: FO.group, cam: () => ({ pos: [-1.2, 4.4, 10.5], target: [-0.6, 2.0, 0], fitW: window.innerWidth < window.innerHeight ? 9 : 11.5 }), update: updateFos },
+  fos: { group: FO.group, cam: () => window.innerWidth < window.innerHeight ? { pos: [0, 4.4, 10.5], target: [0, 2.0, 0], fitW: 7.6 } : { pos: [-1.2, 4.4, 10.5], target: [-0.6, 2.0, 0], fitW: 11.5 }, update: updateFos },
   wha: { group: WH.group, cam: () => ({ pos: [1.5, 3.4, 8.5], target: [0, 1.9, 0], fitW: window.innerWidth < window.innerHeight ? 6.5 : 9.5 }), update: updateWha },
   sel: { group: SE.group, cam: () => ({ pos: [0, 3.4, 9.5], target: [0, 3.0, 0], fitW: window.innerWidth < window.innerHeight ? 5 : 7.5 }), update: updateSel }
 };

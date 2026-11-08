@@ -478,9 +478,9 @@ function updateBin(dt) { BN.update(dt); }
    Tab 切換、鏡頭
    ========================================================= */
 const TABS = {
-  div: { group: DV.group, cam: () => ({ pos: [0, 6.0, 8.5], target: [0, 0.6, 0], fitW: window.innerWidth < window.innerHeight ? 9 : 10.5 }), update: updateDiv },
-  mag: { group: MG.group, cam: () => ({ pos: [0, 3.4, 10], target: [0.4, 1.6, 0], fitW: window.innerWidth < window.innerHeight ? 10.5 : 12.8 }), update: updateMag },
-  bin: { group: BN.group, cam: () => ({ pos: [0, 3.4, 9.5], target: [0, 1.6, 0], fitW: window.innerWidth < window.innerHeight ? 10 : 11 }), update: updateBin }
+  div: { group: DV.group, cam: () => ({ pos: [0, 6.0, 8.5], target: [0, 0.6, 0], fitW: window.innerWidth < window.innerHeight ? 10.6 : 10.5 }), update: updateDiv },
+  mag: { group: MG.group, cam: () => ({ pos: [0, 3.4, 10], target: [0.4, 1.6, 0], fitW: window.innerWidth < window.innerHeight ? 11.5 : 12.8 }), update: updateMag },
+  bin: { group: BN.group, cam: () => ({ pos: [0, 3.4, 9.5], target: [0, 1.6, 0], fitW: window.innerWidth < window.innerHeight ? 10.6 : 11 }), update: updateBin }
 };
 function setTab(t) {
   tab = t;
