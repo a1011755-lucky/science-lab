@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>反應速率與化學平衡實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+  .tabs.three .tab { font-size: .74rem; padding: 9px 2px; }
+  .blink { animation: blink 0.9s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+  .btn.ebtn[data-e="0"].on { background: #1e6aa8; } .btn.ebtn[data-e="1"].on { background: #c62828; }
+  .sst { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+  .sst div { background: rgba(255,255,255,.8); border-radius: 14px; padding: 8px 10px; text-align: center; }
+  .sst small { display: block; font-size: .7rem; font-weight: 700; color: var(--ink-soft); }
+  .sst b { font-size: 1.3rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .checks { display: grid; gap: 4px; background: rgba(255,255,255,.8); border-radius: 14px; padding: 8px 12px; margin-top: 8px; font-size: .84rem; font-weight: 800; }
+  .aqibar { display: grid; grid-template-columns: repeat(4, 1fr); height: 8px; border-radius: 99px; overflow: hidden; margin-top: 2px; }
+  .aqi { display: flex; align-items: baseline; gap: 10px; justify-content: center; border-radius: 16px; padding: 10px; margin-top: 8px; color: #fff; transition: background .3s; }
+  .aqi b { font-size: 2.2rem; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
+  .aqi span { font-size: .95rem; font-weight: 800; }
+  .three-btn { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .three-btn .btn { padding: 9px 2px; font-size: .78rem; }
+  .btn.cbtn.on { background: #7b5ea7; color: #fff; }
+  .eq { background: rgba(255,255,255,.85); border-radius: 12px; padding: 8px; text-align: center; font-weight: 900; font-size: .84rem; margin: 4px 0; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+  .stat hr { border: none; border-top: 1px dashed #e4d9c6; margin: 4px 0; }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g8">‹ 課程總覽</a>
+  <div class="title">反應速率與化學平衡實驗室</div>
+  <div class="body">
+    <div class="tabs three">
+      <button class="tab on" data-tab="coll">💥 碰撞學說<small>有效碰撞</small></button>
+      <button class="tab" data-tab="rate">⏱️ 反應速率<small>大理石＋鹽酸</small></button>
+      <button class="tab" data-tab="eq">⚖️ 化學平衡<small>勒沙特列原理</small></button>
+    </div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="coll">
+      <div class="concept" style="--cc:#7b5ea7"><div class="ct">有效碰撞的兩個條件</div><div class="cd">① 能量足夠（超過活化能）<br>② 碰撞方向正確</div></div>
+      <div class="three-btn">
+        <button class="btn cbtn" data-c="low">🐢 能量不足</button>
+        <button class="btn cbtn" data-c="angle">↗️ 方向錯誤</button>
+        <button class="btn cbtn" data-c="ok">💥 有效碰撞</button>
+      </div>
+      <div class="mapbox"><p>能量變化圖（球要越過「活化能」的山頭才會反應）</p><canvas id="eCv" width="520" height="230"></canvas></div>
+      <p class="desc">分子上的<b style="color:#d9a400">黃色反應點</b>要互相對準，才算方向正確。</p>
+      <div class="stat" id="collStat"></div>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="rate" hidden>
+      <div class="concept" style="--cc:#d35400"><div class="ct">影響反應速率的因素</div><div class="cd">溫度越高、濃度越大、表面積越大（粉末）<br>→ 反應越快</div></div>
+      <label class="lab" for="temp">🌡️ 溫度<b><span id="tempV">20</span> ℃</b></label>
+      <input class="big" type="range" id="temp" min="0" max="2" step="1" value="0">
+      <div class="ticks"><span>20℃</span><span>40℃</span><span>60℃</span></div>
+      <label class="lab" for="conc">🧪 鹽酸濃度<b><span id="concV">0.1</span> M</b></label>
+      <input class="big" type="range" id="conc" min="0" max="1" step="1" value="0">
+      <div class="ticks"><span>0.1 M</span><span>1.0 M</span></div>
+      <label class="lab" for="surf">🪨 大理石表面積<b id="surfV">大塊</b></label>
+      <input class="big" type="range" id="surf" min="0" max="1" step="1" value="0">
+      <div class="ticks"><span>大塊</span><span>粉末</span></div>
+      <div class="row2">
+        <button class="btn primary" id="runBtn">▶ 開始反應</button>
+        <button class="btn" id="clearBtn">🧹 清除曲線</button>
+      </div>
+      <div class="stat" id="rateStat"></div>
+      <p class="desc">大理石質量固定、鹽酸過量：條件不同只會改變<b>快慢</b>，最後產生的 CO₂ 總量一樣。</p>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="sec" data-tab="eq" hidden>
+      <div class="concept" style="--cc:#e07a1f"><div class="ct">勒沙特列原理</div><div class="cd">平衡會往「抵消改變」的方向移動</div></div>
+      <div class="eq">2CrO₄²⁻（黃）＋ 2H⁺ ⇌ Cr₂O₇²⁻（橘紅）＋ H₂O</div>
+      <div class="row2">
+        <button class="btn" id="acidBtn">🧪 滴加強酸<small>增加 H⁺</small></button>
+        <button class="btn" id="baseBtn">🧴 滴加強鹼<small>OH⁻ 中和 H⁺</small></button>
+      </div>
+      <button class="btn" id="eqReset">↺ 回到原本的平衡</button>
+      <div class="stat" id="eqStat"></div>
+      <p class="desc">蹺蹺板只是<b>比喻</b>：左盤代表黃色的 CrO₄²⁻、右盤代表橘紅色的 Cr₂O₇²⁻；前面的燒杯才是真正溶液的顏色。</p>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'coll', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+const sm = (e0, e1, x) => { const t = clamp((x - e0) / (e1 - e0), 0, 1); return t * t * (3 - 2 * t); };
+const lerp = THREE.MathUtils.lerp;
+function makePts(group, N, tex, size) {
+  const pos = new Float32Array(N * 3); for (let i = 0; i < N; i++) pos[i * 3 + 1] = -50;
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const p = new THREE.Points(geo, new THREE.PointsMaterial({ size, map: tex, transparent: true, depthWrite: false, alphaTest: 0.03 }));
+  p.frustumCulled = false; p.renderOrder = 7; group.add(p);
+  return { p, pos, geo, N };
+}
+const glassMat = () => new THREE.MeshPhysicalMaterial({ color: 0xeef7fa, roughness: 0.04, clearcoat: 1, transparent: true, opacity: 0.2, side: THREE.DoubleSide, depthWrite: false });
+const ambientL = scene.children.find(o => o.isAmbientLight);
+
+/* =========================================================
+   Tab 1：碰撞學說（有效碰撞）
+   ---------------------------------------------------------
+   分子上的黃色小球是「反應點」。只有「速度夠快（能量 ≥ 活化能）」
+   而且「反應點互相對準」時才會結合成 C 分子。
+   ========================================================= */
+const CO = { group: new THREE.Group(), kind: null, t: 0, hit: false, done: false };
+scene.add(CO.group);
+const BOXC = V3(0, 3.0, 0);
+{
+  const glass = new THREE.Mesh(new RoundedBoxGeometry(10, 4.2, 4.2, 4, 0.3), new THREE.MeshPhysicalMaterial({ color: 0xeaf4ff, roughness: 0.05, clearcoat: 1, transparent: true, opacity: 0.1, depthWrite: false }));
+  glass.position.copy(BOXC); glass.renderOrder = 9; CO.group.add(glass);
+  const fr = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(10, 4.2, 4.2)), new THREE.LineBasicMaterial({ color: 0xa9b8c4, transparent: true, opacity: 0.6 }));
+  fr.position.copy(BOXC); CO.group.add(fr);
+  add(CO.group, shadowed(new THREE.Mesh(new RoundedBoxGeometry(10.6, 0.5, 4.6, 3, 0.15), clay(0xc49a6c))), 0, 0.65, 0);
+}
+function makeMol(color, r = 0.55) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.SphereGeometry(r, 36, 24), clay(color, { clearcoat: 0.8, roughness: 0.3, emissive: color, emissiveIntensity: 0.12 }));
+  const site = new THREE.Mesh(new THREE.SphereGeometry(0.18, 18, 12), clay(0xffcc33, { emissive: 0xffb000, emissiveIntensity: 0.5 }));
+  site.position.x = r * 0.95; g.add(body, site); shadowed(g); return g;
+}
+const molA = makeMol(0x3f86e0), molB = makeMol(0xe0453f);
+const molC = new THREE.Group();
+{
+  const m = clay(0x8e5bd6, { clearcoat: 0.9, roughness: 0.3, emissive: 0x8e5bd6, emissiveIntensity: 0.25 });
+  add(molC, new THREE.Mesh(new THREE.SphereGeometry(0.55, 36, 24), m), -0.42, 0, 0);
+  add(molC, new THREE.Mesh(new THREE.SphereGeometry(0.55, 36, 24), m), 0.42, 0, 0);
+  add(molC, new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.6, 16), clay(0xffcc33, { emissive: 0xffb000, emissiveIntensity: 0.4 })), 0, 0, 0).rotation.z = Math.PI / 2;
+  shadowed(molC);
+}
+CO.group.add(molA, molB, molC);
+const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('255,255,240'), transparent: true, depthWrite: false, opacity: 0 }));
+flash.renderOrder = 12; CO.group.add(flash);
+const sparks = makePts(CO.group, 120, glowTexture('255,230,150'), 0.35);
+const spV = Array.from({ length: sparks.N }, () => V3(0, 0, 0));
+const lbA = addLabel('coll', 'A 分子', 'lam small', V3(0, 0.95, 0), molA);
+const lbB = addLabel('coll', 'B 分子', 'red small', V3(0, 0.95, 0), molB);
+const lbC = addLabel('coll', '✨ C 分子（AB 生成物）', 'yel', V3(0, 1.1, 0), molC);
+const lbX = addLabel('coll', '', 'red', V3(0, 0, 0));
+const eCv = $('eCv'), eg = eCv.getContext('2d');
+const EX0 = 40, EX1 = 500, eY = p => {           // 能量圖：p 從 0（反應物）到 1（生成物）
+  const base = lerp(150, 175, sm(0.55, 0.9, p));
+  return base - 105 * Math.exp(-(((p - 0.5) / 0.14) ** 2));
+};
+function drawEnergy(p, kind) {
+  const W = eCv.width, H = eCv.height;
+  eg.clearRect(0, 0, W, H);
+  eg.fillStyle = '#fffaf0'; eg.fillRect(0, 0, W, H);
+  eg.strokeStyle = '#8d7366'; eg.lineWidth = 2; eg.beginPath(); eg.moveTo(30, 12); eg.lineTo(30, 205); eg.lineTo(W - 10, 205); eg.stroke();
+  eg.fillStyle = '#5d4037'; eg.font = '700 15px sans-serif'; eg.save(); eg.translate(18, 120); eg.rotate(-Math.PI / 2); eg.textAlign = 'center'; eg.fillText('能量', 0, 0); eg.restore();
+  eg.textAlign = 'center'; eg.fillText('反應過程 →', W / 2, 225);
+  eg.strokeStyle = '#7b5ea7'; eg.lineWidth = 4; eg.beginPath();
+  for (let i = 0; i <= 100; i++) { const q = i / 100, x = EX0 + (EX1 - EX0) * q, y = eY(q); i ? eg.lineTo(x, y) : eg.moveTo(x, y); }
+  eg.stroke();
+  eg.setLineDash([5, 5]); eg.strokeStyle = '#c62828'; eg.lineWidth = 2; eg.beginPath(); eg.moveTo(EX0, 150); eg.lineTo(EX0 + (EX1 - EX0) * 0.5, 150); eg.stroke(); eg.setLineDash([]);
+  eg.beginPath(); eg.moveTo(EX0 + (EX1 - EX0) * 0.5, 150); eg.lineTo(EX0 + (EX1 - EX0) * 0.5, eY(0.5)); eg.stroke();
+  eg.fillStyle = '#c62828'; eg.font = '800 14px sans-serif'; eg.fillText('活化能', EX0 + (EX1 - EX0) * 0.5 + 34, 100);
+  eg.fillStyle = '#5d4037'; eg.font = '700 13px sans-serif'; eg.fillText('A ＋ B', EX0 + 30, 140); eg.fillText('C', EX1 - 20, 165);
+  if (p !== null) {
+    const x = EX0 + (EX1 - EX0) * p, y = eY(p);
+    eg.fillStyle = kind === 'ok' ? '#7b5ea7' : '#e0453f'; eg.beginPath(); eg.arc(x, y - 9, 9, 0, TAU); eg.fill();
+    eg.strokeStyle = '#fff'; eg.lineWidth = 2; eg.stroke();
+  }
+}
+drawEnergy(null);
+const SCN = {
+  low: { v: 0.9, yA: 0, yB: 0, rotA: 0, rotB: Math.PI, note: '速度太慢，能量不足' },
+  angle: { v: 3.4, yA: 0.38, yB: -0.38, rotA: Math.PI / 2, rotB: -Math.PI / 2 * 0.4 + Math.PI, note: '速度夠快，但反應點沒有對準' },
+  ok: { v: 3.4, yA: 0, yB: 0, rotA: 0, rotB: Math.PI, note: '速度夠快、反應點正面對準' }
+};
+function startColl(k) {
+  CO.kind = k; CO.t = 0; CO.hit = false; CO.done = false;
+  document.querySelectorAll('.cbtn').forEach(b => b.classList.toggle('on', b.dataset.c === k));
+}
+document.querySelectorAll('.cbtn').forEach(b => b.addEventListener('click', () => startColl(b.dataset.c)));
+function updateColl(dt) {
+  const k = CO.kind;
+  sparks.p.visible = true;
+  if (!k) {
+    molA.visible = molB.visible = true; molC.visible = false;
+    molA.position.set(-3.5, BOXC.y, 0); molB.position.set(3.5, BOXC.y, 0); molB.rotation.z = Math.PI; molA.rotation.z = 0;
+    lbC.show = false; lbX.show = false; lbA.show = lbB.show = true;
+    setCap('<small>💥 碰撞學說</small>按左邊三個按鈕，看看 A、B 分子怎麼碰撞');
+    setHTML('collStat', '分子要發生反應，必須<b>互相碰撞</b>；但不是每次碰撞都會反應。');
+    return;
+  }
+  CO.t += dt;
+  const S = SCN[k], t = CO.t, X0 = 3.6, CONTACT = 1.1;
+  const tc = (X0 - CONTACT / 2) / S.v;                                   // 兩分子接觸的時間
+  let p = null;
+  molA.rotation.z = S.rotA; molB.rotation.z = S.rotB;
+  if (t < tc) {
+    const d = S.v * t;
+    molA.position.set(-X0 + d, BOXC.y + S.yA, 0); molB.position.set(X0 - d, BOXC.y + S.yB, 0);
+    molA.visible = molB.visible = true; molC.visible = false;
+    p = k === 'low' ? 0.32 * (t / tc) : 0.5 * (t / tc);
+  } else {
+    const u = t - tc;
+    if (!CO.hit) {
+      CO.hit = true;
+      if (k === 'ok') for (let i = 0; i < sparks.N; i++) { sparks.pos.set([0, BOXC.y, 0], i * 3); spV[i].set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(2 + Math.random() * 3); }
+    }
+    if (k === 'ok') {
+      molA.visible = molB.visible = false; molC.visible = true;
+      molC.position.set(0.3 * Math.sin(u * 0.8), BOXC.y + 0.25 * Math.sin(u * 1.1), 0); molC.rotation.set(0, u * 0.6, 0.2 * Math.sin(u));
+      molC.scale.setScalar(Math.min(1, 0.4 + u * 2));
+      flash.position.set(0, BOXC.y, 0.3); const f = Math.max(0, 1 - u / 0.9); flash.material.opacity = f; flash.scale.setScalar(2 + 9 * (1 - f));
+      p = Math.min(1, 0.5 + u * 0.6);
+    } else if (k === 'low') {
+      const back = 0.75 * S.v * u;
+      molA.position.set(-CONTACT / 2 - back, BOXC.y, 0); molB.position.set(CONTACT / 2 + back, BOXC.y, 0);
+      const sq = 1 - 0.12 * Math.exp(-u * 8); molA.scale.set(sq, 1 / sq, 1); molB.scale.set(sq, 1 / sq, 1);
+      p = Math.max(0.02, 0.32 - u * 0.25);
+    } else {
+      const vx = 0.55 * S.v, vy = 0.8 * S.v;
+      molA.position.set(-CONTACT / 2 - vx * u, BOXC.y + S.yA + vy * u * 0.45, 0); molB.position.set(CONTACT / 2 + vx * u, BOXC.y + S.yB - vy * u * 0.45, 0);
+      molA.rotation.z = S.rotA + u * 4; molB.rotation.z = S.rotB - u * 4;
+      p = Math.max(0.02, 0.5 - u * 0.35);
+    }
+    if (u > 3.2) CO.done = true;
+  }
+  // 撞到箱壁就停住
+  for (const m of [molA, molB]) { m.position.x = clamp(m.position.x, -4.4, 4.4); m.position.y = clamp(m.position.y, BOXC.y - 1.5, BOXC.y + 1.5); }
+  if (k !== 'ok') { flash.material.opacity = 0; molA.scale.setScalar(molA.scale.x === 1 ? 1 : molA.scale.x); }
+  if (k !== 'low') { molA.scale.setScalar(1); molB.scale.setScalar(1); }
+  for (let i = 0; i < sparks.N; i++) { const j = i * 3; spV[i].multiplyScalar(1 - dt * 1.5); sparks.pos[j] += spV[i].x * dt; sparks.pos[j + 1] += spV[i].y * dt; sparks.pos[j + 2] += spV[i].z * dt; }
+  sparks.geo.attributes.position.needsUpdate = true;
+  sparks.p.material.opacity = k === 'ok' && CO.hit ? Math.max(0, 1 - (t - tc) / 1.5) : 0;
+  lbC.show = k === 'ok' && CO.hit;
+  lbA.show = molA.visible; lbB.show = molB.visible;
+  lbX.show = k !== 'ok' && CO.hit; lbX.pos.set(0, BOXC.y + 1.6, 0); setLabel(lbX, k === 'low' ? '✕ 彈開，沒有反應' : '✕ 擦身彈開，沒有反應');
+  drawEnergy(p, k);
+  const pre = !CO.hit;
+  if (k === 'low') setCap(pre ? '<small>🐢 能量不足</small>A、B 慢慢靠近…' : '<small>🐢 速度太慢</small><span class="huge red">無效碰撞：能量不足！</span>能量沒有超過活化能，碰到後就彈開了');
+  else if (k === 'angle') setCap(pre ? '<small>↗️ 方向錯誤</small>A、B 高速衝向對方…' : '<small>↗️ 反應點沒有對準</small><span class="huge red">無效碰撞：方向錯誤！</span>能量夠，但碰撞的方向不對，還是不會反應');
+  else setCap(pre ? '<small>💥 有效碰撞</small>A、B 高速正面衝向對方…' : '<small>💥 A ＋ B → C</small><span class="huge grn pop">有效碰撞：能量足夠且方向正確，發生化學反應！</span>');
+  setHTML('collStat', `情境：<b>${S.note}</b><br>能量足夠：<b class="${k === 'low' ? 'r' : 'g'}">${k === 'low' ? '✕' : '✔'}</b>　方向正確：<b class="${k === 'angle' ? 'r' : 'g'}">${k === 'angle' ? '✕' : '✔'}</b><br>結果：<b class="${k === 'ok' ? 'g' : 'r'}">${k === 'ok' ? '有效碰撞 → 生成 C' : '無效碰撞'}</b>`);
+}
+
+/* =========================================================
+   Tab 2：反應速率（大理石＋鹽酸）
+   ---------------------------------------------------------
+   產氣量 V(t) ＝ 80 mL × (1 − e^(−k t))，大理石質量固定、鹽酸過量。
+   k 隨溫度（每升高 20℃ 約 2 倍）、濃度（1.0 M 約 4 倍）、表面積（粉末約 5 倍）增加。
+   這是示意模型：讓學生比較快慢，數字不是真實實驗數據。
+   ========================================================= */
+const RT = { group: new THREE.Group(), T: 0, C: 0, S: 0, run: false, t: 0, curves: [], tSim: 60, wall: 9, acc: 0 };
+scene.add(RT.group);
+const FX = -4.2, VMAX = 80;
+const TEMPS = [20, 40, 60], CONCS = [0.1, 1.0];
+const rateK = () => 0.02 * Math.pow(2, RT.T) * (RT.C ? 4 : 1) * (RT.S ? 5 : 1);
+const hot = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.8, 0.5, 40), clay(0xd9d3c7)));
+hot.position.set(FX, 0.25, 0); RT.group.add(hot);
+const hotTop = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.04, 40), clay(0x3e3a39, { emissive: 0xff4a1a, emissiveIntensity: 0 }));
+hotTop.position.set(FX, 0.52, 0); RT.group.add(hotTop);
+const flask = new THREE.Group(); flask.position.set(FX, 0.54, 0); RT.group.add(flask);
+const FP = [[0, 0], [1.25, 0], [1.35, 0.1], [1.35, 0.28], [0.42, 2.0], [0.42, 2.75], [0.5, 2.82]];
+const fg = new THREE.Mesh(new THREE.LatheGeometry(FP.map(([r, y]) => V2(r, y)), 64), glassMat()); fg.renderOrder = 9; flask.add(fg);
+const LIQ_H = 0.85, rAt = y => y < 0.28 ? 1.28 : lerp(1.28, 0.36, (y - 0.28) / 1.72);
+const liq = new THREE.Mesh(new THREE.LatheGeometry([V2(0, 0.06), V2(1.22, 0.06), V2(1.27, 0.2), V2(rAt(LIQ_H), LIQ_H), V2(0, LIQ_H)], 56),
+  new THREE.MeshPhysicalMaterial({ color: 0xd9eef8, roughness: 0.1, transparent: true, opacity: 0.4, depthWrite: false }));
+liq.renderOrder = 5; flask.add(liq); enhanceLiquid(liq, { edges: false });
+const chunks = [];
+for (let i = 0; i < 3; i++) { const m = new THREE.Mesh(new THREE.DodecahedronGeometry(0.32, 0), clay(0xf0ede6, { flatShading: true, roughness: 0.6 })); m.position.set((i - 1) * 0.6, 0.3, (i % 2 - 0.5) * 0.4); m.rotation.set(i, i * 2, 0); flask.add(m); chunks.push(m); }
+const powder = makePts(flask, 260, dotTexture('#f4f1ea', 'rgba(150,140,130,.8)'), 0.09);
+for (let i = 0; i < powder.N; i++) { const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * 1.05; powder.pos.set([Math.cos(a) * r, 0.1 + Math.random() * 0.08, Math.sin(a) * r], i * 3); }
+const bub = makePts(flask, 500, dotTexture('#ffffff', 'rgba(110,140,170,.85)'), 0.12);
+const bubOn = new Uint8Array(bub.N), bubV = new Float32Array(bub.N);
+// 圖表面板
+const GP = { w: 7.4, h: 5.2 };
+const graph = new THREE.Group(); graph.position.set(3.0, 3.6, -0.3); RT.group.add(graph);
+add(graph, shadowed(new THREE.Mesh(new RoundedBoxGeometry(GP.w + 0.4, GP.h + 0.4, 0.2, 4, 0.12), clay(0xc49a6c))), 0, 0, -0.12);
+const gc = document.createElement('canvas'); gc.width = 740; gc.height = 520;
+const gtex = new THREE.CanvasTexture(gc); gtex.colorSpace = THREE.SRGBColorSpace;
+graph.add(new THREE.Mesh(new THREE.PlaneGeometry(GP.w, GP.h), new THREE.MeshBasicMaterial({ map: gtex, toneMapped: false })));
+add(graph, shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 3.4, 12), metal(0x9aa3ab))), 0, -GP.h / 2 - 1.7, -0.2);
+const CURVE_C = ['#d35400', '#1e6aa8', '#2f8452', '#7b5ea7', '#c62828'];
+function condText() { return `${TEMPS[RT.T]}℃・${CONCS[RT.C]} M・${RT.S ? '粉末' : '大塊'}`; }
+function drawGraph() {
+  const g = gc.getContext('2d'), W = gc.width, H = gc.height, L = 80, R = 24, T = 50, B = 70, pw = W - L - R, ph = H - T - B;
+  const X = t => L + t / RT.tSim * pw, Y = v => T + ph - v / 100 * ph;
+  g.fillStyle = '#fffaf0'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#3e2c25'; g.font = '800 26px sans-serif'; g.textAlign = 'center'; g.fillText('CO₂ 產量 vs 時間', W / 2, 34);
+  g.strokeStyle = 'rgba(141,115,102,.25)'; g.lineWidth = 1;
+  for (let v = 0; v <= 100; v += 20) { g.beginPath(); g.moveTo(L, Y(v)); g.lineTo(L + pw, Y(v)); g.stroke(); }
+  g.strokeStyle = '#5d4037'; g.lineWidth = 3; g.beginPath(); g.moveTo(L, T); g.lineTo(L, T + ph); g.lineTo(L + pw, T + ph); g.stroke();
+  g.fillStyle = '#5d4037'; g.font = '700 18px sans-serif'; g.textAlign = 'right';
+  for (let v = 0; v <= 100; v += 20) g.fillText(v, L - 8, Y(v) + 6);
+  g.textAlign = 'center'; for (let t = 0; t <= 60; t += 10) g.fillText(t, X(t), T + ph + 26);
+  g.fillText('時間（秒）', L + pw / 2, H - 12);
+  g.save(); g.translate(26, T + ph / 2); g.rotate(-Math.PI / 2); g.fillText('CO₂ 體積（mL）', 0, 0); g.restore();
+  g.setLineDash([8, 6]); g.strokeStyle = '#8d7366'; g.lineWidth = 2; g.beginPath(); g.moveTo(L, Y(VMAX)); g.lineTo(L + pw, Y(VMAX)); g.stroke(); g.setLineDash([]);
+  g.fillStyle = '#8d7366'; g.font = '700 16px sans-serif'; g.textAlign = 'left'; g.fillText('最終產量相同（80 mL）', L + 10, Y(VMAX) - 8);
+  RT.curves.forEach((c, i) => {
+    g.strokeStyle = c.col; g.lineWidth = c.live ? 6 : 4; g.beginPath();
+    const tEnd = c.live ? RT.t : RT.tSim;
+    for (let s = 0; s <= 120; s++) { const t = tEnd * s / 120, v = VMAX * (1 - Math.exp(-c.k * t)); s ? g.lineTo(X(t), Y(v)) : g.moveTo(X(t), Y(v)); }
+    g.stroke();
+    g.fillStyle = c.col; g.font = '800 17px sans-serif'; g.textAlign = 'left';
+    g.fillText('● ' + c.label, L + 14, T + ph - 18 - i * 24);
+  });
+  gtex.needsUpdate = true;
+}
+drawGraph();
+function setSliders() {
+  $('tempV').textContent = TEMPS[RT.T]; $('concV').textContent = CONCS[RT.C]; $('surfV').textContent = RT.S ? '粉末' : '大塊';
+  chunks.forEach(c => { c.visible = !RT.S; }); powder.p.visible = !!RT.S;
+}
+for (const [id, key] of [['temp', 'T'], ['conc', 'C'], ['surf', 'S']]) $(id).addEventListener('input', e => { RT[key] = Number(e.target.value); setSliders(); });
+setSliders();
+$('runBtn').addEventListener('click', () => {
+  RT.curves.forEach(c => { c.live = false; });
+  if (RT.curves.length >= 5) RT.curves.shift();
+  RT.curves.push({ k: rateK(), col: CURVE_C[RT.curves.length % CURVE_C.length], label: condText(), live: true });
+  RT.curves.forEach((c, i) => { c.col = CURVE_C[i]; });
+  RT.run = true; RT.t = 0; bubOn.fill(0);
+});
+$('clearBtn').addEventListener('click', () => { RT.curves = []; RT.run = false; RT.t = 0; drawGraph(); });
+const lbFlask = addLabel('rate', '大理石 ＋ 鹽酸', 'small', V3(FX, 3.8, 0));
+const lbHot = addLabel('rate', '', 'red small', V3(FX, 0.3, 1.9));
+function updateRate(dt) {
+  const k = RT.run || RT.curves.length ? (RT.curves.length ? RT.curves[RT.curves.length - 1].k : rateK()) : rateK();
+  if (RT.run) { RT.t = Math.min(RT.tSim, RT.t + dt * RT.tSim / RT.wall); if (RT.t >= RT.tSim) { RT.run = false; RT.curves.forEach(c => { c.live = false; }); } drawGraph(); }
+  const prog = RT.curves.length ? 1 - Math.exp(-k * RT.t) : 0;
+  const rate = RT.run ? k * Math.exp(-k * RT.t) : 0;                     // 目前的反應速率（相對）
+  // 氣泡：產生速率跟反應速率成正比
+  RT.acc += dt * Math.min(400, rate * 900);
+  while (RT.acc > 1) { RT.acc--; const i = bubOn.indexOf(0); if (i < 0) break; bubOn[i] = 1; bubV[i] = 0.9 + Math.random() * 0.6;
+    const a = Math.random() * TAU, r = RT.S ? Math.sqrt(Math.random()) * 1.0 : 0.3 + Math.random() * 0.5; bub.pos.set([Math.cos(a) * r, 0.2, Math.sin(a) * r], i * 3); }
+  for (let i = 0; i < bub.N; i++) {
+    if (!bubOn[i]) continue; const j = i * 3;
+    bub.pos[j + 1] += bubV[i] * dt * 1.6;
+    const y = bub.pos[j + 1];
+    if (y > LIQ_H) { bub.pos[j] *= 1 - dt * 3; bub.pos[j + 2] *= 1 - dt * 3; }
+    if (y > 3.4) { bubOn[i] = 0; bub.pos[j + 1] = -50; }
+  }
+  bub.geo.attributes.position.needsUpdate = true;
+  chunks.forEach(c => c.scale.setScalar(Math.max(0.2, Math.cbrt(1 - 0.85 * prog))));
+  for (let i = 0; i < powder.N; i++) powder.pos[i * 3 + 1] = i < powder.N * (1 - 0.95 * prog) ? powder.pos[i * 3 + 1] : -50;
+  powder.geo.attributes.position.needsUpdate = true;
+  hotTop.material.emissiveIntensity = RT.T * 0.45; setLabel(lbHot, `🔥 加熱板 ${TEMPS[RT.T]}℃`);
+  const cur = RT.curves[RT.curves.length - 1];
+  if (!RT.curves.length) setCap(`<small>⏱️ 反應速率</small>調整溫度、濃度、表面積，按「<b>▶ 開始反應</b>」，看氣泡和曲線`);
+  else if (RT.run) setCap(`<small>${cur.label}・反應中… ${RT.t.toFixed(0)} 秒</small><span class="huge">CO₂ 產量 ${(VMAX * prog).toFixed(1)} mL</span>${k > 0.15 ? '反應很快：曲線一開始就很<b>陡</b>' : k > 0.05 ? '反應速率中等' : '反應很慢：曲線很<b>平緩</b>'}`);
+  else setCap(`<small>比較曲線</small><span class="huge">越快的反應，曲線一開始越陡</span>但大理石的量一樣，最後都停在同一條水平線（80 mL）`);
+  setHTML('rateStat', `條件：<b>${condText()}</b><br>相對反應速率：<b class="o">${(rateK() / 0.02).toFixed(0)} 倍</b>（以 20℃、0.1 M、大塊為 1）<br>${RT.curves.length ? `目前產氣量：<b class="b">${(VMAX * prog).toFixed(1)} mL</b>` : '尚未開始'}`);
+}
+
+/* =========================================================
+   Tab 3：勒沙特列平衡蹺蹺板（鉻酸根 ⇌ 二鉻酸根）
+   ========================================================= */
+const EQ = { group: new THREE.Group(), x: 0.5, xT: 0.5, tilt: 0, w: 0, drop: null, t: 0, last: null };
+scene.add(EQ.group);
+const C_Y = new THREE.Color(0xf2c200), C_O = new THREE.Color(0xe8601c);
+{
+  const tri = new THREE.Shape([V2(-0.9, 0), V2(0.9, 0), V2(0, 2.1)]);
+  const g = new THREE.ExtrudeGeometry(tri, { depth: 1.4, bevelEnabled: true, bevelSize: 0.06, bevelThickness: 0.06, bevelSegments: 3 }); g.translate(0, 0, -0.7);
+  add(EQ.group, shadowed(new THREE.Mesh(g, clay(0xb98a5e))), 0, 0, 0);
+}
+const plank = new THREE.Group(); plank.position.set(0, 2.2, 0); EQ.group.add(plank);
+add(plank, shadowed(new THREE.Mesh(new RoundedBoxGeometry(9.4, 0.22, 1.8, 3, 0.08), clay(0xd9b98a))), 0, 0.11, 0);
+function beaker(color) {
+  const g = new THREE.Group();
+  const gl = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.8, 1.8, 40, 1, true), glassMat()); gl.position.y = 0.9; gl.renderOrder = 9; g.add(gl);
+  const bt = new THREE.Mesh(new THREE.CircleGeometry(0.8, 32), glassMat()); bt.rotation.x = -Math.PI / 2; bt.position.y = 0.02; g.add(bt);
+  const lq = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.76, 1, 40), new THREE.MeshPhysicalMaterial({ color, roughness: 0.1, transparent: true, opacity: 0.8, depthWrite: false, emissive: color, emissiveIntensity: 0.12 }));
+  lq.renderOrder = 5; g.add(lq); enhanceLiquid(lq); g.userData.lq = lq; return g;
+}
+const bL = beaker(0xf2c200), bR = beaker(0xe8601c);
+bL.position.set(-3.6, 0.22, 0); bR.position.set(3.6, 0.22, 0); plank.add(bL, bR);
+const bMix = beaker(0xf09a10); bMix.position.set(0, 0, 3.4); bMix.scale.setScalar(1.15); EQ.group.add(bMix);
+add(EQ.group, shadowed(new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.3, 0.12, 32), clay(0xe9dcc4))), 0, 0.06, 3.4);
+bMix.position.y = 0.12;
+// 滴管
+const dropper = new THREE.Group(); EQ.group.add(dropper); dropper.visible = false;
+add(dropper, new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.03, 1.6, 16), glassMat()), 0, 0.8, 0);
+add(dropper, new THREE.Mesh(new THREE.SphereGeometry(0.24, 20, 14), clay(0xd84a3f)), 0, 1.75, 0).scale.y = 1.4;
+const drops = Array.from({ length: 6 }, () => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 10), clay(0xffffff, { transparent: true, opacity: 0.85 })); m.visible = false; EQ.group.add(m); return m; });
+const shim = makePts(EQ.group, 90, glowTexture('255,200,80'), 0.3);
+const shV = Array.from({ length: shim.N }, () => V3(0, 0, 0)); let shimAge = 9;
+const lbL = addLabel('eq', '', '', V3(0, 0, 0)), lbR = addLabel('eq', '', '', V3(0, 0, 0));
+const lbMix = addLabel('eq', '', 'yel', V3(0, 2.9, 3.4));
+const lbDrop = addLabel('eq', '', 'small', V3(0, 0, 0));
+function addDrop(kind) {
+  if (EQ.drop) return;
+  EQ.drop = { kind, t: 0, fired: false };
+  drops.forEach(d => { d.material.color.setHex(kind === 'acid' ? 0xff8a80 : 0x90caf9); });
+}
+$('acidBtn').addEventListener('click', () => addDrop('acid'));
+$('baseBtn').addEventListener('click', () => addDrop('base'));
+$('eqReset').addEventListener('click', () => { EQ.xT = 0.5; EQ.last = null; });
+const tmpW3 = V3(0, 0, 0);
+function updateEq(dt) {
+  EQ.t += dt;
+  // 滴管動畫：移到左盤上方 → 滴下 6 滴 → 平衡移動
+  if (EQ.drop) {
+    const D = EQ.drop; D.t += dt;
+    bL.getWorldPosition(tmpW3);
+    dropper.visible = true;
+    dropper.position.set(tmpW3.x, tmpW3.y + lerp(5, 2.4, sm(0, 0.7, D.t)) - (D.t > 2.6 ? (D.t - 2.6) * 4 : 0) * -1, tmpW3.z);
+    drops.forEach((d, i) => {
+      const td = D.t - 0.8 - i * 0.22;
+      d.visible = td > 0 && td < 0.55;
+      if (d.visible) d.position.set(tmpW3.x, tmpW3.y + 2.35 - 9.8 * td * td * 0.5 * 2.2, tmpW3.z);
+    });
+    lbDrop.show = D.t < 2.4; lbDrop.pos.set(tmpW3.x, tmpW3.y + 4.8, 0); setLabel(lbDrop, D.kind === 'acid' ? '滴入強酸（H⁺）' : '滴入強鹼（OH⁻）', D.kind === 'acid' ? 'red small' : 'lam small');
+    if (!D.fired && D.t > 1.4) {
+      D.fired = true; EQ.last = D.kind;
+      EQ.xT = clamp(EQ.xT + (D.kind === 'acid' ? 0.3 : -0.3), 0.1, 0.9);
+      EQ.w += D.kind === 'acid' ? -0.9 : 0.9;                       // 蹺蹺板先往移動方向傾斜一下
+      shimAge = 0;
+      for (let i = 0; i < shim.N; i++) { shim.pos.set([0, 1.3, 3.4], i * 3); shV[i].set(Math.random() - 0.5, Math.random() * 0.8 + 0.2, Math.random() - 0.5).normalize().multiplyScalar(1 + Math.random() * 2); }
+    }
+    if (D.t > 2.6) { dropper.visible = false; EQ.drop = null; }
+  }
+  EQ.x += (EQ.xT - EQ.x) * (1 - Math.exp(-dt * 1.6));
+  // 蹺蹺板：受到「撞一下」後，彈簧阻尼回到水平（新的平衡）
+  EQ.w += (-EQ.tilt * 9 - EQ.w * 2.2) * dt; EQ.tilt += EQ.w * dt;
+  plank.rotation.z = EQ.tilt * 0.35;
+  const x = EQ.x;
+  for (const [b, f] of [[bL, 1 - x], [bR, x]]) { const L = b.userData.lq; const h = 0.15 + 1.4 * f; L.scale.y = h; L.position.y = 0.04 + h / 2; }
+  const mixC = C_Y.clone().lerp(C_O, sm(0.15, 0.85, x));
+  bMix.userData.lq.material.color.copy(mixC); bMix.userData.lq.material.emissive.copy(mixC);
+  bMix.userData.lq.scale.y = 1.25; bMix.userData.lq.position.y = 0.66;
+  // 場景色調偏向目前的顏色
+  ambientL.color.setHex(0xfff6ea).lerp(mixC, 0.35 * Math.abs(x - 0.5) * 2);
+  if (shimAge < 1.5) {
+    shimAge += dt;
+    for (let i = 0; i < shim.N; i++) { const j = i * 3; shim.pos[j] += shV[i].x * dt; shim.pos[j + 1] += shV[i].y * dt; shim.pos[j + 2] += shV[i].z * dt; }
+    shim.geo.attributes.position.needsUpdate = true;
+    shim.p.material.color.copy(mixC); shim.p.material.opacity = Math.max(0, 1 - shimAge / 1.5);
+  } else shim.p.material.opacity = 0;
+  bL.getWorldPosition(lbL.pos).add(V3(0, 2.6, 0)); bR.getWorldPosition(lbR.pos).add(V3(0, 2.6, 0));
+  setLabel(lbL, `<b style="color:#b38a00">CrO₄²⁻（黃）</b><br><small>${Math.round((1 - x) * 100)}%</small>`);
+  setLabel(lbR, `<b style="color:#c4501a">Cr₂O₇²⁻（橘紅）</b><br><small>${Math.round(x * 100)}%</small>`);
+  setLabel(lbMix, `真正的溶液顏色：${x > 0.62 ? '橘紅色' : x < 0.38 ? '黃色' : '橙色（平衡）'}`);
+  if (EQ.last === 'acid') setCap(`<small>增加 H⁺ → 平衡往「消耗 H⁺」的方向移動</small><span class="huge org">加酸，平衡向右移動，顏色變橘紅！</span>2CrO₄²⁻ ＋ 2H⁺ <b>⟶</b> Cr₂O₇²⁻ ＋ H₂O`);
+  else if (EQ.last === 'base') setCap(`<small>OH⁻ 和 H⁺ 中和，H⁺ 變少 → 平衡往「產生 H⁺」的方向移動</small><span class="huge" style="color:#b38a00">加鹼（減少 H⁺），平衡向左移動，顏色變黃！</span>2CrO₄²⁻ ＋ 2H⁺ <b>⟵</b> Cr₂O₇²⁻ ＋ H₂O`);
+  else setCap(`<small>⚖️ 化學平衡</small>按「<b>🧪 滴加強酸</b>」或「<b>🧴 滴加強鹼</b>」，看平衡往哪邊移動`);
+  setHTML('eqStat', `CrO₄²⁻（黃）：<b>${Math.round((1 - x) * 100)}%</b>　Cr₂O₇²⁻（橘紅）：<b class="o">${Math.round(x * 100)}%</b><br>平衡移動的方向：<b>${EQ.last === 'acid' ? '向右 →' : EQ.last === 'base' ? '← 向左' : '—'}</b><br><small>加入的物質會被「用掉」一部分，抵消這個改變</small>`);
+}
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  coll: { group: CO.group, cam: () => ({ pos: [0, 5.2, 13], target: [0, 3.0, 0], fitW: 11.5 }), update: updateColl },
+  rate: { group: RT.group, cam: () => ({ pos: [-0.5, 6, 15.5], target: [-0.5, 3.2, 0], fitW: 15.5 }), update: updateRate },
+  eq: { group: EQ.group, cam: () => ({ pos: [0, 7.5, 17], target: [0, 2.6, 0.4], fitW: 14 }), update: updateEq }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  ambientL.color.setHex(0xfff6ea);
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, CO, RT, EQ, startColl, camera, controls };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'coll';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+<script src="goals.js" defer></script>
+</body>
+</html>

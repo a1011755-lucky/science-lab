@@ -785,15 +785,20 @@ const M3 = (() => {
 
   /* ----- 流動光帶：橢圓環流 CatmullRomCurve3 + 5 條平行 TubeGeometry ----- */
   // u 增加的方向 = 白天海風：底部 海 → 陸、陸地上空上升、高空 陸 → 海、海面上空下沉
+  const LX = 4.3, LY0 = 0.75, LY1 = 4.6, LR = 1.05;          // 環流範圍：左右 ±LX、下緣 LY0、上緣 LY1、轉角半徑
   function loopCurve(z, k) {
-    const pts = [];
-    const N = 24, cx = 0, cy = 2.75, ax = 5.0 * k, ay = 2.15 * k;
-    for (let i = 0; i < N; i++) {
-      const th = -Math.PI + i / N * Math.PI * 2;                  // 從左側開始，先走下半圈（左 → 右）
-      const s = Math.sin(th);
-      const y = cy + ay * (s < 0 ? s * 0.92 : s);                // 下緣稍微壓平，貼著海面與沙灘
-      pts.push(V3(cx + ax * Math.cos(th), y, z));
-    }
+    // 直立的跑道形：下緣（貼地）海 → 陸、右側上升、上緣 陸 → 海、左側下沉（白天海風的方向）
+    const x0 = -LX * k, x1 = LX * k, y0 = LY0, y1 = LY0 + (LY1 - LY0) * k, r = LR;
+    const pts = [], seg = (a, b, n) => { for (let i = 0; i < n; i++) pts.push(a.clone().lerp(b, i / n)); };
+    const arc = (cx, cy, a0, a1, n) => { for (let i = 0; i < n; i++) { const a = a0 + (a1 - a0) * i / n; pts.push(V3(cx + r * Math.cos(a), cy + r * Math.sin(a), z)); } };
+    seg(V3(x0 + r, y0, z), V3(x1 - r, y0, z), 8);
+    arc(x1 - r, y0 + r, -Math.PI / 2, 0, 5);
+    seg(V3(x1, y0 + r, z), V3(x1, y1 - r, z), 5);
+    arc(x1 - r, y1 - r, 0, Math.PI / 2, 5);
+    seg(V3(x1 - r, y1, z), V3(x0 + r, y1, z), 8);
+    arc(x0 + r, y1 - r, Math.PI / 2, Math.PI, 5);
+    seg(V3(x0, y1 - r, z), V3(x0, y0 + r, z), 5);
+    arc(x0 + r, y0 + r, Math.PI, Math.PI * 1.5, 5);
     return new THREE.CatmullRomCurve3(pts, true, 'centripetal');
   }
   // 光帶紋理：柔和的「彗星狀」煙痕（亮頭 + 漸層尾巴），左右無縫重複
@@ -817,10 +822,10 @@ const M3 = (() => {
     return t;
   }
   const COOL = new THREE.Color(0x8cc4ff), WARM = new THREE.Color(0xffa58a), NEUT = new THREE.Color(0xffffff);
-  const bands = [-0.6, -0.3, 0, 0.3, 0.6].map((z, i) => {
-    const k = 1 + (i - 2) * 0.045;                                  // 一束平行、大小略有差異的氣流
+  const bands = [-0.18, 0.18].map((z, i) => {
+    const k = 1 + (i - 0.5) * 0.04;                                 // 兩條貼在一起的氣流帶（同一個直立平面）
     const curve = loopCurve(z, k);
-    const geo = new THREE.TubeGeometry(curve, 360, 0.07, 12, true);
+    const geo = new THREE.TubeGeometry(curve, 400, 0.09, 12, true);
     const pos = geo.attributes.position;
     const day = new Float32Array(pos.count * 3), night = new Float32Array(pos.count * 3), cur = new Float32Array(pos.count * 3);
     const c = new THREE.Color();
@@ -842,12 +847,42 @@ const M3 = (() => {
     return { mesh, map, day, night, cur, attr: geo.attributes.color, speed: 0.95 + i * 0.07 };
   });
 
+  /* ----- 風向箭頭：沿環流移動的立體箭頭 ----- */
+  const MAIN = loopCurve(0, 1);
+  const arrowGeo = new THREE.ConeGeometry(0.26, 0.62, 18); arrowGeo.rotateZ(-Math.PI / 2);
+  const flowArrows = Array.from({ length: 9 }, (_, i) => {
+    const m = new THREE.Mesh(arrowGeo, clay(0xffffff, { emissive: 0xffffff, emissiveIntensity: 0.25, roughness: 0.3 }));
+    m.renderOrder = 7; group.add(m); return { m, u: i / 9 };
+  });
+  // 空氣粒子：一小團一小團的空氣，跟著環流跑
+  const NPAR = 140, parPos = new Float32Array(NPAR * 3), parCol = new Float32Array(NPAR * 3), parU = new Float32Array(NPAR), parOff = new Float32Array(NPAR * 2);
+  for (let i = 0; i < NPAR; i++) { parU[i] = Math.random(); parOff[i * 2] = (Math.random() - 0.5) * 0.5; parOff[i * 2 + 1] = (Math.random() - 0.5) * 1.6; }
+  const parGeo = new THREE.BufferGeometry();
+  parGeo.setAttribute('position', new THREE.BufferAttribute(parPos, 3)); parGeo.setAttribute('color', new THREE.BufferAttribute(parCol, 3));
+  const parTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); const gr = g.createRadialGradient(32, 32, 0, 32, 32, 30); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.5, 'rgba(255,255,255,.7)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+  const parts = new THREE.Points(parGeo, new THREE.PointsMaterial({ size: 0.32, map: parTex, vertexColors: true, transparent: true, depthWrite: false }));
+  parts.frustumCulled = false; parts.renderOrder = 7; group.add(parts);
+  // 地面的大風向箭頭（貼著地面、在小島前緣）
+  const gArrow = new THREE.Group(); group.add(gArrow);
+  {
+    const V2 = (x, y) => new THREE.Vector2(x, y);
+    const sh = new THREE.Shape([V2(-2.4, -0.22), V2(1.2, -0.22), V2(1.2, -0.55), V2(2.4, 0), V2(1.2, 0.55), V2(1.2, 0.22), V2(-2.4, 0.22)]);
+    const g = new THREE.ExtrudeGeometry(sh, { depth: 0.16, bevelEnabled: true, bevelSize: 0.05, bevelThickness: 0.05, bevelSegments: 3 });
+    g.translate(0, 0, -0.08);
+    const m = new THREE.Mesh(g, clay(0x14a3a3, { emissive: 0x14a3a3, emissiveIntensity: 0.3, clearcoat: 1 }));
+    m.castShadow = true; gArrow.add(m);
+  }
+  gArrow.position.set(0, 0.55, AZ * 0.62);
   const lWind = addLabel('m3', '', 'font-size:.88rem;color:#14766f');
+  const lH = addLabel('m3', '', 'font-weight:800;color:#2f62c9'), lL = addLabel('m3', '', 'font-weight:800;color:#c2410c');
+  const lTop = addLabel('m3', '', 'font-size:.74rem;color:#6b5a50');
+  const UP_C = new THREE.Color(0xff8a5c), DN_C = new THREE.Color(0x6aa8ff), tmpCol = new THREE.Color();
+  const tng = V3(0, 0, 0), tng2 = V3(0, 0, 0), qq = new THREE.Quaternion(), XAX = V3(1, 0, 0);
   const lUp = addLabel('m3', '', 'color:#c2410c'), lDown = addLabel('m3', '', 'color:#2f62c9');
   const lLand = addLabel('m3', ''), lSea = addLabel('m3', '');
 
   let night = false, TL = 24, TS = 24, nightK = 0, colorK = -1, flowDir = 1;
-  const LAND_C = [[8, 0xa9c2e8], [24, 0xf0dcb4], [42, 0xf2a072]];
+  const LAND_C = [[8, 0xb9ad98], [24, 0xf0dcb4], [42, 0xf2a072]];
   function landColor(T, out) {
     if (T <= LAND_C[1][0]) return out.setHex(LAND_C[0][1]).lerp(new THREE.Color(LAND_C[1][1]), clamp((T - LAND_C[0][0]) / (LAND_C[1][0] - LAND_C[0][0]), 0, 1));
     return out.setHex(LAND_C[1][1]).lerp(new THREE.Color(LAND_C[2][1]), clamp((T - LAND_C[1][0]) / (LAND_C[2][0] - LAND_C[1][0]), 0, 1));
@@ -906,17 +941,48 @@ const M3 = (() => {
     });
 
     const on = s > 0.05;
-    lWind.visible = on; lWind.pos.set(0, 0.2, AZ + 0.2);
-    lWind.el.innerHTML = flowDir > 0 ? '🌊 ⟶ 🏖　海風（由海吹向陸地）' : '🌊 ⟵ 🏖　陸風（由陸地吹向海）';
+    // 箭頭沿環流移動（白天：u 增加；夜晚：反向）
+    const spd = flowDir * (0.03 + 0.09 * s) * dt;
+    flowArrows.forEach(a => {
+      a.u = ((a.u + spd) % 1 + 1) % 1;
+      MAIN.getPointAt(a.u, a.m.position); a.m.position.z = 0.42;
+      MAIN.getTangentAt(a.u, tng); if (flowDir < 0) tng.negate();
+      a.m.quaternion.copy(qq.setFromUnitVectors(XAX, tng.normalize()));
+      a.m.visible = on;
+      const hot = flowDir > 0 ? smooth(-1.5, 3.5, a.m.position.x) : smooth(1.5, -3.5, a.m.position.x);
+      a.m.material.color.copy(DN_C).lerp(UP_C, hot); a.m.material.emissive.copy(a.m.material.color);
+      a.m.scale.setScalar(0.8 + 0.4 * s);
+    });
+    for (let i = 0; i < NPAR; i++) {
+      parU[i] = ((parU[i] + spd * (0.8 + (i % 5) * 0.08)) % 1 + 1) % 1;
+      MAIN.getPointAt(parU[i], tng); MAIN.getTangentAt(parU[i], tng2);
+      const nx = -tng2.y, ny = tng2.x;
+      parPos[i * 3] = tng.x + nx * parOff[i * 2]; parPos[i * 3 + 1] = tng.y + ny * parOff[i * 2]; parPos[i * 3 + 2] = parOff[i * 2 + 1];
+      const hot = flowDir > 0 ? smooth(-1.5, 3.5, tng.x) : smooth(1.5, -3.5, tng.x);
+      tmpCol.copy(DN_C).lerp(UP_C, hot).lerp(NEUT, 0.35); tmpCol.toArray(parCol, i * 3);
+    }
+    parGeo.attributes.position.needsUpdate = true; parGeo.attributes.color.needsUpdate = true;
+    parts.material.opacity = on ? 0.35 + 0.55 * s : 0;
+    // 地面大箭頭：由冷處（高壓）吹向熱處（低壓）
+    gArrow.visible = on;
+    gArrow.rotation.y = flowDir > 0 ? 0 : Math.PI;
+    gArrow.scale.set(0.7 + 0.3 * s, 1, 1);
+    gArrow.position.y = 0.55 + 0.05 * Math.sin(now * 3);
+    lH.visible = lL.visible = lTop.visible = on;
+    lH.pos.set(flowDir > 0 ? -LX : LX, 0.15, 0.9); lH.el.textContent = 'H 高壓：冷，空氣下沉';
+    lL.pos.set(flowDir > 0 ? LX : -LX, 0.15, 0.9); lL.el.textContent = 'L 低壓：熱，空氣上升';
+    lTop.pos.set(0, LY1 + 0.45, 0); lTop.el.textContent = flowDir > 0 ? '高空：空氣由陸地流回海上 ←' : '高空：空氣由海上流回陸地 →';
+    lWind.visible = on; lWind.pos.set(0, 1.35, AZ * 0.62);
+    lWind.el.innerHTML = flowDir > 0 ? '🌊 ➜ 🏖　地面吹<b>海風</b>（由海吹向陸地）' : '🌊 ⬅ 🏖　地面吹<b>陸風</b>（由陸地吹向海）';
     lUp.visible = lDown.visible = on;
-    lUp.el.textContent = '熱空氣上升'; lDown.el.textContent = '冷空氣下沉';
-    lUp.pos.set(flowDir > 0 ? 5.6 : -5.6, 2.4, 0); lDown.pos.set(flowDir > 0 ? -5.6 : 5.6, 2.4, 0);
+    lUp.el.textContent = '⬆ 熱空氣上升'; lDown.el.textContent = '⬇ 冷空氣下沉';
+    lUp.pos.set(flowDir > 0 ? LX + 1.1 : -LX - 1.1, 2.7, 0); lDown.pos.set(flowDir > 0 ? -LX - 1.1 : LX + 1.1, 2.7, 0);
     lLand.pos.set(3.6, -1.6, AZ * 0.75); lLand.el.innerHTML = `🏖 沙灘 ${TL.toFixed(1)}℃`;
     lSea.pos.set(-3.6, -1.6, AZ * 0.75); lSea.el.innerHTML = `🌊 海水 ${TS.toFixed(1)}℃`;
     $('m3Read').innerHTML = `<div class="kv"><span>時段</span><b>${night ? '🌙 夜晚' : '☀ 白天'}</b><span>沙灘溫度（比熱小）</span><b>${TL.toFixed(1)} ℃</b>
       <span>海水溫度（比熱大）</span><b>${TS.toFixed(1)} ℃</b><span>地面風向</span><b>${!on ? '無風' : flowDir > 0 ? '海風 →' : '← 陸風'}</b></div>`;
   }
-  return { group, update, enter: reset, camera: { pos: [0, 3.6, 17.5], target: [0, 1.6, 0] }, extra: 1.2,
+  return { group, update, enter: reset, camera: { pos: [0, 3.0, 18.5], target: [0, 2.0, 0] }, extra: 1.2,
     setNight, get state() { return { night, TL, TS, flowDir, offset: bands[0].map.offset.x, colorK }; } };
 })();
 
@@ -1159,6 +1225,7 @@ $('viewBtn').addEventListener('click', resetView);
 $('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; });
 
 function resize() {
+  if (!window.innerWidth || !window.innerHeight) return;   // 視窗被縮到 0 時不要算出 NaN 的鏡頭
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -1169,6 +1236,10 @@ window.addEventListener('resize', resize);
 
 const clock = new THREE.Clock();
 function frame(dt) {
+  if (!Number.isFinite(camera.aspect) || camera.aspect <= 0 || !Number.isFinite(camera.position.x)) {   // 載入時視窗大小為 0 → 等視窗有大小再重算鏡頭
+    if (!window.innerWidth || !window.innerHeight) return;
+    resize(); resetView();
+  }
   MODES[mode].update(dt);
   controls.update();
   placeLabels();
@@ -1177,7 +1248,7 @@ function frame(dt) {
 }
 function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
 
-window.heat = { M1, M2, M3, M4, setMode, frame };   // 除錯 / 驗證用
+window.heat = { M1, M2, M3, M4, setMode, frame, camera, controls };   // 除錯 / 驗證用
 
 resize();
 setMode('m1');

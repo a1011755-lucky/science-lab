@@ -177,7 +177,7 @@
     <div>
       <span class="eyebrow">108 課綱 · 國中會考自然科</span>
       <h1>課本上最難想像的觀念，<br><em>動手轉一轉</em>就懂了。</h1>
-      <p class="lead">由國中自然科老師設計的互動 3D 實驗室。粒子、電流、天體、板塊……看不見的東西都能親手操作、反覆觀察，每個單元都對準會考重點。</p>
+      <p class="lead">由江文老師設計的互動 3D 實驗室。粒子、電流、天體、板塊……看不見的東西都能親手操作、反覆觀察，每個單元都對準會考重點。</p>
       <div class="cta">
         <a class="btn primary" href="#courses">▶ 開始體驗</a>
         <a class="btn ghost" href="#parents">給家長的說明</a>
@@ -230,7 +230,7 @@
     <div class="parents">
       <div>
         <h2>給家長的說明</h2>
-        <p>這是一位國中自然科老師為了讓學生「真正看懂」而製作的互動教材。內容依照 108 課綱與會考範圍編排，適合預習、複習、考前釐清觀念。</p>
+        <p>這是江文老師為了讓學生「真正看懂」而製作的互動教材。內容依照 108 課綱與會考範圍編排，適合預習、複習、考前釐清觀念。</p>
       </div>
       <ul class="checks">
         <li>不需要下載 App，用瀏覽器就能開</li>
@@ -244,7 +244,7 @@
 
 <footer>
   <b>會考 3D 自然實驗室</b><br>
-  國中自然科老師製作 · 依 108 課綱國中自然科學章節編排<br>
+  江文老師製作 · 依 108 課綱國中自然科學章節編排<br>
   © 2026 會考 3D 自然實驗室 版權所有，未經授權請勿轉載或複製
 </footer>
 
@@ -296,7 +296,7 @@ const COURSES = [
       { title: '化學反應：質量守恆定律', url: 'mass-lab.html' },
       { title: '氧化與還原',         url: 'chem-lab.html#furnace' },
       { title: '電解質與酸鹼反應',   url: 'chem-lab.html#elec' },
-      { title: '反應速率與平衡',     url: DEFAULT_URL },
+      { title: '反應速率與平衡',     url: 'rate-lab.html' },
       { title: '有機化合物',         url: 'chem-lab.html#soap' },
       { title: '力與壓力',           url: 'force-pressure-lab.html' }
     ]
@@ -351,7 +351,7 @@ function renderStats() {
   const stats = [
     { n: ready, label: '個已上線單元' },
     { n: pages, label: '座 3D 互動實驗室' },
-    { n: '126', label: '題會考題型自我檢測' }
+    { n: '131', label: '題會考題型自我檢測' }
   ];
   document.getElementById('heroStats').innerHTML = stats.map(s => `<div class="stat"><b>${s.n}</b><span>${s.label}</span></div>`).join('');
 }
