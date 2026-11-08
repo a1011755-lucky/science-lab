@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>協調作用實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+  .tabs.three .tab { font-size: .74rem; padding: 9px 2px; }
+  .three-btn { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .three-btn .btn { padding: 9px 2px; font-size: .78rem; }
+  .objs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .objs .btn { padding: 8px 4px; font-size: .78rem; margin-top: 0; text-align: left; }
+  .objs .btn small { display: block; }
+  .chk { display: flex; align-items: center; gap: 8px; font-size: .8rem; font-weight: 800; margin: 10px 2px 0; cursor: pointer; }
+  .chk input { width: 18px; height: 18px; accent-color: #a1674a; flex: none; }
+  .chain { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; margin: 8px 0 2px; font-size: .72rem; font-weight: 800; }
+  .chain span { padding: 3px 8px; border-radius: 999px; background: rgba(255,255,255,.7); color: #a8998a; }
+  .chain span.s { box-shadow: inset 0 0 0 2px #3f8ad0; } .chain span.m { box-shadow: inset 0 0 0 2px #e53935; } .chain span.c { box-shadow: inset 0 0 0 2px #e0a800; }
+  .chain span.cur { background: #d08a2e; color: #fff; }
+  .chain span.done { color: #4f7d5c; background: #e3f1e6; }
+  .chain b { color: #c9b9a6; }
+  .orgcard { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin-top: 8px; font-size: .8rem; line-height: 1.65; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
+  .orgcard:empty { display: none; }
+  .orgcard h4 { font-size: .98rem; font-weight: 900; margin-bottom: 2px; }
+  .orgcard .pill { display: inline-block; font-size: .72rem; font-weight: 800; color: #fff; background: #7b5ea7; border-radius: 999px; padding: 1px 9px; margin: 2px 4px 2px 0; }
+  table.cmp { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: .76rem; background: rgba(255,255,255,.8); border-radius: 12px; overflow: hidden; }
+  table.cmp th, table.cmp td { padding: 4px 6px; border-bottom: 1px solid #efe6d8; text-align: center; }
+  table.cmp th { text-align: left; font-weight: 800; }
+  table.cmp thead th { text-align: center; background: rgba(161,103,74,.12); }
+  table.res { width: 100%; border-collapse: collapse; font-size: .8rem; margin-bottom: 4px; }
+  table.res th, table.res td { padding: 3px 4px; border-bottom: 1px solid #efe6d8; text-align: center; }
+  .big-t { font-size: 1.5rem; font-weight: 900; color: #d35400; font-variant-numeric: tabular-nums; }
+  .tag.sens { background: #3f8ad0; color: #fff; } .tag.mot { background: #e53935; color: #fff; } .tag.cen { background: #e0a800; color: #fff; }
+  .tag.part { font-size: .66rem; padding: 2px 7px; background: rgba(62,44,37,.82); color: #fff; }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g7">‹ 課程總覽</a>
+  <div class="title">協調作用實驗室</div>
+  <div class="body">
+    <div class="tabs three">
+      <button class="tab on" data-tab="nerve">🧠 神經傳導<small>意識與反射</small></button>
+      <button class="tab" data-tab="ruler">📏 反應時間<small>接尺實驗</small></button>
+      <button class="tab" data-tab="horm">🌱 激素與植物<small>內分泌・感應</small></button>
+    </div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="nerve">
+      <div class="concept" style="--cc:#7b5ea7"><div class="ct">神經傳導途徑</div><div class="cd">刺激 → <b>受器</b> → 感覺神經元 → <b>中樞神經</b> → 運動神經元 → <b>動器</b> → 反應</div></div>
+      <label class="lab">選一個情境</label>
+      <div class="objs" id="scBtns"></div>
+      <button class="btn primary" id="nvPlay">▶ 播放神經傳導</button>
+      <div class="chain" id="nvChain"></div>
+      <div class="orgcard" id="nvCard"></div>
+      <label class="lab">中樞神經（點選認識）</label>
+      <div class="objs" id="brBtns"></div>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="ruler" hidden>
+      <div class="concept" style="--cc:#d35400"><div class="ct">反應時間</div><div class="cd">從<b>受器</b>接受刺激到<b>動器</b>產生反應所需的時間<br>看到直尺掉落 → 眼睛 → 大腦 → 脊髓 → 手指肌肉</div></div>
+      <p class="desc">按「準備」後，直尺會在<b>隨機</b>時間掉下來。看到它開始掉落時，立刻按「抓！」（或按空白鍵、點畫面）。</p>
+      <div class="row2">
+        <button class="btn" id="rlReady">✋ 準備</button>
+        <button class="btn primary" id="rlCatch">🤏 抓！</button>
+      </div>
+      <div class="stat" id="rlStat"></div>
+      <button class="btn" id="rlReset">↺ 清除紀錄</button>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="sec" data-tab="horm" hidden>
+      <div class="row2">
+        <button class="btn hmode on" data-m="endo">🧍 內分泌系統</button>
+        <button class="btn hmode" data-m="plant">🌱 植物的感應</button>
+      </div>
+      <div id="endoBox">
+        <label class="lab">點選內分泌腺</label>
+        <div class="objs" id="glBtns"></div>
+        <div class="orgcard" id="glCard"></div>
+        <table class="cmp"><thead><tr><th></th><th>神經系統</th><th>內分泌系統</th></tr></thead><tbody>
+          <tr><th>傳遞方式</th><td>神經元傳導訊息</td><td>激素由<b>血液</b>運送</td></tr>
+          <tr><th>反應速度</th><td>快</td><td>較慢</td></tr>
+          <tr><th>作用時間</th><td>短暫</td><td>較持久</td></tr>
+        </tbody></table>
+      </div>
+      <div id="plantBox" hidden>
+        <label class="lab">光從哪裡來？</label>
+        <div class="three-btn"><button class="btn lbtn" data-l="-1">⬅ 左邊</button><button class="btn lbtn on" data-l="0">⬆ 上方</button><button class="btn lbtn" data-l="1">右邊 ➡</button></div>
+        <label class="chk"><input type="checkbox" id="potSide"> 把盆栽橫放（觀察向地性）</label>
+        <button class="btn primary" id="grow">⏩ 快轉 3 天看生長</button>
+        <label class="lab">含羞草</label>
+        <div class="row2"><button class="btn" id="touch">👆 碰一下葉子</button><button class="btn" id="night">🌙 變成晚上</button></div>
+        <div class="orgcard" id="plCard"></div>
+      </div>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'nerve', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+/* =========================================================
+   共用小工具
+   ========================================================= */
+const lerp = (a, b, k) => a + (b - a) * k;
+const sphere = (r, mat, seg = 24) => new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg * 0.6 | 0)), mat);
+const cyl = (r1, r2, h, mat, seg = 32) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg), mat);
+const rbox = (w, h, d, mat, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001)), mat);
+const cap = (r, len, mat) => new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 6, 14), mat);
+const tubeM = (pts, r, mat, seg = 40) => new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => V3(...p))), seg, r, 8), mat);
+let rs = 41;
+const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+table.scale.set(1.6, 1, 2.4); table.position.z = 13.6;
+const glowSprite = (rgb, s = 0.5) => { const g = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(rgb), transparent: true, depthWrite: false })); g.scale.setScalar(s); return g; };
+
+/** 半透明人體：手臂、小腿可以轉動 */
+function makeBody(parent, x = 0) {
+  const root = new THREE.Group(); root.position.x = x; parent.add(root);
+  const skin = new THREE.MeshPhysicalMaterial({ color: 0xf3c9a6, transparent: true, opacity: 0.28, roughness: 0.4, depthWrite: false, side: THREE.DoubleSide });
+  const head = sphere(0.5, skin, 32); head.position.y = 5.4; root.add(head);
+  const neck = cyl(0.17, 0.2, 0.35, skin); neck.position.y = 4.85; root.add(neck);
+  const torso = cap(0.7, 1.5, skin); torso.position.y = 3.45; torso.scale.z = 0.55; root.add(torso);
+  const limbs = {};
+  [-1, 1].forEach(s => {
+    const arm = new THREE.Group(); arm.position.set(s * 0.95, 4.25, 0); root.add(arm);
+    const a1 = cap(0.16, 1.5, skin); a1.position.y = -0.9; arm.add(a1);
+    const hand = sphere(0.18, skin, 16); hand.position.y = -1.85; arm.add(hand);
+    const leg = new THREE.Group(); leg.position.set(s * 0.38, 2.45, 0); root.add(leg);
+    const th = cap(0.22, 0.75, skin); th.position.y = -0.55; leg.add(th);
+    const knee = new THREE.Group(); knee.position.y = -1.1; leg.add(knee);
+    const sh = cap(0.18, 0.75, skin); sh.position.y = -0.55; knee.add(sh);
+    const foot = rbox(0.28, 0.14, 0.5, skin, 0.06); foot.position.set(0, -1.15, 0.12); knee.add(foot);
+    limbs[s > 0 ? 'R' : 'L'] = { arm, leg, knee };
+  });
+  return { root, head, limbs, skin };
+}
+
+/* =========================================================
+   Tab 1：神經傳導（意識動作與反射動作）
+   ========================================================= */
+const NV = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const B = makeBody(group, 0);
+  const R = B.limbs.R;
+  const nM = clay(0xffd54f, { clearcoat: 0.6 });
+  // 中樞神經
+  const brain = sphere(0.36, clay(0xf4a6b6, { clearcoat: 0.6 }), 32); brain.scale.set(1, 0.85, 1.15); brain.position.set(0, 5.5, 0.02); B.root.add(brain);
+  const cereb = sphere(0.15, clay(0xe57397), 20); cereb.scale.set(1.3, 0.8, 1); cereb.position.set(0, 5.17, -0.27); B.root.add(cereb);
+  const stem = cyl(0.07, 0.06, 0.38, clay(0xd9a46a), 12); stem.position.set(0, 5.02, -0.12); B.root.add(stem);
+  const cord = tubeM([[0, 4.85, -0.15], [0, 4.2, -0.2], [0, 3.3, -0.22], [0, 2.5, -0.18]], 0.06, nM); B.root.add(cord);
+  const eyes = [-1, 1].map(s => { const e = sphere(0.07, clay(0x333333), 12); e.position.set(s * 0.17, 5.45, 0.45); B.root.add(e); return e; });
+  const lids = [-1, 1].map(s => { const l = sphere(0.085, clay(0xf0b48c), 12); l.position.set(s * 0.17, 5.47, 0.46); l.scale.set(1, 0.05, 1); B.root.add(l); return l; });
+  // 周圍神經（手臂、腿）
+  const thin = clay(0xffe082);
+  B.root.add(tubeM([[0, 4.05, -0.2], [0.45, 4.15, -0.05], [0.9, 4.2, 0]], 0.025, thin));
+  R.arm.add(tubeM([[0, 0, 0], [0.02, -0.9, 0.05], [0, -1.9, 0.08]], 0.025, thin));
+  B.root.add(tubeM([[0, 2.55, -0.18], [0.25, 2.5, -0.05], [0.38, 2.45, 0]], 0.025, thin));
+  R.leg.add(tubeM([[0, 0, 0], [0.02, -0.6, 0.1], [0, -1.1, 0.15]], 0.025, thin));
+  R.knee.add(tubeM([[0, 0, 0.15], [0, -0.6, 0.12], [0, -1.1, 0.12]], 0.025, thin));
+  // 肌肉（動器）
+  const musM = () => clay(0xe57373, { transparent: true, opacity: 0.85 });
+  const armMus = cap(0.13, 0.45, musM()); armMus.position.set(0, -0.55, 0.08); R.arm.add(armMus);
+  const legMus = cap(0.17, 0.5, musM()); legMus.position.set(0, -0.5, 0.12); R.leg.add(legMus);
+  const legMusL = cap(0.17, 0.5, musM()); legMusL.position.set(0, -0.5, 0.12); B.limbs.L.leg.add(legMusL);
+  // 道具：熱水杯、卡車、橡皮槌、飛來的球
+  const cup = new THREE.Group(); group.add(cup);
+  { const c = cyl(0.22, 0.2, 0.45, metal(0xb0b6bf)); c.position.y = 0.225; cup.add(c); const w = cyl(0.19, 0.19, 0.05, clay(0xbfe3f7)); w.position.y = 0.42; cup.add(w); }
+  const steam = [0, 1, 2].map(i => { const s = glowSprite('255,255,255', 0.35); cup.add(s); return s; });
+  cup.position.set(1.15, 2.05, 0.55);
+  const truck = new THREE.Group(); group.add(truck);
+  { truck.add(Object.assign(shadowed(rbox(2.2, 1.1, 1.0, clay(0x3f74c9), 0.1)), {})); truck.children[0].position.y = 0.85; const cab = shadowed(rbox(0.8, 0.8, 1.0, clay(0xe9edf2), 0.1)); cab.position.set(-1.45, 0.7, 0); truck.add(cab); [-1.3, 0.6].forEach(x => [-0.5, 0.5].forEach(z => { const w = cyl(0.25, 0.25, 0.15, clay(0x333333), 16); w.rotation.x = Math.PI / 2; w.position.set(x, 0.25, z); truck.add(w); })); }
+  const hammer = new THREE.Group(); group.add(hammer);
+  { const h = cyl(0.03, 0.03, 0.8, clay(0x8d6e63), 8); h.rotation.z = Math.PI / 2; h.position.x = 0.4; hammer.add(h); const hd = cyl(0.12, 0.12, 0.3, clay(0xe53935), 16); hd.position.x = 0; hammer.add(hd); }
+  const ball = sphere(0.14, clay(0xffb74d), 16); group.add(ball);
+
+  // 路徑點：[物件, 區域座標]
+  const P = (o, x, y, z) => [o, V3(x, y, z)];
+  const root = B.root;
+  const eyeP = P(root, 0.17, 5.45, 0.42), brainP = P(root, 0, 5.5, 0), stemP = P(root, 0, 5.02, -0.12);
+  const SP = y => P(root, 0, y, -0.2);
+  const SC = [
+    { n: '看到卡車，跳開', sub: '意識動作', kind: '意識動作（大腦控制）', time: '約 0.2 秒以上', chain: [['眼睛（受器）', 's'], ['感覺神經元', 's'], ['大腦', 'c'], ['脊髓', 'c'], ['運動神經元', 'm'], ['腿部肌肉（動器）', 'm']],
+      segs: [{ t: 's', pts: [eyeP, P(root, 0.1, 5.47, 0.2), brainP], ch: [0, 1] }, { t: 'c', pts: [brainP, stemP, SP(4.6), SP(3.4), SP(2.55)], ch: [2, 3] }, { t: 'm', pts: [SP(2.55), P(root, 0.25, 2.5, -0.05), P(R.leg, 0, 0, 0), P(R.leg, 0, -0.5, 0.12)], ch: [4, 5] }],
+      d: '眼睛看到卡車 → 訊息經<b>感覺神經元</b>傳到<b>大腦</b>判斷 → 大腦下命令，經<b>脊髓</b>、<b>運動神經元</b>傳到腿部肌肉 → 跳到人行道。經過大腦判斷的反應叫做<b>意識動作</b>。' },
+    { n: '手碰到熱水杯，縮手', sub: '反射動作（脊髓）', kind: '反射動作（脊髓控制）', time: '比意識動作更短', chain: [['皮膚（受器）', 's'], ['感覺神經元', 's'], ['脊髓', 'c'], ['運動神經元', 'm'], ['手臂肌肉（動器）', 'm'], ['→ 大腦：感到熱痛', 'c']],
+      segs: [{ t: 's', pts: [P(R.arm, 0, -1.9, 0.08), P(R.arm, 0.02, -0.9, 0.05), P(R.arm, 0, 0, 0), P(root, 0.45, 4.15, -0.05), SP(4.05)], ch: [0, 1] }, { t: 'c', pts: [SP(4.05), SP(4.0)], ch: [2, 2] }, { t: 'm', pts: [SP(4.0), P(root, 0.45, 4.12, 0.0), P(R.arm, 0, 0, 0.03), P(R.arm, 0, -0.55, 0.1)], ch: [3, 4], react: true }, { t: 'c', pts: [SP(4.05), SP(4.6), stemP, brainP], ch: [5, 5] }],
+      d: '手指碰到熱水杯 → 訊息傳到<b>脊髓</b>，脊髓<b>直接</b>下命令讓手縮回，<b>不經過大腦判斷</b>，這就是<b>反射動作</b>，可以爭取時間、減少傷害。<br>同時訊息也傳到大腦，接著才<b>感到又熱又痛</b>，再有意識地去沖冷水。' },
+    { n: '膝跳反射', sub: '反射動作（脊髓）', kind: '反射動作（脊髓控制）', time: '很短', chain: [['膝蓋下韌帶（受器）', 's'], ['感覺神經元', 's'], ['脊髓', 'c'], ['運動神經元', 'm'], ['大腿肌肉（動器）', 'm']],
+      segs: [{ t: 's', pts: [P(R.knee, 0, -0.1, 0.2), P(R.leg, 0, -0.6, 0.1), P(R.leg, 0, 0, 0), P(root, 0.25, 2.5, -0.05), SP(2.55)], ch: [0, 1] }, { t: 'c', pts: [SP(2.55), SP(2.6)], ch: [2, 2] }, { t: 'm', pts: [SP(2.6), P(root, 0.25, 2.52, 0.0), P(R.leg, 0, 0, 0.05), P(R.leg, 0, -0.5, 0.15)], ch: [3, 4], react: true }],
+      d: '輕敲膝蓋下方的韌帶 → 訊息傳到<b>脊髓</b> → 脊髓直接命令大腿肌肉收縮，小腿瞬間彈起。訊息<b>沒有經過大腦</b>，是脊髓控制的反射。' },
+    { n: '東西飛向眼睛，眨眼', sub: '反射動作（腦幹）', kind: '反射動作（腦幹控制）', time: '很短', chain: [['眼睛（受器）', 's'], ['感覺神經元', 's'], ['腦幹', 'c'], ['運動神經元', 'm'], ['眼皮肌肉（動器）', 'm']],
+      segs: [{ t: 's', pts: [eyeP, P(root, 0.12, 5.3, 0.1), stemP], ch: [0, 1] }, { t: 'c', pts: [stemP, P(root, 0, 5.05, -0.1)], ch: [2, 2] }, { t: 'm', pts: [P(root, 0, 5.05, -0.1), P(root, 0.12, 5.35, 0.2), P(root, 0.17, 5.5, 0.45)], ch: [3, 4], react: true }],
+      d: '眨眼、打噴嚏、咳嗽、分泌唾液等，是由<b>腦幹</b>就近控制的反射動作，也不需要大腦判斷。' }
+  ];
+  const COL = { s: 0x3f8ad0, c: 0xe0a800, m: 0xe53935 };
+  const pulse = glowSprite('255,255,255', 0.55); group.add(pulse);
+  const dr = Drawer(group);
+  const st = { sc: 0, t: -1, focus: null };
+  const SEG_T = 1.1;
+  $('scBtns').innerHTML = SC.map((s, i) => `<button class="btn" data-i="${i}">${s.n}<small>${s.sub}</small></button>`).join('');
+  const BR = { brain: ['大腦', '<b>意識中樞</b>：掌管運動、感覺、語言、記憶、思考、情緒。', brain], cereb: ['小腦', '<b>平衡中樞</b>：維持身體平衡，協調全身肌肉。', cereb], stem: ['腦幹', '<b>生命中樞</b>：控制心跳、呼吸、血壓；也控制眨眼、打噴嚏等頭頸部的反射。', stem], cord: ['脊髓', '連接腦和周圍神經，<b>傳遞</b>頸部以下與腦之間的訊息；也是頸部以下<b>反射</b>的中樞。', cord] };
+  $('brBtns').innerHTML = Object.entries(BR).map(([k, b]) => `<button class="btn" data-b="${k}">${b[0]}</button>`).join('');
+  const sel = i => { st.sc = i; st.t = -1; st.focus = null; document.querySelectorAll('#scBtns .btn').forEach(b => b.classList.toggle('on', Number(b.dataset.i) === i)); document.querySelectorAll('#brBtns .btn').forEach(b => b.classList.remove('on')); };
+  document.querySelectorAll('#scBtns .btn').forEach(b => b.addEventListener('click', () => { sel(Number(b.dataset.i)); st.t = 0; }));
+  document.querySelectorAll('#brBtns .btn').forEach(b => b.addEventListener('click', () => { st.focus = st.focus === b.dataset.b ? null : b.dataset.b; document.querySelectorAll('#brBtns .btn').forEach(x => x.classList.toggle('on', x.dataset.b === st.focus)); }));
+  $('nvPlay').addEventListener('click', () => { st.t = 0; });
+  sel(0);
+  const lStage = addLabel('nerve', '', 'sens', V3(0, 0, 0));
+  const lBr = addLabel('nerve', '', 'part', V3(0, 0, 0));
+  const tmp = V3(0, 0, 0);
+  const wp = p => p[0].localToWorld(tmp.copy(p[1])).clone();
+  function polyAt(pts, k) {
+    const W = pts.map(wp); let L = 0; const ls = [];
+    for (let i = 1; i < W.length; i++) { const d = W[i].distanceTo(W[i - 1]); ls.push(d); L += d; }
+    let rem = k * L;
+    for (let i = 1; i < W.length; i++) { if (rem <= ls[i - 1] || i === W.length - 1) return { p: W[i - 1].clone().lerp(W[i], ls[i - 1] ? Math.min(1, rem / ls[i - 1]) : 1), W, idx: i, f: ls[i - 1] ? Math.min(1, rem / ls[i - 1]) : 1 }; rem -= ls[i - 1]; }
+    return { p: W[W.length - 1], W, idx: W.length - 1, f: 1 };
+  }
+  function update(dt) {
+    const S = SC[st.sc], nseg = S.segs.length, total = nseg * SEG_T;
+    if (st.t >= 0) st.t = Math.min(total + 2.5, st.t + dt);
+    const t = st.t;
+    // 反應動作進度
+    const reactIdx = S.segs.findIndex(s => s.react);
+    const rStart = reactIdx >= 0 ? (reactIdx + 1) * SEG_T : nseg * SEG_T;
+    const rk = t < 0 ? 0 : smooth(rStart - 0.15, rStart + 0.4, t);
+    // 預設姿勢
+    R.arm.rotation.set(0, 0, 0); R.knee.rotation.x = 0; B.root.position.x = 0; lids.forEach(l => l.scale.y = 0.05);
+    cup.visible = st.sc === 1; truck.visible = st.sc === 0; hammer.visible = st.sc === 2; ball.visible = st.sc === 3 && t >= 0 && t < 1.2;
+    if (st.sc === 0) { truck.position.set(lerp(7.5, 2.9, smooth(-1, 0.4, t < 0 ? -1 : t)), 0, -1.6); truck.scale.setScalar(0.8); B.root.position.x = -1.6 * rk; legMusL.material.emissive.setHex(rk > 0 && rk < 1 ? 0x661111 : 0); }
+    if (st.sc === 1) { R.arm.rotation.z = 0.25 + 0.35 * rk; R.arm.rotation.x = -0.9 * rk; steam.forEach((s, i) => { const y = (wall * 0.4 + i / 3) % 1; s.position.set(Math.sin(i * 2) * 0.08, 0.5 + y * 0.6, 0); s.material.opacity = 0.5 * (1 - y); }); }
+    if (st.sc === 2) { R.knee.rotation.x = -1.0 * Math.sin(rk * Math.PI); const hk = t < 0 ? 0 : Math.sin(clamp(t / 0.5, 0, 1) * Math.PI); hammer.position.set(0.75 - 0.25 * hk, 1.45, 0.75); hammer.rotation.z = 0.6 * hk; }
+    if (st.sc === 3) { ball.position.set(0.17, 5.45, 3.0 - 2.4 * clamp(t / 1.2, 0, 1)); lids.forEach(l => { l.scale.y = 0.05 + 1.0 * Math.sin(rk * Math.PI); }); }
+    armMus.material.emissive.setHex(st.sc === 1 && rk > 0 && rk < 1 ? 0x661111 : 0);
+    legMus.material.emissive.setHex((st.sc === 0 || st.sc === 2) && rk > 0 && rk < 1 ? 0x661111 : 0);
+    // 已傳導的路徑與訊號
+    dr.begin();
+    let cur = -1;
+    if (t >= 0) S.segs.forEach((sg, i) => {
+      const k = clamp((t - i * SEG_T) / SEG_T, 0, 1); if (k <= 0) return;
+      if (k < 1) cur = i;
+      const r = polyAt(sg.pts, k);
+      for (let j = 1; j < r.idx; j++) dr.line(r.W[j - 1], r.W[j], COL[sg.t], 0.045);
+      dr.line(r.W[r.idx - 1], r.p, COL[sg.t], 0.045);
+      if (k < 1) { pulse.position.copy(r.p); pulse.material.color.setHex(COL[sg.t]); }
+    });
+    dr.end();
+    pulse.visible = cur >= 0;
+    // 中樞神經介紹
+    const pulseE = 0.35 + 0.3 * Math.sin(wall * 5);
+    Object.entries(BR).forEach(([k, b]) => { b[2].material.emissive.setHex(0); if (k === st.focus) b[2].material.emissive.copy(b[2].material.color).multiplyScalar(pulseE); });
+    lBr.show = !!st.focus; if (st.focus) { lBr.pos.copy(BR[st.focus][2].getWorldPosition(tmp)).add(V3(-1.0, 0.25, 0.3)); setLabel(lBr, BR[st.focus][0]); }
+    // 標籤、說明
+    const doneCh = t < 0 ? -1 : cur >= 0 ? S.segs[cur].ch[0] : (t >= total ? S.chain.length : -1);
+    const curCh = cur >= 0 ? S.segs[cur].ch : null;
+    setHTML('nvChain', S.chain.map((c, i) => `<span class="${c[1]} ${curCh && i >= curCh[0] && i <= curCh[1] ? 'cur' : (t >= total || (cur >= 0 && i < curCh[0])) ? 'done' : ''}">${c[0]}</span>`).join('<b>→</b>'));
+    setHTML('nvCard', `<h4>${S.n}</h4><span class="pill">${S.kind}</span><span class="pill" style="background:#d08a2e">反應時間：${S.time}</span><div>${S.d}</div>${st.focus ? `<hr style="border:none;border-top:1px dashed #e4d9c6;margin:6px 0"><b>${BR[st.focus][0]}</b>：${BR[st.focus][1]}` : ''}`);
+    lStage.show = cur >= 0;
+    if (cur >= 0) { const sg = S.segs[cur]; lStage.pos.copy(pulse.position).add(V3(0.9, 0.3, 0.3)); setLabel(lStage, sg.t === 's' ? '感覺神經元' : sg.t === 'm' ? '運動神經元' : '中樞神經', sg.t === 's' ? 'sens' : sg.t === 'm' ? 'mot' : 'cen'); }
+    setCap(t < 0 ? `<small>神經傳導・${S.kind}</small>按「播放神經傳導」，看訊息怎麼從<b>受器</b>傳到<b>動器</b>` : cur >= 0 ? `<small>${S.n}</small>${S.chain[S.segs[cur].ch[0]][0]} → ${S.chain[S.segs[cur].ch[1]][0]}` : `<small>${S.kind}</small>${S.n}　<b>完成！</b>${st.sc === 1 ? '　手先縮回，之後才感到熱痛' : ''}`);
+  }
+  return { group, update, sel, st, SC };
+})();
+function updateNerve(dt) { scene.background.setHex(0xf5f1e7); NV.update(dt); }
+
+/* =========================================================
+   Tab 2：反應時間（接尺實驗）
+   ========================================================= */
+const RL = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const FY = 1.4;                                            // 手指夾住的位置
+  // 直尺（30 公分，0 在下端）
+  const rc = document.createElement('canvas'); rc.width = 128; rc.height = 1024;
+  { const g = rc.getContext('2d'); g.fillStyle = '#fff6d6'; g.fillRect(0, 0, 128, 1024); g.fillStyle = '#3e2c25'; g.font = 'bold 34px sans-serif'; g.textAlign = 'right';
+    for (let mm = 0; mm <= 300; mm++) { const y = 1024 - mm / 300 * 1010 - 7; const len = mm % 10 === 0 ? 46 : mm % 5 === 0 ? 30 : 16; g.fillRect(0, y, len, mm % 10 === 0 ? 3 : 1.5); if (mm % 50 === 0 && mm) g.fillText(mm / 10, 118, y + 12); else if (mm % 10 === 0 && mm) { g.font = 'bold 24px sans-serif'; g.fillText(mm / 10, 118, y + 9); g.font = 'bold 34px sans-serif'; } } }
+  const rtex = new THREE.CanvasTexture(rc); rtex.colorSpace = THREE.SRGBColorSpace; rtex.anisotropy = 8;
+  const ruler = new THREE.Group(); group.add(ruler);
+  const rm = new THREE.Mesh(new THREE.BoxGeometry(0.42, 3.0, 0.04), [clay(0xf4e2a8), clay(0xf4e2a8), clay(0xf4e2a8), clay(0xf4e2a8), new THREE.MeshStandardMaterial({ map: rtex }), clay(0xf4e2a8)]);
+  rm.position.y = 1.5; ruler.add(rm);
+  // 接尺的手（拇指與食指）
+  const skin = clay(0xf0b48c);
+  const hand = new THREE.Group(); hand.position.set(0, FY, 0); group.add(hand);
+  const palm = rbox(0.7, 0.9, 0.4, skin, 0.18); palm.position.set(0.55, -0.35, 0); hand.add(palm);
+  const thumb = new THREE.Group(); thumb.position.set(0.3, 0, 0.25); hand.add(thumb);
+  { const c = cap(0.09, 0.45, skin); c.rotation.z = Math.PI / 2; c.position.x = -0.25; thumb.add(c); }
+  const index = new THREE.Group(); index.position.set(0.3, 0, -0.25); hand.add(index);
+  { const c = cap(0.085, 0.55, skin); c.rotation.z = Math.PI / 2; c.position.x = -0.3; index.add(c); }
+  const arm = cap(0.25, 1.4, skin); arm.rotation.z = Math.PI / 2 - 0.2; arm.position.set(1.6, -0.6, 0); hand.add(arm);
+  // 放尺的手（上方）
+  const top = new THREE.Group(); top.position.set(0, FY + 3.05, 0); group.add(top);
+  const tf = [0.12, -0.12].map(z => { const c = cap(0.08, 0.4, skin); c.rotation.z = Math.PI / 2; c.position.set(-0.25, 0, z); top.add(c); return c; });
+  const tArm = cap(0.22, 1.2, skin); tArm.rotation.z = -Math.PI / 2 + 0.3; tArm.position.set(-1.2, 0.25, 0); top.add(tArm);
+  const line = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.015, 0.015), new THREE.MeshBasicMaterial({ color: 0xe53935 })); line.position.set(-0.1, FY + 0.09, 0.05); group.add(line);
+  const lRead = addLabel('ruler', '', 'red', V3(-1.0, FY + 0.1, 0));
+
+  const st = { mode: 'idle', dropAt: 0, tc: 0, d: 0, trials: [] };
+  const now = () => performance.now();
+  function ready() { st.mode = 'armed'; st.dropAt = now() + 1200 + Math.random() * 2300; st.d = 0; }
+  function catchIt() {
+    if (st.mode === 'armed') { st.mode = 'early'; return; }
+    if (st.mode !== 'falling') return;
+    const t = (now() - st.dropAt) / 1000; const d = 490 * t * t;
+    if (d > 30) { st.mode = 'missed'; return; }
+    st.mode = 'caught'; st.tc = t; st.d = d;
+    st.trials.push(d); if (st.trials.length > 5) st.trials.shift();
+  }
+  $('rlReady').addEventListener('click', ready);
+  $('rlCatch').addEventListener('click', catchIt);
+  $('rlReset').addEventListener('click', () => { st.trials = []; st.mode = 'idle'; st.d = 0; });
+  window.addEventListener('keydown', e => { if (tab !== 'ruler') return; if (e.code === 'Space') { e.preventDefault(); if (st.mode === 'armed' || st.mode === 'falling') catchIt(); else ready(); } });
+  renderer.domElement.addEventListener('pointerdown', () => { if (tab === 'ruler' && (st.mode === 'falling' || st.mode === 'armed')) catchIt(); });
+  function update(dt) {
+    if (st.mode === 'armed' && now() >= st.dropAt) st.mode = 'falling';
+    let d = 0;
+    if (st.mode === 'falling') { const t = (now() - st.dropAt) / 1000; d = 490 * t * t; if (d > 36) { st.mode = 'missed'; } }
+    if (st.mode === 'caught') d = st.d;
+    if (st.mode === 'missed') d = 40;
+    ruler.position.y = FY - d * 0.1;
+    ruler.visible = !(st.mode === 'missed');
+    const closed = st.mode === 'caught' ? 1 : 0;
+    thumb.position.z = lerp(0.25, 0.06, closed); index.position.z = lerp(-0.25, -0.06, closed);
+    tf.forEach((f, i) => { f.position.z = (i ? -1 : 1) * (st.mode === 'idle' || st.mode === 'armed' ? 0.05 : 0.2); });
+    lRead.show = st.mode === 'caught'; setLabel(lRead, `${st.d.toFixed(1)} 公分`);
+    const n = st.trials.length, avg = n ? st.trials.reduce((a, b) => a + b, 0) / n : 0;
+    const tOf = d => Math.sqrt(2 * d / 980);
+    setHTML('rlStat', `<table class="res"><thead><tr><th>次數</th>${[1, 2, 3, 4, 5].map(i => `<th>${i}</th>`).join('')}</tr></thead><tbody><tr><th>公分</th>${[0, 1, 2, 3, 4].map(i => `<td>${st.trials[i] !== undefined ? st.trials[i].toFixed(1) : '—'}</td>`).join('')}</tr></tbody></table>
+      ${n ? `平均距離：<b>${avg.toFixed(1)} 公分</b><br>你的反應時間約 <span class="big-t">${tOf(avg).toFixed(3)}</span> 秒${n < 5 ? `<br><small>再測 ${5 - n} 次，取平均才客觀</small>` : '（5 次平均）'}` : '還沒有紀錄。測 <b>5 次</b>再取平均，才能客觀代表你的反應時間。'}
+      <br><small>換算：距離 ＝ ½ × 重力加速度 × 時間²，例如 20 公分 ≈ 0.20 秒</small>`);
+    setCap(st.mode === 'armed' ? '<small>專心看直尺…</small>直尺隨時會掉下來！' : st.mode === 'falling' ? '<span class="huge red">快抓！</span>' : st.mode === 'early' ? '<small>太早了</small>直尺還沒掉你就抓了！再按一次「準備」' : st.mode === 'missed' ? '<small>沒接到</small>直尺掉超過 30 公分了，再試一次' : st.mode === 'caught' ? `<small>接住了！</small>直尺掉了 <b>${st.d.toFixed(1)} 公分</b>，反應時間約 <b>${st.tc.toFixed(3)} 秒</b>` : '<small>接尺實驗</small>按「準備」（或空白鍵），看到直尺掉下就立刻抓住它');
+  }
+  return { group, update, st, ready, catchIt };
+})();
+function updateRuler(dt) { scene.background.setHex(0xf5f1e7); RL.update(dt); }
+
+/* =========================================================
+   Tab 3：內分泌系統與植物的感應
+   ========================================================= */
+const HM = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const ENDO = new THREE.Group(); group.add(ENDO);
+  const PLANT = new THREE.Group(); group.add(PLANT);
+  const st = { mode: 'endo', gl: null, light: 0, side: false, grow: 0.25, growT: 0, touchT: 99, night: false, nk: 0 };
+
+  /* ----- 內分泌 ----- */
+  const B = makeBody(ENDO, 0);
+  const heart = sphere(0.2, clay(0xc62828), 20); heart.position.set(0.12, 3.95, 0.12); B.root.add(heart);
+  const liver = sphere(0.35, clay(0x8d4b3b), 20); liver.scale.set(1.2, 0.55, 0.6); liver.position.set(-0.3, 3.4, 0.12); B.root.add(liver);
+  [-1, 1].forEach(s => { const k = sphere(0.14, clay(0x9c4a3a), 16); k.scale.set(0.7, 1.1, 0.6); k.position.set(s * 0.28, 2.85, -0.15); B.root.add(k); });
+  const G = {
+    pit: { n: '腦垂腺', h: '生長激素', d: '促進<b>生長</b>（骨骼、肌肉）；也能分泌激素，調控其他內分泌腺，被稱為「內分泌腺的總司令」。', pos: [0, 5.28, 0.05], col: 0x8e6bbf, targets: [[0.95, 2.5, 0], [-0.95, 2.5, 0], [0.38, 1.2, 0], [-0.38, 1.2, 0]] },
+    thy: { n: '甲狀腺', h: '甲狀腺素', d: '調節<b>新陳代謝</b>的速率。製造甲狀腺素需要<b>碘</b>。', pos: [0, 4.68, 0.16], col: 0xef6c00, targets: [[0, 3.4, 0], [0.95, 3.2, 0], [-0.95, 3.2, 0], [0, 5.4, 0]] },
+    pan: { n: '胰島（胰臟）', h: '胰島素', d: '<b>降低血糖</b>：讓葡萄糖進入細胞利用，或在肝臟轉換成肝糖儲存。', pos: [0.12, 3.1, 0.1], col: 0xf9a825, targets: [[-0.3, 3.4, 0.12], [0.38, 1.6, 0], [-0.38, 1.6, 0]] },
+    adr: { n: '腎上腺', h: '腎上腺素', d: '緊急或緊張時分泌：<b>心跳加快</b>、血糖上升，讓身體迅速應變。', pos: [0.28, 3.05, -0.12], col: 0xd84315, targets: [[0.12, 3.95, 0.12], [0.95, 3.0, 0], [0.38, 1.6, 0]] },
+    sex: { n: '睪丸／卵巢', h: '性激素', d: '青春期促進生殖器官發育，產生<b>第二性徵</b>（如變聲、長鬍子、乳房發育）。', pos: [0.2, 2.3, 0.1], col: 0x1e88e5, targets: [[0, 4.7, 0], [0, 3.6, 0.2], [0, 2.2, 0]] }
+  };
+  Object.values(G).forEach(g => { const m = sphere(0.1, clay(g.col, { clearcoat: 1 }), 16); m.position.set(...g.pos); B.root.add(m); if (g === G.thy) { m.scale.set(1.8, 0.8, 0.8); } if (g === G.adr) { const m2 = m.clone(); m2.material = m.material; m2.position.x = -0.28; B.root.add(m2); } if (g === G.sex) { const m2 = m.clone(); m2.material = m.material; m2.position.x = -0.2; B.root.add(m2); } g.mesh = m; });
+  const hp = Array.from({ length: 40 }, () => { const s = glowSprite('255,255,255', 0.22); s.visible = false; s.userData = { t: 1 }; ENDO.add(s); return s; });
+  $('glBtns').innerHTML = Object.entries(G).map(([k, g]) => `<button class="btn" data-g="${k}">${g.n}<small>${g.h}</small></button>`).join('');
+  document.querySelectorAll('#glBtns .btn').forEach(b => b.addEventListener('click', () => { st.gl = st.gl === b.dataset.g ? null : b.dataset.g; document.querySelectorAll('#glBtns .btn').forEach(x => x.classList.toggle('on', x.dataset.g === st.gl)); }));
+  const lGl = addLabel('horm', '', 'org', V3(0, 0, 0));
+  let spawn = 0;
+
+  /* ----- 植物 ----- */
+  const potG = new THREE.Group(); potG.position.set(-1.8, 0.6, 0); PLANT.add(potG);
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.55, 1.2, 32, 1, true), new THREE.MeshPhysicalMaterial({ color: 0xc0754a, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false })); potG.add(pot);
+  const soil = cyl(0.72, 0.56, 1.1, new THREE.MeshPhysicalMaterial({ color: 0x8d6e63, transparent: true, opacity: 0.35, depthWrite: false })); soil.position.y = -0.04; potG.add(soil);
+  const stemM = clay(0x7cb342), rootM = clay(0xd7b98e);
+  let stemMesh = null, rootMesh = null;
+  const tipLeaves = new THREE.Group(); PLANT.add(tipLeaves);
+  [-1, 1].forEach(s => { const l = sphere(0.22, clay(0x4caf50), 16); l.scale.set(1.4, 0.2, 0.7); l.position.x = s * 0.25; l.rotation.z = s * 0.3; tipLeaves.add(l); });
+  const sunS = glowSprite('255,215,90', 2.6); PLANT.add(sunS);
+  // 含羞草
+  const mim = new THREE.Group(); mim.position.set(2.3, 0, 0); PLANT.add(mim);
+  const mpot = shadowed(cyl(0.55, 0.42, 0.8, clay(0xb0855c))); mpot.position.y = 0.4; mim.add(mpot);
+  const mstem = cyl(0.04, 0.05, 1.6, clay(0x8d6e63), 8); mstem.position.y = 1.6; mim.add(mstem);
+  const pet = new THREE.Group(); pet.position.y = 2.2; mim.add(pet);
+  const rach = cyl(0.025, 0.025, 1.6, clay(0x9ccc65), 6); rach.rotation.z = Math.PI / 2; rach.position.x = 0.8; pet.add(rach);
+  const leaflets = [];
+  for (let i = 0; i < 10; i++) [-1, 1].forEach(s => { const pv = new THREE.Group(); pv.position.set(0.2 + i * 0.14, 0, 0); pet.add(pv); const lf = sphere(0.09, clay(0x66bb6a), 10); lf.scale.set(0.6, 0.12, 1.6); lf.position.z = s * 0.15; pv.add(lf); pv.userData.s = s; leaflets.push(pv); });
+  const lMim = addLabel('horm', '含羞草', 'small', V3(2.3, 3.1, 0));
+  $('touch').addEventListener('click', () => { st.touchT = 0; });
+  $('night').addEventListener('click', () => { st.night = !st.night; $('night').textContent = st.night ? '☀️ 變成白天' : '🌙 變成晚上'; });
+  document.querySelectorAll('.lbtn').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('.lbtn').forEach(x => x.classList.toggle('on', x === b)); st.light = Number(b.dataset.l); st.grow = 0.25; }));
+  $('potSide').addEventListener('change', e => { st.side = e.target.checked; st.grow = 0.25; });
+  $('grow').addEventListener('click', () => { st.grow = 0.25; st.growT = 1; });
+  document.querySelectorAll('.hmode').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('.hmode').forEach(x => x.classList.toggle('on', x === b)); st.mode = b.dataset.m; $('endoBox').hidden = st.mode !== 'endo'; $('plantBox').hidden = st.mode !== 'plant'; goView(TABS.horm.cam()); }));
+  let lastKey = '';
+  function rebuildPlant() {
+    const key = [st.light, st.side, st.grow.toFixed(3)].join();
+    if (key === lastKey) return; lastKey = key;
+    const axis = st.side ? V3(1, 0, 0) : V3(0, 1, 0);                 // 盆栽的「上方」
+    potG.rotation.z = st.side ? -Math.PI / 2 : 0;
+    const base = V3(-1.8, 0.6, 0).add(axis.clone().multiplyScalar(0.55));
+    // 莖：向光性＋背地性
+    const want = V3(st.light * 0.9, 1, 0).normalize();
+    const g = st.grow, L = 0.5 + 1.7 * g;
+    const bend = smooth(0.25, 1, g);
+    const tipDir = axis.clone().lerp(want, bend).normalize();
+    const c1 = base.clone().addScaledVector(axis, L * 0.45), end = c1.clone().addScaledVector(tipDir, L * 0.6);
+    const curve = new THREE.QuadraticBezierCurve3(base, c1, end);
+    if (stemMesh) { stemMesh.geometry.dispose(); PLANT.remove(stemMesh); }
+    stemMesh = new THREE.Mesh(new THREE.TubeGeometry(curve, 24, 0.06, 8), stemM); PLANT.add(stemMesh);
+    tipLeaves.position.copy(end); tipLeaves.rotation.z = -Math.atan2(tipDir.x, tipDir.y);
+    // 根：向地性、背光性
+    const rbase = V3(-1.8, 0.6, 0).addScaledVector(axis, 0.4);
+    const rwant = V3(-st.light * 0.3, -1, 0).normalize();
+    const rL = 0.3 + 0.6 * g, rdir = axis.clone().negate().lerp(rwant, bend).normalize();
+    const rc1 = rbase.clone().addScaledVector(axis, -rL * 0.4), rend = rc1.clone().addScaledVector(rdir, rL * 0.6);
+    if (rootMesh) { rootMesh.geometry.dispose(); PLANT.remove(rootMesh); }
+    rootMesh = new THREE.Mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(rbase, rc1, rend), 16, 0.035, 6), rootM); PLANT.add(rootMesh);
+  }
+
+  function update(dt) {
+    const endo = st.mode === 'endo';
+    ENDO.visible = endo; PLANT.visible = !endo;
+    lGl.show = endo && !!st.gl; lMim.show = !endo;
+    if (endo) {
+      const g = G[st.gl];
+      const pulse = 0.4 + 0.4 * Math.sin(wall * 5);
+      Object.values(G).forEach(x => x.mesh.material.emissive.copy(x.mesh.material.color).multiplyScalar(x === g ? pulse : 0));
+      if (g) {
+        lGl.pos.copy(g.mesh.getWorldPosition(V3(0, 0, 0))).add(V3(-1.2, 0.2, 0.3)); setLabel(lGl, `${g.n} → ${g.h}`);
+        spawn -= dt * 6;
+        if (spawn <= 0) { spawn = 1; const s = hp.find(p => p.userData.t >= 1); if (s) { const tg = g.targets[Math.floor(rnd() * g.targets.length)]; s.userData = { t: 0, curve: new THREE.CatmullRomCurve3([V3(...g.pos), V3(0.12, 3.95, 0.25), V3(...tg)]) }; s.material.color.setHex(g.col); } }
+        heart.scale.setScalar(1 + (st.gl === 'adr' ? 0.18 : 0.06) * Math.max(0, Math.sin(wall * (st.gl === 'adr' ? 14 : 7))));
+      } else heart.scale.setScalar(1 + 0.06 * Math.max(0, Math.sin(wall * 7)));
+      hp.forEach(s => { if (s.userData.t >= 1) { s.visible = false; return; } s.userData.t += dt / 2.2; s.visible = true; s.position.copy(s.userData.curve.getPoint(Math.min(1, s.userData.t))); });
+      setHTML('glCard', g ? `<h4>${g.n}</h4><span class="pill">${g.h}</span><div>${g.d}</div><div style="margin-top:4px">激素經由<b>血液</b>運送到全身，作用在特定的器官。</div>` : '點選一個內分泌腺，看它分泌的<b>激素</b>如何經由<b>血液</b>運送。內分泌腺<b>沒有導管</b>，激素直接進入血液。');
+      setCap(g ? `<small>內分泌系統</small><b>${g.n}</b>分泌<b>${g.h}</b> → 隨<b>血液</b>運送到全身` : '<small>內分泌系統</small>內分泌腺分泌<b>激素</b>，靠<b>血液</b>運送；作用較慢，但比較持久');
+      return;
+    }
+    // 植物
+    if (st.growT > 0) { st.grow = Math.min(1, st.grow + dt / 2.5); if (st.grow >= 1) st.growT = 0; }
+    rebuildPlant();
+    sunS.position.set(-1.8 + st.light * 2.6, st.light ? 2.2 : 4.0, 0.3);
+    st.touchT += dt;
+    st.nk = lerp(st.nk, st.night ? 1 : 0, Math.min(1, dt * 1.5));
+    const fold = Math.max(st.nk, st.touchT < 0.4 ? st.touchT / 0.4 : Math.max(0, 1 - (st.touchT - 2.5) / 2));
+    leaflets.forEach((pv, i) => { const delay = (i >> 1) * 0.04; const f = st.touchT < 5 ? clamp(fold - (st.touchT < 0.6 ? delay * (1 - st.touchT / 0.6) : 0), 0, 1) : st.nk; pv.rotation.x = pv.userData.s * f * 1.35; });
+    pet.rotation.z = -0.15 - 0.5 * Math.max(st.nk, st.touchT < 4 ? fold * 0.6 : 0);
+    scene.background.setHex(st.night ? 0xc9c3d8 : 0xf5f1e7);
+    const pName = st.side ? '盆栽橫放' : st.light === 0 ? '光從上方來' : st.light < 0 ? '光從左邊來' : '光從右邊來';
+    setHTML('plCard', `<h4>🌱 向性（長時間的感應）</h4>莖：<b>向光性</b>、<b>背地性</b>；根：<b>向地性</b>、背光性、向濕性。向性和<b>生長</b>有關，要好幾天才看得出來。<hr style="border:none;border-top:1px dashed #e4d9c6;margin:6px 0"><h4>🌿 短時間的感應</h4>含羞草被碰觸，小葉閉合＝<b>觸發運動</b>；晚上葉子閉合下垂＝<b>睡眠運動</b>；捕蠅草夾住昆蟲＝<b>捕蟲運動</b>。這些和細胞內<b>水分</b>的變化有關。`);
+    setCap(st.touchT < 2.5 ? '<small>含羞草・觸發運動</small>被碰觸後小葉<b>很快</b>閉合，過一陣子又會打開' : st.night ? '<small>睡眠運動</small>到了晚上，含羞草的葉子閉合下垂' : `<small>植物的向性・${pName}</small>${st.side ? '莖<b>背地</b>向上彎、根<b>向地</b>向下彎' : st.light ? '莖朝光源彎曲生長：<b>向光性</b>' : '莖筆直向上生長'}${st.growT > 0 ? '（生長中…）' : ''}`);
+  }
+  return { group, update, st, G };
+})();
+function updateHorm(dt) { HM.update(dt); if (tab !== 'horm' || HM.st.mode !== 'plant') scene.background.setHex(0xf5f1e7); }
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  nerve: { group: NV.group, cam: () => ({ pos: [2.6, 4.2, 10], target: [0.6, 3.0, 0], fitW: window.innerWidth < window.innerHeight ? 5.5 : 9 }), update: updateNerve },
+  ruler: { group: RL.group, cam: () => ({ pos: [1.6, 2.9, 7.2], target: [0.2, 2.4, 0], fitW: window.innerWidth < window.innerHeight ? 3.6 : 5 }), update: updateRuler },
+  horm: { group: HM.group, cam: () => HM.st.mode === 'endo' ? { pos: [1.6, 3.8, 9], target: [0, 3.2, 0], fitW: window.innerWidth < window.innerHeight ? 3.6 : 6 } : { pos: [0, 2.8, 9.5], target: [0.2, 1.7, 0], fitW: window.innerWidth < window.innerHeight ? 6.5 : 8.5 }, update: updateHorm }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, NV, RL, HM, camera, controls, renderer, scene, placeLabels };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'nerve';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+<script src="goals.js" defer></script>
+</body>
+</html>
