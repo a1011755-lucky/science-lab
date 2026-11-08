@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>演化實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+  .tabs.three .tab { font-size: .74rem; padding: 9px 2px; }
+  .objs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .objs .btn { padding: 8px 4px; font-size: .78rem; margin-top: 0; }
+  .objs .btn.yes { background: #e3f1e6; color: #2e6b3f; } .objs .btn.no { background: #fde5e2; color: #a5311f; }
+  .orgcard { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin-top: 8px; font-size: .8rem; line-height: 1.65; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
+  .orgcard:empty { display: none; }
+  .orgcard h4 { font-size: .98rem; font-weight: 900; margin-bottom: 2px; }
+  .orgcard .pill { display: inline-block; font-size: .72rem; font-weight: 800; color: #fff; background: #8d6e63; border-radius: 999px; padding: 1px 9px; margin: 2px 4px 2px 0; }
+  .tag.part { font-size: .66rem; padding: 2px 7px; background: rgba(62,44,37,.82); color: #fff; }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g7">‹ 課程總覽</a>
+  <div class="title">演化實驗室</div>
+  <div class="body">
+    <div class="tabs three">
+      <button class="tab on" data-tab="fos">🪨 化石<small>地層與證據</small></button>
+      <button class="tab" data-tab="wha">🐋 鯨魚演化<small>五千萬年</small></button>
+      <button class="tab" data-tab="sel">🦋 天擇<small>樺尺蛾</small></button>
+    </div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="fos">
+      <div class="concept" style="--cc:#8d6e63"><div class="ct">化石</div><div class="cd">古代生物的<b>遺體或活動痕跡</b>，經過<b>漫長的地質作用</b>形成<br>沒有被翻動的地層：<b>越下層越古老</b></div></div>
+      <label class="lab" for="dig">⛏️ 往下挖掘<b id="digV"></b></label>
+      <input class="big" type="range" id="dig" min="0" max="5" step="0.01" value="0">
+      <div class="orgcard" id="fosCard"></div>
+      <label class="lab">🤔 這些算是化石嗎？</label>
+      <div class="objs" id="fqBtns"></div>
+      <div class="orgcard" id="fqRes"></div>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="wha" hidden>
+      <div class="concept" style="--cc:#1e6aa8"><div class="ct">鯨魚的祖先在陸地上</div><div class="cd">約五千萬年前，鯨魚的祖先是像狼一樣的<b>四足哺乳類</b><br>經過長時間，逐漸適應海洋生活</div></div>
+      <label class="lab" for="era">時間<b id="eraV"></b></label>
+      <input class="big" type="range" id="era" min="0" max="5" step="0.01" value="0">
+      <div class="ticks"><span>5000 萬年前</span><span>現在</span></div>
+      <button class="btn primary" id="whPlay">▶ 播放演化過程</button>
+      <div class="orgcard" id="whCard"></div>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="sec" data-tab="sel" hidden>
+      <div class="concept" style="--cc:#4f7d5c"><div class="ct">天擇：環境選擇了適合的個體</div><div class="cd">族群中本來就有<b>差異（變異）</b>，較能適應環境的個體容易存活、繁殖後代</div></div>
+      <div class="row2"><button class="btn tbtn on" data-t="clean">🌳 乾淨的樹幹</button><button class="btn tbtn" data-t="soot">🏭 被煤煙燻黑</button></div>
+      <div class="row2"><button class="btn primary" id="selGen">🐦 過一個世代</button><button class="btn" id="selAuto">⏩ 連續 10 代</button></div>
+      <button class="btn" id="selReset">↺ 重來</button>
+      <div class="mapbox"><p>📈 族群中淺色蛾、深色蛾的比例</p><canvas id="selChart" width="600" height="260"></canvas></div>
+      <div class="orgcard" id="selCard"></div>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'fos', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+/* =========================================================
+   共用小工具
+   ========================================================= */
+const lerp = (a, b, k) => a + (b - a) * k;
+const sphere = (r, mat, seg = 24) => new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg * 0.6 | 0)), mat);
+const cyl = (r1, r2, h, mat, seg = 32) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg), mat);
+const rbox = (w, h, d, mat, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001)), mat);
+const cap = (r, len, mat) => new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 6, 14), mat);
+const shellM = (c, op) => new THREE.MeshPhysicalMaterial({ color: c, transparent: true, opacity: op, roughness: 0.35, clearcoat: 0.6, side: THREE.DoubleSide, depthWrite: false });
+const C3 = (a, b, k) => new THREE.Color(a).lerp(new THREE.Color(b), clamp(k, 0, 1));
+let rs = 71;
+const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+table.scale.set(1.6, 1, 2.4); table.position.z = 13.6;
+
+/* =========================================================
+   Tab 1：化石與地層
+   ========================================================= */
+const FO = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const bone = clay(0xe8dcc4), stone = c => clay(c, { roughness: 0.95 });
+  const H = 0.7, W = 7, D = 3;
+  const L = [
+    { c: 0xc9a77d, n: '新生代（較新）', age: '約 1 萬年前', f: '猛瑪象', d: '猛瑪象生活在寒冷地區，西伯利亞永凍層挖出的猛瑪象，組織還很柔軟，也算化石。', mk: g => { const t = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(-1, 0, 0), V3(-0.2, 0.25, 0.3), V3(0.6, 0.5, 0), V3(0.9, 0.3, -0.3)]), 30, 0.09, 10), bone); g.add(t); const sk = sphere(0.35, bone, 20); sk.scale.set(1.2, 0.6, 0.9); sk.position.x = -1.2; g.add(sk); } },
+    { c: 0xb88b5a, n: '新生代（早期）', age: '約 5000 萬年前', f: '鯨魚的祖先', d: '像狼一樣的四足哺乳類，是現代鯨魚的祖先（見「鯨魚演化」分頁）。', mk: g => { const sk = sphere(0.28, bone, 20); sk.scale.set(1.8, 0.6, 0.7); g.add(sk); for (let i = 0; i < 7; i++) { const v = sphere(0.1, bone, 10); v.position.set(0.6 + i * 0.22, 0, 0); g.add(v); } [0.8, 1.9].forEach(x => [-0.25, 0.25].forEach(z => { const l = cyl(0.04, 0.04, 0.6, bone, 8); l.rotation.x = Math.PI / 2 * Math.sign(z); l.position.set(x, 0, z * 1.6); g.add(l); })); } },
+    { c: 0xa47148, n: '中生代', age: '約 1 億年前', f: '恐龍、菊石', d: '恐龍與菊石生活在中生代，在<b>白堊紀末期</b>一起絕種，推測當時地球的環境發生了劇烈變化。', mk: g => { for (let i = 0; i < 4; i++) { const b = cyl(0.07, 0.07, 1.0, bone, 10); b.rotation.z = Math.PI / 2 + (i - 1.5) * 0.3; b.position.set(-1.0 + i * 0.25, 0, 0); g.add(b); [-1, 1].forEach(s => { const e = sphere(0.1, bone, 10); e.position.set(-1.0 + i * 0.25 + s * 0.48 * Math.cos((i - 1.5) * 0.3), s * 0.48 * Math.sin((i - 1.5) * 0.3), 0); g.add(e); }); } const am = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.12, 12, 40), clay(0x9e8a6e)); am.rotation.x = Math.PI / 2; am.position.x = 1.3; g.add(am); const am2 = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.07, 10, 30), clay(0x9e8a6e)); am2.rotation.x = Math.PI / 2; am2.position.set(1.3, 0.05, 0); g.add(am2); } },
+    { c: 0x8d6248, n: '古生代（晚期）', age: '約 4.6 億年前', f: '直角石', d: '直角石身體筆直，有<b>圓錐狀外殼</b>，生活在海中，比恐龍早出現約 3 億年。', mk: g => { const c = new THREE.Mesh(new THREE.ConeGeometry(0.22, 2.2, 24), clay(0x9e8a6e)); c.rotation.z = Math.PI / 2; g.add(c); for (let i = 0; i < 8; i++) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.2 - i * 0.022, 0.015, 6, 24), clay(0x7a6a52)); r.rotation.y = Math.PI / 2; r.position.x = -0.9 + i * 0.25; g.add(r); } } },
+    { c: 0x6d4c3d, n: '古生代（早期）', age: '約 5 億年前', f: '三葉蟲', d: '三葉蟲是古生代海洋中的節肢動物，是很常見的化石，現在已經絕種。', mk: g => { [-0.9, 0.7].forEach(x => { const b = sphere(0.45, clay(0x5a4636), 24); b.scale.set(1, 0.25, 0.7); b.position.x = x; g.add(b); for (let i = 0; i < 6; i++) { const s = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 0.55), clay(0x3e2f25)); s.position.set(x - 0.3 + i * 0.12, 0.05, 0); g.add(s); } }); } }
+  ];
+  const layers = L.map((l, i) => {
+    const g = new THREE.Group(); group.add(g);
+    const y0 = (L.length - 1 - i) * H;               // i = 0 在最上層
+    const b = shadowed(rbox(W, H, D, stone(l.c), 0.04)); b.position.y = y0 + H / 2; g.add(b);
+    b.material.transparent = true;
+    const fg = new THREE.Group(); fg.position.set(0, y0 + H + 0.02, 0.2); group.add(fg); l.mk(fg); shadowed(fg);
+    const lab = addLabel('fos', `${l.n}・${l.age}`, 'small', V3(-W / 2 - 1.2, y0 + H / 2, D / 2));
+    return { g, b, fg, y0, lab };
+  });
+  const lF = addLabel('fos', '', 'yel', V3(0, 0, 0));
+  const lOld = addLabel('fos', '⬆ 較新　⬇ 較古老', 'small', V3(-W / 2 - 1.2, 3.95, D / 2));
+  const ITEMS = [['恐龍骨骼化石', 1, '古代生物遺體經漫長地質作用形成'], ['琥珀裡的昆蟲', 1, '古代昆蟲被樹脂包住，經長時間形成'], ['恐龍的足跡（印痕）', 1, '古代生物的<b>活動痕跡</b>也算化石'], ['永凍層裡的猛瑪象', 1, '被冰雪保存很久的古代生物遺體'], ['冷凍庫裡的豬肉', 0, '沒有經過長時間的地質作用，只是遺體'], ['午餐吃剩的文蛤殼', 0, '現代生物的殘骸，不是化石']];
+  $('fqBtns').innerHTML = ITEMS.map((x, i) => `<button class="btn" data-i="${i}">${x[0]}</button>`).join('');
+  document.querySelectorAll('#fqBtns .btn').forEach(b => b.addEventListener('click', () => { const x = ITEMS[Number(b.dataset.i)]; b.classList.add(x[1] ? 'yes' : 'no'); setHTML('fqRes', `<b>${x[0]}</b>：${x[1] ? '✔ 是化石' : '✘ 不是化石'}<br>${x[2]}`); }));
+  function update(dt) {
+    const d = Number($('dig').value);
+    const cur = clamp(Math.floor(d + 0.001), 0, 4);
+    $('digV').textContent = `第 ${cur + 1} 層`;
+    layers.forEach((Ly, i) => {
+      const gone = smooth(i + 0.5, i + 1, d);
+      Ly.g.position.y = gone * 2.5; Ly.b.material.opacity = 1 - gone; Ly.g.visible = gone < 0.99; Ly.lab.show = gone < 0.5;
+      const exposed = i === 0 ? 1 : smooth(i - 0.5, i, d);
+      Ly.fg.visible = exposed > 0.05 && gone < 0.9; Ly.fg.position.y = Ly.y0 + H + 0.02 + 2.5 * gone; Ly.fg.scale.setScalar(Math.max(0.01, exposed));
+    });
+    const l = L[cur];
+    lF.pos.set(0, layers[cur].y0 + H + 1.0, 0.2); setLabel(lF, `🦴 ${l.f}`);
+    setHTML('fosCard', `<h4>${l.f}</h4><span class="pill">${l.n}</span><span class="pill">${l.age}</span><div>${l.d}</div>`);
+    setCap(`<small>第 ${cur + 1} 層・${l.n}</small>${cur ? '越往下挖，化石越<b>古老</b>' : '從最上面、最新的地層開始挖'}；化石讓我們知道古生物的<b>外形、生存年代</b>與<b>環境變遷</b>`);
+  }
+  return { group, update };
+})();
+function updateFos(dt) { FO.update(dt); }
+
+/* =========================================================
+   Tab 2：鯨魚的演化
+   ========================================================= */
+const WH = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const ground = shadowed(rbox(9, 0.4, 4, clay(0xa1887f), 0.1)); ground.position.y = 0.2; group.add(ground);
+  const grass = rbox(9, 0.06, 4, clay(0x9ccc65), 0.03); grass.position.y = 0.42; group.add(grass);
+  const sea = new THREE.Mesh(new RoundedBoxGeometry(9, 1, 4, 4, 0.1), shellM(0x4fa3e0, 0.35)); group.add(sea);
+  const A = new THREE.Group(); group.add(A);
+  const skin = clay(0x8d8d8d, { clearcoat: 0.4 });
+  const body = cap(0.4, 1.2, skin); body.rotation.z = Math.PI / 2; A.add(body);
+  const head = new THREE.Group(); A.add(head);
+  const skull = sphere(0.32, skin, 20); head.add(skull);
+  const snout = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.6, 16), skin); snout.rotation.z = -Math.PI / 2; snout.position.x = 0.4; head.add(snout);
+  const eye = sphere(0.04, clay(0x222222), 8); eye.position.set(0.15, 0.12, 0.25); head.add(eye);
+  const legs = [[0.55, 0.2], [0.55, -0.2], [-0.55, 0.2], [-0.55, -0.2]].map(([x, z], i) => { const pv = new THREE.Group(); pv.position.set(x, -0.2, z); A.add(pv); const l = cap(0.08, 0.6, skin); l.position.y = -0.38; pv.add(l); const foot = sphere(0.1, skin, 10); foot.scale.set(1.6, 0.35, 1); foot.position.y = -0.72; pv.add(foot); return { pv, l, foot, front: i < 2 }; });
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.16, 1.2, 14), skin); tail.rotation.z = Math.PI / 2; A.add(tail);
+  const fluke = [-1, 1].map(s => { const f = sphere(0.3, skin, 14); f.scale.set(0.5, 0.08, 1); f.position.z = s * 0.25; f.rotation.y = s * 0.4; A.add(f); return f; });
+  const S = [
+    { n: '巴基鯨', t: '約 5000 萬年前', env: '陸地', bl: 1.1, br: 0.33, leg: 1, hind: 1, fl: 0, flk: 0, sn: 0.6, water: 0, d: '像狼一樣的陸生哺乳類，用四隻腳在陸地上行走，生活在河口附近。' },
+    { n: '走鯨', t: '約 4900 萬年前', env: '河口、沼澤', bl: 1.5, br: 0.38, leg: 0.75, hind: 0.85, fl: 0.2, flk: 0, sn: 0.9, water: 0.45, d: '腳變短、腳掌變大，能在水中划水，也能上岸，像鱷魚一樣在淺水捕食。' },
+    { n: '羅德侯鯨', t: '約 4700 萬年前', env: '淺海', bl: 1.9, br: 0.42, leg: 0.5, hind: 0.55, fl: 0.5, flk: 0.3, sn: 1.0, water: 0.8, d: '大部分時間生活在水中，四肢更短，尾巴開始幫助游泳。' },
+    { n: '龍王鯨', t: '約 4000 萬年前', env: '海洋', bl: 3.0, br: 0.42, leg: 0.4, hind: 0.12, fl: 0.9, flk: 0.7, sn: 1.0, water: 1, d: '身體細長，前肢變成<b>鰭狀</b>，後肢退化得很小，完全生活在海中。' },
+    { n: '現代鯨魚', t: '現在', env: '海洋', bl: 2.6, br: 0.62, leg: 0.4, hind: 0, fl: 1, flk: 1, sn: 0.8, water: 1, d: '前肢是槳狀的鰭、後肢消失、沒有毛髮、身體<b>流線型</b>，用<b>肺</b>呼吸（頭頂有噴氣孔），已經適應海洋生活。' }
+  ];
+  const st = { play: false };
+  $('era').max = S.length - 1;
+  $('whPlay').addEventListener('click', () => { st.play = true; if (Number($('era').value) >= S.length - 1) $('era').value = 0; });
+  const lN = addLabel('wha', '', 'yel', V3(0, 3.2, 0));
+  function update(dt) {
+    if (st.play) { const v = Math.min(S.length - 1, Number($('era').value) + dt * 0.35); $('era').value = v; if (v >= S.length - 1) st.play = false; }
+    const e = Number($('era').value), i0 = Math.min(S.length - 2, Math.floor(e)), k = smooth(0, 1, e - i0);
+    const a = S[i0], b = S[i0 + 1], P = key => lerp(a[key], b[key], k);
+    const cur = S[Math.round(e)];
+    const bl = P('bl'), br = P('br'), leg = P('leg'), hind = P('hind'), fl = P('fl'), flk = P('flk'), water = P('water');
+    sea.scale.y = Math.max(0.01, water * 2.4); sea.position.y = 0.4 + water * 1.2; grass.material.color.copy(C3(0x9ccc65, 0xd7c49e, water));
+    const swimY = lerp(0.42 + 0.72 * leg + br, 1.8, smooth(0.4, 1, water));
+    A.position.set(0, swimY + Math.sin(wall * 1.5) * 0.04 * water, 0);
+    body.scale.set(br / 0.4, (bl * 0.5 + 0.2) / 0.8, br / 0.4 * 0.95);
+    head.position.set(bl * 0.5 + 0.35, 0.05, 0); snout.scale.set(1, P('sn'), 1); snout.position.x = 0.25 + 0.3 * P('sn');
+    legs.forEach(L => {
+      const len = L.front ? leg : hind; const x = (L.front ? 1 : -1) * bl * 0.33;
+      L.pv.position.set(x, -br * 0.6, L.pv.position.z > 0 ? br * 0.7 : -br * 0.7);
+      L.pv.visible = len > 0.02;
+      L.l.scale.set(L.front ? 1 + 1.5 * fl : 1, Math.max(0.05, len), L.front ? 1 - 0.5 * fl : 1);
+      L.l.position.y = -0.38 * len; L.foot.position.y = -0.72 * len; L.foot.scale.set(1.6 + 2 * fl * (L.front ? 1 : 0), 0.35, 1 + (L.front ? fl : 0));
+      L.pv.rotation.z = L.front ? 0.9 * fl : 0; L.pv.rotation.x = (L.pv.position.z > 0 ? -1 : 1) * 0.4 * fl * (L.front ? 1 : 0);
+      if (water < 0.3) L.pv.rotation.z += Math.sin(wall * 5 + (L.front ? 0 : 1.6) + (L.pv.position.z > 0 ? Math.PI : 0)) * 0.25;
+    });
+    tail.scale.set(1 + 0.8 * flk, 0.8 + 0.6 * bl / 3, 1 + 0.8 * flk); tail.position.x = -(bl * 0.5 + 0.55 + 0.3 * flk);
+    fluke.forEach(f => { f.visible = flk > 0.05; f.scale.set(0.5, 0.08, Math.max(0.01, flk)); f.position.x = tail.position.x - 0.6 - 0.2 * flk; });
+    skin.color.copy(C3(0x8d6e63, 0x5f7f99, smooth(0.3, 1, water)));
+    $('eraV').textContent = `${cur.n}・${cur.t}`;
+    lN.pos.set(0, swimY + 1.3, 0); setLabel(lN, `${cur.n}（${cur.env}）`);
+    setHTML('whCard', `<h4>${cur.n}</h4><span class="pill">${cur.t}</span><span class="pill">${cur.env}</span><div>${cur.d}</div><div style="margin-top:4px">這些復原圖都是根據<b>不同地層的化石</b>推測出來的。</div>`);
+    setCap(`<small>鯨魚的演化・${cur.t}</small>${water < 0.3 ? '生活在<b>陸地</b>，有四隻腳' : water < 0.95 ? '漸漸適應<b>水中</b>生活，腳變短' : '前肢變<b>鰭</b>、後肢消失、身體流線型'}　→ 生物的形態構造會隨時間<b>持續改變</b>`);
+  }
+  return { group, update };
+})();
+function updateWha(dt) { WH.update(dt); }
+
+/* =========================================================
+   Tab 3：天擇（樺尺蛾）
+   ========================================================= */
+const SE = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const barkCv = document.createElement('canvas'); barkCv.width = 256; barkCv.height = 512;
+  const barkTex = new THREE.CanvasTexture(barkCv); barkTex.colorSpace = THREE.SRGBColorSpace;
+  function paintBark(soot) {
+    const g = barkCv.getContext('2d');
+    g.fillStyle = soot ? '#3a3633' : '#d9d3c4'; g.fillRect(0, 0, 256, 512);
+    let s = 5; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 400; i++) { { const v = r(); g.fillStyle = soot ? `rgba(${25 + v * 40 | 0},${23 + v * 36 | 0},${21 + v * 32 | 0},.6)` : `rgba(${160 + v * 70 | 0},${154 + v * 66 | 0},${136 + v * 60 | 0},.6)`; } g.beginPath(); g.ellipse(r() * 256, r() * 512, 2 + r() * 8, 6 + r() * 22, 0, 0, TAU); g.fill(); }
+    if (!soot) for (let i = 0; i < 60; i++) { g.fillStyle = 'rgba(160,190,140,.45)'; g.beginPath(); g.arc(r() * 256, r() * 512, 4 + r() * 10, 0, TAU); g.fill(); }
+    barkTex.needsUpdate = true;
+  }
+  const trunk = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.8, 6, 48, 1, true), new THREE.MeshStandardMaterial({ map: barkTex, roughness: 1 }))); trunk.position.y = 3; group.add(trunk);
+  const N = 40;
+  const mothG = new THREE.Group(); group.add(mothG);
+  const mkMoth = () => { const m = new THREE.Group(); [-1, 1].forEach(s => { const w = sphere(0.16, clay(0xe8e4d8, { roughness: 0.9 }), 10); w.scale.set(1, 0.15, 0.7); w.position.x = s * 0.13; w.rotation.y = s * 0.3; m.add(w); }); const b = cap(0.03, 0.14, clay(0x5d4037)); b.rotation.x = Math.PI / 2; m.add(b); mothG.add(m); return m; };
+  const moths = Array.from({ length: N }, () => mkMoth());
+  const bird = new THREE.Group(); group.add(bird);
+  { const b = sphere(0.22, clay(0x5d6d7e), 14); b.scale.set(1.5, 1, 1); bird.add(b); const h = sphere(0.14, clay(0x5d6d7e), 12); h.position.set(0.3, 0.12, 0); bird.add(h); const bk = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 8), clay(0xf9a825)); bk.rotation.z = -Math.PI / 2; bk.position.set(0.48, 0.1, 0); bird.add(bk); [-1, 1].forEach(s => { const w = sphere(0.25, clay(0x4a5a6a), 10); w.scale.set(1, 0.1, 0.5); w.position.set(-0.05, 0.1, s * 0.25); bird.add(w); }); }
+  const st = { env: 'clean', dark: 0.1, gen: 0, hist: [0.1], pop: [], anim: 0, eaten: [], auto: 0 };
+  function placeMoths() {
+    st.pop = Array.from({ length: N }, (_, i) => i < Math.round(st.dark * N));
+    st.pop.sort(() => rnd() - 0.5);
+    moths.forEach((m, i) => { const a = -1.1 + rnd() * 2.2, y = 0.8 + rnd() * 4.6; const r = 1.8 - (y / 6) * 0.3 + 0.03; m.position.set(Math.sin(a) * r, y, Math.cos(a) * r); m.lookAt(m.position.x * 3, y, m.position.z * 3); m.rotateX(Math.PI / 2); m.visible = true; const dk = st.pop[i]; m.children.forEach((c, j) => { if (j < 2) c.material.color.setHex(dk ? 0x2b2826 : 0xe8e4d8); }); m.userData.dark = dk; });
+  }
+  function generation() {
+    const soot = st.env === 'soot';
+    st.eaten = [];
+    moths.forEach((m, i) => { const vis = m.userData.dark !== soot; const p = vis ? 0.4 : 0.15; if (rnd() < p) st.eaten.push(i); });
+    st.anim = 0.0001;
+  }
+  function finishGen() {
+    const surv = moths.filter((m, i) => !st.eaten.includes(i)); const nd = surv.filter(m => m.userData.dark).length;
+    st.dark = surv.length ? nd / surv.length : st.dark; st.gen++; st.hist.push(st.dark); if (st.hist.length > 40) st.hist.shift();
+    placeMoths();
+    if (st.auto > 0) { st.auto--; if (st.auto > 0) generation(); }
+  }
+  document.querySelectorAll('.tbtn').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('.tbtn').forEach(x => x.classList.toggle('on', x === b)); st.env = b.dataset.t; paintBark(st.env === 'soot'); }));
+  $('selGen').addEventListener('click', () => { if (st.anim === 0) generation(); });
+  $('selAuto').addEventListener('click', () => { if (st.anim === 0) { st.auto = 10; generation(); } });
+  $('selReset').addEventListener('click', () => { st.dark = 0.1; st.gen = 0; st.hist = [0.1]; st.anim = 0; st.auto = 0; placeMoths(); });
+  paintBark(false); placeMoths();
+  function chart() {
+    const c = $('selChart'), g = c.getContext('2d'), W = c.width, Hh = c.height; g.clearRect(0, 0, W, Hh);
+    g.font = 'bold 18px sans-serif'; g.fillStyle = '#8d7366'; g.textAlign = 'right';
+    [0, 50, 100].forEach(v => { const y = Hh - 24 - v / 100 * (Hh - 40); g.fillText(v + '%', 50, y + 6); g.strokeStyle = '#eee3d2'; g.beginPath(); g.moveTo(56, y); g.lineTo(W - 10, y); g.stroke(); });
+    const n = st.hist.length, x = i => 56 + (W - 66) * (n > 1 ? i / (n - 1) : 0), y = v => Hh - 24 - v * (Hh - 40);
+    g.lineWidth = 4; g.strokeStyle = '#3e2c25'; g.beginPath(); st.hist.forEach((v, i) => i ? g.lineTo(x(i), y(v)) : g.moveTo(x(i), y(v))); g.stroke();
+    g.strokeStyle = '#c9b48a'; g.beginPath(); st.hist.forEach((v, i) => i ? g.lineTo(x(i), y(1 - v)) : g.moveTo(x(i), y(1 - v))); g.stroke();
+    g.textAlign = 'left'; g.fillStyle = '#3e2c25'; g.fillText('深色', 60, 20); g.fillStyle = '#b39b6a'; g.fillText('淺色', 120, 20);
+    g.fillStyle = '#8d7366'; g.textAlign = 'right'; g.fillText(`第 ${st.gen} 代`, W - 10, Hh - 4);
+  }
+  function update(dt) {
+    if (st.anim > 0) {
+      st.anim = Math.min(1, st.anim + dt / (st.auto > 0 ? 1.0 : 2.4));
+      const n = st.eaten.length, idx = Math.min(n - 1, Math.floor(st.anim * n)), kk = (st.anim * n) % 1;
+      st.eaten.forEach((ei, j) => { if (j < idx || (j === idx && kk > 0.6)) moths[ei].visible = false; });
+      bird.visible = n > 0 && st.anim < 1;
+      if (n) { const tgt = moths[st.eaten[Math.max(0, idx)]].position.clone().multiplyScalar(1.15); const prev = idx > 0 ? moths[st.eaten[idx - 1]].position.clone().multiplyScalar(1.15) : V3(4, 5, 3); bird.position.copy(prev.lerp(tgt, smooth(0, 0.6, kk))); bird.lookAt(tgt.x * 2, tgt.y, tgt.z * 2); bird.rotateY(-Math.PI / 2); }
+      if (st.anim >= 1) { st.anim = 0; bird.visible = false; finishGen(); }
+    } else bird.visible = false;
+    chart();
+    const soot = st.env === 'soot';
+    setHTML('selCard', `<h4>第 ${st.gen} 代</h4>深色蛾 <b>${Math.round(st.dark * 100)}%</b>、淺色蛾 <b>${Math.round((1 - st.dark) * 100)}%</b><br>${soot ? '樹幹被煤煙燻黑，<b>淺色蛾</b>很顯眼、容易被鳥吃掉；深色蛾不容易被發現，存活下來繁殖。' : '樹幹顏色淺，<b>深色蛾</b>很顯眼、容易被鳥吃掉；淺色蛾比較不容易被發現。'}<br>環境選擇了較能適應的個體，族群特徵就跟著改變。`);
+    setCap(st.anim > 0 ? '<small>鳥來覓食</small>顯眼的蛾比較容易被吃掉' : `<small>天擇・${soot ? '工業污染後' : '乾淨的環境'}</small>按「過一個世代」，看看哪一種顏色的蛾比較容易活下來`);
+  }
+  return { group, update, st, generation };
+})();
+function updateSel(dt) { SE.update(dt); }
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  fos: { group: FO.group, cam: () => ({ pos: [-1.2, 4.4, 10.5], target: [-0.6, 2.0, 0], fitW: window.innerWidth < window.innerHeight ? 9 : 11.5 }), update: updateFos },
+  wha: { group: WH.group, cam: () => ({ pos: [1.5, 3.4, 8.5], target: [0, 1.9, 0], fitW: window.innerWidth < window.innerHeight ? 6.5 : 9.5 }), update: updateWha },
+  sel: { group: SE.group, cam: () => ({ pos: [0, 3.4, 9.5], target: [0, 3.0, 0], fitW: window.innerWidth < window.innerHeight ? 5 : 7.5 }), update: updateSel }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, FO, WH, SE, camera, controls, renderer, scene, placeLabels };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'fos';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+<script src="goals.js" defer></script>
+</body>
+</html>
