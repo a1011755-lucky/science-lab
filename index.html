@@ -302,7 +302,7 @@ const COURSES = [
         chapters: [
           { title: '生命的特性與科學方法', sum: '生物有哪些共同特徵？學會科學方法與顯微鏡的操作。', labs: [{ t: '生命世界與科學方法', u: 'life-lab.html' }], rel: [{ t: '科學方法與基本測量（國二）', u: 'measure-lab.html' }],
             k: ['科學方法'] },
-          { title: '生物體的構造', sum: '細胞是生物的基本單位：構造、形態、物質進出細胞與組成層次。', labs: [],
+          { title: '生物體的構造', sum: '細胞是生物的基本單位：構造、形態、物質進出細胞與組成層次。', labs: [{ t: '生物體的構造', u: 'cell-lab.html' }],
             k: ['細胞的構造與功能', '細胞的形態與功能', '生物體的組成層次', '生物體的組成物質'] },
           { title: '養分', sum: '食物中的養分、酵素、葉子與光合作用、人體的消化。', labs: [{ t: '酵素的作用', u: 'enzyme-lock-key.html' }],
             k: ['酵素', '葉子的構造', '光合作用', '人體的消化系統', '人體的消化作用'] },
@@ -412,7 +412,7 @@ function renderStats() {
   const stats = [
     { n: ready, label: '個已上線單元' },
     { n: pages, label: '座 3D 互動實驗室' },
-    { n: '146', label: '題會考題型自我檢測' }
+    { n: '151', label: '題會考題型自我檢測' }
   ];
   document.getElementById('heroStats').innerHTML = stats.map(s => `<div class="stat"><b>${s.n}</b><span>${s.label}</span></div>`).join('');
 }

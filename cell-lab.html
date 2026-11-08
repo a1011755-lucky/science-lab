@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生物體的構造實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+  .tabs.three .tab { font-size: .74rem; padding: 9px 2px; }
+  .three-btn { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  .three-btn .btn { padding: 9px 2px; font-size: .8rem; }
+  .orgs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+  .orgs .btn { margin-top: 0; padding: 8px 2px; font-size: .78rem; }
+  .orgs .btn i { display: block; width: 14px; height: 14px; border-radius: 50%; margin: 0 auto 3px; }
+  .orgcard { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin-top: 8px; font-size: .8rem; line-height: 1.65; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
+  .orgcard:empty { display: none; }
+  .orgcard h4 { font-size: 1rem; font-weight: 900; margin-bottom: 2px; }
+  .orgcard .ana { display: inline-block; font-size: .74rem; font-weight: 800; color: #fff; background: #d08a2e; border-radius: 999px; padding: 1px 10px; margin-bottom: 4px; }
+  .orgcard .has { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+  .orgcard .has span { text-align: center; border-radius: 10px; padding: 4px; font-weight: 800; font-size: .76rem; }
+  .orgcard .y { background: #e3f1e6; color: #2e6b3f; } .orgcard .n { background: #fde5e2; color: #a5311f; }
+  .chk { display: flex; align-items: center; gap: 8px; font-size: .82rem; font-weight: 800; margin: 10px 2px 0; cursor: pointer; }
+  .chk input { width: 18px; height: 18px; accent-color: #a1674a; }
+  table.cmp { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: .76rem; background: rgba(255,255,255,.8); border-radius: 12px; overflow: hidden; }
+  table.cmp th, table.cmp td { padding: 4px 6px; border-bottom: 1px solid #efe6d8; text-align: center; }
+  table.cmp th { text-align: left; font-weight: 800; }
+  table.cmp thead th { text-align: center; background: rgba(161,103,74,.12); }
+  table.cmp tr.hl { background: #fff1c9; }
+  table.cmp .y { color: #2e7d32; font-weight: 900; } table.cmp .n { color: #c62828; font-weight: 900; }
+  .bars { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 8px; align-items: center; font-size: .74rem; font-weight: 800; margin-top: 4px; }
+  .bars .bar { height: 10px; border-radius: 99px; background: #e9e1d3; overflow: hidden; }
+  .bars .bar i { display: block; height: 100%; background: #3f8ad0; border-radius: 99px; transition: width .3s; }
+  .chain { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; margin-top: 10px; font-size: .74rem; font-weight: 800; }
+  .chain span { padding: 4px 9px; border-radius: 999px; background: rgba(255,255,255,.7); color: #a8998a; cursor: pointer; }
+  .chain span.cur { background: #5b8a72; color: #fff; box-shadow: 0 3px 10px rgba(79,125,92,.35); }
+  .chain span.done { color: #4f7d5c; background: #e3f1e6; }
+  .chain b { color: #c9b9a6; }
+  .tag.org { background: #d08a2e; color: #fff; } .tag.no { background: #c62828; color: #fff; } .tag.ok { background: #4f7d5c; color: #fff; }
+  .tag.big2 { font-size: .86rem; padding: 5px 12px; }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g7">‹ 課程總覽</a>
+  <div class="title">生物體的構造實驗室</div>
+  <div class="body">
+    <div class="tabs three">
+      <button class="tab on" data-tab="cell">🏭 細胞工廠<small>動物 vs 植物</small></button>
+      <button class="tab" data-tab="osm">💧 物質進出<small>擴散作用</small></button>
+      <button class="tab" data-tab="lvl">🔭 組成層次<small>細胞到個體</small></button>
+    </div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="cell">
+      <div class="concept" style="--cc:#7b5ea7"><div class="ct">細胞是生物體的基本單位</div><div class="cd">把細胞想像成一間<b>工廠</b>，每個構造都有自己的工作</div></div>
+      <label class="lab">點選構造（再點一次取消）</label>
+      <div class="orgs" id="orgBtns"></div>
+      <div class="orgcard" id="orgCard"></div>
+      <label class="chk"><input type="checkbox" id="cutChk" checked> 剖開細胞看內部</label>
+      <table class="cmp" id="cmpTable"></table>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="osm" hidden>
+      <div class="concept" style="--cc:#1e6aa8"><div class="ct">擴散作用</div><div class="cd">物質分子會由<b>高濃度</b>往<b>低濃度</b>移動<br>水、養分、廢物靠擴散作用通過<b>細胞膜</b></div></div>
+      <label class="lab">① 選擇細胞</label>
+      <div class="row2"><button class="btn cbtn on" data-c="plant">🌿 水蘊草葉細胞</button><button class="btn cbtn" data-c="rbc">🩸 紅血球</button></div>
+      <label class="lab">② 放進哪一種液體？</label>
+      <div class="row2"><button class="btn sbtn on" data-s="salt">🧂 濃食鹽水</button><button class="btn sbtn" data-s="water">💧 清水</button></div>
+      <div class="row2"><button class="btn primary" id="osPlay">▶ 放進液體</button><button class="btn" id="osReset">↺ 重來</button></div>
+      <div class="stat" id="osStat"></div>
+      <div class="mapbox"><p>🔬 顯微鏡下的樣子（400 倍）</p><canvas id="osView" width="520" height="300"></canvas></div>
+      <p class="desc">水、氧氣、二氧化碳等小分子能直接通過細胞膜；葡萄糖、胺基酸要靠細胞膜上的<b>蛋白質</b>協助；澱粉、蛋白質等大分子無法通過。</p>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="sec" data-tab="lvl" hidden>
+      <div class="three-btn">
+        <button class="btn kbtn on" data-k="plant">🌱 植物</button>
+        <button class="btn kbtn" data-k="animal">🐾 動物</button>
+        <button class="btn kbtn" data-k="uni">🦠 單細胞</button>
+      </div>
+      <div class="chain" id="chain"></div>
+      <div id="lvBox">
+        <label class="lab" for="lvl">由小到大<b id="lvName"></b></label>
+        <input class="big" type="range" id="lvl" min="0" max="3" step="1" value="0">
+        <div class="row2"><button class="btn" id="lvPrev">🔍 放大（往小）</button><button class="btn primary" id="lvNext">🔭 縮小（往大）</button></div>
+      </div>
+      <div class="orgcard" id="lvCard"></div>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'cell', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+/* =========================================================
+   共用小工具
+   ========================================================= */
+const lerp = (a, b, k) => a + (b - a) * k;
+const sphere = (r, mat, seg = 24) => new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg * 0.6 | 0)), mat);
+const cyl = (r1, r2, h, mat, seg = 32) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg), mat);
+const rbox = (w, h, d, mat, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 5, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001)), mat);
+const shell = (color, opacity, o = {}) => new THREE.MeshPhysicalMaterial({ color, transparent: true, opacity, roughness: 0.35, clearcoat: 0.6, side: THREE.DoubleSide, depthWrite: false, ...o });
+let rs = 23;
+const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+table.scale.set(1.6, 1, 2.4); table.position.z = 13.6;
+renderer.localClippingEnabled = true;
+/** 一組物件一起淡入淡出（各自記住原本的透明度） */
+function fadeable(root) {
+  root.traverse(o => { if (o.isMesh || o.isPoints) { o.material = o.material.clone(); o.userData.op0 = o.material.opacity; o.material.transparent = true; } });
+  return k => root.traverse(o => { if (o.userData.op0 !== undefined) { o.material.opacity = o.userData.op0 * k; o.material.depthWrite = k > 0.98 && o.userData.op0 >= 1; } });
+}
+
+/* =========================================================
+   Tab 1：細胞工廠（動物細胞 vs 植物細胞）
+   ========================================================= */
+const CF = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const clipPlanes = [new THREE.Plane(V3(0, 0, -1), 0)];
+  const reg = {};                                           // 構造 → 網格清單
+  const add = (key, mesh, parent, clip = false) => {
+    mesh.material = mesh.material.clone();
+    mesh.userData.op0 = mesh.material.opacity; mesh.userData.clip = clip; mesh.userData.col = mesh.material.color.clone();
+    (reg[key] = reg[key] || []).push(mesh); parent.add(mesh); return mesh;
+  };
+  const ORG = {
+    mem: { n: '細胞膜', c: '#e57373', ana: '工廠的警衛', d: '控制物質進出細胞，是細胞的門戶。', a: 1, p: 1 },
+    wall: { n: '細胞壁', c: '#7cb342', ana: '工廠外的堅固圍牆', d: '由<b>纖維素</b>組成，堅硬，能支持和保護細胞，所以植物細胞的形狀比較規則、有稜有角。', a: 0, p: 1 },
+    cyto: { n: '細胞質', c: '#f2c46b', ana: '廠房裡的實驗室', d: '呈膠狀，是許多<b>化學反應</b>進行的場所，各種微小構造分布在其中。', a: 1, p: 1 },
+    nuc: { n: '細胞核', c: '#8e6bbf', ana: '董事長辦公室', d: '含有<b>遺傳物質</b>，是細胞的生命中樞，控制細胞的各種活動。', a: 1, p: 1 },
+    mito: { n: '粒線體', c: '#f08c3a', ana: '工廠的發電機', d: '分解養分、產生<b>能量</b>（進行呼吸作用的場所）。', a: 1, p: 1 },
+    vac: { n: '液胞', c: '#4fb3e8', ana: '倉庫', d: '含大量水分，暫時<b>儲存養分和廢物</b>。植物細胞的液胞特別大，和細胞壁一起讓沒有骨骼的植物也能挺立。', a: 1, p: 1 },
+    chl: { n: '葉綠體', c: '#2e9d4e', ana: '自己生產養分的部門', d: '含<b>葉綠素</b>，利用陽光的能量行<b>光合作用</b>，製造養分。', a: 0, p: 1 }
+  };
+
+  /* ----- 動物細胞 ----- */
+  const AN = new THREE.Group(); AN.position.set(-3.0, 2.3, 0); group.add(AN);
+  add('mem', new THREE.Mesh(new THREE.SphereGeometry(1.95, 64, 40), shell(0xf4a6a6, 0.5)), AN, true).scale.set(1.18, 0.9, 1);
+  add('cyto', new THREE.Mesh(new THREE.SphereGeometry(1.86, 56, 36), shell(0xfde3b8, 0.3)), AN, true).scale.set(1.18, 0.9, 1);
+  const aNuc = add('nuc', sphere(0.55, new THREE.MeshPhysicalMaterial({ color: 0x8e6bbf, roughness: 0.3, clearcoat: 1, transparent: true, opacity: 0.95 }), 40), AN); aNuc.position.set(-0.25, 0.1, 0);
+  const aNl = add('nuc', sphere(0.2, clay(0x5b3f8a, { transparent: true, opacity: 1 })), AN); aNl.position.set(-0.15, 0.2, 0.42);
+  const mitoGeo = new THREE.CapsuleGeometry(0.13, 0.38, 6, 14);
+  const mitoMat = clay(0xf08c3a, { transparent: true, opacity: 1, clearcoat: 1 });
+  [[0.9, 0.6, 0.3, 0.6], [1.2, -0.5, -0.2, -0.4], [-1.2, -0.6, 0.4, 1.2], [0.4, -0.9, 0.5, 0.2], [-1.0, 0.75, -0.3, -0.8]].forEach(([x, y, z, r]) => { const m = add('mito', new THREE.Mesh(mitoGeo, mitoMat), AN); m.position.set(x, y, z); m.rotation.set(r, 0, Math.PI / 2 + r); });
+  [[0.8, -0.1, 0.6], [-0.6, -0.8, -0.2], [0.3, 0.8, -0.4]].forEach(([x, y, z]) => { const v = add('vac', sphere(0.17, shell(0x4fb3e8, 0.75), 20), AN); v.position.set(x, y, z); });
+
+  /* ----- 植物細胞 ----- */
+  const PL = new THREE.Group(); PL.position.set(3.0, 2.3, 0); group.add(PL);
+  add('wall', rbox(3.8, 2.75, 2.5, shell(0x8bc34a, 0.55), 0.3), PL, true);
+  add('mem', rbox(3.55, 2.5, 2.25, shell(0xf4a6a6, 0.42), 0.26), PL, true);
+  add('cyto', rbox(3.45, 2.4, 2.15, shell(0xfde3b8, 0.26), 0.24), PL, true);
+  add('vac', rbox(2.45, 1.55, 1.45, shell(0x5fb8ec, 0.62), 0.45), PL, true).position.set(-0.2, -0.05, 0);
+  const pNuc = add('nuc', sphere(0.4, new THREE.MeshPhysicalMaterial({ color: 0x8e6bbf, roughness: 0.3, clearcoat: 1, transparent: true, opacity: 0.95 }), 36), PL); pNuc.position.set(1.3, 0.6, 0.25);
+  [[1.35, -0.75, 0.3, 0.3], [-1.45, 0.85, -0.2, -0.5], [0.2, -0.95, -0.5, 1.0]].forEach(([x, y, z, r]) => { const m = add('mito', new THREE.Mesh(mitoGeo, mitoMat), PL); m.position.set(x, y, z); m.rotation.set(r, 0, Math.PI / 2 + r); m.scale.setScalar(0.85); });
+  const chlGeo = new THREE.SphereGeometry(0.17, 20, 12);
+  const chlMat = clay(0x2e9d4e, { transparent: true, opacity: 1, clearcoat: 1 });
+  const chls = Array.from({ length: 14 }, (_, i) => { const m = add('chl', new THREE.Mesh(chlGeo, chlMat), PL); m.scale.set(1.45, 0.75, 0.95); m.userData.u = i / 14; m.userData.z = (i % 3 - 1) * 0.6; return m; });
+  // 沿著液胞外圍流動的路徑（細胞質流動）
+  const RX = 1.5, RY = 0.98;
+  function perim(u) {
+    const L = 2 * (2 * RX + 2 * RY), d = ((u % 1) + 1) % 1 * L;
+    if (d < 2 * RX) return [-RX + d, RY];
+    if (d < 2 * RX + 2 * RY) return [RX, RY - (d - 2 * RX)];
+    if (d < 4 * RX + 2 * RY) return [RX - (d - 2 * RX - 2 * RY), -RY];
+    return [-RX, -RY + (d - 4 * RX - 2 * RY)];
+  }
+
+  const lA = addLabel('cell', '動物細胞', 'big2', V3(-3.0, 0.35, 1.2)), lP = addLabel('cell', '植物細胞', 'big2', V3(3.0, 0.35, 1.2));
+  const fA = addLabel('cell', '', 'ok', V3(-3.0, 4.15, 0)), fP = addLabel('cell', '', 'ok', V3(3.0, 4.15, 0));
+  let focus = null;
+  $('orgBtns').innerHTML = Object.entries(ORG).map(([k, o]) => `<button class="btn obtn" data-o="${k}"><i style="background:${o.c}"></i>${o.n}</button>`).join('');
+  $('cmpTable').innerHTML = '<thead><tr><th>構造</th><th>動物細胞</th><th>植物細胞</th></tr></thead><tbody>' + Object.entries(ORG).map(([k, o]) => `<tr data-o="${k}"><th>${o.n}</th><td class="${o.a ? 'y' : 'n'}">${o.a ? '✔' : '✘'}</td><td class="${o.p ? 'y' : 'n'}">${o.p ? '✔' : '✘'}</td></tr>`).join('') + '</tbody>';
+  document.querySelectorAll('#orgBtns .btn').forEach(b => b.addEventListener('click', () => setFocus(focus === b.dataset.o ? null : b.dataset.o)));
+  document.querySelectorAll('#cmpTable tr[data-o]').forEach(tr => tr.addEventListener('click', () => setFocus(tr.dataset.o)));
+  function setFocus(k) {
+    focus = k;
+    document.querySelectorAll('#orgBtns .btn').forEach(b => b.classList.toggle('on', b.dataset.o === k));
+    document.querySelectorAll('#cmpTable tr[data-o]').forEach(tr => tr.classList.toggle('hl', tr.dataset.o === k));
+    const o = ORG[k];
+    setHTML('orgCard', o ? `<h4 style="color:${o.c}">${o.n}</h4><span class="ana">🏭 ${o.ana}</span><div>${o.d}</div><div class="has"><span class="${o.a ? 'y' : 'n'}">動物細胞 ${o.a ? '✔ 有' : '✘ 沒有'}</span><span class="${o.p ? 'y' : 'n'}">植物細胞 ${o.p ? '✔ 有' : '✘ 沒有'}</span></div>` : '');
+    for (const [key, list] of Object.entries(reg)) list.forEach(m => {
+      const on = !k || key === k;
+      m.material.opacity = on ? m.userData.op0 : m.userData.op0 * 0.12;
+      m.material.depthWrite = on && m.userData.op0 >= 1;
+    });
+    fA.show = fP.show = !!o;
+    if (o) { setLabel(fA, `${o.n}：${o.a ? '✔ 有' : '✘ 沒有'}`, o.a ? 'ok' : 'no'); setLabel(fP, `${o.n}：${o.p ? '✔ 有' : '✘ 沒有'}`, o.p ? 'ok' : 'no'); }
+  }
+  function setCut(on) { for (const list of Object.values(reg)) list.forEach(m => { if (m.userData.clip) { m.material.clippingPlanes = on ? clipPlanes : null; m.material.needsUpdate = true; } }); }
+  $('cutChk').addEventListener('change', e => setCut(e.target.checked));
+  setCut(true); setFocus(null);
+
+  function update(dt) {
+    // 細胞質流動：葉綠體沿液胞外圍慢慢移動
+    chls.forEach(m => { m.userData.u += dt * 0.025; const [x, y] = perim(m.userData.u); m.position.set(x, y, m.userData.z); m.rotation.z = Math.sin(m.userData.u * 40) * 0.4; });
+    reg.mito.forEach((m, i) => { m.rotation.x += dt * 0.3 * (i % 2 ? 1 : -1); });
+    // 直式螢幕（手機）：兩個細胞改成上下排列
+    const vert = window.innerWidth < window.innerHeight;
+    AN.position.set(vert ? 0 : -3.0, vert ? 5.15 : 2.3, 0); PL.position.set(vert ? 0 : 3.0, vert ? 1.6 : 2.3, 0);
+    lA.pos.set(AN.position.x + (vert ? -2.0 : 0), vert ? AN.position.y - 1.75 : 0.35, 1.2); lP.pos.set(PL.position.x + (vert ? -2.0 : 0), vert ? PL.position.y - 1.6 : 0.35, 1.2);
+    fA.pos.set(AN.position.x + (vert ? 1.5 : 0), vert ? AN.position.y - 1.75 : 4.15, 1.2); fP.pos.set(PL.position.x + (vert ? 1.5 : 0), vert ? PL.position.y - 1.6 : 4.15, 1.2);
+    AN.rotation.y = Math.sin(wall * 0.35) * 0.18; PL.rotation.y = -Math.sin(wall * 0.35) * 0.18;
+    const pulse = 0.35 + 0.35 * Math.sin(wall * 5);
+    for (const [key, list] of Object.entries(reg)) list.forEach(m => { if (m.material.emissive) m.material.emissive.copy(m.userData.col).multiplyScalar(key === focus ? pulse : 0); });
+    const o = ORG[focus];
+    setCap(o ? `<small>🏭 細胞工廠・${o.ana}</small><b>${o.n}</b>：${o.d.replace(/<[^>]+>/g, '')}` : '<small>細胞工廠</small>點左側的構造名稱，看看它在<b>動物細胞</b>和<b>植物細胞</b>裡的位置與功能');
+  }
+  return { group, update, setFocus, ORG };
+})();
+function updateCell(dt) { CF.update(dt); }
+
+/* =========================================================
+   Tab 2：物質進出細胞（擴散作用）
+   ========================================================= */
+const OS = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const CY = 2.3;
+  const tank = new THREE.Mesh(new RoundedBoxGeometry(10.5, 4.6, 4.2, 4, 0.2), new THREE.MeshPhysicalMaterial({ color: 0xcfeaf8, transparent: true, opacity: 0.18, roughness: 0.1, depthWrite: false, side: THREE.DoubleSide }));
+  tank.position.y = CY; group.add(tank);
+  const saltTint = new THREE.Mesh(new RoundedBoxGeometry(10.3, 4.4, 4.0, 4, 0.18), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.12, depthWrite: false }));
+  saltTint.position.y = CY; group.add(saltTint);
+
+  /* 水蘊草葉細胞 */
+  const PC = new THREE.Group(); PC.position.y = CY; group.add(PC);
+  const wallM = shell(0x7cb342, 0.5);
+  const pWall = rbox(4.2, 2.8, 2.4, wallM, 0.28); PC.add(pWall);
+  const proto = new THREE.Group(); PC.add(proto);
+  const pMem = rbox(3.95, 2.55, 2.15, shell(0xf4a6a6, 0.45), 0.25); proto.add(pMem);
+  const pVac = rbox(2.8, 1.6, 1.4, shell(0x7fc9f0, 0.45), 0.5); proto.add(pVac);
+  const pChl = Array.from({ length: 16 }, (_, i) => {
+    const m = sphere(0.17, clay(0x2e9d4e, { clearcoat: 1 }), 16); m.scale.set(1.45, 0.75, 0.95);
+    const a = i / 16 * TAU; m.userData.p = V3(Math.cos(a) * 1.65, Math.sin(a) * 0.95, (i % 3 - 1) * 0.55); proto.add(m); return m;
+  });
+  const pNuc = sphere(0.33, clay(0x8e6bbf, { clearcoat: 1 }), 24); pNuc.position.set(1.2, 0.5, 0.3); proto.add(pNuc);
+
+  /* 紅血球（雙凹圓盤） */
+  const RB = new THREE.Group(); RB.position.y = CY; group.add(RB);
+  const prof = [];
+  const RR = 1.5, N = 28, zf = r => RR / 2 * Math.sqrt(Math.max(0, 1 - r * r)) * (0.207 + 2.003 * r * r - 1.123 * r * r * r * r);
+  for (let i = 0; i <= N; i++) { const r = i / N; prof.push(new THREE.Vector2(Math.max(0.001, r * RR), zf(r) + 0.06)); }
+  for (let i = N; i >= 0; i--) { const r = i / N; prof.push(new THREE.Vector2(Math.max(0.001, r * RR), -zf(r) - 0.06)); }
+  const rbcMat = new THREE.MeshPhysicalMaterial({ color: 0xd84343, roughness: 0.35, clearcoat: 0.8, transparent: true, opacity: 0.92 });
+  const rbc = new THREE.Mesh(new THREE.LatheGeometry(prof, 64), rbcMat); rbc.rotation.x = Math.PI / 2 - 0.35; RB.add(rbc);
+  const crGeo = new THREE.IcosahedronGeometry(1, 4);
+  { const p = crGeo.attributes.position; for (let i = 0; i < p.count; i++) { const v = V3(p.getX(i), p.getY(i), p.getZ(i)).normalize(); const th = Math.atan2(v.z, v.x), ph = Math.acos(v.y); const s = 1 + 0.16 * Math.max(0, Math.sin(th * 7) * Math.sin(ph * 6)); p.setXYZ(i, v.x * s * 1.1, v.y * s * 0.55, v.z * s * 1.1); } crGeo.computeVertexNormals(); }
+  const crenated = new THREE.Mesh(crGeo, rbcMat); crenated.rotation.x = -0.35; RB.add(crenated);
+  const frags = Array.from({ length: 9 }, (_, i) => {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 10, 0, 1.2, 0, 1.0), new THREE.MeshPhysicalMaterial({ color: 0xd84343, side: THREE.DoubleSide, transparent: true, opacity: 0.85 }));
+    m.rotation.set(rnd() * 6, rnd() * 6, rnd() * 6); m.userData.d = V3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize(); RB.add(m); return m;
+  });
+  const cloud = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('220,60,60'), transparent: true, depthWrite: false, opacity: 0 })); cloud.scale.setScalar(5); RB.add(cloud);
+
+  /* 水分子與鹽粒 */
+  const NW = 360, NS = 160;
+  const mkPts = (n, tex, size) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); const p = new THREE.Points(g, new THREE.PointsMaterial({ size, map: tex, transparent: true, depthWrite: false, alphaTest: 0.3 })); p.frustumCulled = false; group.add(p); return p; };
+  const wPts = mkPts(NW, dotTexture('#7cc4f5', 'rgba(30,106,168,.85)'), 0.16);
+  const sPts = mkPts(NS, dotTexture('#ffffff', 'rgba(120,120,130,.9)'), 0.2);
+  const W = Array.from({ length: NW }, () => ({ p: V3((rnd() - 0.5) * 10, CY + (rnd() - 0.5) * 4.2, (rnd() - 0.5) * 3.8) }));
+  const Sa = Array.from({ length: NS }, () => ({ p: V3((rnd() - 0.5) * 10, CY + (rnd() - 0.5) * 4.2, (rnd() - 0.5) * 3.8) }));
+  const arrows = Array.from({ length: 10 }, (_, i) => {
+    const g = new THREE.Group(); const m = new THREE.MeshBasicMaterial({ color: 0x1e6aa8, transparent: true, opacity: 0.85, toneMapped: false });
+    const sh = cyl(0.05, 0.05, 0.6, m, 8); sh.position.y = -0.1; g.add(sh); const hd = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.32, 12), m); hd.position.y = 0.32; g.add(hd);
+    g.userData.a = i / 10 * TAU; g.userData.m = m; group.add(g); return g;
+  });
+
+  const st = { cell: 'plant', sol: 'salt', p: 0, run: false };
+  const seg = (sel, key, fn) => document.querySelectorAll(sel).forEach(b => b.addEventListener('click', () => { document.querySelectorAll(sel).forEach(x => x.classList.toggle('on', x === b)); fn(b.dataset[key]); }));
+  seg('.cbtn', 'c', c => { st.cell = c; reset(); });
+  seg('.sbtn', 's', s => { st.sol = s; reset(); });
+  $('osPlay').addEventListener('click', () => { if (st.p >= 1) st.p = 0; st.run = true; });
+  $('osReset').addEventListener('click', reset);
+  function reset() { st.p = 0; st.run = false; }
+
+  // 細胞目前大小（1 ＝ 原本）
+  const shape = () => {
+    const p = smooth(0, 1, st.p);
+    if (st.cell === 'plant') return st.sol === 'salt' ? { s: 1 - 0.42 * p } : { s: 1 + 0.03 * p };
+    return st.sol === 'salt' ? { s: 1 - 0.3 * p, cren: p > 0.35 } : { s: 1 + 0.35 * Math.min(1, p / 0.8), burst: p > 0.82 };
+  };
+  const inside = (q, sh) => {
+    const d = q.clone(); d.y -= CY;
+    if (st.cell === 'plant') { const s = sh.s; return Math.abs(d.x) < 1.95 * s && Math.abs(d.y) < 1.25 * s && Math.abs(d.z) < 1.05 * s; }
+    if (sh.burst) return false;
+    const s = sh.s; return (d.x * d.x + d.z * d.z) / (1.5 * 1.5 * s * s) + d.y * d.y / (0.6 * 0.6 * s * s) < 1;
+  };
+  const wallIn = q => { const d = q.clone(); d.y -= CY; return Math.abs(d.x) < 2.1 && Math.abs(d.y) < 1.4 && Math.abs(d.z) < 1.2; };
+
+  const vc = $('osView'), vg = vc.getContext('2d');
+  function drawView(sh) {
+    const Wd = vc.width, H = vc.height, p = smooth(0, 1, st.p);
+    vg.fillStyle = st.sol === 'salt' ? '#f4f2ea' : '#eef6fb'; vg.fillRect(0, 0, Wd, H);
+    if (st.cell === 'plant') {
+      const cw = 160, ch = 100;
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) {
+        const x = c * cw - 50 + (r % 2) * 40, y = r * ch + 2;
+        vg.fillStyle = '#d9ecc0'; vg.strokeStyle = '#7cb342'; vg.lineWidth = 5; vg.beginPath(); vg.roundRect(x + 3, y + 3, cw - 6, ch - 6, 10); vg.fill(); vg.stroke();
+        const s = sh.s, iw = (cw - 18) * s, ih = (ch - 18) * s, ix = x + cw / 2 - iw / 2, iy = y + ch / 2 - ih / 2;
+        vg.fillStyle = 'rgba(253,227,184,.85)'; vg.strokeStyle = '#e57373'; vg.lineWidth = 2; vg.beginPath(); vg.roundRect(ix, iy, iw, ih, 10 + 30 * (1 - s)); vg.fill(); vg.stroke();
+        for (let k = 0; k < 12; k++) {
+          const a = k / 12 * TAU + r + c, rx = iw / 2 - 9, ry = ih / 2 - 7;
+          const cx = x + cw / 2 + Math.cos(a) * rx * (st.sol === 'salt' ? 1 - 0.55 * p : 1), cy = y + ch / 2 + Math.sin(a) * ry * (st.sol === 'salt' ? 1 - 0.55 * p : 1);
+          vg.fillStyle = '#2e9d4e'; vg.beginPath(); vg.ellipse(cx, cy, 7, 4.5, a, 0, TAU); vg.fill();
+        }
+      }
+    } else {
+      for (let i = 0; i < 7; i++) {
+        const x = 70 + (i % 4) * 125 + (i > 3 ? 60 : 0), y = i > 3 ? 210 : 85;
+        if (sh.burst) { vg.strokeStyle = 'rgba(200,70,70,.35)'; vg.lineWidth = 3; vg.beginPath(); vg.arc(x, y, 42, i, i + 2.2); vg.stroke(); vg.fillStyle = 'rgba(220,80,80,.12)'; vg.beginPath(); vg.arc(x, y, 60, 0, TAU); vg.fill(); continue; }
+        const r = 40 * sh.s;
+        vg.save(); vg.translate(x, y);
+        if (sh.cren) { vg.beginPath(); for (let k = 0; k <= 40; k++) { const a = k / 40 * TAU, rr = r * (1 + 0.14 * Math.max(0, Math.sin(a * 9))); vg.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } vg.fillStyle = '#c94040'; vg.fill(); }
+        else {
+          const grd = vg.createRadialGradient(0, 0, r * 0.1, 0, 0, r);
+          const swell = st.sol === 'water' ? p : 0;
+          grd.addColorStop(0, `rgb(${240 - 50 * swell | 0},120,120)`); grd.addColorStop(0.55, '#d24848'); grd.addColorStop(1, '#a92f2f');
+          vg.fillStyle = grd; vg.beginPath(); vg.arc(0, 0, r, 0, TAU); vg.fill();
+        }
+        vg.restore();
+      }
+    }
+  }
+
+  function update(dt) {
+    if (st.run) { st.p = Math.min(1, st.p + dt / 7); if (st.p >= 1) st.run = false; }
+    const sh = shape(), p = smooth(0, 1, st.p), plant = st.cell === 'plant', salt = st.sol === 'salt';
+    PC.visible = plant; RB.visible = !plant;
+    saltTint.visible = salt; sPts.visible = salt;
+    if (plant) {
+      proto.scale.setScalar(sh.s);
+      pVac.scale.setScalar(Math.max(0.3, 1 - (salt ? 0.65 : -0.05) * p));
+      pChl.forEach((m, i) => { m.position.copy(m.userData.p).multiplyScalar(salt ? 1 - 0.45 * p : 1); m.position.x += Math.sin(wall * 0.6 + i) * 0.03; });
+      pWall.scale.setScalar(salt ? 1 : 1 + 0.025 * p);
+    } else {
+      const s = sh.s;
+      rbc.visible = !sh.cren && !sh.burst; crenated.visible = !!sh.cren && !sh.burst;
+      rbc.scale.set(s, salt ? s : s * (1 + 1.5 * Math.min(1, p / 0.8)), s);
+      crenated.scale.setScalar(s * 1.35);
+      const b = sh.burst ? smooth(0.82, 1, st.p) : 0;
+      frags.forEach(m => { m.visible = !!sh.burst; m.position.copy(m.userData.d).multiplyScalar(0.6 + 2.2 * b); m.material.opacity = 0.85 * (1 - 0.6 * b); });
+      cloud.material.opacity = sh.burst ? 0.55 * (1 - 0.5 * b) : 0;
+    }
+    // 水分子：隨機運動 + 穿過細胞膜的淨流向
+    const flow = st.p > 0 && st.p < 1 ? (salt ? -1 : 1) * (sh.burst ? 0 : 1) : 0;
+    const wp = wPts.geometry.attributes.position.array;
+    W.forEach((w, i) => {
+      w.p.x += (rnd() - 0.5) * 0.12; w.p.y += (rnd() - 0.5) * 0.12; w.p.z += (rnd() - 0.5) * 0.12;
+      if (flow) { const d = V3(w.p.x, (w.p.y - CY) * (plant ? 1.5 : 2.2), w.p.z), r = d.length(), Rm = (plant ? 1.9 : 1.6) * sh.s; if (r > Rm - 0.5 && r < Rm + 1.3) w.p.addScaledVector(d.normalize(), -flow * 0.03); }
+      w.p.x = clamp(w.p.x, -5.0, 5.0); w.p.y = clamp(w.p.y, CY - 2.1, CY + 2.1); w.p.z = clamp(w.p.z, -1.9, 1.9);
+      wp[i * 3] = w.p.x; wp[i * 3 + 1] = w.p.y; wp[i * 3 + 2] = w.p.z;
+    });
+    wPts.geometry.attributes.position.needsUpdate = true;
+    if (salt) {
+      const sp = sPts.geometry.attributes.position.array;
+      Sa.forEach((s, i) => {
+        const old = s.p.clone();
+        s.p.x += (rnd() - 0.5) * 0.1; s.p.y += (rnd() - 0.5) * 0.1; s.p.z += (rnd() - 0.5) * 0.1;
+        s.p.x = clamp(s.p.x, -5.0, 5.0); s.p.y = clamp(s.p.y, CY - 2.1, CY + 2.1); s.p.z = clamp(s.p.z, -1.9, 1.9);
+        if (plant ? wallIn(s.p) && !wallIn(old) : inside(s.p, sh)) s.p.copy(old);          // 鹽粒進不了細胞
+        if (plant ? false : inside(s.p, sh)) { const d = V3(s.p.x, s.p.y - CY, s.p.z).normalize(); s.p.addScaledVector(d, 0.2); }
+        sp[i * 3] = s.p.x; sp[i * 3 + 1] = s.p.y; sp[i * 3 + 2] = s.p.z;
+      });
+      sPts.geometry.attributes.position.needsUpdate = true;
+    }
+    arrows.forEach((g, i) => {
+      const a = g.userData.a + wall * 0.15, R = plant ? 2.5 : 1.95, show = flow !== 0;
+      g.visible = show; if (!show) return;
+      const k = (wall * 0.8 + i * 0.1) % 1;
+      const r = R + (flow > 0 ? 0.6 * (1 - k) : 0.6 * k);
+      g.position.set(Math.cos(a) * r * (plant ? 1.05 : 1), CY + Math.sin(a) * r * (plant ? 0.62 : 0.5), 1.0);
+      g.rotation.z = Math.atan2(Math.sin(a), Math.cos(a)) - Math.PI / 2 + (flow > 0 ? Math.PI : 0);
+      g.userData.m.opacity = 0.85 * Math.sin(k * Math.PI);
+    });
+    // 狀態與說明
+    const inW = salt ? 'high' : 'low';
+    const outPct = salt ? 55 : 100, inPct = 80;
+    const res = plant
+      ? (salt ? '細胞內的水往外跑 → 細胞膜縮小、和細胞壁<b>分離</b>，葉綠體擠成一團' : '水進入細胞 → 細胞<b>稍微膨脹</b>，但有細胞壁保護<b>不會破裂</b>，葉綠體分散在周圍')
+      : (salt ? '水往細胞外跑 → 紅血球<b>皺縮</b>' : '水不斷進入 → 紅血球膨脹，沒有細胞壁保護，最後<b>破裂</b>！');
+    setHTML('osStat', `<div class="bars"><span>細胞外 水分子</span><div class="bar"><i style="width:${outPct}%"></i></div><span>${salt ? '較低' : '較高'}</span><span>細胞內 水分子</span><div class="bar"><i style="width:${inPct}%"></i></div><span>${salt ? '較高' : '較低'}</span></div>
+      <div style="margin-top:6px">💧 水分子由<b class="b">${salt ? '細胞內 → 細胞外' : '細胞外 → 細胞內'}</b>（高濃度 → 低濃度）</div>${st.p > 0.6 ? `<div style="margin-top:4px">🔬 結果：${res}</div>` : ''}`);
+    drawView(sh);
+    setCap(st.p === 0 ? `<small>物質進出細胞</small>把${plant ? '水蘊草葉細胞' : '紅血球'}放進<b>${salt ? '濃食鹽水' : '清水'}</b>，猜猜看會發生什麼事？按「放進液體」`
+      : st.p < 1 ? `<small>擴散作用進行中</small>水分子通過<b>細胞膜</b>，由<b class="blu">${salt ? '細胞內往細胞外' : '細胞外往細胞內'}</b>移動`
+      : `<small>${plant ? '水蘊草葉細胞' : '紅血球'}・${salt ? '濃食鹽水' : '清水'}</small>${res}`);
+  }
+  return { group, update, st, reset };
+})();
+function updateOsm(dt) { OS.update(dt); }
+
+/* =========================================================
+   Tab 3：生物體的組成層次
+   ========================================================= */
+const LV = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const C = V3(0, 2.3, 0);
+  const green = 0x4caf50;
+  function plantCell() {
+    const g = new THREE.Group();
+    g.add(rbox(1.6, 1.1, 1.0, shell(0x8bc34a, 0.6), 0.14));
+    g.add(rbox(1.0, 0.65, 0.6, shell(0x7fc9f0, 0.55), 0.22));
+    for (let i = 0; i < 10; i++) { const a = i / 10 * TAU, m = sphere(0.09, clay(0x2e9d4e), 12); m.scale.set(1.4, 0.7, 0.9); m.position.set(Math.cos(a) * 0.62, Math.sin(a) * 0.38, (i % 2 - 0.5) * 0.4); g.add(m); }
+    const n = sphere(0.16, clay(0x8e6bbf), 16); n.position.set(0.5, 0.25, 0.2); g.add(n);
+    return g;
+  }
+  function tissue() {
+    const g = new THREE.Group();
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 6; c++) { const cell = plantCell(); cell.scale.setScalar(0.42); cell.position.set((c - 2.5) * 0.7 + (r % 2) * 0.12, (r - 1.5) * 0.5, 0); g.add(cell); }
+    const ep = rbox(4.4, 0.18, 0.5, clay(0xcfe8a8), 0.06); ep.position.y = 1.08; g.add(ep);
+    const ep2 = ep.clone(); ep2.position.y = -1.08; g.add(ep2);
+    return g;
+  }
+  function leaf(col = green) {
+    const g = new THREE.Group();
+    const s = new THREE.Shape(); s.moveTo(0, -1.6); s.bezierCurveTo(1.3, -0.9, 1.3, 0.9, 0, 1.8); s.bezierCurveTo(-1.3, 0.9, -1.3, -0.9, 0, -1.6);
+    const m = new THREE.Mesh(new THREE.ExtrudeGeometry(s, { depth: 0.05, bevelEnabled: true, bevelSize: 0.03, bevelThickness: 0.03, curveSegments: 24 }), clay(col)); m.position.z = -0.03; g.add(m);
+    const vein = clay(0xc5e1a5);
+    { const mv = cyl(0.035, 0.05, 3.3, vein, 8); mv.position.set(0, 0.1, 0.06); g.add(mv); }
+    for (let i = 0; i < 5; i++) { const y = -0.9 + i * 0.55; [-1, 1].forEach(sd => { const v = cyl(0.02, 0.025, 0.85 - i * 0.08, vein, 6); v.position.set(sd * 0.32, y + 0.2, 0.06); v.rotation.z = -sd * 0.95; g.add(v); }); }
+    const pet = cyl(0.05, 0.06, 0.8, clay(0x689f38), 8); pet.position.y = -1.95; g.add(pet);
+    return g;
+  }
+  function plant() {
+    const g = new THREE.Group();
+    const stem = cyl(0.07, 0.1, 3.4, clay(0x689f38), 10); stem.position.y = 0.5; g.add(stem);
+    [[0.3, 0.6, -0.9], [-0.3, 1.2, 0.9], [0.3, 1.8, -0.7], [-0.25, -0.1, 0.8]].forEach(([x, y, r]) => { const l = leaf(); l.scale.setScalar(0.28); l.position.set(x * 1.8, y, 0); l.rotation.z = r; g.add(l); });
+    const fl = new THREE.Group(); fl.position.y = 2.3; g.add(fl);
+    for (let i = 0; i < 6; i++) { const p = sphere(0.16, clay(0xf06292), 12); p.scale.set(1.3, 0.4, 0.8); const a = i / 6 * TAU; p.position.set(Math.cos(a) * 0.2, 0, Math.sin(a) * 0.2); p.rotation.y = -a; fl.add(p); }
+    fl.add(sphere(0.1, clay(0xffd54f), 10));
+    const fruit = sphere(0.18, clay(0xff7043), 14); fruit.position.set(0.45, 1.5, 0); g.add(fruit);
+    const rootM = clay(0xa1887f);
+    for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI - Math.PI; const r = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(0, -1.2, 0), V3(Math.cos(a) * 0.4, -1.6, Math.sin(i) * 0.2), V3(Math.cos(a) * 0.8, -2.0 - rnd() * 0.3, Math.sin(i) * 0.3)]), 12, 0.035, 6), rootM); g.add(r); }
+    const soil = cyl(1.3, 1.3, 0.08, clay(0x8d6e63, { transparent: true, opacity: 0.5 }), 32); soil.position.y = -1.2; g.add(soil);
+    return g;
+  }
+  function muscleCell(len = 3.6) {
+    const g = new THREE.Group();
+    const b = new THREE.Mesh(new THREE.CapsuleGeometry(0.32, len, 8, 20), shell(0xe57373, 0.75)); b.rotation.z = Math.PI / 2; b.scale.set(1, 1, 0.8); g.add(b);
+    for (let i = 0; i < 9; i++) { const st = cyl(0.33, 0.33, 0.03, clay(0xc62828, { transparent: true, opacity: 0.5 }), 20); st.rotation.z = Math.PI / 2; st.position.x = -len / 2 + 0.2 + i * len / 9; g.add(st); }
+    [-0.8, 0.4, 1.2].forEach(x => { const n = sphere(0.12, clay(0x5e35b1), 12); n.scale.set(1.8, 0.8, 0.8); n.position.set(x, 0.18, 0.12); g.add(n); });
+    return g;
+  }
+  function muscleTissue() {
+    const g = new THREE.Group();
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) { const m = muscleCell(3.4); m.scale.setScalar(0.5); m.position.set((c - 1) * 0.35 + (r % 2) * 0.2, (r - 1.5) * 0.36, (c - 1) * 0.3); g.add(m); }
+    const sheath = new THREE.Mesh(new THREE.CapsuleGeometry(0.95, 2.6, 8, 24), shell(0xffcdd2, 0.25)); sheath.rotation.z = Math.PI / 2; g.add(sheath);
+    return g;
+  }
+  function heart(sc = 1) {
+    const g = new THREE.Group();
+    const red = clay(0xc62828, { clearcoat: 0.6 }), blue = clay(0x3f74c9, { clearcoat: 0.6 });
+    const a = sphere(0.9, red, 32); a.scale.set(1, 1.1, 0.85); a.position.set(-0.35, 0.1, 0); g.add(a);
+    const b = sphere(0.8, red, 32); b.scale.set(1, 1.05, 0.85); b.position.set(0.45, 0.2, 0); g.add(b);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.95, 1.4, 32), red); tip.rotation.z = Math.PI + 0.35; tip.position.set(-0.1, -0.8, 0); g.add(tip);
+    const ao = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(0.1, 0.8, 0), V3(0.2, 1.6, 0), V3(-0.4, 1.9, 0), V3(-0.9, 1.4, 0)]), 20, 0.22, 12), red); g.add(ao);
+    const vc = cyl(0.2, 0.2, 1.4, blue, 14); vc.position.set(0.95, 1.1, -0.2); g.add(vc);
+    const pa = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(0.4, 0.9, 0.3), V3(0.6, 1.5, 0.4), V3(1.2, 1.6, 0.3)]), 16, 0.16, 10), blue); g.add(pa);
+    g.scale.setScalar(sc);
+    return g;
+  }
+  function vessels(g) {
+    const red = clay(0xd32f2f), blue = clay(0x3f74c9);
+    const tube = (pts, m, r) => g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => V3(...p))), 30, r, 8), m));
+    tube([[0, 0.9, 0.1], [0, 2.3, 0.1], [0, 2.9, 0.1]], red, 0.07);
+    tube([[0, 2.3, 0.1], [-0.6, 2.0, 0.1], [-1.1, 0.8, 0.1], [-1.3, -0.4, 0.1]], red, 0.05);
+    tube([[0, 2.3, 0.1], [0.6, 2.0, 0.1], [1.1, 0.8, 0.1], [1.3, -0.4, 0.1]], red, 0.05);
+    tube([[0, 0.9, 0.1], [-0.3, -0.5, 0.1], [-0.35, -2.2, 0.1], [-0.35, -3.0, 0.1]], red, 0.06);
+    tube([[0, 0.9, 0.1], [0.3, -0.5, 0.1], [0.35, -2.2, 0.1], [0.35, -3.0, 0.1]], red, 0.06);
+    tube([[0.15, 1.1, -0.1], [0.15, 2.3, -0.1], [0.15, 2.9, -0.1]], blue, 0.07);
+    tube([[0.15, 1.1, -0.1], [-0.15, -0.5, -0.1], [-0.5, -2.2, -0.1], [-0.5, -3.0, -0.1]], blue, 0.06);
+    tube([[0.15, 1.1, -0.1], [0.5, -0.5, -0.1], [0.5, -2.2, -0.1], [0.5, -3.0, -0.1]], blue, 0.06);
+    tube([[0.15, 2.3, -0.1], [-0.7, 1.9, -0.1], [-1.2, 0.6, -0.1], [-1.4, -0.4, -0.1]], blue, 0.05);
+    tube([[0.15, 2.3, -0.1], [0.75, 1.9, -0.1], [1.2, 0.6, -0.1], [1.4, -0.4, -0.1]], blue, 0.05);
+  }
+  function system() { const g = new THREE.Group(); const h = heart(0.35); h.position.set(0.05, 1.15, 0.15); g.add(h); vessels(g); g.scale.setScalar(0.62); return g; }
+  function human() {
+    const g = new THREE.Group();
+    const skin = shell(0xf0b98f, 0.6);
+    const head = sphere(0.42, skin, 28); head.position.y = 3.35; g.add(head);
+    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.62, 1.5, 8, 20), skin); torso.position.y = 1.8; torso.scale.z = 0.6; g.add(torso);
+    [[-0.95, 1.9, 0.18], [0.95, 1.9, -0.18]].forEach(([x, y, r]) => { const a = new THREE.Mesh(new THREE.CapsuleGeometry(0.17, 1.6, 6, 12), skin); a.position.set(x, y, 0); a.rotation.z = r; g.add(a); });
+    [-0.32, 0.32].forEach(x => { const l = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 1.9, 6, 12), skin); l.position.set(x, -0.3, 0); g.add(l); });
+    const sys = system(); sys.scale.setScalar(0.7); sys.position.y = 0.9; g.add(sys);
+    g.scale.setScalar(0.62); g.position.y = -0.4;
+    return g;
+  }
+  function paramecium() {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 32), shell(0xb7d7a8, 0.6)); body.scale.set(2.2, 0.8, 0.8); g.add(body);
+    const groove = sphere(0.3, clay(0x7cb342, { transparent: true, opacity: 0.7 }), 16); groove.position.set(0.2, -0.35, 0.45); groove.scale.set(1.6, 0.6, 0.6); g.add(groove);
+    const mac = sphere(0.35, clay(0x8e6bbf), 20); mac.scale.set(1.3, 0.8, 0.8); mac.position.set(0, 0.1, 0); g.add(mac);
+    [-1.3, 1.3].forEach(x => { const cv = sphere(0.18, shell(0x4fb3e8, 0.8), 14); cv.position.set(x, 0.3, 0.2); g.add(cv); });
+    for (let i = 0; i < 6; i++) { const f = sphere(0.1, clay(0xffb74d), 10); f.position.set(-0.9 + i * 0.35, -0.15 + Math.sin(i) * 0.15, 0.25); g.add(f); }
+    const cil = clay(0x8bc34a);
+    for (let i = 0; i < 70; i++) { const a = i / 70 * TAU * 3, ph = (i % 23) / 23 * Math.PI; const n = V3(Math.cos(a) * Math.sin(ph) * 2.2, Math.cos(ph) * 0.8, Math.sin(a) * Math.sin(ph) * 0.8); const c = cyl(0.012, 0.012, 0.25, cil, 4); c.position.copy(n).multiplyScalar(1.06); c.quaternion.setFromUnitVectors(V3(0, 1, 0), n.clone().normalize()); g.add(c); }
+    return g;
+  }
+
+  const LEVELS = {
+    plant: [
+      { n: '細胞', make: () => { const c = plantCell(); c.scale.setScalar(1.7); return c; }, d: '構成生物體的<b>基本單位</b>。例：葉肉細胞（能行光合作用）、表皮細胞（保護）。', size: '約 0.05 毫米' },
+      { n: '組織', make: tissue, d: '許多<b>形態、功能相同</b>的細胞聚集在一起。例：葉肉組織、表皮組織、輸導組織。', size: '約 1 毫米' },
+      { n: '器官', make: leaf, d: '不同的組織組成，具有<b>特定功能</b>。<br>營養器官：<b>根、莖、葉</b>（吸收、運輸、製造養分）<br>生殖器官：<b>花、果實、種子</b>（傳宗接代）', size: '約 10 公分' },
+      { n: '個體', make: plant, d: '各種器官分工合作，組成一株完整的植物。<br>植物：細胞 → 組織 → 器官 → 個體（<b>四個層次</b>）', size: '約 1 公尺' }
+    ],
+    animal: [
+      { n: '細胞', make: () => { const c = muscleCell(); c.scale.setScalar(0.95); return c; }, d: '構成生物體的<b>基本單位</b>。例：肌肉細胞、血球、神經細胞。', size: '約 0.1 毫米' },
+      { n: '組織', make: muscleTissue, d: '許多<b>形態、功能相同</b>的細胞聚集在一起。例：肌肉組織、血液、神經組織。', size: '約 1 毫米' },
+      { n: '器官', make: () => heart(1.1), d: '不同的組織組成，具有<b>特定功能</b>。例：心臟、胃、肝、腸、肺。', size: '約 12 公分' },
+      { n: '器官系統', make: system, d: '功能相關的器官一起完成某種生理作用。例：<b>循環系統</b>（心臟＋血管）、消化系統、呼吸系統、神經系統。', size: '遍布全身' },
+      { n: '個體', make: human, d: '各器官系統分工合作，組成完整的個體。<br>動物：細胞 → 組織 → 器官 → <b>器官系統</b> → 個體（比植物多一層）', size: '約 1.6 公尺' }
+    ],
+    uni: [
+      { n: '單細胞生物', make: paramecium, d: '<b>草履蟲</b>只由一個細胞組成，這一個細胞就能完成代謝、生長、感應、生殖等所有生命現象。其他例子：藍綠菌、眼蟲、細菌。<br>多細胞生物則要靠許多細胞<b>分工合作</b>。', size: '約 0.2 毫米' }
+    ]
+  };
+  const models = {};
+  for (const [k, list] of Object.entries(LEVELS)) models[k] = list.map(L => { const g = L.make(); shadowed(g); const holder = new THREE.Group(); holder.add(g); holder.position.copy(C); holder.visible = false; group.add(holder); return { holder, fade: fadeable(holder) }; });
+  const lSize = addLabel('lvl', '', 'yel', V3(0, -0.2, 1.2));
+  const st = { kind: 'plant', lv: 0, prev: null, dir: 1, t: 1 };
+  const seg = (sel, key, fn) => document.querySelectorAll(sel).forEach(b => b.addEventListener('click', () => { document.querySelectorAll(sel).forEach(x => x.classList.toggle('on', x === b)); fn(b.dataset[key]); }));
+  seg('.kbtn', 'k', k => { st.kind = k; st.prev = null; st.lv = 0; st.t = 1; syncUI(); });
+  function go(lv) {
+    const n = LEVELS[st.kind].length; lv = clamp(lv, 0, n - 1);
+    if (lv === st.lv) return;
+    st.prev = st.lv; st.dir = lv > st.lv ? 1 : -1; st.lv = lv; st.t = 0; syncUI();
+  }
+  $('lvl').addEventListener('input', e => go(Number(e.target.value)));
+  $('lvPrev').addEventListener('click', () => go(st.lv - 1));
+  $('lvNext').addEventListener('click', () => go(st.lv + 1));
+  function syncUI() {
+    const list = LEVELS[st.kind], L = list[st.lv];
+    $('lvBox').hidden = st.kind === 'uni';
+    $('lvl').max = list.length - 1; $('lvl').value = st.lv;
+    setHTML('lvName', L.n);
+    setHTML('chain', st.kind === 'uni' ? '<span class="cur">一個細胞 ＝ 一個個體</span>' : list.map((x, i) => `<span data-i="${i}" class="${i === st.lv ? 'cur' : i < st.lv ? 'done' : ''}">${x.n}</span>`).join('<b>→</b>'));
+    document.querySelectorAll('#chain span[data-i]').forEach(s => s.addEventListener('click', () => go(Number(s.dataset.i))));
+    setHTML('lvCard', `<h4>${st.kind === 'uni' ? '🦠 ' : ''}${L.n}</h4><div>${L.d}</div>`);
+    for (const [k, list2] of Object.entries(models)) list2.forEach((m, i) => { m.holder.visible = k === st.kind && (i === st.lv || i === st.prev); });
+  }
+  function update(dt) {
+    st.t = Math.min(1, st.t + dt / 0.9);
+    const e = smooth(0, 1, st.t), list = models[st.kind], L = LEVELS[st.kind][st.lv];
+    const cur = list[st.lv];
+    // 往大（縮小）：新的一層從「放大」狀態縮回來，舊的一層縮小變成其中一小部分
+    const zin = st.dir > 0 ? 2.6 : 0.38;
+    cur.holder.scale.setScalar(lerp(st.prev === null ? 1 : zin, 1, e)); cur.fade(st.prev === null ? 1 : e);
+    if (st.prev !== null) { const pm = list[st.prev]; pm.holder.visible = e < 1; pm.holder.scale.setScalar(lerp(1, st.dir > 0 ? 0.38 : 2.6, e)); pm.fade(1 - e); if (e >= 1) st.prev = null; }
+    cur.holder.rotation.y = Math.sin(wall * 0.4) * 0.35;
+    setLabel(lSize, `📏 ${L.size}`);
+    setCap(st.kind === 'uni' ? '<small>單細胞生物</small>一個細胞就能表現<b>所有生命現象</b>，不需要分工' : `<small>${st.kind === 'plant' ? '植物' : '動物'}的組成層次・第 ${st.lv + 1} 層</small><b>${L.n}</b>　${st.kind === 'plant' ? '細胞 → 組織 → 器官 → 個體' : '細胞 → 組織 → 器官 → 器官系統 → 個體'}`);
+  }
+  syncUI();
+  return { group, update, go, st };
+})();
+function updateLvl(dt) { LV.update(dt); }
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  cell: { group: CF.group, cam: () => window.innerWidth < window.innerHeight ? { pos: [0, 4.0, 14], target: [0, 3.4, 0], fitW: 6.2 } : { pos: [0, 4.2, 12.5], target: [0, 2.2, 0], fitW: 13 }, update: updateCell },
+  osm: { group: OS.group, cam: () => ({ pos: [0, 4.4, 11.5], target: [0, 2.3, 0], fitW: window.innerWidth < window.innerHeight ? 5.6 : 10.8 }), update: updateOsm },
+  lvl: { group: LV.group, cam: () => ({ pos: [0, 3.6, 10], target: [0, 2.2, 0], fitW: 6.5 }), update: updateLvl }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, CF, OS, LV, camera, controls, renderer, scene, placeLabels };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'cell';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+<script src="goals.js" defer></script>
+</body>
+</html>
