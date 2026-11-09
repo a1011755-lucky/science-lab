@@ -466,7 +466,51 @@ const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = 
    ========================================================= */
 const lerp = (a, b, k) => a + (b - a) * k;
 const glass = (o = {}) => new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.92, thickness: 0.2, roughness: 0.05, ior: 1.4, transparent: true, opacity: 0.4, depthWrite: false, side: THREE.DoubleSide, ...o });
-const sphere = (r, mat, seg = 24) => new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg * 0.6 | 0)), mat);
+/* ----- 有機形態（美學規範 D）＋全息投影（美學規範 B） ----- */
+function orgNoise(x, y, z, s) { return Math.sin(x * 1.7 + s) * Math.sin(y * 2.3 + s * 1.3) * Math.sin(z * 1.9 + s * 0.7) + 0.5 * Math.sin(x * 3.1 - s) * Math.sin(y * 2.9 + s * 2.1) * Math.sin(z * 3.7 + s); }
+function orgSmooth(g) { const p = g.attributes.position, n = g.attributes.normal, m = new Map(); for (let i = 0; i < p.count; i++) { const k = Math.round(p.getX(i) * 1e4) + "," + Math.round(p.getY(i) * 1e4) + "," + Math.round(p.getZ(i) * 1e4); let a = m.get(k); if (!a) { a = [0, 0, 0, []]; m.set(k, a); } a[0] += n.getX(i); a[1] += n.getY(i); a[2] += n.getZ(i); a[3].push(i); } for (const a of m.values()) { const l = Math.hypot(a[0], a[1], a[2]) || 1; for (const i of a[3]) n.setXYZ(i, a[0] / l, a[1] / l, a[2] / l); } n.needsUpdate = true; }
+function blobGeo(r, { amp = 0.08, freq = 1.4, seed = 1, detail = 5, ripple = 0, rippleF = 9 } = {}) {
+  const g = new THREE.IcosahedronGeometry(1, detail), p = g.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i).normalize();
+    let k = 1 + amp * orgNoise(v.x * freq * 2, v.y * freq * 2, v.z * freq * 2, seed);
+    if (ripple) k += ripple * Math.sin(v.x * rippleF + seed) * Math.sin(v.y * rippleF * 1.1 + 1) * Math.sin(v.z * rippleF * 0.9 + seed * 2);
+    v.multiplyScalar(r * k); p.setXYZ(i, v.x, v.y, v.z);
+  }
+  g.computeVertexNormals(); orgSmooth(g); return g;
+}
+function spindleGeo(len, r, { blunt = 0.35, seed = 4 } = {}) {
+  const pts = [], N = 48;
+  for (let i = 0; i <= N; i++) { const t = (1 - Math.cos(Math.PI * i / N)) / 2, prof = Math.pow(Math.sin(Math.PI * t), blunt) * (1 + 0.05 * Math.sin(t * 17 + seed)); pts.push(new THREE.Vector2(Math.max(0.002, r * prof), (t - 0.5) * len)); }
+  const g = new THREE.LatheGeometry(pts, 28); g.rotateZ(Math.PI / 2); g.computeVertexNormals(); return g;
+}
+function petalGeo(len = 0.34, w = 0.2) {
+  const s = new THREE.Shape(); s.moveTo(0, 0); s.bezierCurveTo(w, len * 0.25, w * 0.9, len * 0.85, 0, len); s.bezierCurveTo(-w * 0.9, len * 0.85, -w, len * 0.25, 0, 0);
+  const g = new THREE.ExtrudeGeometry(s, { depth: 0.01, bevelEnabled: true, bevelThickness: 0.025, bevelSize: 0.02, bevelSegments: 4, curveSegments: 20 }); g.computeVertexNormals(); return g;
+}
+function holoMat(op = 0.4, color = 0xf6d2bd) {
+  return new THREE.MeshPhysicalMaterial({ color, transmission: 0.8, opacity: op, transparent: true, roughness: 0.35, thickness: 0.6, ior: 1.2, depthWrite: false, side: THREE.DoubleSide, emissive: 0x000000 });
+}
+function holoEdgeMat(color = 0xffa477, op = 0.6) { return new THREE.LineBasicMaterial({ color, transparent: true, opacity: op, depthWrite: false }); }
+function holoPiece(shape, depth, bevel, mat, edgeMat) {
+  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel * 0.8, bevelSegments: 6, curveSegments: 40 });
+  g.translate(0, 0, -depth / 2);
+  const m = new THREE.Mesh(g, mat); m.renderOrder = 8;
+  if (edgeMat) { const e = new THREE.LineSegments(new THREE.EdgesGeometry(g, 60), edgeMat); e.renderOrder = 9; m.add(e); }
+  return m;
+}
+function holoLimbShape(len, w0, w1) {
+  const s = new THREE.Shape();
+  s.moveTo(w0 / 2, 0); s.lineTo(w1 / 2, -len);
+  s.absarc(0, -len, w1 / 2, 0, -Math.PI, true);
+  s.lineTo(-w0 / 2, 0);
+  s.absarc(0, 0, w0 / 2, Math.PI, 0, true);
+  return s;
+}
+/** 平躺、朝 +x 伸出的葉片／花瓣 */
+function flatLeafGeo(len, w) { const g = petalGeo(len, w); g.rotateZ(-Math.PI / 2); g.rotateX(Math.PI / 2); g.computeVertexNormals(); return g; }
+let orgSeed = 5;
+const sphere = (r, mat, seg = 24) => new THREE.Mesh(blobGeo(r, { amp: 0.04, freq: 1.3, seed: (orgSeed = orgSeed * 1.37 % 97), detail: seg >= 20 ? 5 : 3 }), mat);
 const cyl = (r1, r2, h, mat, seg = 32) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg), mat);
 const rbox = (w, h, d, mat, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(r, w / 2, h / 2, d / 2)), mat);
 // 桌面加大：手機直式鏡頭拉遠時，下方不會露出桌子外的空白
@@ -501,8 +545,9 @@ const LF = (() => {
   const lampGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('255,210,90'), transparent: true, depthWrite: false, opacity: 0 }));
   lampGlow.scale.setScalar(3.2); lampGlow.position.set(-0.6, -0.4, 0); lamp.add(lampGlow);
   lamp.position.set(1.65, 1.55, 0.3);
-  const finger = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.7, 6, 12), clay(0xf0b48c)));
-  finger.rotation.z = Math.PI / 2; group.add(finger);
+  const finger = holoPiece(holoLimbShape(0.84, 0.3, 0.24), 0.12, 0.05, holoMat(0.45), holoEdgeMat(0xffa477, 0.75));
+  finger.geometry.translate(0, 0.42, 0); finger.children[0].geometry.translate(0, 0.42, 0);
+  finger.rotation.z = -Math.PI / 2; group.add(finger);
   const drops = Array.from({ length: 8 }, () => { const d = sphere(0.06, clay(0x4fa3e0, { roughness: 0.1, clearcoat: 1 }), 12); group.add(d); return d; });
   const flakes = Array.from({ length: 10 }, () => { const f = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.02, 0.08), clay(0xe9b44c)); group.add(f); return f; });
 
@@ -516,8 +561,9 @@ const LF = (() => {
     const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.06, 1, 12), clay(0xb5d98a)); stem.geometry.translate(0, 0.5, 0); plant.add(stem);
     const top = new THREE.Group(); plant.add(top);
     const leafM = clay(0x4caf50);
-    [-1, 1].forEach(s => { const lf = sphere(0.24, leafM, 18); lf.scale.set(1.3, 0.22, 0.75); lf.position.set(s * 0.24, 0.02, 0); lf.rotation.z = s * 0.4; top.add(lf); });
-    const pod = new THREE.Mesh(new THREE.CapsuleGeometry(0.07, 0.5, 4, 12), clay(0x7cb342)); pod.position.set(0.28, -0.25, 0.05); pod.rotation.z = 0.5; top.add(pod);
+    const leafG = flatLeafGeo(0.6, 0.2);
+    [-1, 1].forEach(s => { const lg = new THREE.Group(); lg.position.set(s * 0.02, 0.02, 0); lg.rotation.z = s * 0.4; const lf = new THREE.Mesh(leafG, leafM); lf.castShadow = true; if (s < 0) lf.rotation.y = Math.PI; lg.add(lf); top.add(lg); });
+    const pod = new THREE.Mesh(spindleGeo(0.64, 0.075, { blunt: 0.45, seed: 3 }).rotateZ(Math.PI / 2), clay(0x7cb342)); pod.position.set(0.28, -0.25, 0.05); pod.rotation.z = 0.5; top.add(pod);
     const flower = sphere(0.1, clay(0xf5e663), 14); flower.position.set(-0.2, 0.12, 0.12); top.add(flower);
     const babies = [[0.55, 0.4], [-0.5, 0.35], [0.1, -0.6]].map(([x, z]) => { const b = sphere(0.13, clay(0x5c9e3c), 16); b.scale.set(1.25, 0.85, 1); b.position.set(x, 0.17, z); g.add(b); return b; });
     return {
@@ -639,7 +685,8 @@ const LF = (() => {
     const stem = cyl(0.03, 0.035, 1.3, clay(0x8a6a45), 8); stem.position.y = 1.2; g.add(stem);
     const head = new THREE.Group(); head.position.y = 1.85; g.add(head);
     const petal = clay(0xc9a27e, { roughness: 0.9 });
-    for (let i = 0; i < 7; i++) { const p = sphere(0.14, petal, 12); p.scale.set(1.4, 0.35, 0.8); const a = i / 7 * TAU; p.position.set(Math.cos(a) * 0.17, 0, Math.sin(a) * 0.17); p.rotation.y = -a; p.rotation.z = 0.5; head.add(p); }
+    const petG = flatLeafGeo(0.36, 0.14);
+    for (let i = 0; i < 7; i++) { const p = new THREE.Mesh(petG, petal); const a = i / 7 * TAU; p.position.set(Math.cos(a) * 0.05, 0, Math.sin(a) * 0.05); p.rotation.y = -a; p.rotation.z = 0.5; head.add(p); }
     head.add(sphere(0.09, clay(0x6d4c2f), 12));
     head.rotation.z = 0.35;
     return { g, stim: 'lamp', dropY: 2.2, update() {} };
