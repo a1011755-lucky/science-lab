@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>波動與聲音特效實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7a70;
+    --card: rgba(255,252,246,.62);
+    --accent: #a0714f;
+    --accent2: #6f8f72;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(22px) saturate(160%); -webkit-backdrop-filter: blur(22px) saturate(160%);
+    border: 1px solid rgba(255,255,255,.85); box-shadow: 0 20px 50px rgba(93,64,55,.13), 0 2px 6px rgba(93,64,55,.06);
+  }
+
+  /* 左側控制面板（桌機）／底部抽屜（手機） */
+  .panel { position: absolute; top: 18px; left: 18px; width: 310px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 20; border-radius: 26px; padding: 18px;
+    touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 700; color: var(--accent); background: rgba(160,113,79,.13); border-radius: 999px; padding: 4px 12px; }
+  .sheet-close { display: none; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; font-weight: 600; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; letter-spacing: .02em; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .8rem; font-weight: 800; color: var(--ink); padding: 9px 6px; border-radius: 14px; background: rgba(255,255,255,.6); line-height: 1.35; text-align: center; }
+  .tab small { display: block; font-size: .66rem; font-weight: 600; color: var(--ink-soft); }
+  .tab:hover { background: rgba(255,255,255,.9); }
+  .tab.on { color: #fff; background: var(--accent); box-shadow: 0 6px 16px rgba(160,113,79,.32); }
+  .tab.on small { color: rgba(255,255,255,.85); }
+  .section[hidden] { display: none; }
+  .desc { font-size: .8rem; color: var(--ink-soft); line-height: 1.65; margin-bottom: 6px; }
+  .desc b { color: var(--ink); }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .86rem; font-weight: 800; color: var(--accent); background: rgba(160,113,79,.13);
+    transition: background .2s, transform .1s, opacity .2s;
+  }
+  .btn:hover { background: rgba(160,113,79,.22); }
+  .btn:active { transform: scale(.97); }
+  .btn.primary { color: #fff; background: var(--accent); box-shadow: 0 6px 16px rgba(160,113,79,.3); }
+  .btn.green { color: #fff; background: var(--accent2); box-shadow: 0 6px 16px rgba(111,143,114,.3); }
+  .btn.red { color: #fff; background: #d36b5a; box-shadow: 0 6px 16px rgba(211,107,90,.3); }
+  .btn.on { outline: 3px solid rgba(93,64,55,.25); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .ios { background: rgba(255,255,255,.82); border-radius: 16px; padding: 10px 14px 12px; margin-top: 8px; }
+  .ios .top { display: flex; justify-content: space-between; align-items: baseline; font-size: .82rem; margin-bottom: 8px; font-weight: 600; }
+  .ios .top b { font-size: 1rem; font-weight: 800; color: var(--c, var(--accent)); font-variant-numeric: tabular-nums; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 999px; cursor: pointer; outline: none;
+    background: linear-gradient(90deg, var(--c, var(--accent)) 0%, var(--c, var(--accent)) var(--fill, 0%), #e8e1d6 var(--fill, 0%)); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgba(93,64,55,.25); }
+  input[type=range]::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 3px 8px rgba(93,64,55,.25); }
+  select { width: 100%; font: inherit; font-size: .84rem; font-weight: 700; color: var(--ink); border: 1px solid #e3d9cc; border-radius: 12px; padding: 8px 10px; background: #fffdf8; margin-top: 8px; }
+  .read { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin-top: 10px; font-size: .8rem; line-height: 1.6; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-variant-numeric: tabular-nums; }
+  .kv b { text-align: right; }
+  .meter { display: grid; grid-template-columns: 74px 1fr 40px; gap: 6px; align-items: center; font-size: .76rem; margin-top: 4px; }
+  .meter .bar { height: 9px; background: #efe8de; border-radius: 999px; overflow: hidden; }
+  .meter .bar i { display: block; height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #e9b98d, #c0714f); }
+  .meter b { text-align: right; font-variant-numeric: tabular-nums; }
+  .concl { background: #fff4df; border: 1.5px solid #ecc88a; color: #6b4a1f; font-weight: 700; border-radius: 14px; padding: 9px 12px; margin-top: 8px; font-size: .8rem; line-height: 1.6; }
+  .log { font-size: .74rem; margin-top: 6px; line-height: 1.6; font-variant-numeric: tabular-nums; }
+  .log div { display: flex; justify-content: space-between; border-bottom: 1px dashed #e8dccd; padding: 2px 0; }
+
+  /* 上方 HUD（公式、計時器） */
+  .hud { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); z-index: 15; border-radius: 20px; padding: 10px 18px; text-align: center; pointer-events: none; min-width: 260px; max-width: 46vw; }
+  .hud:empty { display: none; }
+  .hud .big { font-size: 1.35rem; font-weight: 900; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+  .hud .huge { font-size: 2rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .hud .sm { font-size: .78rem; color: var(--ink-soft); font-weight: 600; margin-top: 2px; }
+  .hud .hl { color: #c0392b; }
+  .hud .tipc { margin-top: 6px; font-size: .82rem; font-weight: 800; color: #6b4a1f; background: #fff1d8; border-radius: 10px; padding: 4px 10px; display: inline-block; }
+  @media (min-width: 768px) { .hud { left: calc(50% + 164px); } }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .72rem; font-weight: 800; padding: 3px 9px; border-radius: 12px; white-space: nowrap; color: var(--ink);
+    background: rgba(255,252,246,.92); box-shadow: 0 4px 12px rgba(93,64,55,.12);
+  }
+  .tag.red { color: #c0392b; }
+  .tag.blue { color: #1f6fb2; }
+  .banner {
+    position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 16; pointer-events: none; text-align: center;
+    padding: 10px 18px; border-radius: 18px; font-size: .92rem; font-weight: 800; opacity: 0; transition: opacity .3s;
+    background: rgba(255,244,223,.97); border: 1.5px solid #ecc88a; color: #6b4a1f; max-width: 60vw;
+  }
+  .banner.show { opacity: 1; }
+  @media (min-width: 768px) { .banner { left: calc(50% + 164px); } }
+
+  /* 手機：懸浮 3D 開關按鈕 + 底部抽屜 */
+  .fab { display: none; position: absolute; right: 16px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 25; width: 64px; height: 64px; border-radius: 50%; border: none; cursor: pointer;
+    font: inherit; font-size: .72rem; font-weight: 900; color: #fff; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    background: radial-gradient(circle at 32% 28%, #d9a47c, #a0714f 62%, #7d5236);
+    box-shadow: 0 10px 22px rgba(93,64,55,.38), inset 0 -4px 8px rgba(0,0,0,.18), inset 0 4px 8px rgba(255,255,255,.35); touch-action: manipulation; }
+  .fab span { font-size: 1.35rem; line-height: 1; }
+  .fab:active { transform: scale(.94); }
+  @media (max-width: 767px) {
+    .panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 58vh; max-height: 58dvh; border-radius: 24px 24px 0 0;
+      padding: 22px 16px calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateY(108%); transition: transform .38s cubic-bezier(.2,.8,.2,1); }
+    .panel.open { transform: none; }
+    .panel::before { content: ""; position: absolute; top: 8px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: rgba(93,64,55,.28); }
+    .panel .collapse { display: none; }
+    .sheet-close { display: block; position: absolute; top: 14px; right: 14px; border: none; cursor: pointer; width: 34px; height: 34px; border-radius: 50%; font-size: 1rem; font-weight: 900; color: var(--ink); background: rgba(160,113,79,.14); }
+    .tabs { grid-template-columns: repeat(4, 1fr); }
+    .tab { font-size: .72rem; padding: 7px 2px; }
+    .tab small { display: none; }
+    .btn { min-height: 44px; }
+    .fab { display: flex; }
+    .fab.hide { opacity: 0; pointer-events: none; }
+    .hud { top: 8px; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; padding: 8px 12px; }
+    .hud .big { font-size: 1.05rem; } .hud .huge { font-size: 1.5rem; }
+    .banner { bottom: auto; top: 96px; left: 8px; right: 8px; transform: none; max-width: none; font-size: .8rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="scene"></div>
+<div class="hud glass" id="hud"></div>
+<div class="banner" id="banner"></div>
+<button class="fab" id="fab" aria-label="開啟控制面板"><span>🎛️</span>控制</button>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <button class="sheet-close" id="sheetClose" aria-label="關閉控制面板">✕</button>
+  <a class="back" href="index.html#g8">‹ 課程總覽</a>
+  <div class="title">波動與聲音特效實驗室</div>
+  <div class="body">
+    <div class="tabs">
+      <button class="tab on" data-tab="wave">〰️ 橫波與縱波<small>介質不隨波逐流</small></button>
+      <button class="tab" data-tab="bell">🔔 真空鐘罩<small>聲音需要介質</small></button>
+      <button class="tab" data-tab="music">🎵 樂音與共鳴<small>三要素・共鳴</small></button>
+      <button class="tab" data-tab="sonar">🚢 聲納測距<small>回聲與深度</small></button>
+    </div>
+
+    <!-- Tab 1 -->
+    <section class="section" data-tab="wave">
+      <p class="desc">上方是<b>粗繩</b>（串珠），下方是<b>彈簧</b>。盯著正中央的<b style="color:#d03b2f">紅色質點</b>：它會跟著波往右跑嗎？</p>
+      <div class="ios" style="--c:#c0714f"><div class="top"><span>頻率 f</span><b data-unit=" Hz">1.0 Hz</b></div><input type="range" id="wF" min="0.5" max="3" step="0.1" value="1" aria-label="頻率"></div>
+      <div class="ios" style="--c:#6f8f72"><div class="top"><span>振幅 A</span><b data-unit=" m">0.6 m</b></div><input type="range" id="wA" min="0.2" max="1" step="0.05" value="0.6" aria-label="振幅"></div>
+      <div class="row2">
+        <button class="btn primary" data-act="trans">〰️ 產生橫波</button>
+        <button class="btn green" data-act="long">⫴ 產生縱波</button>
+      </div>
+      <button class="btn" data-act="stop">■ 停止振動源</button>
+      <div class="read" id="waveRead"></div>
+      <div class="concl">波只傳遞能量，介質不隨波前進！<br>橫波：振動方向 ⟂ 前進方向；縱波：振動方向 ∥ 前進方向（疏密波）。</div>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="section" data-tab="bell" hidden>
+      <p class="desc">鬧鐘在<b>玻璃鐘罩</b>裡響個不停。白色小點是<b>空氣分子</b>，發光圓環是<b>聲波</b>。把空氣抽走會怎樣？</p>
+      <div class="ios" style="--c:#6f8f72"><div class="top"><span>抽氣機閥門（剩餘空氣）</span><b data-unit=" %">100 %</b></div><input type="range" id="bAir" min="0" max="100" step="1" value="100" aria-label="剩餘空氣"></div>
+      <div class="row2">
+        <button class="btn red" data-act="pump">🌀 開始抽氣</button>
+        <button class="btn" data-act="vent">💨 放入空氣</button>
+      </div>
+      <div class="read" id="bellRead"></div>
+      <div class="concl">聲音是<b>力學波</b>，要靠介質（空氣）傳遞。<br>真空中鬧鐘仍在振動，但聲音傳不出來！</div>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="section" data-tab="music" hidden>
+      <p class="desc">音叉 <b>A、B 都是 440 Hz</b>（共鳴箱開口相對），音叉 <b>C 是 512 Hz</b>（比較短）。後方示波器顯示聲音的波形。</p>
+      <div class="row2">
+        <button class="btn" data-act="tapA">🔨 輕敲 A</button>
+        <button class="btn primary" data-act="hitA">🔨 重敲 A</button>
+      </div>
+      <div class="row2">
+        <button class="btn green" data-act="hitC">🔨 敲擊 C</button>
+        <button class="btn" data-act="mute">✋ 全部止音</button>
+      </div>
+      <select id="mTimbre" aria-label="音品示範">
+        <option value="fork">音品示範：音叉（純音・正弦波）</option>
+        <option value="piano">音品示範：鋼琴（同音高、同響度）</option>
+        <option value="violin">音品示範：小提琴（同音高、同響度）</option>
+      </select>
+      <div class="read">
+        <div class="meter"><span>A 440 Hz</span><div class="bar"><i id="mBarA"></i></div><b id="mValA">0</b></div>
+        <div class="meter"><span>B 440 Hz</span><div class="bar"><i id="mBarB"></i></div><b id="mValB">0</b></div>
+        <div class="meter"><span>C 512 Hz</span><div class="bar"><i id="mBarC"></i></div><b id="mValC">0</b></div>
+      </div>
+      <div class="concl">振幅決定大聲（響度），頻率決定高音（音調）！<br>波形決定音色（音品）；頻率相同才會產生共鳴！</div>
+    </section>
+
+    <!-- Tab 4 -->
+    <section class="section" data-tab="sonar" hidden>
+      <p class="desc">用滑鼠或手指<b>拖曳船隻</b>到不同位置，按「發射聲納」。超聲波往下傳、碰到海底反彈回來，記下<b>來回時間 t</b>。</p>
+      <button class="btn primary" data-act="ping">📡 發射聲納</button>
+      <div class="row2">
+        <button class="btn" data-act="left">◀ 船往左</button>
+        <button class="btn" data-act="right">船往右 ▶</button>
+      </div>
+      <div class="read"><b>測量紀錄</b><div class="log" id="sonarLog"><div><span>尚未測量</span></div></div></div>
+      <div class="concl">深度 d ＝（聲速 v × 來回時間 t）÷ 2<br>聲波走了「一去一回」，所以要除以 2！</div>
+    </section>
+
+    <button class="btn" id="viewBtn" style="margin-top:12px">重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__sfxReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = THREE.MathUtils.clamp, lerp = THREE.MathUtils.lerp;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   場景：Soft 3D 溫暖原木無印風
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf3ece0);
+const envBall = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envBall.position.set(3, 5, 4); envBall.scale.setScalar(2.4); envScene.add(envBall);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+const ambient = new THREE.AmbientLight(0xfff4e6, 0.85);
+scene.add(ambient);
+const sun = new THREE.DirectionalLight(0xfff0dc, 2.0);
+sun.position.set(-6, 14, 9);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 12, bottom: -12, near: 1, far: 60 });
+sun.shadow.radius = 6;
+sun.shadow.bias = -0.0004;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 4; controls.maxDistance = 60;
+
+/* ----- 材質與工具 ----- */
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.55, metalness: 0.02, clearcoat: 0.25, ...o });
+const glow = (color, k = 0.8) => clay(color, { emissive: color, emissiveIntensity: k });
+const glassA = (op = 0.16) => new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.04, clearcoat: 1, transparent: true, opacity: op, depthWrite: false, side: THREE.DoubleSide });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+function woodTexture(base = '#c9a27e', rep = [3, 1]) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = base; g.fillRect(0, 0, 512, 256);
+  for (let i = 0; i < 80; i++) {
+    g.strokeStyle = `rgba(${110 + Math.random() * 40 | 0},${72 + Math.random() * 30 | 0},${44 + Math.random() * 16 | 0},${rnd(0.06, 0.2)})`;
+    g.lineWidth = rnd(1, 4);
+    g.beginPath();
+    const y = rnd(0, 256), ph = rnd(0, 6), amp = rnd(1.5, 6);
+    g.moveTo(0, y);
+    for (let x = 0; x <= 512; x += 16) g.lineTo(x, y + Math.sin(x * 0.018 + ph) * amp);
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...rep);
+  return t;
+}
+const tableTex = woodTexture('#cfa983', [3, 1.4]);
+tableTex.userData.shared = true;
+const table = new THREE.Mesh(new RoundedBoxGeometry(20, 0.6, 9, 6, 0.28), new THREE.MeshPhysicalMaterial({ map: tableTex, roughness: 0.68, clearcoat: 0.25 }));
+table.position.y = -0.3; table.receiveShadow = true; scene.add(table);
+
+/* ----- 標籤、HUD、橫幅 ----- */
+const labels = [];
+let buildLabels = null;
+function addLabel(html = '', cls = '') {
+  const el = document.createElement('div');
+  el.className = 'tag ' + cls; el.innerHTML = html;
+  document.body.appendChild(el);
+  const L = { el, pos: V3(0, 0, 0), visible: true };
+  labels.push(L); if (buildLabels) buildLabels.push(L);
+  return L;
+}
+function removeLabels(arr) { arr.forEach(L => { L.el.remove(); const i = labels.indexOf(L); if (i >= 0) labels.splice(i, 1); }); }
+const tmpV = V3(0, 0, 0);
+function placeLabels() {
+  const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight;
+  for (const L of labels) {
+    if (!L.visible) { L.el.style.display = 'none'; continue; }
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+function banner(html, ms = 3800) {
+  $('banner').innerHTML = html; $('banner').classList.add('show');
+  clearTimeout(banner.t);
+  if (ms) banner.t = setTimeout(() => $('banner').classList.remove('show'), ms);
+}
+const hideBanner = () => { clearTimeout(banner.t); $('banner').classList.remove('show'); };
+const paint = el => el.style.setProperty('--fill', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
+document.querySelectorAll('input[type=range]').forEach(el => {
+  paint(el);
+  const b = el.closest('.ios')?.querySelector('b[data-unit]');
+  const show = () => { if (b) b.textContent = (Number(el.step) < 1 ? Number(el.value).toFixed(el.step.split('.')[1]?.length || 1) : el.value) + b.dataset.unit; };
+  show(); el.addEventListener('input', show);
+});
+
+/* =========================================================
+   Tab 1：橫波與縱波製造機
+   質點的位移 = 振動源在「t − x / V」時刻的位移（波以速度 V 傳出去）
+   ========================================================= */
+const BUILD = {};
+BUILD.wave = (g) => {
+  const X0 = -6, X1 = 6, V = 2.4, NR = 41, NS = 61;
+  const ropeY = 1.95, ropeZ = -1.35, springY = 0.62, springZ = 1.35;
+  const woodMat = new THREE.MeshPhysicalMaterial({ map: woodTexture('#b88a5e', [1, 2]), roughness: 0.7, clearcoat: 0.2 });
+  // 兩端木柱
+  [X0 - 0.45, X1 + 0.45].forEach(x => {
+    const p = new THREE.Mesh(new RoundedBoxGeometry(0.34, ropeY + 0.45, 0.34, 3, 0.1), woodMat);
+    p.position.set(x, (ropeY + 0.45) / 2, ropeZ); g.add(shadowed(p));
+  });
+  // 繩：串珠 + 細線
+  const ballGeo = new THREE.SphereGeometry(0.15, 20, 14);
+  const ropeMat = clay(0xe3c09a, { roughness: 0.65 }), redMat = glow(0xff2a1a, 0.95);
+  const MID_R = (NR - 1) / 2, MID_S = (NS - 1) / 2;
+  const balls = Array.from({ length: NR }, (_, i) => {
+    const m = new THREE.Mesh(ballGeo, i === MID_R ? redMat : ropeMat);
+    if (i === MID_R) m.scale.setScalar(1.45);
+    m.castShadow = true; g.add(m); return m;
+  });
+  const ropeLine = new THREE.Line(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(NR * 3), 3)), new THREE.LineBasicMaterial({ color: 0x9b6f4c }));
+  g.add(ropeLine);
+  // 彈簧：一圈一圈的圓環（像彈簧玩具）
+  const ringGeo = new THREE.TorusGeometry(0.36, 0.045, 10, 36);
+  const ringMat = clay(0xb8c2c9, { roughness: 0.3, metalness: 0.35, clearcoat: 0.8 }), redRing = glow(0xff2a1a, 0.95);
+  const rings = Array.from({ length: NS }, (_, j) => {
+    const m = new THREE.Mesh(ringGeo, j === MID_S ? redRing : ringMat);
+    m.rotation.y = Math.PI / 2; m.castShadow = true;
+    if (j === MID_S) m.scale.set(1.15, 1.15, 1.6);
+    g.add(m); return m;
+  });
+  [X0 - 0.3, X1 + 0.3].forEach(x => { const b = new THREE.Mesh(new RoundedBoxGeometry(0.3, 1.0, 1.0, 3, 0.1), woodMat); b.position.set(x, 0.5, springZ); g.add(shadowed(b)); });
+  // 振動源：左端的手把（橫波上下推、縱波前後推）
+  const handleMat = clay(0xd9905f);
+  const hR = new THREE.Mesh(new RoundedBoxGeometry(0.3, 0.55, 0.55, 3, 0.12), handleMat); g.add(shadowed(hR));
+  const hS = new THREE.Mesh(new RoundedBoxGeometry(0.35, 0.85, 0.85, 3, 0.14), handleMat); g.add(shadowed(hS));
+  // 紅色質點的「平衡位置」與振動範圍
+  const guideMat = new THREE.MeshBasicMaterial({ color: 0xff6b5a, transparent: true, opacity: 0.25, depthWrite: false });
+  const guideR = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1, 8), guideMat); g.add(guideR);
+  const guideS = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1, 8), guideMat); guideS.rotation.z = Math.PI / 2; g.add(guideS);
+  // 波長標尺（兩個波峰／兩個密部之間）
+  const mkBracket = color => {
+    const geo = new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(new Float32Array(18), 3));
+    const l = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color })); g.add(l); return l;
+  };
+  const brR = mkBracket(0x8d5a3b), brS = mkBracket(0x4f7a55);
+  const setBracket = (br, xa, xb, y, z, s = 0.16) => {
+    const a = br.geometry.attributes.position.array;
+    a.set([xa, y, z, xb, y, z, xa, y - s, z, xa, y + s, z, xb, y - s, z, xb, y + s, z]);
+    br.geometry.attributes.position.needsUpdate = true;
+  };
+  // 能量前緣的發光粒子
+  const sparkMat = glow(0xffc94d, 1.2);
+  const sparks = Array.from({ length: 28 }, (_, i) => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 6), sparkMat); m.userData = { med: i % 2, ph: rnd(0, 6), r: rnd(0.1, 0.45) }; m.visible = false; g.add(m); return m; });
+
+  const lRed = addLabel('', 'red'), lRedS = addLabel('', 'red');
+  const lLamR = addLabel(''), lLamS = addLabel('');
+  const lFrontR = addLabel('能量 →'), lFrontS = addLabel('能量 →');
+  const lRope = addLabel('粗繩（橫波）'), lSpring = addLabel('彈簧（縱波）');
+  lRope.pos.set(X0 - 0.45, ropeY + 0.75, ropeZ); lSpring.pos.set(X0 - 0.3, 1.35, springZ);
+
+  const mk = () => ({ on: false, amp: 0, phase: 0, hist: [], tOn: -1 });
+  const med = { rope: mk(), spring: mk() };
+  let T = 0;
+  const sample = (h, tq) => {
+    if (!h.length || tq <= h[0][0]) return 0;
+    const n = h.length - 1;
+    if (tq >= h[n][0]) return h[n][1];
+    let lo = 0, hi = n;
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (h[mid][0] <= tq) lo = mid; else hi = mid; }
+    const [t0, v0] = h[lo], [t1, v1] = h[hi];
+    return v0 + (v1 - v0) * (tq - t0) / Math.max(1e-9, t1 - t0);
+  };
+  const xR = i => X0 + i * (X1 - X0) / (NR - 1), xS = j => X0 + j * (X1 - X0) / (NS - 1);
+  const F = () => Number($('wF').value), A = () => Number($('wA').value);
+  const longScale = () => Math.min(0.3, 0.8 * V / (TAU * F()));          // 縱波位移上限：避免彈簧圈互相穿過
+
+  function start(m, name) {
+    const quiet = m.hist.every(([, v]) => Math.abs(v) < 0.01);
+    m.on = true;
+    if (quiet) m.tOn = T;
+    banner(name === 'rope' ? '橫波：紅色質點只在<b>原地上下</b>振動，波形卻一直往右跑！' : '縱波：紅色質點只在<b>原地左右</b>振動，疏密部一直往右跑！', 4200);
+  }
+  function findPeaks(fn, from, to, thr) {      // 回傳局部極大值的位置
+    const N = 360, xs = [], ys = [];
+    for (let i = 0; i <= N; i++) { const x = from + (to - from) * i / N; xs.push(x); ys.push(fn(x)); }
+    const out = [];
+    for (let i = 1; i < N; i++) if (ys[i] > thr && ys[i] >= ys[i - 1] && ys[i] > ys[i + 1]) out.push(xs[i]);
+    return out;
+  }
+  function pickPair(peaks) {                     // 選最靠近畫面中央的一對相鄰波峰
+    let best = null, bd = 1e9;
+    for (let i = 0; i + 1 < peaks.length; i++) { const c = Math.abs((peaks[i] + peaks[i + 1]) / 2); if (c < bd) { bd = c; best = [peaks[i], peaks[i + 1]]; } }
+    return best;
+  }
+
+  return {
+    camera: { pos: [0, 5.2, 13.5], target: [0, 1.2, 0] },
+    act(a) {
+      if (a === 'trans') start(med.rope, 'rope');
+      if (a === 'long') start(med.spring, 'spring');
+      if (a === 'stop') { med.rope.on = med.spring.on = false; }
+    },
+    update(dt) {
+      T += dt;
+      const f = F(), amp = A(), lam = V / f;
+      for (const m of Object.values(med)) {
+        m.amp += ((m.on ? amp : 0) - m.amp) * Math.min(1, dt * 3);
+        m.phase += TAU * f * dt;
+        m.hist.push([T, m.amp * Math.sin(m.phase)]);
+        while (m.hist.length && m.hist[0][0] < T - 7) m.hist.shift();
+      }
+      const LS = longScale();
+      // 橫波：繩子上下
+      const pos = ropeLine.geometry.attributes.position.array;
+      balls.forEach((b, i) => {
+        const x = xR(i), y = sample(med.rope.hist, T - (x - X0) / V);
+        b.position.set(x, ropeY + y, ropeZ);
+        pos[i * 3] = x; pos[i * 3 + 1] = ropeY + y; pos[i * 3 + 2] = ropeZ;
+      });
+      ropeLine.geometry.attributes.position.needsUpdate = true;
+      const src = sample(med.rope.hist, T);
+      hR.position.set(X0 - 0.45, ropeY + src, ropeZ + 0.0);
+      // 縱波：彈簧圈左右
+      rings.forEach((r, j) => {
+        const x = xS(j), u = sample(med.spring.hist, T - (x - X0) / V) * LS;
+        r.position.set(x + u, springY, springZ);
+      });
+      hS.position.set(X0 - 0.3 + sample(med.spring.hist, T) * LS - 0.25, springY + 0.0, springZ);
+      // 紅色質點的平衡位置與振動範圍
+      guideR.position.set(0, ropeY, ropeZ); guideR.scale.y = Math.max(0.05, 2 * med.rope.amp + 0.1);
+      guideS.position.set(0, springY - 0.5, springZ); guideS.scale.y = Math.max(0.05, 2 * med.spring.amp * LS + 0.1);
+      lRed.pos.set(0, ropeY + amp + 0.75, ropeZ); lRed.el.textContent = '紅色質點：只上下振動 ↕';
+      lRed.visible = med.rope.amp > 0.05;
+      lRedS.pos.set(0, springY - 0.9, springZ + 0.3); lRedS.el.textContent = '紅色質點：只左右振動 ↔';
+      lRedS.visible = med.spring.amp * LS > 0.02;
+      // 波長標尺
+      const ropeFn = x => sample(med.rope.hist, T - (x - X0) / V);
+      const pr = med.rope.amp > 0.1 ? pickPair(findPeaks(ropeFn, X0 + 0.2, X1 - 0.2, med.rope.amp * 0.5)) : null;
+      brR.visible = lLamR.visible = !!pr;
+      if (pr) { const y = ropeY - amp - 0.4; setBracket(brR, pr[0], pr[1], y, ropeZ); lLamR.pos.set((pr[0] + pr[1]) / 2, y - 0.3, ropeZ); lLamR.el.textContent = `λ = ${(pr[1] - pr[0]).toFixed(2)} m`; }
+      const dens = x => -(sample(med.spring.hist, T - (x + 0.02 - X0) / V) - sample(med.spring.hist, T - (x - 0.02 - X0) / V)) / 0.04 * LS;
+      const ps = med.spring.amp * LS > 0.03 ? pickPair(findPeaks(dens, X0 + 0.2, X1 - 0.2, 0.15)) : null;
+      brS.visible = lLamS.visible = !!ps;
+      if (ps) { const y = springY + 0.75; setBracket(brS, ps[0], ps[1], y, springZ); lLamS.pos.set((ps[0] + ps[1]) / 2, y + 0.3, springZ); lLamS.el.textContent = `λ = ${(ps[1] - ps[0]).toFixed(2)} m（密部到密部）`; }
+      // 能量前緣
+      const fronts = [med.rope.tOn >= 0 ? X0 + V * (T - med.rope.tOn) : 99, med.spring.tOn >= 0 ? X0 + V * (T - med.spring.tOn) : 99];
+      sparks.forEach(s => {
+        const k = s.userData.med, fx = fronts[k];
+        s.visible = fx < X1 + 0.2 && (k ? med.spring.on : med.rope.on);
+        if (!s.visible) return;
+        s.userData.ph += dt * 6;
+        const cy = k ? springY : ropeY, cz = k ? springZ : ropeZ;
+        s.position.set(fx - 0.25 + Math.cos(s.userData.ph) * 0.2, cy + Math.sin(s.userData.ph * 1.3) * s.userData.r, cz + Math.sin(s.userData.ph) * 0.3);
+      });
+      lFrontR.visible = fronts[0] < X1 && med.rope.on; lFrontR.pos.set(fronts[0], ropeY + 1.35, ropeZ);
+      lFrontS.visible = fronts[1] < X1 && med.spring.on; lFrontS.pos.set(fronts[1], springY + 1.1, springZ);
+      $('waveRead').innerHTML = `<div class="kv"><span>波速 V（由介質決定）</span><b>${V.toFixed(1)} m/s</b><span>頻率 f</span><b>${f.toFixed(1)} Hz</b><span>波長 λ ＝ V ÷ f</span><b>${lam.toFixed(2)} m</b><span>週期 T ＝ 1 ÷ f</span><b>${(1 / f).toFixed(2)} s</b></div>`;
+    },
+    hud() {
+      const f = F(), lam = V / f;
+      return `<div class="big">V ＝ f × λ　→　${V.toFixed(1)} ＝ <span class="hl">${f.toFixed(1)}</span> × <span class="hl">${lam.toFixed(2)}</span></div>
+        <div class="sm">同一介質 V 不變：頻率 f 變大 → 波長 λ 變短</div><div class="tipc">波只傳遞能量，介質不隨波前進！</div>`;
+    },
+    state: () => ({ T, rope: med.rope.amp, spring: med.spring.amp, redY: balls[MID_R].position.y - ropeY, redX: balls[MID_R].position.x, ringX: rings[MID_S].position.x })
+  };
+};
+
+/* =========================================================
+   Tab 2：波以耳真空鐘罩
+   ========================================================= */
+BUILD.bell = (g) => {
+  const R = 2.15, H0 = 0.28, HC = 2.6;
+  // 底座
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(2.7, 2.85, 0.28, 64), clay(0x8d7b6b, { roughness: 0.4, metalness: 0.3, clearcoat: 0.6 }));
+  base.position.y = 0.14; g.add(shadowed(base));
+  const seal = new THREE.Mesh(new THREE.TorusGeometry(R, 0.06, 12, 80), clay(0x5d4037)); seal.rotation.x = Math.PI / 2; seal.position.y = H0; g.add(seal);
+  // 玻璃鐘罩（圓柱 + 半球頂 + 把手）
+  const prof = [];
+  prof.push(new THREE.Vector2(R, H0));
+  for (let i = 0; i <= 24; i++) { const a = i / 24 * Math.PI / 2; prof.push(new THREE.Vector2(R * Math.cos(a), HC + R * Math.sin(a))); }
+  const dome = new THREE.Mesh(new THREE.LatheGeometry(prof, 80), glassA(0.17));
+  dome.renderOrder = 10; g.add(dome);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(R, 0.035, 10, 80), clay(0xffffff, { transparent: true, opacity: 0.7, roughness: 0.05, clearcoat: 1 }));
+  rim.rotation.x = Math.PI / 2; rim.position.y = H0 + 0.03; rim.renderOrder = 11; g.add(rim);
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(0.22, 24, 16), glassA(0.35)); knob.position.y = HC + R + 0.15; knob.renderOrder = 11; g.add(knob);
+
+  // 鬧鐘
+  const clock = new THREE.Group(); clock.position.y = H0;
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.72, 0.45, 48), clay(0xe0735e)); body.rotation.x = Math.PI / 2; body.position.y = 1.0;
+  const face = new THREE.Mesh(new THREE.CircleGeometry(0.6, 48), clay(0xfffaf0)); face.position.set(0, 1.0, 0.228);
+  clock.add(body, face);
+  for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; const t = new THREE.Mesh(new THREE.BoxGeometry(0.03, i % 3 ? 0.06 : 0.1, 0.01), clay(0x5d4037)); t.position.set(Math.sin(a) * 0.5, 1.0 + Math.cos(a) * 0.5, 0.235); t.rotation.z = -a; clock.add(t); }
+  const hand1 = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.32, 0.01), clay(0x5d4037)); hand1.position.set(0.08, 1.12, 0.24); hand1.rotation.z = -0.6;
+  const hand2 = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.42, 0.01), clay(0x5d4037)); hand2.position.set(-0.1, 1.15, 0.242); hand2.rotation.z = 0.5;
+  clock.add(hand1, hand2);
+  const goldMat = clay(0xe0b04f, { metalness: 0.5, roughness: 0.3, clearcoat: 1 });
+  [-1, 1].forEach(s => {
+    const bellM = new THREE.Mesh(new THREE.SphereGeometry(0.33, 28, 14, 0, TAU, 0, Math.PI / 2), goldMat);
+    bellM.position.set(s * 0.46, 1.62, 0); bellM.rotation.z = -s * 0.45; clock.add(bellM);
+    const leg = new THREE.Mesh(new THREE.SphereGeometry(0.1, 14, 10), clay(0x5d4037)); leg.position.set(s * 0.45, 0.32, 0); clock.add(leg);
+  });
+  const hammer = new THREE.Group(); hammer.position.set(0, 1.58, 0.05);
+  const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.42, 8), clay(0x7a7a7a)); rod.position.y = 0.21;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.07, 14, 10), clay(0x5d4037)); head.position.y = 0.42;
+  hammer.add(rod, head); clock.add(hammer);
+  g.add(shadowed(clock));
+
+  // 空氣分子（InstancedMesh）
+  const N = 420;
+  // 白色微帶冷藍：在米白背景前也看得清楚
+  const air = new THREE.InstancedMesh(new THREE.SphereGeometry(0.055, 10, 8), clay(0xeaf3ff, { emissive: 0x9ec4ea, emissiveIntensity: 0.35, roughness: 0.25, clearcoat: 1 }), N);
+  air.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  const inside = () => {
+    for (;;) {
+      const p = V3(rnd(-R, R), rnd(H0 + 0.12, HC + R - 0.15), rnd(-R, R));
+      const rr = Math.hypot(p.x, p.z);
+      const ok = p.y < HC ? rr < R - 0.15 : p.distanceTo(V3(0, HC, 0)) < R - 0.15;
+      const inClock = Math.abs(p.x) < 0.95 && p.y < H0 + 2.05 && Math.abs(p.z) < 0.45;
+      if (ok && !inClock) return p;
+    }
+  };
+  const mol = Array.from({ length: N }, () => ({ p: inside(), v: V3(rnd(-0.3, 0.3), rnd(-0.3, 0.3), rnd(-0.3, 0.3)) }));
+  g.add(air);
+  // 抽氣機與管子
+  const pumpPos = V3(4.7, 0.8, 0.4);
+  const pump = new THREE.Mesh(new RoundedBoxGeometry(1.3, 1.6, 1.1, 4, 0.22), clay(0x8fa595)); pump.position.copy(pumpPos); g.add(shadowed(pump));
+  const dial = new THREE.Mesh(new THREE.CircleGeometry(0.34, 40), clay(0xfffaf0)); dial.position.set(pumpPos.x, pumpPos.y + 0.25, pumpPos.z + 0.56); g.add(dial);
+  const needle = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.28, 0.01), clay(0xc0392b)); needle.geometry.translate(0, 0.13, 0); needle.position.set(pumpPos.x, pumpPos.y + 0.25, pumpPos.z + 0.57); g.add(needle);
+  const fan = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.08, 6), clay(0x5d4037)); fan.rotation.z = Math.PI / 2; fan.position.set(pumpPos.x + 0.68, pumpPos.y + 0.1, pumpPos.z); g.add(fan);
+  const hoseCurve = new THREE.CatmullRomCurve3([V3(2.55, 0.2, 0.1), V3(3.2, 0.25, 0.3), V3(3.7, 0.55, 0.45), V3(4.05, 0.75, 0.45)]);
+  const hose = new THREE.Mesh(new THREE.TubeGeometry(hoseCurve, 40, 0.09, 12, false), clay(0x6d5a4c)); g.add(shadowed(hose));
+  const outPool = Array.from({ length: 30 }, () => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), clay(0xffffff, { emissive: 0xffffff, emissiveIntensity: 0.4 })); m.visible = false; g.add(m); return { m, t: 0, on: false, from: V3(0, 0, 0) }; });
+
+  // 聲波：向外擴張的發光圓環
+  const rings = Array.from({ length: 12 }, (_, i) => {
+    const m = new THREE.Mesh(new THREE.TorusGeometry(1, 0.018, 8, 72), new THREE.MeshBasicMaterial({ color: 0xff9a3c, transparent: true, opacity: 0, depthWrite: false }));
+    m.renderOrder = 9; m.visible = false;
+    m.rotation.x = i % 3 === 1 ? Math.PI / 2 : i % 3 === 2 ? 0.9 : 0;
+    g.add(m); return { m, r: 0, on: false };
+  });
+  const lClock = addLabel('⏰ 鬧鐘持續振動'), lPump = addLabel('抽氣機'), lMol = addLabel('白點＝空氣分子');
+  lClock.pos.set(0, -0.15, 2.9); lPump.pos.set(pumpPos.x, 1.95, pumpPos.z); lMol.pos.set(-1.4, 3.6, 0.8);
+
+  let airK = 1, T = 0, emitAcc = 0, vacShown = false;
+  const target = () => Number($('bAir').value) / 100;
+  let auto = 0;                    // -1 抽氣中、+1 放氣中
+  return {
+    camera: { pos: [2.0, 4.4, 12.5], target: [1.4, 2.2, 0] },
+    act(a) {
+      if (a === 'pump') auto = -1;
+      if (a === 'vent') { auto = 1; vacShown = false; }
+    },
+    input(id) { if (id === 'bAir') auto = 0; },
+    update(dt) {
+      T += dt;
+      if (auto) {                  // 按鈕：讓滑桿自己慢慢移動
+        const el = $('bAir'); const v = clamp(Number(el.value) + auto * dt * 14, 0, 100);
+        el.value = v; paint(el); el.closest('.ios').querySelector('b').textContent = Math.round(v) + ' %';
+        if (v <= 0 || v >= 100) auto = 0;
+      }
+      const prev = airK;
+      airK += (target() - airK) * Math.min(1, dt * 1.6);
+      if (airK < 0.003) airK = 0;
+      // 被抽走的分子：沿著管子飛向抽氣機
+      const removed = Math.round(prev * N) - Math.round(airK * N);
+      for (let k = 0; k < removed; k++) {
+        const o = outPool.find(o => !o.on); if (!o) break;
+        const idx = Math.round(airK * N) + k; o.on = true; o.t = 0; o.from.copy(mol[Math.min(N - 1, idx)].p); o.m.visible = true;
+      }
+      outPool.forEach(o => {
+        if (!o.on) return;
+        o.t += dt * 1.4;
+        if (o.t < 0.5) o.m.position.lerpVectors(o.from, V3(2.4, 0.4, 0.1), o.t / 0.5);
+        else if (o.t < 1.5) hoseCurve.getPointAt((o.t - 0.5), o.m.position);
+        else { o.on = false; o.m.visible = false; }
+      });
+      // 空氣分子熱運動
+      const n = Math.round(airK * N);
+      air.count = n;
+      const d = new THREE.Object3D();
+      for (let i = 0; i < n; i++) {
+        const m = mol[i];
+        m.v.x += rnd(-1, 1) * dt * 2; m.v.y += rnd(-1, 1) * dt * 2; m.v.z += rnd(-1, 1) * dt * 2;
+        m.v.clampLength(0, 0.45);
+        m.p.addScaledVector(m.v, dt);
+        const rr = Math.hypot(m.p.x, m.p.z);
+        const out = m.p.y < HC ? rr > R - 0.12 : m.p.distanceTo(V3(0, HC, 0)) > R - 0.12;
+        if (out || m.p.y < H0 + 0.1) { m.v.multiplyScalar(-1); m.p.addScaledVector(m.v, dt * 2); if (m.p.y < H0 + 0.1) m.p.y = H0 + 0.12; }
+        d.position.copy(m.p); d.updateMatrix(); air.setMatrixAt(i, d.matrix);
+      }
+      air.instanceMatrix.needsUpdate = true;
+      // 鬧鐘一直振動（不受抽氣影響）
+      clock.position.x = Math.sin(T * TAU * 11) * 0.025;
+      clock.rotation.z = Math.sin(T * TAU * 7) * 0.03;
+      hammer.rotation.z = Math.sin(T * TAU * 9) * 0.65;
+      // 聲波圓環：亮度 ∝ 剩餘空氣
+      emitAcc += dt;
+      if (emitAcc > 0.28) { emitAcc = 0; const r = rings.find(r => !r.on); if (r) { r.on = true; r.r = 0.75; r.m.visible = true; } }
+      rings.forEach(r => {
+        if (!r.on) return;
+        r.r += dt * 1.25;
+        const k = (r.r - 0.75) / (R - 0.85);
+        if (k >= 1) { r.on = false; r.m.visible = false; return; }
+        r.m.scale.setScalar(r.r);
+        r.m.position.set(0, H0 + 1.15, 0);
+        r.m.material.opacity = 0.9 * airK * (1 - k);
+      });
+      // 抽氣機
+      needle.rotation.z = lerp(1.2, -1.2, airK);
+      fan.rotation.x += (target() < airK - 0.01 ? 14 : 0) * dt;
+      if (airK <= 0.003 && !vacShown) { vacShown = true; banner('🔕 真空狀態無介質，聲音無法傳遞！（鬧鐘還在振動喔）', 0); }
+      if (airK > 0.05 && vacShown) { vacShown = false; hideBanner(); }
+      const vol = Math.round(airK * 10);
+      $('bellRead').innerHTML = `<div class="kv"><span>鐘罩內空氣</span><b>${(airK * 100).toFixed(0)} %</b><span>空氣分子（模型）</span><b>${n} 顆</b><span>鬧鐘振動</span><b>持續中 ✔</b><span>聽到的聲音</span><b>${'🔊'.repeat(vol ? 1 : 0)}${'▮'.repeat(vol)}${'▯'.repeat(10 - vol)}</b></div>`;
+    },
+    hud() {
+      return `<div class="big">鐘罩內空氣 <span class="hl">${(airK * 100).toFixed(0)}%</span>　聽到的聲音 ${airK < 0.01 ? '🔇 聽不到' : airK < 0.4 ? '🔉 變小' : '🔊 清楚'}</div>
+        <div class="tipc">${airK < 0.01 ? '真空狀態無介質，聲音無法傳遞！' : '聲音需要介質（空氣）才能傳遞'}</div>`;
+    },
+    state: () => ({ air: airK, count: air.count, ringOpacity: Math.max(0, ...rings.filter(r => r.on).map(r => r.m.material.opacity)) })
+  };
+};
+
+/* =========================================================
+   Tab 3：樂音三要素與共鳴（音叉 + 示波器）
+   ========================================================= */
+BUILD.music = (g) => {
+  const forkMat = new THREE.MeshPhysicalMaterial({ color: 0xd3d8de, metalness: 0.55, roughness: 0.25, clearcoat: 1 });
+  const boxMat = new THREE.MeshPhysicalMaterial({ map: woodTexture('#c49567', [1.5, 1]), roughness: 0.6, clearcoat: 0.3 });
+  const holeMat = clay(0x3e2a20, { roughness: 0.9 });
+  function makeFork(x, prongLen, facing, name) {
+    const grp = new THREE.Group(); grp.position.x = x;
+    const box = new THREE.Mesh(new RoundedBoxGeometry(1.9, 0.75, 0.9, 4, 0.12), boxMat); box.position.y = 0.375;
+    const hole = new THREE.Mesh(new RoundedBoxGeometry(0.06, 0.52, 0.66, 3, 0.05), holeMat); hole.position.set(facing * 0.94, 0.375, 0);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.36, 16), forkMat); stem.position.y = 0.93;
+    const u = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.058, 14, 28, Math.PI), forkMat); u.rotation.z = Math.PI; u.position.y = 1.31;
+    grp.add(box, hole, stem, u);
+    const pivots = [-1, 1].map(s => {
+      const pv = new THREE.Group(); pv.position.set(s * 0.2, 1.31, 0);
+      const pr = new THREE.Mesh(new THREE.CapsuleGeometry(0.058, prongLen, 6, 14), forkMat); pr.position.y = prongLen / 2;
+      pv.add(pr); grp.add(pv); return pv;
+    });
+    g.add(shadowed(grp));
+    const L = addLabel(name); L.pos.set(x, 1.31 + prongLen + 0.55, 0);
+    return { grp, pivots, x, facing, holeX: x + facing * 0.98 };
+  }
+  const A = makeFork(-3.6, 1.3, 1, '音叉 A　440 Hz'), B = makeFork(-0.3, 1.3, -1, '音叉 B　440 Hz'), C = makeFork(3.4, 1.0, 1, '音叉 C　512 Hz（較短）');
+  // 敲擊用的小槌
+  const mallet = new THREE.Group();
+  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.1, 10), new THREE.MeshPhysicalMaterial({ map: woodTexture('#b07c4f', [1, 1]), roughness: 0.6 })); handle.position.y = -0.55;
+  const mhead = new THREE.Mesh(new THREE.SphereGeometry(0.16, 20, 14), clay(0xc8553d)); mhead.scale.set(1, 0.85, 1);
+  mallet.add(handle, mhead); mallet.visible = false; g.add(shadowed(mallet));
+  // 背景牆 + 示波器
+  const wall = new THREE.Mesh(new THREE.PlaneGeometry(26, 10), clay(0xefe6d8, { roughness: 0.9 })); wall.position.set(0, 4.5, -3.4); wall.receiveShadow = true; g.add(wall);
+  const scopeFrame = new THREE.Mesh(new RoundedBoxGeometry(6.8, 2.9, 0.4, 5, 0.22), clay(0x7a5544, { roughness: 0.5 }));
+  scopeFrame.position.set(0, 4.15, -3.05); g.add(shadowed(scopeFrame));
+  const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 360;
+  const ctx = cv.getContext('2d');
+  const scopeTex = new THREE.CanvasTexture(cv); scopeTex.colorSpace = THREE.SRGBColorSpace;
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(6.1, 2.15), new THREE.MeshBasicMaterial({ map: scopeTex, toneMapped: false }));
+  screen.position.set(-0.05, 4.15, -2.83); g.add(screen);
+  [-0.5, 0, 0.5].forEach((dy, i) => { const k = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.12, 20), clay(i ? 0xe9d8c4 : 0xd36b5a)); k.rotation.x = Math.PI / 2; k.position.set(3.15, 4.15 + dy, -2.82); g.add(k); });
+  const lScope = addLabel('📺 示波器（麥克風收到的聲音波形）'); lScope.pos.set(0, 5.85, -3.0);
+  // 聲波粒子（從共鳴箱開口傳出的環）
+  const waves = Array.from({ length: 30 }, () => { const m = new THREE.Mesh(new THREE.TorusGeometry(1, 0.02, 6, 40), new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0, depthWrite: false })); m.rotation.y = Math.PI / 2; m.visible = false; m.renderOrder = 8; g.add(m); return { m, on: false }; });
+  const emit = (f, amp) => { const w = waves.find(w => !w.on); if (!w) return; Object.assign(w, { on: true, x: f.holeX, dir: f.facing, s: 0, amp }); w.m.visible = true; w.m.material.color.set(f === C ? 0x6fb7ff : 0xffa040); };
+
+  let aA = 0, aB = 0, aC = 0, phA = 0, phC = 0, scopePh = 0, emitAcc = [0, 0, 0], swing = null, resonanceShown = false;
+  const TAUD = 3.6;                       // 振幅衰減的時間常數（秒）
+  function strike(f, power) {
+    swing = { f, t: 0, power };
+    mallet.visible = true;
+  }
+  const wave = (type, x) => {
+    if (type === 'piano') return (Math.sin(x) + 0.5 * Math.sin(2 * x) + 0.28 * Math.sin(3 * x) + 0.12 * Math.sin(4 * x)) / 1.45;
+    if (type === 'violin') { let s = 0; for (let n = 1; n <= 9; n++) s += Math.sin(n * x) / n; return s * 0.62; }
+    return Math.sin(x);
+  };
+  function drawScope() {
+    const W = cv.width, H = cv.height, mid = H / 2;
+    ctx.fillStyle = '#1f2b25'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(160,230,190,.12)'; ctx.lineWidth = 1;
+    for (let x = 0; x <= W; x += W / 10) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = 0; y <= H; y += H / 6) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    ctx.strokeStyle = 'rgba(160,230,190,.3)'; ctx.beginPath(); ctx.moveTo(0, mid); ctx.lineTo(W, mid); ctx.stroke();
+    const type = $('mTimbre').value, cyA = 4, cyC = 4 * 512 / 440;
+    ctx.shadowColor = '#7dffb4'; ctx.shadowBlur = 14; ctx.strokeStyle = '#8dffc0'; ctx.lineWidth = 4;
+    ctx.beginPath();
+    for (let i = 0; i <= 400; i++) {
+      const x = i / 400;
+      const v = aA * wave(type, TAU * cyA * x + scopePh) + aB * Math.sin(TAU * cyA * x + scopePh - 0.4) + aC * Math.sin(TAU * cyC * x + scopePh * 1.16);
+      const y = mid - v * H * 0.26;
+      i ? ctx.lineTo(x * W, y) : ctx.moveTo(0, y);
+    }
+    ctx.stroke(); ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(200,255,220,.85)'; ctx.font = '700 26px sans-serif';
+    ctx.fillText(`A ${(aA * 100).toFixed(0)}   B ${(aB * 100).toFixed(0)}   C ${(aC * 100).toFixed(0)}`, 22, 40);
+    ctx.textAlign = 'right'; ctx.fillText(aC > 0.05 && aA + aB < 0.05 ? '512 Hz（較密）' : aA + aB > 0.05 ? '440 Hz' : '— 安靜 —', W - 22, 40); ctx.textAlign = 'left';
+    scopeTex.needsUpdate = true;
+  }
+  const setBars = () => {
+    [['A', aA], ['B', aB], ['C', aC]].forEach(([k, v]) => { $('mBar' + k).style.width = (v * 100).toFixed(1) + '%'; $('mVal' + k).textContent = (v * 100).toFixed(0); });
+  };
+  return {
+    camera: { pos: [0, 4.9, 15.5], target: [0, 2.4, 0] },
+    act(a) {
+      if (a === 'tapA') { strike(A, 0.35); banner('輕敲 A：振幅小 → <b>響度小</b>（示波器波形矮）'); }
+      if (a === 'hitA') { strike(A, 1.0); }
+      if (a === 'hitC') { strike(C, 0.85); }
+      if (a === 'mute') { aA = aB = aC = 0; hideBanner(); }
+    },
+    update(dt) {
+      // 小槌揮擊動畫
+      if (swing) {
+        swing.t += dt;
+        const f = swing.f, k = swing.t / 0.32;
+        const ang = k < 0.5 ? lerp(-1.1, 0.15, k * 2) : lerp(0.15, -1.1, (k - 0.5) * 2);
+        mallet.position.set(f.x - 0.75, 1.31 + (f === C ? 1.0 : 1.3) * 0.75 + 0.9, 0.45);
+        mallet.rotation.set(0, 0, -ang - 0.5);
+        if (k >= 0.5 && !swing.hit) {
+          swing.hit = true;
+          if (f === A) {
+            aA = Math.max(aA, swing.power);
+            if (swing.power > 0.5) banner('重敲 A：振幅大 → <b>響度大</b>！音叉 B 頻率相同（440 Hz）→ <b>產生共鳴</b>跟著振動；C（512 Hz）沒反應。', 6000);
+          } else { aC = Math.max(aC, swing.power); banner('敲擊 C：512 Hz 頻率較高 → 波形<b>較密集</b>，<b>音調較高</b>；A、B 頻率不同，<b>不會共鳴</b>。', 6000); }
+        }
+        if (k >= 1) { swing = null; mallet.visible = false; }
+      }
+      // 衰減與共鳴：只有頻率相同（A → B）才會傳遞能量
+      const decay = Math.exp(-dt / TAUD);
+      aA *= decay; aC *= decay;
+      const drive = 0.72 * aA;
+      aB = drive > aB ? aB + (drive - aB) * Math.min(1, dt * 1.6) : aB * decay;
+      if (aB > 0.25 && !resonanceShown) resonanceShown = true;
+      [aA, aB, aC].forEach((v, i) => { if (v < 0.004) { if (i === 0) aA = 0; if (i === 1) aB = 0; if (i === 2) aC = 0; } });
+      // 音叉振動（視覺頻率放慢）
+      phA += TAU * 12 * dt; phC += TAU * 12 * 512 / 440 * dt;
+      [[A, aA, phA], [B, aB, phA - 0.4], [C, aC, phC]].forEach(([f, a, ph]) => {
+        f.pivots[0].rotation.z = a * 0.07 * Math.sin(ph);
+        f.pivots[1].rotation.z = -a * 0.07 * Math.sin(ph);
+      });
+      // 聲波環
+      [[A, aA], [B, aB], [C, aC]].forEach(([f, a], i) => {
+        emitAcc[i] += dt * (f === C ? 512 / 440 : 1) * 3.2;
+        if (emitAcc[i] > 1) { emitAcc[i] = 0; if (a > 0.04) emit(f, a); }
+      });
+      waves.forEach(w => {
+        if (!w.on) return;
+        w.s += dt * 1.6;
+        if (w.s > 2.6) { w.on = false; w.m.visible = false; return; }
+        w.m.position.set(w.x + w.dir * w.s, 0.375, 0);
+        w.m.scale.setScalar(0.25 + w.s * 0.35);
+        w.m.material.opacity = Math.min(1, w.amp * 1.3) * (1 - w.s / 2.6) * 0.9;
+      });
+      scopePh += dt * 0.8;
+      drawScope(); setBars();
+    },
+    hud() {
+      return `<div class="big">響度 ← 振幅　音調 ← 頻率　音品 ← 波形</div><div class="tipc">頻率相同才會產生共鳴！</div>`;
+    },
+    state: () => ({ aA, aB, aC })
+  };
+};
+
+/* =========================================================
+   Tab 4：超聲波聲納測距　d = (v × t) ÷ 2
+   1 單位 = 20 m；聲波以慢動作 1/25 播放，計時器顯示真實時間
+   ========================================================= */
+BUILD.sonar = (g) => {
+  const SCALE = 20, VS = 1500, SLOW = 25, VVIS = VS / SCALE / SLOW;   // 畫面上的聲波速度 3 單位／秒
+  const XW = 9, ZW = 3.2, BOT = -7.4;
+  const depth = x => 72 + 32 * Math.sin(0.42 * x + 0.5) + 12 * Math.sin(1.15 * x + 1.2);   // 海底深度（公尺）
+  const bedY = x => -depth(x) / SCALE;
+  // 海底地形（四周平滑收到底座）
+  const geo = new THREE.PlaneGeometry(XW * 2, ZW * 2, 140, 36); geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    const edge = Math.min(XW - Math.abs(x), ZW - Math.abs(z));
+    const f = clamp(edge / 0.35, 0, 1);
+    pos.setY(i, lerp(BOT, bedY(x) + 0.12 * Math.sin(z * 2.1 + x), f));
+  }
+  geo.computeVertexNormals();
+  const bed = new THREE.Mesh(geo, clay(0xdcc596, { roughness: 0.9 })); bed.receiveShadow = true; bed.castShadow = true; g.add(bed);
+  const base = new THREE.Mesh(new RoundedBoxGeometry(XW * 2 + 0.6, 0.8, ZW * 2 + 0.6, 4, 0.3), clay(0x9c8266)); base.position.y = BOT - 0.35; g.add(base);
+  // 海水：半透明水體 + 會起伏的水面
+  const water = new THREE.Mesh(new THREE.BoxGeometry(XW * 2, -BOT, ZW * 2), new THREE.MeshPhysicalMaterial({ color: 0x5fb3e3, roughness: 0.1, transparent: true, opacity: 0.2, depthWrite: false }));
+  water.position.y = BOT / 2; water.renderOrder = 2; g.add(water);
+  const sgeo = new THREE.PlaneGeometry(XW * 2, ZW * 2, 72, 20); sgeo.rotateX(-Math.PI / 2);
+  const surf = new THREE.Mesh(sgeo, new THREE.MeshPhysicalMaterial({ color: 0x7ccdf2, roughness: 0.08, clearcoat: 1, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide }));
+  surf.renderOrder = 3; g.add(surf);
+  // 海草與魚
+  for (let i = 0; i < 16; i++) { const x = rnd(-8.5, 8.5), z = rnd(-2.8, 2.8); const s = new THREE.Mesh(new THREE.CapsuleGeometry(0.06, rnd(0.4, 0.9), 4, 8), clay(0x7fb07a)); s.position.set(x, bedY(x) + 0.35, z); s.rotation.z = rnd(-0.3, 0.3); g.add(s); }
+  const fish = Array.from({ length: 6 }, (_, i) => {
+    const f = new THREE.Group();
+    const b = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 12), clay([0xf2a65a, 0xf6d55c, 0xe8836b][i % 3])); b.scale.set(1.5, 0.8, 0.6);
+    const t = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.3, 12), b.material); t.rotation.z = Math.PI / 2; t.position.x = -0.38;
+    f.add(b, t); g.add(f);
+    return { f, x: rnd(-8, 8), y: rnd(-4.5, -1), z: rnd(-2.5, 2.5), v: rnd(0.4, 0.8) * (i % 2 ? 1 : -1) };
+  });
+  // 探測船
+  const boat = new THREE.Group();
+  const hull = new THREE.Mesh(new THREE.CapsuleGeometry(0.42, 1.6, 8, 20), clay(0xfaf6ee)); hull.rotation.z = Math.PI / 2; hull.scale.set(0.62, 1, 1); hull.position.y = 0.12;
+  const stripe = new THREE.Mesh(new THREE.CapsuleGeometry(0.43, 1.62, 8, 20, 1), clay(0xd36b5a)); stripe.rotation.z = Math.PI / 2; stripe.scale.set(0.15, 1, 1.01); stripe.position.y = 0.2;
+  const cabin = new THREE.Mesh(new RoundedBoxGeometry(0.85, 0.55, 0.6, 3, 0.12), clay(0xf2c27a)); cabin.position.set(-0.15, 0.62, 0);
+  const win = new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.18, 0.62, 2, 0.06), clay(0x6aa8d8)); win.position.set(-0.15, 0.7, 0);
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.8, 8), clay(0x8d6e63)); mast.position.set(0.4, 0.9, 0);
+  const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 0.22), clay(0xd36b5a, { side: THREE.DoubleSide })); flag.position.set(0.58, 1.18, 0);
+  const sonarDome = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 10), clay(0x4a5a6a)); sonarDome.position.y = -0.22;
+  boat.add(hull, stripe, cabin, win, mast, flag, sonarDome);
+  const pick = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.6, 1.2), new THREE.MeshBasicMaterial({ visible: false })); pick.position.y = 0.4; boat.add(pick);
+  g.add(shadowed(boat));
+  // 超聲波環（往下／反彈往上）
+  const ringMat = () => new THREE.MeshBasicMaterial({ color: 0x2f8fff, transparent: true, opacity: 0, depthWrite: false });
+  const pulses = Array.from({ length: 4 }, () => { const m = new THREE.Mesh(new THREE.TorusGeometry(1, 0.05, 10, 56), ringMat()); m.rotation.x = Math.PI / 2; m.renderOrder = 6; m.visible = false; g.add(m); return m; });
+  const flash = new THREE.Mesh(new THREE.CircleGeometry(0.5, 32), new THREE.MeshBasicMaterial({ color: 0xffd36b, transparent: true, opacity: 0, depthWrite: false })); flash.rotation.x = -Math.PI / 2; flash.renderOrder = 7; g.add(flash);
+  // 深度標線
+  const depthLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V3(0, 0), V3(0, -1)]), new THREE.LineDashedMaterial({ color: 0xc0392b, dashSize: 0.18, gapSize: 0.12 }));
+  depthLine.visible = false; depthLine.renderOrder = 8; g.add(depthLine);
+  const lDepth = addLabel('', 'red'); lDepth.visible = false;
+  const lBoat = addLabel('🚢 拖曳我'), lSea = addLabel('海水（聲速 1500 m/s）', 'blue');
+  lSea.pos.set(-6.5, -0.9, ZW);
+
+  let bx = -3, ping = null, last = null, T = 0, log = [];
+  // 拖曳船隻
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), plane = new THREE.Plane(V3(0, 0, 1), 0), hit = V3(0, 0, 0);
+  let drag = false;
+  const setRay = e => { const rc = renderer.domElement.getBoundingClientRect(); ndc.set(((e.clientX - rc.left) / rc.width) * 2 - 1, -((e.clientY - rc.top) / rc.height) * 2 + 1); ray.setFromCamera(ndc, camera); };
+  const onDown = e => { setRay(e); if (ping || !ray.intersectObject(pick).length) return; e.stopImmediatePropagation(); drag = true; controls.enabled = false; renderer.domElement.setPointerCapture(e.pointerId); };
+  const onMove = e => { setRay(e); if (drag) { if (ray.ray.intersectPlane(plane, hit)) moveBoat(hit.x); } else renderer.domElement.style.cursor = !ping && ray.intersectObject(pick).length ? 'grab' : ''; };
+  const onUp = () => { if (drag) { drag = false; controls.enabled = true; } };
+  renderer.domElement.addEventListener('pointerdown', onDown, { capture: true });
+  renderer.domElement.addEventListener('pointermove', onMove);
+  renderer.domElement.addEventListener('pointerup', onUp);
+  function moveBoat(x) { bx = clamp(x, -XW + 1.3, XW - 1.3); if (last) { last = null; depthLine.visible = lDepth.visible = false; } }
+  const fmt = (x, n) => x.toFixed(n);
+
+  return {
+    camera: { pos: [0, 2.6, 17], target: [0, -2.6, 0] }, table: false,
+    dispose() { renderer.domElement.removeEventListener('pointerdown', onDown, { capture: true }); renderer.domElement.removeEventListener('pointermove', onMove); renderer.domElement.removeEventListener('pointerup', onUp); renderer.domElement.style.cursor = ''; },
+    act(a) {
+      if (a === 'left' && !ping) moveBoat(bx - 1.2);
+      if (a === 'right' && !ping) moveBoat(bx + 1.2);
+      if (a === 'ping' && !ping) {
+        const d = depth(bx);
+        ping = { x: bx, d, tr: 0, ttot: 2 * d / VS };          // tr：真實經過時間（秒）
+        last = null; depthLine.visible = lDepth.visible = false;
+      }
+    },
+    update(dt) {
+      T += dt;
+      // 水面起伏
+      const sp = sgeo.attributes.position;
+      for (let i = 0; i < sp.count; i++) { const x = sp.getX(i), z = sp.getZ(i); sp.setY(i, 0.06 * Math.sin(x * 0.9 + T * 1.3) + 0.04 * Math.sin(z * 1.7 - T * 1.1)); }
+      sp.needsUpdate = true; sgeo.computeVertexNormals();
+      boat.position.set(bx, 0.03 * Math.sin(T * 1.3 + bx * 0.9), 0);
+      boat.rotation.z = 0.03 * Math.sin(T * 1.1);
+      lBoat.pos.set(bx, 1.75, 0); lBoat.el.textContent = ping ? '📡 測量中…' : '🚢 拖曳我';
+      fish.forEach(o => { o.x += o.v * dt; if (Math.abs(o.x) > 8.4) o.v *= -1; o.f.position.set(o.x, o.y + Math.sin(T + o.z) * 0.1, o.z); o.f.rotation.y = o.v > 0 ? 0 : Math.PI; });
+      // 聲波傳遞（慢動作）
+      pulses.forEach(p => { p.visible = false; });
+      if (ping) {
+        ping.tr += dt / SLOW;
+        const half = ping.ttot / 2, yTop = -0.25, yBed = -ping.d / SCALE;
+        pulses.forEach((p, i) => {
+          const tr = ping.tr - i * 0.012;                         // 拖尾的幾個環
+          if (tr < 0 || tr > ping.ttot) return;
+          const down = tr < half;
+          const dist = (down ? tr : ping.ttot - tr) * VS / SCALE;  // 距離船底的深度（單位）
+          p.visible = true;
+          p.position.set(ping.x, yTop - dist, 0);
+          const travelled = tr * VS / SCALE;
+          p.scale.setScalar(0.25 + travelled * 0.12);
+          p.material.color.set(down ? 0x2f8fff : 0x2ec4a6);
+          p.material.opacity = 0.85 - i * 0.18;
+        });
+        const nearBed = Math.abs(ping.tr - half) < 0.012;
+        flash.position.set(ping.x, yBed + 0.05, 0); flash.material.opacity = nearBed ? 0.9 : Math.max(0, flash.material.opacity - dt * 2);
+        if (ping.tr >= ping.ttot) {
+          last = { x: ping.x, t: ping.ttot, d: ping.d };
+          log.unshift(last); log = log.slice(0, 6);
+          ping = null;
+          depthLine.geometry.dispose();
+          depthLine.geometry = new THREE.BufferGeometry().setFromPoints([V3(last.x, -0.25, 0.05), V3(last.x, bedY(last.x), 0.05)]);
+          depthLine.computeLineDistances(); depthLine.visible = true;
+          lDepth.visible = true; lDepth.pos.set(last.x + 1.9, bedY(last.x) / 2, 0.05);
+          lDepth.el.innerHTML = `深度 ＝ (1500 × ${fmt(last.t, 3)}) ÷ 2<br>＝ <b>${fmt(last.d, 1)} 公尺</b>`;
+          banner(`回聲收到！深度 ＝ (1500 m/s × ${fmt(last.t, 3)} s) ÷ 2 ＝ <b>${fmt(last.d, 1)} 公尺</b>`, 5000);
+          $('sonarLog').innerHTML = log.map((r, i) => `<div><span>#${log.length - i}　位置 ${(r.x * SCALE).toFixed(0)} m</span><span>t = ${fmt(r.t, 3)} s → <b>${fmt(r.d, 1)} m</b></span></div>`).join('');
+        }
+      } else flash.material.opacity = Math.max(0, flash.material.opacity - dt * 2);
+    },
+    hud() {
+      if (ping) return `<div class="sm">⏱ 來回時間（真實時間，畫面為 1/25 慢動作）</div><div class="huge">t = ${fmt(ping.tr, 3)} s</div><div class="sm">${ping.tr < ping.ttot / 2 ? '↓ 超聲波往海底前進…' : '↑ 碰到海底，反彈回來…'}</div>`;
+      if (last) return `<div class="sm">⏱ 來回時間 t = ${fmt(last.t, 3)} s</div><div class="big">深度 ＝ (1500 m/s × ${fmt(last.t, 3)} s) ÷ 2 ＝ <span class="hl">${fmt(last.d, 1)} 公尺</span></div>`;
+      return `<div class="big">⏱ t = 0.000 s</div><div class="sm">拖曳船隻到想測量的位置，按「發射聲納」</div>`;
+    },
+    state: () => ({ bx, ping: !!ping, last, depthAt: depth(bx) }),
+    debugPing: () => { const d = depth(bx); return { d, t: 2 * d / VS }; }
+  };
+};
+
+/* =========================================================
+   切換（清除資源）、控制、主迴圈
+   ========================================================= */
+const root = new THREE.Group(); scene.add(root);
+let cur = null, curKey = 'wave';
+function disposeGroup(grp) {
+  grp.traverse(o => {
+    if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose();
+    if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m.map && !m.map.userData.shared) m.map.dispose(); m.dispose(); });
+  });
+}
+function build(key) {
+  if (cur) { cur.dispose?.(); root.remove(cur.group); disposeGroup(cur.group); removeLabels(cur.labels); }
+  const group = new THREE.Group(); root.add(group);
+  buildLabels = [];
+  const exp = BUILD[key](group);
+  exp.group = group; exp.labels = buildLabels; buildLabels = null;
+  cur = exp; curKey = key;
+  table.visible = exp.table !== false;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === key));
+  document.querySelectorAll('.section').forEach(s => { s.hidden = s.dataset.tab !== key; });
+  hideBanner();
+  try { history.replaceState(null, '', '#' + key); } catch (e) {}
+  resetView();
+}
+const panel = $('panel');
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => build(b.dataset.tab)));
+panel.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b && cur?.act) cur.act(b.dataset.act); });
+panel.addEventListener('input', e => { if (e.target.matches('input[type=range]')) { paint(e.target); cur?.input?.(e.target.id, Number(e.target.value)); } });
+// 觸控防呆：在面板上的任何手勢都不會傳到 3D 畫面（OrbitControls 不會跟著轉）
+['pointerdown', 'pointermove', 'touchstart', 'touchmove', 'wheel'].forEach(ev => panel.addEventListener(ev, e => e.stopPropagation(), { passive: true }));
+$('viewBtn').addEventListener('click', resetView);
+$('collapse').addEventListener('click', () => { const c = panel.classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; setTimeout(resetView, 0); });
+// 手機：懸浮按鈕開關底部抽屜
+const isMobile = () => window.matchMedia('(max-width: 767px)').matches;
+function setSheet(open) { panel.classList.toggle('open', open); $('fab').classList.toggle('hide', open); }
+$('fab').addEventListener('click', () => setSheet(true));
+$('sheetClose').addEventListener('click', () => setSheet(false));
+window.addEventListener('hashchange', () => { const k = location.hash.slice(1); if (BUILD[k] && k !== curKey) build(k); });
+
+function resetView() {
+  if (!cur) return;
+  const c = cur.camera, pos = V3(...c.pos), tgt = V3(...c.target);
+  const aspect = window.innerWidth / window.innerHeight;
+  if (aspect < 1.2) {                         // 直式螢幕：鏡頭往後拉，整個實驗都看得到
+    const k = clamp(1.25 / aspect, 1, 2.3);
+    pos.sub(tgt).multiplyScalar(k).add(tgt);
+  }
+  controls.maxDistance = Math.max(60, pos.distanceTo(tgt) * 1.5);
+  camera.position.copy(pos); controls.target.copy(tgt); controls.update();
+}
+/** 讓 3D 畫面避開面板：桌機往右移、手機抽屜打開時往上移、上方 HUD 往下讓位 */
+function applyViewOffset() {
+  const de = document.documentElement, w = de.clientWidth, h = de.clientHeight;
+  let ox = 0, oy = 0;
+  const hud = $('hud'), hb = hud.innerHTML ? hud.getBoundingClientRect().bottom : 0;
+  if (isMobile()) {
+    const bottom = panel.classList.contains('open') ? Math.max(0, h - panel.getBoundingClientRect().top) : 0;
+    oy = Math.round((bottom - hb) / 2);
+  } else {
+    if (!panel.classList.contains('collapsed')) ox = -Math.round(panel.getBoundingClientRect().right / 2);
+    oy = -Math.round(hb * 0.25);
+  }
+  const key = `${w}x${h}:${ox}:${oy}`;
+  if (camera.userData.k === key) return;
+  camera.userData.k = key;
+  if (ox || oy) camera.setViewOffset(w, h, ox, oy, w, h); else camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+}
+function resize() {
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.fov = camera.aspect < 1 ? 50 : 40;
+  camera.userData.k = '';
+  camera.updateProjectionMatrix();
+  resetView();
+}
+window.addEventListener('resize', resize);
+
+let hudT = 0;
+const clock = new THREE.Clock();
+function frame(dt) {
+  cur.update(dt);
+  hudT -= dt;
+  if (hudT <= 0) { hudT = 0.08; const html = cur.hud?.() || ''; if ($('hud').innerHTML !== html) $('hud').innerHTML = html; }
+  controls.update();
+  applyViewOffset();
+  placeLabels();
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.sfx = { build, frame, get cur() { return cur; } };
+
+resize();
+build(BUILD[location.hash.slice(1)] ? location.hash.slice(1) : 'wave');
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__sfxReady) document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+}, 6000);
+</script>
+</body>
+</html>
