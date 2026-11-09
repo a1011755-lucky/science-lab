@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>核心痛點升級實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7a70;
+    --card: rgba(255,252,246,.62);
+    --accent: #a0714f;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(22px) saturate(160%); -webkit-backdrop-filter: blur(22px) saturate(160%);
+    border: 1px solid rgba(255,255,255,.85); box-shadow: 0 20px 50px rgba(93,64,55,.13), 0 2px 6px rgba(93,64,55,.06);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 320px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 20; border-radius: 26px; padding: 18px;
+    touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 700; color: var(--accent); background: rgba(160,113,79,.13); border-radius: 999px; padding: 4px 12px; }
+  .sheet-close { display: none; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; font-weight: 600; }
+  .title { font-size: 1.08rem; font-weight: 800; margin-top: 6px; padding-right: 62px; letter-spacing: .02em; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; color: var(--ink); padding: 9px 4px; border-radius: 14px; background: rgba(255,255,255,.6); line-height: 1.35; text-align: center; }
+  .tab small { display: block; font-size: .64rem; font-weight: 600; color: var(--ink-soft); }
+  .tab:hover { background: rgba(255,255,255,.9); }
+  .tab.on { color: #fff; background: var(--accent); box-shadow: 0 6px 16px rgba(160,113,79,.32); }
+  .tab.on small { color: rgba(255,255,255,.85); }
+  .section[hidden], .sub[hidden] { display: none; }
+  .desc { font-size: .8rem; color: var(--ink-soft); line-height: 1.65; margin-bottom: 6px; }
+  .desc b { color: var(--ink); }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .84rem; font-weight: 800; color: var(--accent); background: rgba(160,113,79,.13);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn:hover { background: rgba(160,113,79,.22); }
+  .btn:active { transform: scale(.97); }
+  .btn.primary, .btn.on { color: #fff; background: var(--accent); box-shadow: 0 6px 16px rgba(160,113,79,.3); }
+  .btn.blueb { color: #fff; background: #5b8fd9; box-shadow: 0 6px 16px rgba(91,143,217,.32); }
+  .btn.redb { color: #fff; background: #d9605b; box-shadow: 0 6px 16px rgba(217,96,91,.32); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .ios { background: rgba(255,255,255,.82); border-radius: 16px; padding: 10px 14px 12px; margin-top: 8px; }
+  .ios .top { display: flex; justify-content: space-between; align-items: baseline; font-size: .82rem; margin-bottom: 8px; font-weight: 700; }
+  .ios .top b { font-size: 1rem; font-weight: 800; color: var(--c, var(--accent)); font-variant-numeric: tabular-nums; }
+  .ios .ends { display: flex; justify-content: space-between; font-size: .68rem; color: var(--ink-soft); margin-top: 6px; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; border-radius: 999px; cursor: pointer; outline: none; touch-action: pan-y;
+    background: linear-gradient(90deg, var(--c, var(--accent)) 0%, var(--c, var(--accent)) var(--fill, 0%), #e8e1d6 var(--fill, 0%)); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgba(93,64,55,.25); }
+  input[type=range]::-moz-range-thumb { width: 26px; height: 26px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 3px 8px rgba(93,64,55,.25); }
+  .read { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin-top: 10px; font-size: .8rem; line-height: 1.6; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-variant-numeric: tabular-nums; }
+  .kv b { text-align: right; }
+  .vs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+  .vs div { background: rgba(255,255,255,.88); border-radius: 14px; padding: 8px 10px; text-align: center; font-size: .72rem; font-weight: 700; color: var(--ink-soft); }
+  .vs b { display: block; font-size: 1.3rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .warn { background: #fff4df; border: 2px solid #e8b860; color: #7a4c12; font-weight: 800; border-radius: 14px; padding: 9px 12px; margin-top: 8px; font-size: .82rem; line-height: 1.6; }
+  .concl { background: #fff4df; border: 1.5px solid #ecc88a; color: #6b4a1f; font-weight: 700; border-radius: 14px; padding: 9px 12px; margin-top: 8px; font-size: .8rem; line-height: 1.6; }
+  .gauge { position: relative; height: 12px; border-radius: 999px; margin: 8px 0 4px; background: linear-gradient(90deg, #f2b6a0 0%, #f6dca8 22%, #bfe0b9 30%, #bfe0b9 55%, #f6dca8 63%, #f2b6a0 100%); }
+  .gauge i { position: absolute; top: -5px; width: 6px; height: 22px; margin-left: -3px; border-radius: 3px; background: var(--ink); box-shadow: 0 2px 5px rgba(0,0,0,.25); transition: left .15s linear; }
+  canvas.mini { width: 100%; height: 96px; display: block; margin-top: 6px; border-radius: 12px; background: rgba(255,255,255,.7); }
+
+  .hud { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); z-index: 15; border-radius: 20px; padding: 10px 18px; text-align: center; pointer-events: none; min-width: 260px; max-width: 50vw; }
+  .hud:empty { display: none; }
+  .hud .big { font-size: 1.12rem; font-weight: 900; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+  .hud .sm { font-size: .78rem; color: var(--ink-soft); font-weight: 600; margin-top: 2px; }
+  .hud .hl { color: #c07a12; } .hud .bl { color: #3d63a8; } .hud .rd { color: #c0453f; } .hud .gr { color: #3f8a55; }
+  @media (min-width: 768px) { .hud { left: calc(50% + 169px); } }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .7rem; font-weight: 800; padding: 3px 9px; border-radius: 12px; white-space: nowrap; color: var(--ink);
+    background: rgba(255,252,246,.92); box-shadow: 0 4px 12px rgba(93,64,55,.12);
+  }
+  .tag.gold { color: #a86a06; background: #fff4d6; border: 1.5px solid #ecc88a; }
+  .tag.blue { color: #3d63a8; } .tag.red { color: #c0453f; } .tag.gray { color: #8d7a70; font-weight: 700; }
+  .banner {
+    position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 16; pointer-events: none; text-align: center;
+    padding: 10px 18px; border-radius: 18px; font-size: .9rem; font-weight: 800; opacity: 0; transition: opacity .3s;
+    background: rgba(255,244,223,.97); border: 1.5px solid #ecc88a; color: #6b4a1f; max-width: 54vw;
+  }
+  .banner.show { opacity: 1; }
+  @media (min-width: 768px) { .banner { left: calc(50% + 169px); } }
+
+  .fab { display: none; position: absolute; right: 16px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 25; width: 64px; height: 64px; border-radius: 50%; border: none; cursor: pointer;
+    font: inherit; font-size: .72rem; font-weight: 900; color: #fff; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    background: radial-gradient(circle at 32% 28%, #d9a47c, #a0714f 62%, #7d5236);
+    box-shadow: 0 10px 22px rgba(93,64,55,.38), inset 0 -4px 8px rgba(0,0,0,.18), inset 0 4px 8px rgba(255,255,255,.35); touch-action: manipulation; }
+  .fab span { font-size: 1.35rem; line-height: 1; }
+  .fab:active { transform: scale(.94); }
+  @media (max-width: 767px) {
+    .panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 56vh; max-height: 56dvh; border-radius: 24px 24px 0 0;
+      padding: 22px 16px calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateY(108%); transition: transform .38s cubic-bezier(.2,.8,.2,1); }
+    .panel.open { transform: none; }
+    .panel::before { content: ""; position: absolute; top: 8px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: rgba(93,64,55,.28); }
+    .panel .collapse { display: none; }
+    .sheet-close { display: block; position: absolute; top: 14px; right: 14px; border: none; cursor: pointer; width: 34px; height: 34px; border-radius: 50%; font-size: 1rem; font-weight: 900; color: var(--ink); background: rgba(160,113,79,.14); }
+    .tab small { display: none; }
+    .btn { min-height: 44px; }
+    .fab { display: flex; }
+    .fab.hide { opacity: 0; pointer-events: none; }
+    .hud { top: 8px; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; padding: 8px 12px; }
+    .hud .big { font-size: .96rem; }
+    .hud .sm { font-size: .7rem; }
+    .banner { bottom: auto; top: 96px; left: 8px; right: 8px; transform: none; max-width: none; font-size: .8rem; }
+    .tag { font-size: .58rem; padding: 2px 6px; }
+  }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="scene"></div>
+<div class="hud glass" id="hud"></div>
+<div class="banner" id="banner"></div>
+<button class="fab" id="fab" aria-label="開啟控制面板"><span>🎛️</span>控制</button>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <button class="sheet-close" id="sheetClose" aria-label="關閉控制面板">✕</button>
+  <a class="back" href="index.html">‹ 課程總覽</a>
+  <div class="title">核心痛點升級實驗室</div>
+  <div class="body">
+    <div class="tabs">
+      <button class="tab on" data-tab="depth">🪙 視深錯覺<small>3D 折射光路</small></button>
+      <button class="tab" data-tab="rate">⚗️ 反應速率<small>限量試劑</small></button>
+      <button class="tab" data-tab="homeo">🫁 恆定性<small>呼吸・血糖</small></button>
+    </div>
+
+    <!-- Tab 1 -->
+    <section class="section" data-tab="depth">
+      <p class="desc">水底有一枚<b>真的金幣</b>。光從金幣射出、在水面<b>偏折</b>後進入眼睛，大腦卻以為光是「直直來的」，於是沿著<b>虛線</b>往回找，看到一枚比較淺的<b>虛像金幣</b>。</p>
+      <div class="ios" style="--c:#d9a43a"><div class="top"><span>觀看角度（離鉛直線）</span><b id="angVal">35°</b></div>
+        <input type="range" id="dAng" min="0" max="70" step="0.5" value="35" aria-label="觀看角度">
+        <div class="ends"><span>正上方往下看</span><span>斜斜地看</span></div></div>
+      <div class="vs"><div>真實深度<b id="dReal" style="color:#3d63a8">24 cm</b></div><div>視覺深度<b id="dApp" style="color:#c07a12">— cm</b></div></div>
+      <div class="row2">
+        <button class="btn" data-act="eyeview" id="eyeBtn">👁 眼睛視角</button>
+        <button class="btn" data-act="rays" id="rayBtn">✏️ 隱藏光路</button>
+      </div>
+      <div class="concl">光從<b>水中斜射入空氣</b>時偏離法線，所以看起來比實際淺。<br>正上方看：視深 ≈ 實深 ÷ 1.33；看得越斜，硬幣「浮」得越高。</div>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="section" data-tab="rate" hidden>
+      <p class="desc">錐形瓶裡有<b>定量的大理石</b>（限量試劑）和過量的稀鹽酸，產生的 CO₂ 會讓瓶口的氣球鼓起來。改變溫度或顆粒大小再按開始，舊曲線會保留下來比較。</p>
+      <div class="ios" style="--c:#d9605b"><div class="top"><span>溫度</span><b id="tVal">25 °C</b></div>
+        <input type="range" id="rT" min="10" max="40" step="1" value="25" aria-label="溫度">
+        <div class="ends"><span>10 °C 冷</span><span>40 °C 熱</span></div></div>
+      <div class="row2">
+        <button class="btn on" data-act="chunk" id="bChunk">🪨 塊狀</button>
+        <button class="btn" data-act="powder" id="bPowder">🧂 粉末</button>
+      </div>
+      <button class="btn primary" data-act="start" id="bStart">▶ 開始反應</button>
+      <button class="btn" data-act="clear">🧽 清除圖表</button>
+      <div class="read"><div class="kv">
+        <span>反應時間</span><b id="rTime">0 s</b>
+        <span>CO₂ 產量</span><b id="rVol">0.0 mL</b>
+        <span>瞬時速率</span><b id="rRate">0.00 mL/s</b>
+        <span>剩餘大理石</span><b id="rLeft">100 %</b>
+      </div></div>
+      <div class="warn">⚠️ 注意！變因只改變反應「快慢」，在限量試劑不變下，最終總產量完全相等！</div>
+      <p class="desc" style="margin-top:6px;font-size:.72rem">＊大理石 0.41 g 全部反應可得約 100 mL CO₂；氣體體積皆換算為 25 °C、1 atm 比較。</p>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="section" data-tab="homeo" hidden>
+      <div class="row2" style="margin-top:0">
+        <button class="btn on" data-act="sysResp" id="bResp">🫁 呼吸運動</button>
+        <button class="btn" data-act="sysGlu" id="bGlu">🍚 血糖調節</button>
+      </div>
+      <div class="sub" id="subResp">
+        <p class="desc" style="margin-top:8px"><b>肋骨上舉、橫膈膜下降</b> → 胸腔變大 → 肺內壓變小 → 空氣被「推」進肺裡。肺本身沒有肌肉，是被胸腔帶著動！</p>
+        <div class="row3">
+          <button class="btn blueb" data-act="inhale">吸氣</button>
+          <button class="btn" data-act="exhale">呼氣</button>
+          <button class="btn on" data-act="auto" id="bAuto">⏯ 自動</button>
+        </div>
+        <div class="read"><div class="kv">
+          <span>肋骨</span><b id="hRib">—</b>
+          <span>橫膈膜</span><b id="hDia">—</b>
+          <span>胸腔體積</span><b id="hVol">—</b>
+          <span>肺內壓</span><b id="hP">—</b>
+        </div></div>
+      </div>
+      <div class="sub" id="subGlu" hidden>
+        <p class="desc" style="margin-top:8px"><b>胰臟</b>偵測血糖：太高分泌<b style="color:#3d6fbf">胰島素</b>，讓肝臟把葡萄糖存成<b>肝醣</b>；太低分泌<b style="color:#c0453f">升糖素</b>，讓肝臟把肝醣分解成葡萄糖。</p>
+        <div class="row2">
+          <button class="btn blueb" data-act="meal">🍱 飯後高血糖</button>
+          <button class="btn redb" data-act="fast">🏃 飢餓低血糖</button>
+        </div>
+        <div class="read">
+          <div class="kv"><span>血糖濃度</span><b id="gVal" style="font-size:1.1rem">90 mg/dL</b>
+            <span>胰島素</span><b id="gIns">—</b><span>升糖素</span><b id="gGcg">—</b><span>肝醣存量</span><b id="gGly">—</b></div>
+          <div class="gauge"><i id="gNeedle" style="left:40%"></i></div>
+          <div style="display:flex;justify-content:space-between;font-size:.68rem;color:var(--ink-soft)"><span>40</span><span>正常 70–110</span><span>190</span></div>
+          <canvas class="mini" id="gChart" width="560" height="192"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <button class="btn" id="viewBtn" style="margin-top:12px">重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__cuReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp, lerp = THREE.MathUtils.lerp;
+const rnd = (a, b) => a + Math.random() * (b - a);
+const TAU = Math.PI * 2, DEG = Math.PI / 180;
+const UP = V3(0, 1, 0);
+/** 與幀率無關的平滑追蹤係數 */
+const follow = (dt, rate) => 1 - Math.exp(-dt * rate);
+
+/* =========================================================
+   場景
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+$('scene').appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf1e9dd);
+const envBall = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envBall.position.set(3, 5, 4); envBall.scale.setScalar(2.4); envScene.add(envBall);
+const envBall2 = envBall.clone(); envBall2.position.set(-5, 3, -2); envBall2.scale.setScalar(1.4); envScene.add(envBall2);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff4e6, 0.8));
+const sun = new THREE.DirectionalLight(0xfff0dc, 1.8);
+sun.position.set(-6, 14, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -8, near: 1, far: 60 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0xfff7ee, 0.5); fill.position.set(6, 4, 8); scene.add(fill);
+const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 1.5; controls.maxDistance = 60;
+
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+function woodTexture(base = '#cfa983', rep = [3, 1.4]) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = base; g.fillRect(0, 0, 512, 256);
+  for (let i = 0; i < 80; i++) {
+    g.strokeStyle = `rgba(${110 + Math.random() * 40 | 0},${72 + Math.random() * 30 | 0},${44 + Math.random() * 16 | 0},${0.06 + Math.random() * 0.14})`;
+    g.lineWidth = 1 + Math.random() * 3; g.beginPath();
+    const y = Math.random() * 256, ph = Math.random() * 6, amp = 1.5 + Math.random() * 4;
+    g.moveTo(0, y); for (let x = 0; x <= 512; x += 16) g.lineTo(x, y + Math.sin(x * 0.018 + ph) * amp); g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...rep);
+  return t;
+}
+const wood = (base = '#d8b48c', rep = [2, 1]) => new THREE.MeshPhysicalMaterial({ map: woodTexture(base, rep), roughness: 0.62, clearcoat: 0.3 });
+/** 磨砂玻璃（alpha 透明：裡面的透明物件也看得到） */
+const glassMat = (op = 0.16) => new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: op, roughness: 0.08, metalness: 0, clearcoat: 1, envMapIntensity: 1.3, depthWrite: false, side: THREE.DoubleSide });
+const table = new THREE.Mesh(new RoundedBoxGeometry(22, 0.6, 10, 6, 0.28), new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.68, clearcoat: 0.25 }));
+table.position.y = -0.3; table.receiveShadow = true; scene.add(table);
+
+/* ----- 標籤、橫幅、鏡頭補間 ----- */
+const labels = [];
+let buildLabels = null;
+function addLabel(html = '', cls = '') {
+  const el = document.createElement('div');
+  el.className = 'tag ' + cls; el.innerHTML = html;
+  document.body.appendChild(el);
+  const L = { el, pos: V3(0, 0, 0), visible: true };
+  labels.push(L); if (buildLabels) buildLabels.push(L);
+  return L;
+}
+function removeLabels(arr) { arr.forEach(L => { L.el.remove(); const i = labels.indexOf(L); if (i >= 0) labels.splice(i, 1); }); }
+const tmpV = V3(0, 0, 0);
+function placeLabels() {
+  const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight;
+  const small = window.innerWidth < 768;
+  for (const L of labels) {
+    if (!L.visible || (small && L.el.classList.contains('gray'))) { L.el.style.display = 'none'; continue; }
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1 || Math.abs(tmpV.x) > 1.15 || Math.abs(tmpV.y) > 1.15) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+function banner(html, ms = 4200) {
+  $('banner').innerHTML = html; $('banner').classList.add('show');
+  clearTimeout(banner.t);
+  if (ms) banner.t = setTimeout(() => $('banner').classList.remove('show'), ms);
+}
+const hideBanner = () => { clearTimeout(banner.t); $('banner').classList.remove('show'); };
+const paint = el => el.style.setProperty('--fill', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
+document.querySelectorAll('input[type=range]').forEach(paint);
+let fly = null;
+const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+function flyTo(pos, target, dur = 1.1) { fly = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos.clone(), t1: target.clone(), k: 0, dur }; }
+function updateFly(dt) {
+  if (!fly) return;
+  fly.k = Math.min(1, fly.k + dt / fly.dur);
+  const e = ease(fly.k);
+  camera.position.lerpVectors(fly.p0, fly.p1, e); controls.target.lerpVectors(fly.t0, fly.t1, e);
+  if (fly.k >= 1) fly = null;
+}
+/** 直式螢幕時把鏡頭往後拉，讓主體完整入鏡 */
+function framed(pos, target, mk = 1) {
+  const p = V3(...pos), t = V3(...target), aspect = window.innerWidth / window.innerHeight;
+  if (aspect < 1.2) p.sub(t).multiplyScalar(clamp(1.2 / aspect * mk, 1, 2.3)).add(t);
+  return [p, t];
+}
+/** 把單位圓柱擺成 a→b 的線段（不用重建幾何體，拖滑桿才不會卡） */
+function placeSeg(mesh, a, b, r) {
+  const d = tmpD.subVectors(b, a); const L = d.length();
+  mesh.position.copy(a).addScaledVector(d, 0.5);
+  if (L > 1e-6) mesh.quaternion.setFromUnitVectors(UP, d.multiplyScalar(1 / L));
+  mesh.scale.set(r, Math.max(L, 1e-4), r);
+  return L;
+}
+const tmpD = V3(0, 0, 0);
+function stripeTexture() {
+  const c = document.createElement('canvas'); c.width = 4; c.height = 64;
+  const g = c.getContext('2d'); g.fillStyle = '#000'; g.fillRect(0, 0, 4, 64); g.fillStyle = '#fff'; g.fillRect(0, 0, 4, 34);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+}
+function glowTexture(inner = 'rgba(255,214,120,1)') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d'); const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gr.addColorStop(0, inner); gr.addColorStop(0.35, inner.replace(/,1\)$/, ',.45)')); gr.addColorStop(1, 'rgba(255,214,120,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+const BUILD = {};
+
+/* =========================================================
+   Tab 1：視深錯覺（真正的 3D 折射光路）
+   座標：1 單位 = 10 cm，水深 2.4 = 24 cm
+   ========================================================= */
+BUILD.depth = (g) => {
+  const N = 4 / 3, DEPTH = 2.4, CX = -1.0;
+  const BASE = 0.3, FLOOR = BASE + 0.08, CY = FLOOR + 0.06, SY = CY + DEPTH, TOP = SY + 0.5;
+  const TW = 5.2, TD = 2.8, TH = TOP - BASE;
+
+  // 原木底座
+  const plinth = new THREE.Mesh(new RoundedBoxGeometry(TW + 0.5, BASE, TD + 0.5, 4, 0.1), wood('#d8b48c', [2, 1]));
+  plinth.position.y = BASE / 2; g.add(shadowed(plinth));
+  // 玻璃水缸
+  const gm = glassMat(0.15);
+  const pane = (w, h, d, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), gm); m.position.set(x, y, z); m.renderOrder = 2; g.add(m); return m; };
+  pane(TW, TH, 0.06, 0, BASE + TH / 2, TD / 2); pane(TW, TH, 0.06, 0, BASE + TH / 2, -TD / 2);
+  pane(0.06, TH, TD, TW / 2, BASE + TH / 2, 0); pane(0.06, TH, TD, -TW / 2, BASE + TH / 2, 0);
+  pane(TW, 0.08, TD, 0, BASE + 0.04, 0);
+  const rimMat = wood('#e2c39f', [3, 0.4]);
+  [[TW + 0.12, 0.1, 0.12, 0, TOP, TD / 2], [TW + 0.12, 0.1, 0.12, 0, TOP, -TD / 2], [0.12, 0.1, TD, TW / 2, TOP, 0], [0.12, 0.1, TD, -TW / 2, TOP, 0]].forEach(([w, h, d, x, y, z]) => {
+    const r = new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 2, 0.04), rimMat); r.position.set(x, y, z); g.add(shadowed(r));
+  });
+  // 水體
+  const water = new THREE.Mesh(new THREE.BoxGeometry(TW - 0.1, SY - FLOOR, TD - 0.1),
+    new THREE.MeshStandardMaterial({ color: 0x8fc3dc, transparent: true, opacity: 0.2, roughness: 0.2, depthWrite: false }));
+  water.position.y = (SY + FLOOR) / 2; water.renderOrder = 1; g.add(water);
+  // 水面：Shader 微波紋
+  const surfMat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    uniforms: { uTime: { value: 0 } },
+    vertexShader: `
+      uniform float uTime; varying vec3 vN; varying vec3 vW;
+      float h(vec2 p){ return 0.010*sin(p.x*5.0+uTime*1.6) + 0.008*sin(p.y*6.0-uTime*1.3+p.x*2.0) + 0.006*sin(length(p-vec2(-1.0,0.0))*14.0-uTime*3.0); }
+      void main(){
+        vec3 p = position; p.z += h(p.xy);
+        float e = 0.01;
+        vec3 n = normalize(vec3(-(h(p.xy+vec2(e,0.0))-h(p.xy-vec2(e,0.0)))/(2.0*e), -(h(p.xy+vec2(0.0,e))-h(p.xy-vec2(0.0,e)))/(2.0*e), 1.0));
+        vN = normalize(mat3(modelMatrix) * n);
+        vec4 w = modelMatrix * vec4(p, 1.0); vW = w.xyz;
+        gl_Position = projectionMatrix * viewMatrix * w;
+      }`,
+    fragmentShader: `
+      varying vec3 vN; varying vec3 vW;
+      void main(){
+        vec3 N = normalize(vN); if (!gl_FrontFacing) N = -N;
+        vec3 V = normalize(cameraPosition - vW);
+        vec3 L = normalize(vec3(-0.4, 1.0, 0.6));
+        vec3 H = normalize(L + V);
+        float spec = pow(max(dot(N, H), 0.0), 140.0) * 0.9;
+        float fres = pow(1.0 - abs(dot(N, V)), 3.0);
+        vec3 col = mix(vec3(0.66, 0.84, 0.93), vec3(1.0), fres * 0.6) + spec;
+        gl_FragColor = vec4(col, 0.22 + fres * 0.38 + spec);
+      }`
+  });
+  const surf = new THREE.Mesh(new THREE.PlaneGeometry(TW - 0.1, TD - 0.1, 120, 60), surfMat);
+  surf.rotation.x = -Math.PI / 2; surf.position.y = SY; surf.renderOrder = 3; g.add(surf);
+
+  // 真實金幣（金屬＋微光）
+  const coinGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.06, 56);
+  const ringGeo = new THREE.TorusGeometry(0.26, 0.014, 8, 48);
+  const coinMat = new THREE.MeshStandardMaterial({ color: 0xe8b64c, metalness: 1, roughness: 0.26, emissive: 0x6b4500, emissiveIntensity: 0.55 });
+  const coin = new THREE.Group();
+  const cBody = new THREE.Mesh(coinGeo, coinMat); coin.add(cBody);
+  const cRing = new THREE.Mesh(ringGeo, coinMat); cRing.rotation.x = Math.PI / 2; cRing.position.y = 0.032; coin.add(cRing);
+  coin.position.set(CX, FLOOR + 0.03, 0); g.add(shadowed(coin));
+  const coinLight = new THREE.PointLight(0xffc860, 0.9, 2.4, 1.5); coinLight.position.set(CX, CY + 0.25, 0); g.add(coinLight);
+
+  // 虛像金幣：半透明＋呼吸般閃爍
+  const ghostMat = new THREE.MeshPhysicalMaterial({ color: 0xffd36b, metalness: 0.25, roughness: 0.2, transparent: true, opacity: 0.5, emissive: 0xffb830, emissiveIntensity: 0.6, depthWrite: false, clearcoat: 1 });
+  const ghost = new THREE.Group();
+  const gBody = new THREE.Mesh(coinGeo.clone(), ghostMat); ghost.add(gBody);
+  const gRing = new THREE.Mesh(ringGeo.clone(), ghostMat); gRing.rotation.x = Math.PI / 2; gRing.position.y = 0.032; ghost.add(gRing);
+  ghost.traverse(o => { o.renderOrder = 6; });
+  g.add(ghost);
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(), transparent: true, depthWrite: false, opacity: 0.6 }));
+  halo.scale.set(1.5, 1.5, 1); halo.renderOrder = 7; g.add(halo);
+
+  // 眼睛（兩顆，左右分開：兩條光線的反向延長線交會成虛像）
+  const EYE_SEP = 0.34, EYE_L = 3.2;
+  const eyeWhite = new THREE.MeshStandardMaterial({ color: 0xfdfbf7, roughness: 0.25 });
+  const irisMat = new THREE.MeshStandardMaterial({ color: 0x6b4a2f, roughness: 0.4 });
+  const pupilMat = new THREE.MeshStandardMaterial({ color: 0x1d1410, roughness: 0.2 });
+  const eyes = [0, 1].map(() => {
+    const e = new THREE.Group();
+    e.add(new THREE.Mesh(new THREE.SphereGeometry(0.2, 32, 20), eyeWhite));
+    const iris = new THREE.Mesh(new THREE.SphereGeometry(0.1, 24, 12), irisMat); iris.scale.z = 0.35; iris.position.z = 0.17; e.add(iris);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 10), pupilMat); pupil.scale.z = 0.35; pupil.position.z = 0.205; e.add(pupil);
+    g.add(shadowed(e)); return e;
+  });
+  const brow = new THREE.Mesh(new RoundedBoxGeometry(0.16, 0.12, EYE_SEP * 2 + 0.5, 3, 0.05), wood('#c99a6e', [1, 1]));
+  g.add(shadowed(brow));
+
+  // 光路：實線（金→水面→眼）、虛線（大腦的延長線）
+  const unit = new THREE.CylinderGeometry(1, 1, 1, 10, 1, true);
+  const rayMat = new THREE.MeshStandardMaterial({ color: 0xf0a52e, emissive: 0xc46d00, emissiveIntensity: 0.55, roughness: 0.4 });
+  const stripe = stripeTexture();
+  const mkDash = (color) => {
+    const t = stripe.clone(); t.needsUpdate = true;
+    return new THREE.Mesh(unit, new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.35, alphaMap: t, alphaTest: 0.5, roughness: 0.5 }));
+  };
+  const coneGeo = new THREE.ConeGeometry(0.06, 0.16, 12);
+  const rays = eyes.map(() => {
+    const w = new THREE.Mesh(unit, rayMat), a = new THREE.Mesh(unit, rayMat), d = mkDash(0xd98c4a);
+    const ca = new THREE.Mesh(coneGeo, rayMat), cw = new THREE.Mesh(coneGeo, rayMat);
+    [w, a, d, ca, cw].forEach(m => g.add(m));
+    return { w, a, d, ca, cw };
+  });
+  const normal = mkDash(0x9a8a80); g.add(normal);
+  // 深度標尺
+  const rulerMat = new THREE.MeshStandardMaterial({ color: 0x3d63a8, roughness: 0.5 });
+  const realBar = new THREE.Mesh(unit, rulerMat); g.add(realBar);
+  const realT1 = new THREE.Mesh(unit, rulerMat), realT2 = new THREE.Mesh(unit, rulerMat); g.add(realT1, realT2);
+  const appBar = mkDash(0xc07a12); g.add(appBar);
+  const appT1 = new THREE.Mesh(unit, rayMat), appT2 = new THREE.Mesh(unit, rayMat); g.add(appT1, appT2);
+  const guide = mkDash(0xd9a43a); g.add(guide);
+
+  const Lcoin = addLabel('真實金幣', 'blue');
+  const Lghost = addLabel('虛像（大腦以為在這）', 'gold');
+  const Leye = addLabel('👁 眼睛', '');
+  const Lreal = addLabel('', 'blue');
+  const Lapp = addLabel('', 'gold');
+  const Lsurf = addLabel('水面（法線＝虛線）', 'gray');
+
+  /** 給定眼睛位置，解 Snell 定律：回傳水面出射點、空氣中的角度與虛像深度 */
+  function solve(E) {
+    const dx = E.x - CX, dz = E.z, R = Math.hypot(dx, dz), h = E.y - SY;
+    let lo = 0, hi = Math.asin(1 / N) - 1e-6;
+    for (let i = 0; i < 48; i++) {
+      const m = (lo + hi) / 2, ta = Math.asin(N * Math.sin(m));
+      if (DEPTH * Math.tan(m) + h * Math.tan(ta) > R) hi = m; else lo = m;
+    }
+    const tw = (lo + hi) / 2, ta = Math.asin(N * Math.sin(tw)), r = DEPTH * Math.tan(tw);
+    const ux = R > 1e-9 ? dx / R : 1, uz = R > 1e-9 ? dz / R : 0;
+    const app = ta > 1e-5 ? r / Math.tan(ta) : DEPTH / N;
+    return { P: V3(CX + ux * r, SY, uz * r), tw, ta, app };
+  }
+
+  let target = 35, ang = 35, eyeView = false, showRays = true, camTrack = 0, t = 0, lastAng = -1;
+  const st = { app: DEPTH / N, tw: 0, ta: 0, E0: V3(), I: V3() };
+  const camFor = (a) => {
+    const s = Math.sin(a * DEG), c = Math.cos(a * DEG);
+    // 從正前方（垂直於光路平面）看，折射的「彎折」最清楚；角度變大時鏡頭稍微跟著轉
+    const ex = CX + DEPTH * Math.tan(Math.asin(s / N)) + s * EYE_L, ey = SY + c * EYE_L;
+    const T = V3((CX + ex) / 2 + 0.2, (CY + ey) / 2 - 0.1, 0);
+    const dir = V3(0.1 + 0.25 * s, 0.22 + 0.12 * c, 1).normalize();
+    return { pos: T.clone().addScaledVector(dir, 12.6).toArray(), target: T.toArray(), mk: 0.5 };
+  };
+  function eyeCam() {
+    const back = st.E0.clone().sub(st.I).normalize();
+    return [st.E0.clone().addScaledVector(back, 0.35).add(V3(0, 0.05, 0)), st.I.clone()];
+  }
+
+  function layoutRays(a) {
+    const s = Math.sin(a * DEG), c = Math.cos(a * DEG);
+    const tw0 = Math.asin(s / N), r0 = DEPTH * Math.tan(tw0);
+    const P0 = V3(CX + r0, SY, 0);
+    const E0 = P0.clone().add(V3(s * EYE_L, c * EYE_L, 0));
+    st.E0.copy(E0);
+    const O = V3(CX, CY, 0);
+    let res;
+    eyes.forEach((eye, i) => {
+      const E = E0.clone().add(V3(0, 0, i ? EYE_SEP : -EYE_SEP));
+      res = solve(E);
+      const I = V3(CX, SY - res.app, 0);
+      eye.position.copy(E); eye.lookAt(res.P);
+      const R = rays[i];
+      placeSeg(R.w, O, res.P, 0.032);
+      placeSeg(R.a, res.P, E, 0.032);
+      const Ld = placeSeg(R.d, res.P, I, 0.026);
+      R.d.material.alphaMap.repeat.set(1, Math.max(1, Ld / 0.16));
+      // 箭頭（光的行進方向）
+      const dA = E.clone().sub(res.P).normalize(), dW = res.P.clone().sub(O).normalize();
+      R.ca.position.copy(res.P).lerp(E, 0.45); R.ca.quaternion.setFromUnitVectors(UP, dA);
+      R.cw.position.copy(O).lerp(res.P, 0.55); R.cw.quaternion.setFromUnitVectors(UP, dW);
+      st.I.copy(I);
+    });
+    st.app = res.app; st.tw = res.tw; st.ta = res.ta;
+    brow.position.copy(E0).add(V3(0, 0.26, 0)); brow.lookAt(st.I); brow.rotateY(0);
+    // 法線（在第一條光線的出射點）
+    const P = solve(E0.clone().add(V3(0, 0, -EYE_SEP))).P;
+    placeSeg(normal, V3(P.x, SY - 0.75, P.z), V3(P.x, SY + 0.75, P.z), 0.01);
+    normal.material.alphaMap.repeat.set(1, 1.5 / 0.1);
+    // 虛像與標尺
+    ghost.position.set(CX, SY - st.app - 0.03, 0); halo.position.set(CX, SY - st.app, 0);
+    const xr = CX - 0.85, xa = CX - 0.5;
+    placeSeg(realBar, V3(xr, CY, 0), V3(xr, SY, 0), 0.026);
+    placeSeg(realT1, V3(xr - 0.1, CY, 0), V3(xr + 0.1, CY, 0), 0.014);
+    placeSeg(realT2, V3(xr - 0.1, SY, 0), V3(xr + 0.1, SY, 0), 0.014);
+    const La = placeSeg(appBar, V3(xa, SY - st.app, 0), V3(xa, SY, 0), 0.03);
+    appBar.material.alphaMap.repeat.set(1, Math.max(1, La / 0.12));
+    placeSeg(appT1, V3(xa - 0.1, SY - st.app, 0), V3(xa + 0.1, SY - st.app, 0), 0.014);
+    placeSeg(appT2, V3(xa - 0.1, SY, 0), V3(xa + 0.1, SY, 0), 0.014);
+    placeSeg(guide, V3(xa, SY - st.app, 0), V3(CX - 0.36, SY - st.app, 0), 0.008);
+    guide.material.alphaMap.repeat.set(1, 4);
+    // 標籤
+    Lcoin.pos.set(CX + 0.15, CY - 0.05, 0.9);
+    Lghost.pos.set(CX + 1.25, SY - st.app - 0.05, 0.6);
+    Leye.pos.copy(E0).add(V3(0, 0.55, 0));
+    Lreal.pos.set(xr - 0.75, CY + 0.45, 0); Lreal.el.innerHTML = '真實深度 24 cm';
+    Lapp.pos.set(xa - 0.95, SY - st.app * 0.45, 0); Lapp.el.innerHTML = `視覺深度 ${(st.app * 10).toFixed(1)} cm`;
+    Lsurf.pos.set(P.x + 0.75, SY + 0.12, 0.9);
+    $('dApp').textContent = (st.app * 10).toFixed(1) + ' cm';
+  }
+  function setRaysVisible() {
+    const v = showRays && !eyeView;
+    rays.forEach(R => Object.values(R).forEach(m => { m.visible = v; }));
+    normal.visible = v;
+    coin.visible = !eyeView; coinLight.visible = !eyeView;
+    [Lcoin, Lsurf, Lreal, Leye].forEach(L => { L.visible = !eyeView; });
+    $('rayBtn').textContent = showRays ? '✏️ 隱藏光路' : '✏️ 顯示光路';
+    $('eyeBtn').classList.toggle('on', eyeView);
+    $('eyeBtn').textContent = eyeView ? '🔭 回到旁觀視角' : '👁 眼睛視角';
+  }
+  layoutRays(ang); setRaysVisible();
+  $('angVal').textContent = ang.toFixed(0) + '°'; $('dAng').value = target; paint($('dAng'));
+
+  return {
+    get camera() { return camFor(ang); },
+    input(id, v) { if (id === 'dAng') { target = v; camTrack = 1.4; fly = null; $('angVal').textContent = v.toFixed(v % 1 ? 1 : 0) + '°'; } },
+    act(a) {
+      if (a === 'eyeview') {
+        eyeView = !eyeView; setRaysVisible();
+        if (eyeView) { const [p, tg] = eyeCam(); flyTo(p, tg, 1.2); banner('👁 從眼睛看：大腦把金幣「看」在比較淺的位置——這就是虛像！'); }
+        else { const [p, tg] = framed(camFor(ang).pos, camFor(ang).target, 0.5); flyTo(p, tg, 1.2); hideBanner(); }
+      }
+      if (a === 'rays') { showRays = !showRays; setRaysVisible(); }
+    },
+    update(dt) {
+      t += dt;
+      surfMat.uniforms.uTime.value = t;
+      // 滑桿 → 線性插值（rAF 每幀逼近目標，拖起來絲滑）
+      ang += (target - ang) * follow(dt, 7);
+      if (Math.abs(target - ang) < 0.01) ang = target;
+      if (Math.abs(ang - lastAng) > 1e-4) { layoutRays(ang); lastAng = ang; }
+      // 鏡頭跟著角度無段移動
+      if (camTrack > 0 && !fly) {
+        camTrack -= dt;
+        const [p, tg] = eyeView ? eyeCam() : framed(camFor(ang).pos, camFor(ang).target, 0.5);
+        const k = follow(dt, 5);
+        camera.position.lerp(p, k); controls.target.lerp(tg, k);
+      }
+      // 虛像：呼吸般閃爍
+      const br = 0.5 + 0.5 * Math.sin(t * 2.4);
+      ghostMat.opacity = eyeView ? 0.85 + 0.1 * br : 0.5 + 0.3 * br;
+      ghostMat.emissiveIntensity = 0.35 + 0.65 * br;
+      halo.material.opacity = 0.35 + 0.4 * br;
+      halo.scale.setScalar(1.3 + 0.25 * br);
+      coinLight.intensity = 0.7 + 0.25 * Math.sin(t * 1.7);
+      rays.forEach(R => { R.d.material.alphaMap.offset.y = -t * 0.8; });
+    },
+    hud() {
+      return `<div class="big">真實深度 <span class="bl">24 cm</span> vs 視覺深度 <span class="hl">${(st.app * 10).toFixed(1)} cm</span></div>
+        <div class="sm">空氣中角度 ${(st.ta / DEG).toFixed(1)}° ・ 水中角度 ${(st.tw / DEG).toFixed(1)}° ・ 看起來淺了 ${((DEPTH - st.app) * 10).toFixed(1)} cm</div>`;
+    },
+    state: () => ({ ang, app: st.app * 10, tw: st.tw / DEG, ta: st.ta / DEG }),
+    dispose() { stripe.dispose(); }
+  };
+};
+
+/* =========================================================
+   Tab 2：反應速率與限量試劑
+   CaCO₃ + 2HCl → CaCl₂ + H₂O + CO₂
+   dV/dt = k(T, 表面積)·(Vmax − V)：k 只決定快慢，Vmax 由限量試劑決定
+   ========================================================= */
+const VMAX = 100, K0 = 0.06, SPEED = 5, TMAX = 300;   // 10 °C 塊狀也能在 300 s 內達 99.8%
+const SURF = { chunk: 1, powder: 3.2 };
+const kOf = (T, s) => K0 * SURF[s] * Math.pow(2, (T - 25) / 10);   // 溫度每升 10 °C 速率約加倍
+
+BUILD.rate = (g) => {
+  const FX = -2.6;
+  const flaskG = new THREE.Group(); g.add(flaskG);
+  // 加熱板（原木底座＋陶瓷面）
+  const plate = new THREE.Mesh(new RoundedBoxGeometry(3.0, 0.32, 3.0, 4, 0.1), wood('#d4ad83', [2, 1]));
+  plate.position.y = 0.16; flaskG.add(shadowed(plate));
+  const heatMat = new THREE.MeshStandardMaterial({ color: 0xf3ece2, roughness: 0.5, emissive: 0xff7a3d, emissiveIntensity: 0 });
+  const heater = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.25, 0.05, 48), heatMat);
+  heater.position.y = 0.345; flaskG.add(shadowed(heater));
+  const Y0 = 0.37;
+  // 錐形瓶（alpha 玻璃）
+  const prof = [[0, 0], [1.15, 0], [1.25, 0.06], [1.28, 0.18], [1.05, 0.9], [0.62, 1.75], [0.36, 2.25], [0.34, 2.9], [0.4, 2.95], [0.4, 3.03], [0.31, 3.03]].map(([r, y]) => V2(r, y));
+  const flask = new THREE.Mesh(new THREE.LatheGeometry(prof, 64), glassMat(0.2));
+  flask.position.y = Y0; flask.renderOrder = 4; flaskG.add(flask);
+  const liqProf = [[0, 0.04], [1.12, 0.04], [1.2, 0.17], [1.02, 0.85], [0, 0.85]].map(([r, y]) => V2(r, y));
+  const liqMat = new THREE.MeshStandardMaterial({ color: 0xcfe6ee, transparent: true, opacity: 0.38, roughness: 0.15, depthWrite: false });
+  const liquid = new THREE.Mesh(new THREE.LatheGeometry(liqProf, 64), liqMat);
+  liquid.position.y = Y0; liquid.renderOrder = 2; flaskG.add(liquid);
+  const LIQ_TOP = Y0 + 0.85;
+  // 氣球（CO₂ 越多越鼓）
+  const balloonMat = new THREE.MeshPhysicalMaterial({ color: 0xf0b49a, roughness: 0.35, clearcoat: 0.6, transparent: true, opacity: 0.92 });
+  const balloon = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 28), balloonMat);
+  flaskG.add(shadowed(balloon));
+  const bNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.18, 32), balloonMat);
+  bNeck.position.y = Y0 + 2.98; flaskG.add(bNeck);
+
+  // 大理石紋理
+  const mc = document.createElement('canvas'); mc.width = mc.height = 256;
+  const mg = mc.getContext('2d'); mg.fillStyle = '#f2eee8'; mg.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 14; i++) { mg.strokeStyle = `rgba(120,110,105,${rnd(0.12, 0.35)})`; mg.lineWidth = rnd(0.6, 2.2); mg.beginPath(); let x = rnd(0, 256), y = 0; mg.moveTo(x, y); while (y < 256) { x += rnd(-14, 14); y += rnd(8, 20); mg.lineTo(x, y); } mg.stroke(); }
+  const marbleTex = new THREE.CanvasTexture(mc); marbleTex.colorSpace = THREE.SRGBColorSpace;
+  const marbleMat = new THREE.MeshStandardMaterial({ map: marbleTex, roughness: 0.45, metalness: 0.02 });
+  const rock = (r) => { const geo = new THREE.DodecahedronGeometry(r, 1); const p = geo.attributes.position; for (let i = 0; i < p.count; i++) { const v = V3(p.getX(i), p.getY(i), p.getZ(i)); v.multiplyScalar(1 + rnd(-0.12, 0.12)); p.setXYZ(i, v.x, v.y * 0.8, v.z); } geo.computeVertexNormals(); return geo; };
+  const chunks = [[-0.25, 0.22, 0.1, 0.3], [0.3, 0.2, -0.15, 0.26], [0.05, 0.2, 0.4, 0.22]].map(([x, y, z, r]) => {
+    const m = new THREE.Mesh(rock(r), marbleMat); m.position.set(x, Y0 + y, z); m.rotation.set(rnd(0, 3), rnd(0, 3), 0); m.userData.base = V3(x, Y0 + y, z); m.userData.r = r; flaskG.add(shadowed(m)); return m;
+  });
+  const NP = 170;
+  const powder = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.05, 0), marbleMat, NP);
+  const pData = [];
+  for (let i = 0; i < NP; i++) {
+    const a = rnd(0, TAU), r = 0.62 * Math.sqrt(Math.random()), hgt = 0.24 * (1 - (r / 0.62) ** 2);
+    pData.push({ p: V3(Math.cos(a) * r, Y0 + 0.07 + rnd(0, hgt), Math.sin(a) * r), rot: new THREE.Euler(rnd(0, 3), rnd(0, 3), rnd(0, 3)), s: rnd(0.7, 1.3) });
+  }
+  flaskG.add(powder);
+  // 氣泡
+  const NB = 320;
+  const bubbles = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 10, 8), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, roughness: 0.05, metalness: 0.1, envMapIntensity: 1.5, depthWrite: false }), NB);
+  bubbles.renderOrder = 3; flaskG.add(bubbles);
+  const bub = []; const dummy = new THREE.Object3D();
+  // 溫度計
+  const thermo = new THREE.Group(); thermo.position.set(1.75, 0, 0.6); flaskG.add(thermo);
+  const tBase = new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.14, 0.5, 2, 0.05), wood('#c99a6e', [1, 1])); tBase.position.y = 0.07; thermo.add(shadowed(tBase));
+  const tTube = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.7, 20), glassMat(0.3)); tTube.position.y = 1.6; tTube.renderOrder = 4; thermo.add(tTube);
+  const tBulb = new THREE.Mesh(new THREE.SphereGeometry(0.13, 20, 14), new THREE.MeshStandardMaterial({ color: 0xd9605b, roughness: 0.3 })); tBulb.position.y = 0.32; thermo.add(tBulb);
+  const tCol = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1, 12), new THREE.MeshStandardMaterial({ color: 0xd9605b, roughness: 0.3, emissive: 0x8a1f1a, emissiveIntensity: 0.3 })); thermo.add(tCol);
+
+  // 圖表面板（Canvas → 3D 毛玻璃看板）
+  const cc = document.createElement('canvas'); cc.width = 1024; cc.height = 720;
+  const chartTex = new THREE.CanvasTexture(cc); chartTex.colorSpace = THREE.SRGBColorSpace; chartTex.anisotropy = 8;
+  const board = new THREE.Group(); g.add(board);
+  const frame = new THREE.Mesh(new RoundedBoxGeometry(5.6, 4.0, 0.14, 4, 0.12), new THREE.MeshPhysicalMaterial({ color: 0xfffaf2, roughness: 0.35, clearcoat: 1, envMapIntensity: 0.8 }));
+  frame.castShadow = true; board.add(frame);
+  const chart = new THREE.Mesh(new THREE.PlaneGeometry(5.3, 5.3 * 720 / 1024), new THREE.MeshBasicMaterial({ map: chartTex, toneMapped: false, transparent: true }));
+  chart.position.z = 0.08; board.add(chart);
+  const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1, 12), wood('#c99a6e', [1, 1])); g.add(shadowed(stand));
+  const standBase = new THREE.Mesh(new RoundedBoxGeometry(1.2, 0.12, 0.7, 2, 0.05), wood('#c99a6e', [1, 1])); g.add(shadowed(standBase));
+
+  const LT = addLabel('', 'red');
+  const LB = addLabel('氣球收集 CO₂', 'gray');
+  const LM = addLabel('大理石（限量）', 'gray');
+
+  const COLORS = ['#a0714f', '#d9605b', '#3d7fc4', '#4f9a63', '#a06cc0', '#d99a2b'];
+  let runs = [], run = null;
+  let Ttarget = 25, T = 25, surfK = 'chunk';
+  let running = false, done = false, tSim = 0, V = 0, rate = 0, spawnAcc = 0, sampleAcc = 0, chartDirty = true, t95 = null;
+
+  function drawChart() {
+    const c = cc.getContext('2d'), W = 1024, H = 720;
+    c.clearRect(0, 0, W, H);
+    c.fillStyle = 'rgba(255,252,246,0.97)'; rr(c, 6, 6, W - 12, H - 12, 34); c.fill();
+    const x0 = 118, x1 = 975, yb = 610, yt = 120, vTop = 120;
+    const X = t => x0 + (t / TMAX) * (x1 - x0), Y = v => yb - (v / vTop) * (yb - yt);
+    c.fillStyle = '#5d4037'; c.font = '800 38px "Microsoft JhengHei", "PingFang TC", sans-serif'; c.fillText('CO₂ 產量 vs 時間', 40, 66);
+    c.font = '600 24px "Microsoft JhengHei", sans-serif'; c.fillStyle = '#8d7a70'; c.fillText('（同溫同壓換算）', 360, 64);
+    // 格線
+    c.strokeStyle = '#ece3d6'; c.lineWidth = 2; c.font = '600 22px sans-serif'; c.fillStyle = '#8d7a70';
+    for (let v = 0; v <= 120; v += 20) { c.beginPath(); c.moveTo(x0, Y(v)); c.lineTo(x1, Y(v)); c.stroke(); c.textAlign = 'right'; c.fillText(v, x0 - 12, Y(v) + 8); }
+    for (let t = 0; t <= TMAX; t += 50) { c.beginPath(); c.moveTo(X(t), yt); c.lineTo(X(t), yb); c.stroke(); c.textAlign = 'center'; c.fillText(t, X(t), yb + 32); }
+    c.textAlign = 'left';
+    c.strokeStyle = '#8d7a70'; c.lineWidth = 3; c.beginPath(); c.moveTo(x0, yt - 10); c.lineTo(x0, yb); c.lineTo(x1 + 10, yb); c.stroke();
+    c.fillStyle = '#5d4037'; c.font = '700 22px "Microsoft JhengHei", sans-serif';
+    c.fillText('時間 (s)', x1 - 70, yb + 64); c.fillText('CO₂ (mL)', 24, yt - 24);
+    // 最終總產量水平虛線
+    c.setLineDash([16, 12]); c.strokeStyle = '#c0453f'; c.lineWidth = 4;
+    c.beginPath(); c.moveTo(x0, Y(VMAX)); c.lineTo(x1, Y(VMAX)); c.stroke(); c.setLineDash([]);
+    c.fillStyle = '#c0453f'; c.font = '800 24px "Microsoft JhengHei", sans-serif'; c.textAlign = 'right';
+    c.fillText('最終總產量 100 mL（限量試劑決定）', x1, Y(VMAX) - 14); c.textAlign = 'left';
+    // 各次曲線
+    const all = run ? [...runs, run] : runs;
+    all.forEach(R => {
+      if (R.pts.length < 2) return;
+      c.strokeStyle = R.color; c.lineWidth = R === run && running ? 7 : 5; c.lineJoin = 'round';
+      c.beginPath(); R.pts.forEach(([t, v], i) => i ? c.lineTo(X(t), Y(v)) : c.moveTo(X(t), Y(v)));
+      if (R.done) c.lineTo(X(TMAX), Y(R.pts[R.pts.length - 1][1]));
+      c.stroke();
+      const [lt, lv] = R.pts[R.pts.length - 1];
+      if (R === run && running) { c.fillStyle = R.color; c.beginPath(); c.arc(X(lt), Y(lv), 10, 0, TAU); c.fill(); }
+    });
+    // 圖例（右下空白處）
+    c.font = '700 22px "Microsoft JhengHei", sans-serif';
+    all.forEach((R, i) => {
+      const y = yb - 30 - (all.length - 1 - i) * 34;
+      c.fillStyle = R.color; rr(c, x1 - 300, y - 16, 36, 10, 5); c.fill();
+      c.fillStyle = '#5d4037'; c.fillText(`${R.label}${R.t95 != null ? `　95%：${R.t95.toFixed(0)} s` : ''}`, x1 - 254, y - 4);
+    });
+    if (!all.length) { c.fillStyle = '#8d7a70'; c.font = '700 26px "Microsoft JhengHei", sans-serif'; c.fillText('按「開始反應」畫出第一條曲線', x0 + 180, Y(45)); }
+    chartTex.needsUpdate = true;
+  }
+  function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+
+  function layout() {
+    const portrait = window.innerWidth / window.innerHeight < 1;
+    if (portrait) {
+      flaskG.position.set(-1.0, 0, 0); board.position.set(0.3, 6.3, -0.4); board.scale.setScalar(0.92);
+    } else {
+      flaskG.position.set(FX, 0, 0); board.position.set(2.5, 2.75, -0.6); board.scale.setScalar(1);
+    }
+    const by = board.position.y - 2.0 * board.scale.y;
+    stand.position.set(board.position.x, by / 2 + 0.06, board.position.z - 0.15); stand.scale.y = Math.max(0.1, by - 0.1);
+    standBase.position.set(board.position.x, 0.06, board.position.z - 0.15);
+    api.camera = portrait ? { pos: [0.2, 4.6, 13.5], target: [-0.2, 3.6, 0], mk: 0.5 } : { pos: [0.2, 4.2, 14.2], target: [0.0, 2.4, 0], mk: 0.6 };
+  }
+  function setSurf(s) {
+    surfK = s;
+    chunks.forEach(m => { m.visible = s === 'chunk'; });
+    powder.visible = s === 'powder';
+    $('bChunk').classList.toggle('on', s === 'chunk'); $('bPowder').classList.toggle('on', s === 'powder');
+  }
+  function resetFlask() {
+    V = 0; tSim = 0; rate = 0; done = false; running = false; t95 = null;
+    bub.length = 0;
+  }
+  function updateSolids() {
+    const f = Math.max(0, 1 - V / VMAX), s = Math.cbrt(f);
+    chunks.forEach(m => { m.scale.setScalar(Math.max(0.001, s)); m.position.y = m.userData.base.y - m.userData.r * 0.8 * (1 - s); });
+    for (let i = 0; i < NP; i++) {
+      const d = pData[i]; dummy.position.copy(d.p); dummy.rotation.copy(d.rot); dummy.scale.setScalar(Math.max(0.001, d.s * s));
+      dummy.updateMatrix(); powder.setMatrixAt(i, dummy.matrix);
+    }
+    powder.instanceMatrix.needsUpdate = true;
+    const br = 0.2 + 0.62 * Math.cbrt(V / VMAX);
+    balloon.scale.set(br, br * 1.12, br); balloon.position.y = Y0 + 3.05 + br * 1.02;
+    LB.pos.set(flaskG.position.x + 0.9 + br, Y0 + 3.2 + br, 0);
+    LM.pos.set(flaskG.position.x - 1.5, Y0 + 0.25, 0.6);
+  }
+  function spawnBubble() {
+    let p;
+    if (surfK === 'chunk') { const m = chunks[Math.random() * 3 | 0]; p = m.position.clone().add(V3(rnd(-1, 1), rnd(0, 1), rnd(-1, 1)).normalize().multiplyScalar(m.userData.r * m.scale.x)); }
+    else { const d = pData[Math.random() * NP | 0]; p = d.p.clone(); }
+    bub.push({ p, r: rnd(0.025, 0.06), vy: rnd(0.5, 0.9), ph: rnd(0, TAU) });
+    if (bub.length > NB) bub.shift();
+  }
+
+  const api = {
+    camera: null,
+    layout,
+    input(id, v) { if (id === 'rT') { Ttarget = v; $('tVal').textContent = v + ' °C'; } },
+    act(a) {
+      if (a === 'chunk' || a === 'powder') {
+        if (running) { banner('反應進行中，等結束或重新開始再換大理石形狀喔！', 2600); return; }
+        setSurf(a); resetFlask(); updateSolids(); return;
+      }
+      if (a === 'start') {
+        if (run && run.pts.length > 1) runs.push(run);
+        if (runs.length > 5) runs.shift();
+        resetFlask(); running = true;
+        run = { pts: [[0, 0]], color: COLORS[(runs.length) % COLORS.length], label: `${Math.round(T)}°C・${surfK === 'chunk' ? '塊狀' : '粉末'}`, done: false, t95: null };
+        // 同樣條件已有顏色就沿用新色（避免看不出差異）
+        const used = new Set(runs.map(r => r.color)); run.color = COLORS.find(c => !used.has(c)) || run.color;
+        $('bStart').textContent = '⟳ 重新開始'; hideBanner(); chartDirty = true;
+      }
+      if (a === 'clear') { runs = []; run = null; resetFlask(); updateSolids(); $('bStart').textContent = '▶ 開始反應'; chartDirty = true; }
+    },
+    update(dt) {
+      // 溫度滑桿：線性插值逼近
+      T += (Ttarget - T) * follow(dt, 5);
+      const hot = clamp((T - 22) / 18, 0, 1);
+      heatMat.emissiveIntensity = hot * 0.9; heatMat.emissive.setHSL(0.04 + 0.04 * (1 - hot), 1, 0.5);
+      liqMat.color.setRGB(0.81 + 0.08 * hot, 0.9 - 0.02 * hot, 0.93 - 0.08 * hot);
+      const ch = 2.2 * clamp(T / 50, 0, 1);
+      tCol.scale.y = ch; tCol.position.y = 0.32 + ch / 2;
+      LT.pos.set(flaskG.position.x + 1.75, 3.15, 0.6); LT.el.textContent = `${T.toFixed(0)} °C`;
+      if (running) {
+        const k = kOf(T, surfK), h = dt * SPEED;
+        const dV = (VMAX - V) * (1 - Math.exp(-k * h));
+        V += dV; tSim += h; rate = k * (VMAX - V);
+        if (t95 == null && V >= 95) { t95 = tSim; run.t95 = t95; }
+        sampleAcc += h;
+        if (sampleAcc >= 0.5) { sampleAcc = 0; run.pts.push([tSim, V]); chartDirty = true; }
+        spawnAcc += Math.min(260, rate * SPEED * 1.1) * dt;
+        while (spawnAcc >= 1) { spawnAcc -= 1; spawnBubble(); }
+        if (V >= VMAX - 0.2 || tSim >= TMAX) {
+          run.pts.push([tSim, V]); running = false; done = true; run.done = true; chartDirty = true;
+          banner(`反應結束：共產生 <b>${V.toFixed(0)} mL</b> CO₂（${run.label} 用了 ${tSim.toFixed(0)} s）<br>限量試劑決定最終產量，溫度與表面積只決定到達終點的快慢！`, 6500);
+        }
+      } else rate = 0;
+      updateSolids();
+      // 氣泡上升
+      for (let i = bub.length - 1; i >= 0; i--) {
+        const b = bub[i]; b.vy += dt * 0.6; b.p.y += b.vy * dt; b.p.x += Math.sin(b.ph + b.p.y * 9) * 0.004;
+        if (b.p.y > LIQ_TOP) bub.splice(i, 1);
+      }
+      for (let i = 0; i < NB; i++) {
+        const b = bub[i];
+        if (b) { dummy.position.copy(b.p); dummy.scale.setScalar(b.r * (1 + 0.4 * (b.p.y - Y0))); } else dummy.scale.setScalar(0);
+        dummy.rotation.set(0, 0, 0); dummy.updateMatrix(); bubbles.setMatrixAt(i, dummy.matrix);
+      }
+      bubbles.instanceMatrix.needsUpdate = true;
+      if (chartDirty) { chartDirty = false; drawChart(); }
+      $('rTime').textContent = tSim.toFixed(0) + ' s';
+      $('rVol').textContent = V.toFixed(1) + ' mL';
+      $('rRate').textContent = rate.toFixed(2) + ' mL/s';
+      $('rLeft').textContent = Math.max(0, 100 - V).toFixed(0) + ' %';
+    },
+    hud() {
+      const k = kOf(T, surfK);
+      const st = running ? (rate > 8 ? '<span class="rd">氣泡狂冒！</span>' : '反應中…') : done ? '<span class="gr">反應完成</span>' : '準備中';
+      return `<div class="big">CO₂ <span class="hl">${V.toFixed(1)}</span> / 100 mL ・ ${st}</div>
+        <div class="sm">${T.toFixed(0)} °C ・ ${surfK === 'chunk' ? '塊狀' : '粉末'} ・ 初速率 ${(k * VMAX).toFixed(1)} mL/s ・ 達 95% 約 ${(Math.log(20) / k).toFixed(0)} s</div>`;
+    },
+    state: () => ({ T, V, tSim, running, done, rate, runs: runs.length, surf: surfK }),
+    dispose() { marbleTex.dispose(); chartTex.dispose(); }
+  };
+  setSurf('chunk'); layout(); updateSolids(); drawChart();
+  $('tVal').textContent = Ttarget + ' °C'; $('rT').value = Ttarget; paint($('rT')); $('bStart').textContent = '▶ 開始反應';
+  return api;
+};
+
+/* =========================================================
+   Tab 3：生物恆定性立體化（呼吸運動＋血糖調節）
+   座標：人體面向 +z（觀眾），畫面左側 = 身體的右側
+   ========================================================= */
+BUILD.homeo = (g) => {
+  // 半透明軀幹
+  const torsoProf = [[1.7, 0.35], [1.82, 1.2], [1.7, 2.4], [1.85, 3.6], [2.05, 5.0], [2.15, 6.4], [2.05, 7.35], [1.45, 7.95], [0.6, 8.2], [0.5, 8.9]].map(([r, y]) => V2(r, y));
+  const torso = new THREE.Mesh(new THREE.LatheGeometry(torsoProf, 64), new THREE.MeshPhysicalMaterial({ color: 0xfff6ec, transparent: true, opacity: 0.14, roughness: 0.3, clearcoat: 0.8, depthWrite: false, side: THREE.DoubleSide }));
+  torso.scale.z = 0.66; torso.renderOrder = 8; g.add(torso);
+  const stand = new THREE.Mesh(new RoundedBoxGeometry(4.6, 0.3, 2.6, 4, 0.1), wood('#d4ad83', [2, 1])); stand.position.y = 0.15; g.add(shadowed(stand));
+  const boneMat = new THREE.MeshStandardMaterial({ color: 0xf1e6d3, roughness: 0.5 });
+  // 脊椎
+  for (let i = 0; i < 17; i++) { const v = new THREE.Mesh(new RoundedBoxGeometry(0.36, 0.3, 0.3, 2, 0.08), boneMat); v.position.set(0, 0.6 + i * 0.42, -1.12); g.add(shadowed(v)); }
+  // 肋骨（9 對，後端以脊椎為軸心上舉）
+  const ribs = [];
+  for (let i = 0; i < 9; i++) {
+    const yi = 6.9 - i * 0.4, rx = 1.1 + 0.62 * Math.sin(Math.min(1, (i + 1) / 6) * Math.PI / 2), zf = 1.02, zb = -1.0;
+    const zc = (zf + zb) / 2, a = (zf - zb) / 2, f0 = -Math.PI / 2 + 0.14, f1 = 1.2, drop = 0.55 + i * 0.03;
+    [1, -1].forEach(side => {
+      const pts = [];
+      for (let k = 0; k <= 16; k++) { const f = lerp(f0, f1, k / 16), u = k / 16; pts.push(V3(side * rx * Math.cos(f), -drop * (u * u * (3 - 2 * u)), zc + a * Math.sin(f) - zb)); }
+      const grp = new THREE.Group(); grp.position.set(0, yi, zb);
+      grp.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, 0.065, 8), boneMat));
+      g.add(shadowed(grp)); ribs.push({ grp, i, side });
+    });
+  }
+  const sternum = new THREE.Mesh(new RoundedBoxGeometry(0.34, 2.3, 0.16, 3, 0.07), boneMat); g.add(shadowed(sternum));
+  // 肺葉
+  const alv = document.createElement('canvas'); alv.width = alv.height = 256;
+  const ag = alv.getContext('2d'); ag.fillStyle = '#f4d9d5'; ag.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 420; i++) { ag.fillStyle = `rgba(${200 + rnd(0, 40) | 0},${140 + rnd(0, 40) | 0},${140 + rnd(0, 30) | 0},${rnd(0.15, 0.4)})`; ag.beginPath(); ag.arc(rnd(0, 256), rnd(0, 256), rnd(3, 9), 0, TAU); ag.fill(); }
+  const alvTex = new THREE.CanvasTexture(alv); alvTex.colorSpace = THREE.SRGBColorSpace; alvTex.wrapS = alvTex.wrapT = THREE.RepeatWrapping; alvTex.repeat.set(2, 2);
+  const lungMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: alvTex, roughness: 0.72, bumpMap: alvTex, bumpScale: 0.6 });
+  const LUNG_TOP = 7.0, LUNG_H = 3.0;
+  const lungGeo = (side) => {
+    const geo = new THREE.SphereGeometry(1, 44, 32), p = geo.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      let x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+      const yn = (y + 1) / 2;                                  // 0 底 → 1 頂
+      const w = 0.5 + 0.5 * Math.sin(Math.min(1, (1 - yn) * 1.6 + 0.15) * Math.PI / 2);
+      x *= 0.78 * w; z *= 0.95 * w;
+      if (x * side < 0) x *= 0.5;                              // 內側（靠心臟）較平
+      let Y = -LUNG_H + yn * LUNG_H;
+      if (yn < 0.25) Y += 0.35 * (1 - (x * x / 0.6 + z * z / 0.9)) * (1 - yn / 0.25); // 底部凹面貼橫膈膜
+      p.setXYZ(i, x, Y, z);
+    }
+    geo.computeVertexNormals(); return geo;
+  };
+  const lungs = [1, -1].map(side => {
+    const m = new THREE.Mesh(lungGeo(-side), lungMat);          // side=+1 → 身體左肺（畫面右）
+    m.position.set(side * 0.92, LUNG_TOP, -0.05); m.userData.side = side;
+    if (side > 0) m.scale.x = 0.92;
+    g.add(shadowed(m)); return m;
+  });
+  // 氣管與支氣管
+  const airMat = new THREE.MeshStandardMaterial({ color: 0xe9d7cf, roughness: 0.5 });
+  const trachea = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(0, 8.9, 0), V3(0, 7.6, 0)]), 8, 0.14, 12), airMat); g.add(trachea);
+  const bronchi = [1, -1].map(s => { const c = new THREE.CatmullRomCurve3([V3(0, 7.62, 0), V3(s * 0.4, 7.2, 0), V3(s * 0.75, 6.4, 0)]); g.add(new THREE.Mesh(new THREE.TubeGeometry(c, 16, 0.09, 10), airMat)); return c; });
+  // 空氣粒子
+  const NA = 36;
+  const airP = new THREE.InstancedMesh(new THREE.SphereGeometry(0.06, 10, 8), new THREE.MeshStandardMaterial({ color: 0x9fd0ee, emissive: 0x4a90c0, emissiveIntensity: 0.5, roughness: 0.3 }), NA);
+  g.add(airP);
+  const air = Array.from({ length: NA }, (_, i) => ({ s: i / NA, side: i % 2 ? 1 : -1, j: V3(rnd(-0.05, 0.05), 0, rnd(-0.05, 0.05)) }));
+  // 橫膈膜（圓頂，每幀改頂點）
+  const diaGeo = new THREE.RingGeometry(0.02, 1, 64, 14); diaGeo.rotateX(-Math.PI / 2);
+  const dBase = Float32Array.from(diaGeo.attributes.position.array);
+  const diaMat = new THREE.MeshStandardMaterial({ color: 0xc9776b, roughness: 0.6, side: THREE.DoubleSide, transparent: true, opacity: 0.88 });
+  const dia = new THREE.Mesh(diaGeo, diaMat); dia.castShadow = true; g.add(dia);
+  const DRX = 1.7, DRZ = 1.08, RIM = 3.15;
+  const domeAt = (x, z, dome) => RIM + dome * Math.max(0, 1 - (x / DRX) ** 2 - (z / DRZ) ** 2);
+
+  // ---- 血糖系統 ----
+  const liverMat = new THREE.MeshStandardMaterial({ color: 0x8e3b3b, roughness: 0.42, emissive: 0x000000 });
+  const liverGeo = new THREE.SphereGeometry(1, 44, 30); {
+    const p = liverGeo.attributes.position;
+    for (let i = 0; i < p.count; i++) { let x = p.getX(i), y = p.getY(i), z = p.getZ(i); const th = 0.55 + 0.45 * (0.5 - x * 0.5); y *= th; if (y > 0) y *= 1 - 0.25 * (x + 1) / 2; p.setXYZ(i, x * 1.15, y * 0.62, z * 0.72); }
+    liverGeo.computeVertexNormals();
+  }
+  const liver = new THREE.Mesh(liverGeo, liverMat); liver.position.set(-0.72, 2.72, 0.05); g.add(shadowed(liver));
+  const pancMat = new THREE.MeshStandardMaterial({ color: 0xf2d98a, roughness: 0.55, emissive: 0x000000 });
+  const pancCurve = new THREE.CatmullRomCurve3([V3(-0.15, 2.0, 0.1), V3(0.35, 2.12, 0.15), V3(0.85, 2.2, 0.1), V3(1.25, 2.35, 0.0)]);
+  const pancGeo = new THREE.TubeGeometry(pancCurve, 48, 0.17, 14); {
+    const p = pancGeo.attributes.position, n = pancGeo.attributes.normal;
+    for (let i = 0; i < p.count; i++) { const k = 1 + 0.12 * Math.sin(p.getX(i) * 22) * Math.sin(p.getY(i) * 31 + p.getZ(i) * 17); p.setXYZ(i, p.getX(i) + n.getX(i) * 0.17 * (k - 1), p.getY(i) + n.getY(i) * 0.17 * (k - 1), p.getZ(i) + n.getZ(i) * 0.17 * (k - 1)); }
+    pancGeo.computeVertexNormals();
+  }
+  const panc = new THREE.Mesh(pancGeo, pancMat); g.add(shadowed(panc));
+  const pancHead = new THREE.Mesh(new THREE.SphereGeometry(0.27, 24, 16), pancMat); pancHead.position.set(-0.22, 1.98, 0.1); pancHead.scale.set(1, 0.9, 0.8); g.add(shadowed(pancHead));
+  const pancGlow = new THREE.PointLight(0x5b8fd9, 0, 2.5, 1.5); pancGlow.position.set(0.5, 2.2, 0.6); g.add(pancGlow);
+  // 小腸（吸收葡萄糖）
+  const gutPts = []; for (let k = 0; k <= 120; k++) { const u = k / 120, a = u * TAU * 3.2; gutPts.push(V3(0.25 + Math.cos(a) * (0.35 + 0.4 * u), 1.05 + Math.sin(a * 0.5) * 0.25 + (u - 0.5) * 0.3, Math.sin(a) * 0.35)); }
+  const gut = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(gutPts), 240, 0.11, 10), new THREE.MeshStandardMaterial({ color: 0xf0c3a8, roughness: 0.55 }));
+  g.add(shadowed(gut));
+  const GUT = V3(0.25, 1.05, 0.2);
+  // 身體細胞（消耗葡萄糖）
+  const cellsG = new THREE.Group(); cellsG.position.set(1.32, 1.2, 0.2); g.add(cellsG);
+  const cellMat = new THREE.MeshStandardMaterial({ color: 0xd9a19a, roughness: 0.5 });
+  for (let i = 0; i < 7; i++) { const c = new THREE.Mesh(new RoundedBoxGeometry(0.28, 0.24, 0.24, 2, 0.08), cellMat); c.position.set(rnd(-0.25, 0.25), rnd(-0.3, 0.3), rnd(-0.2, 0.2)); cellsG.add(shadowed(c)); }
+  const CELLS = cellsG.position.clone();
+  // 血管迴路
+  const loop = new THREE.CatmullRomCurve3([V3(-1.15, 0.95, 0.78), V3(-1.38, 2.0, 0.82), V3(-1.2, 2.95, 0.85), V3(0, 3.02, 0.85), V3(1.2, 2.92, 0.82), V3(1.5, 2.0, 0.78), V3(1.4, 0.9, 0.75), V3(0.2, 0.55, 0.78)], true, 'centripetal');
+  const vessel = new THREE.Mesh(new THREE.TubeGeometry(loop, 200, 0.12, 14, true), new THREE.MeshPhysicalMaterial({ color: 0xe58a84, transparent: true, opacity: 0.5, roughness: 0.25, clearcoat: 1, depthWrite: false }));
+  vessel.renderOrder = 4; g.add(vessel);
+  // 葡萄糖粒子（六角形）
+  const NG = 60;
+  const gluMesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.1, 0.1, 0.06, 6), new THREE.MeshStandardMaterial({ color: 0xfff2c4, emissive: 0xe0b040, emissiveIntensity: 0.45, roughness: 0.35 }), NG);
+  gluMesh.renderOrder = 5; g.add(gluMesh);
+  const glu = [];   // {mode:'flow'|'in'|'out', u, from, to, k}
+  const NH = 90;
+  const insMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.06, 12, 8), new THREE.MeshStandardMaterial({ color: 0x5b8fd9, emissive: 0x2d5ea8, emissiveIntensity: 0.8, roughness: 0.3 }), NH);
+  const gcgMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.06, 12, 8), new THREE.MeshStandardMaterial({ color: 0xd9605b, emissive: 0xa8302d, emissiveIntensity: 0.8, roughness: 0.3 }), NH);
+  g.add(insMesh, gcgMesh);
+  const hor = { ins: [], gcg: [] };
+  const LIVER = liver.position.clone(), PANC = V3(0.45, 2.15, 0.35);
+  // 肝醣顆粒（肝臟表面的小顆粒，數量 ∝ 存量）
+  const NGL = 70;
+  const glyMesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.045, 0), new THREE.MeshStandardMaterial({ color: 0xffe9a8, emissive: 0xb88a20, emissiveIntensity: 0.4 }), NGL);
+  g.add(glyMesh);
+  const glySpots = Array.from({ length: NGL }, () => { const a = rnd(0, TAU), b = rnd(-0.6, 0.9); return V3(Math.cos(a) * 1.15 * 0.85, b * 0.4, Math.abs(Math.sin(a)) * 0.72 * 0.9 + 0.02); });
+  // 血糖蹺蹺板
+  const saw = new THREE.Group(); saw.position.set(3.35, 0, 0.3); g.add(saw);
+  const fulcrum = new THREE.Mesh(new THREE.ConeGeometry(0.32, 0.6, 4), wood('#c99a6e', [1, 1])); fulcrum.position.y = 0.3; fulcrum.rotation.y = Math.PI / 4; saw.add(shadowed(fulcrum));
+  const plank = new THREE.Group(); plank.position.y = 0.66; saw.add(plank);
+  const pl = new THREE.Mesh(new RoundedBoxGeometry(2.7, 0.1, 0.5, 3, 0.04), wood('#dcb98f', [2, 0.5])); plank.add(shadowed(pl));
+  const insBox = new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.5, 0.5, 3, 0.12), new THREE.MeshStandardMaterial({ color: 0x5b8fd9, roughness: 0.4 })); insBox.position.set(-1.05, 0.3, 0); plank.add(shadowed(insBox));
+  const gcgBox = new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.5, 0.5, 3, 0.12), new THREE.MeshStandardMaterial({ color: 0xd9605b, roughness: 0.4 })); gcgBox.position.set(1.05, 0.3, 0); plank.add(shadowed(gcgBox));
+
+  const Ldia = addLabel('橫膈膜', 'gray'), Llung = addLabel('肺', ''), Lrib = addLabel('肋骨', 'gray');
+  const Lliver = addLabel('肝臟', 'red'), Lpanc = addLabel('胰臟', ''), Lgut = addLabel('小腸（吸收）', 'gray'), Lcell = addLabel('身體細胞（消耗）', 'gray');
+  const Lins = addLabel('胰島素', 'blue'), Lgcg = addLabel('升糖素', 'red'), Lsaw = addLabel('', '');
+
+  // ---- 狀態 ----
+  let sys = 'resp';
+  let b = 0.2, bTarget = 0.2, auto = true, autoT = 0, prevB = 0.2, dbdt = 0;
+  let G = 90, gut0 = 0, drain = 0, I = 0, C = 0, gly = 50, absorb = 0, use = 0, store = 0, release = 0, spawnT = 0, flash = 0;
+  const hist = []; let histT = 0, t = 0;
+  const dummy = new THREE.Object3D();
+  const tmp = V3();
+
+  const CAMS = {
+    resp: { pos: [0.8, 6.3, 15.2], target: [0, 4.9, 0], mk: 0.42 },
+    glu: { pos: [2.0, 3.3, 12.2], target: [1.3, 2.0, 0], mk: 0.6 },
+  };
+  function setSys(s) {
+    sys = s;
+    $('bResp').classList.toggle('on', s === 'resp'); $('bGlu').classList.toggle('on', s === 'glu');
+    $('subResp').hidden = s !== 'resp'; $('subGlu').hidden = s !== 'glu';
+    api.camera = CAMS[s];
+    diaMat.opacity = s === 'glu' ? 0.3 : 0.88;   // 看血糖時把橫膈膜調淡，肝臟才看得清楚
+    [Ldia, Llung, Lrib].forEach(L => { L.visible = s === 'resp'; });
+    [Lliver, Lpanc, Lgut, Lcell, Lsaw].forEach(L => { L.visible = s === 'glu'; });
+  }
+  function setBreath(v) { auto = false; bTarget = v; $('bAuto').classList.remove('on'); }
+
+  function updateBreath(dt) {
+    if (auto) { autoT += dt; bTarget = 0.5 - 0.5 * Math.cos(autoT * TAU / 5); }
+    b += (bTarget - b) * follow(dt, auto ? 12 : 2.2);
+    dbdt = lerp(dbdt, (b - prevB) / Math.max(dt, 1e-4), follow(dt, 8)); prevB = b;
+    ribs.forEach(R => { R.grp.rotation.x = -0.16 * b * (1 - R.i * 0.04); R.grp.scale.x = 1 + 0.07 * b; });
+    sternum.position.set(0, 5.55 + 0.2 * b, 1.06 + 0.12 * b); sternum.rotation.x = -0.12 - 0.04 * b;
+    const dome = lerp(1.05, 0.42, b);
+    const p = diaGeo.attributes.position;
+    for (let i = 0; i < p.count; i++) { const x = dBase[i * 3] * DRX * (1 + 0.04 * b), z = dBase[i * 3 + 2] * DRZ; p.setXYZ(i, x, domeAt(x, z, dome), z); }
+    p.needsUpdate = true; diaGeo.computeVertexNormals();
+    lungs.forEach(L => {
+      const bottom = domeAt(L.position.x, 0, dome) + 0.04;
+      const sy = (LUNG_TOP - bottom) / LUNG_H, sx = (1 + 0.08 * b) * (L.userData.side > 0 ? 0.92 : 1);
+      L.scale.set(sx, sy, 1 + 0.08 * b);
+    });
+    // 空氣沿氣管進出（速度 ∝ 胸腔體積變化率）
+    for (let i = 0; i < NA; i++) {
+      const a = air[i]; a.s = (a.s + dbdt * dt * 0.9 + 1) % 1;
+      const s = a.s;
+      if (s < 0.45) tmp.set(0, lerp(9.4, 7.62, s / 0.45), 0); else bronchi[a.side > 0 ? 0 : 1].getPointAt(Math.min(1, (s - 0.45) / 0.55), tmp);
+      dummy.position.copy(tmp).add(a.j);
+      dummy.scale.setScalar(Math.abs(dbdt) > 0.04 ? 1 : 0.001); dummy.updateMatrix(); airP.setMatrixAt(i, dummy.matrix);
+    }
+    airP.instanceMatrix.needsUpdate = true;
+    Ldia.pos.set(-1.95, RIM + 0.15, 0.6); Llung.pos.set(1.0, 6.2, 1.0); Lrib.pos.set(-1.95, 5.6, 0.6);
+  }
+
+  function updateGlucose(dt) {
+    absorb = 0.45 * gut0; gut0 = Math.max(0, gut0 - absorb * dt);
+    use = 0.5 * drain; drain = Math.max(0, drain - use * dt);
+    I += (clamp((G - 92) / 45, 0, 1) - I) * follow(dt, 0.55);   // 激素分泌有延遲：血糖先衝高、再被拉回
+    C += (clamp((88 - G) / 16, 0, 1) - C) * follow(dt, 0.55);
+    store = 0.9 * I * Math.max(0, G - 86) * (gly < 98 ? 1 : 0);
+    release = 0.9 * C * Math.max(0, 94 - G) * (gly > 3 ? 1 : 0);
+    const cellUp = 0.35 * I * Math.max(0, G - 88);              // 胰島素也促進身體細胞吸收葡萄糖（肝醣存滿時更明顯）
+    G += (absorb - use - cellUp - store + release + 0.05 * (90 - G)) * dt;
+    gly = clamp(gly + (store - release) * dt * 0.2, 0, 100);
+    liver.scale.setScalar(1 + (gly - 50) * 0.0034);
+    flash = Math.max(0, flash - dt * 2);
+    liverMat.emissive.setRGB(0.32 * flash, 0.16 * flash, 0.04 * flash);
+    // 胰臟發光（藍＝胰島素、紅＝升糖素）
+    const pulse = 0.6 + 0.4 * Math.sin(t * 6);
+    pancMat.emissive.setRGB(0.55 * C * pulse, 0.12 * (I + C) * pulse, 0.6 * I * pulse);
+    pancGlow.color.setRGB(C > I ? 0.95 : 0.36, 0.45, I >= C ? 0.95 : 0.36); pancGlow.intensity = 2.2 * Math.max(I, C) * pulse;
+    // 激素粒子：胰臟 → 肝臟
+    [['ins', I, insMesh], ['gcg', C, gcgMesh]].forEach(([key, lvl, mesh]) => {
+      const arr = hor[key];
+      if (lvl > 0.06 && Math.random() < lvl * 18 * dt && arr.length < NH) arr.push({ k: 0, off: V3(rnd(-0.15, 0.15), rnd(-0.1, 0.1), rnd(-0.1, 0.1)) });
+      for (let i = arr.length - 1; i >= 0; i--) { arr[i].k += dt / 1.4; if (arr[i].k >= 1) { arr.splice(i, 1); flash = 1; } }
+      for (let i = 0; i < NH; i++) {
+        const h = arr[i];
+        if (h) { const k = h.k, m = V3((PANC.x + LIVER.x) / 2, 3.25, 1.1); tmp.copy(PANC).multiplyScalar((1 - k) ** 2).addScaledVector(m, 2 * k * (1 - k)).addScaledVector(LIVER, k * k).add(h.off); dummy.position.copy(tmp); dummy.scale.setScalar(Math.sin(Math.PI * Math.min(1, k * 1.2)) * 0.8 + 0.4); }
+        else dummy.scale.setScalar(0.001);
+        dummy.updateMatrix(); mesh.setMatrixAt(i, dummy.matrix);
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+    });
+    // 葡萄糖粒子數 ∝ 血糖
+    const want = Math.round(G / 4.5), have = glu.filter(p => p.mode !== 'out').length;
+    spawnT -= dt;
+    if (spawnT <= 0) {
+      if (have < want && glu.length < NG) {
+        const src = absorb >= release ? GUT : LIVER, u = nearestU(src);
+        glu.push({ mode: 'in', from: src.clone(), u, k: 0 }); spawnT = 0.07;
+      } else if (have > want) {
+        const sink = store >= use + cellUp ? LIVER : CELLS;
+        let best = null, bd = 1e9;
+        glu.forEach(p => { if (p.mode === 'flow') { loop.getPointAt(p.u, tmp); const d = tmp.distanceTo(sink); if (d < bd) { bd = d; best = p; } } });
+        if (best) { best.mode = 'out'; best.k = 0; loop.getPointAt(best.u, tmp); best.from = tmp.clone(); best.to = sink.clone(); }
+        spawnT = 0.07;
+      }
+    }
+    for (let i = glu.length - 1; i >= 0; i--) {
+      const p = glu[i];
+      if (p.mode === 'flow') { p.u = (p.u + dt * 0.055) % 1; }
+      else { p.k += dt / 0.8; if (p.k >= 1) { if (p.mode === 'in') { p.mode = 'flow'; } else { glu.splice(i, 1); continue; } } }
+    }
+    for (let i = 0; i < NG; i++) {
+      const p = glu[i];
+      if (!p) { dummy.scale.setScalar(0.001); }
+      else {
+        if (p.mode === 'flow') loop.getPointAt(p.u, tmp);
+        else if (p.mode === 'in') { loop.getPointAt(p.u, dummy.position); tmp.copy(p.from).lerp(dummy.position, p.k); }
+        else tmp.copy(p.from).lerp(p.to, p.k);
+        dummy.position.copy(tmp); dummy.scale.setScalar(p.mode === 'out' ? 1 - p.k * 0.7 : 1);
+      }
+      dummy.rotation.set(Math.PI / 2, t + i, 0); dummy.updateMatrix(); gluMesh.setMatrixAt(i, dummy.matrix);
+    }
+    gluMesh.instanceMatrix.needsUpdate = true;
+    // 肝醣顆粒
+    const ng = Math.round(gly / 100 * NGL);
+    for (let i = 0; i < NGL; i++) {
+      dummy.position.copy(glySpots[i]).multiplyScalar(liver.scale.x).add(LIVER); dummy.scale.setScalar(i < ng ? 1 : 0.001); dummy.rotation.set(i, i * 2, 0);
+      dummy.updateMatrix(); glyMesh.setMatrixAt(i, dummy.matrix);
+    }
+    glyMesh.instanceMatrix.needsUpdate = true;
+    // 蹺蹺板：哪一種激素多，哪一邊就沉
+    plank.rotation.z = clamp((I - C) * 0.32, -0.3, 0.3);
+    insBox.scale.setScalar(0.7 + 0.6 * I); gcgBox.scale.setScalar(0.7 + 0.6 * C);
+    insBox.position.y = 0.05 + 0.25 * insBox.scale.y; gcgBox.position.y = 0.05 + 0.25 * gcgBox.scale.y;
+    // 標籤
+    Lliver.pos.set(-1.75, 3.05, 0.7); Lpanc.pos.set(1.0, 2.5, 0.9); Lgut.pos.set(-0.75, 0.62, 0.9); Lcell.pos.set(1.55, 0.5, 0.9);
+    tmp.set(-1.05, 0.95, 0); plank.localToWorld(tmp); Lins.pos.copy(tmp); Lins.visible = sys === 'glu';
+    tmp.set(1.05, 0.95, 0); plank.localToWorld(tmp); Lgcg.pos.copy(tmp); Lgcg.visible = sys === 'glu';
+    Lsaw.pos.set(3.35, -0.05, 0.9); Lsaw.el.textContent = `血糖 ${G.toFixed(0)}`;
+    // 面板
+    histT += dt; if (histT > 0.2) { histT = 0; hist.push(G); if (hist.length > 150) hist.shift(); drawMini(); }
+  }
+  function nearestU(p) { let best = 0, bd = 1e9; for (let k = 0; k < 80; k++) { loop.getPointAt(k / 80, tmp); const d = tmp.distanceTo(p); if (d < bd) { bd = d; best = k / 80; } } return best; }
+  function drawMini() {
+    const c = $('gChart'), x = c.getContext('2d'), W = c.width, H = c.height;
+    const Y = v => H - 14 - (v - 40) / 150 * (H - 28);
+    x.clearRect(0, 0, W, H);
+    x.fillStyle = 'rgba(191,224,185,.55)'; x.fillRect(0, Y(110), W, Y(70) - Y(110));
+    x.strokeStyle = '#a5c79f'; x.setLineDash([8, 6]); x.lineWidth = 2; x.beginPath(); x.moveTo(0, Y(90)); x.lineTo(W, Y(90)); x.stroke(); x.setLineDash([]);
+    x.fillStyle = '#6f8f6a'; x.font = '700 20px sans-serif'; x.fillText('90', 6, Y(90) - 6);
+    x.strokeStyle = '#a0714f'; x.lineWidth = 4; x.lineJoin = 'round'; x.beginPath();
+    hist.forEach((v, i) => { const px = W - (hist.length - 1 - i) * (W / 150); i ? x.lineTo(px, Y(v)) : x.moveTo(px, Y(v)); }); x.stroke();
+    x.fillStyle = '#8d7a70'; x.font = '600 18px sans-serif'; x.fillText('近 30 秒血糖變化', W - 160, 22);
+  }
+  function syncPanel() {
+    $('gVal').textContent = G.toFixed(0) + ' mg/dL';
+    $('gVal').style.color = G > 110 ? '#c07a12' : G < 70 ? '#c0453f' : '#3f8a55';
+    $('gIns').textContent = I > 0.05 ? '分泌中 ' + '●'.repeat(Math.ceil(I * 5)) : '—';
+    $('gGcg').textContent = C > 0.05 ? '分泌中 ' + '●'.repeat(Math.ceil(C * 5)) : '—';
+    $('gGly').textContent = gly.toFixed(0) + ' %';
+    $('gNeedle').style.left = clamp((G - 40) / 150 * 100, 0, 100) + '%';
+    const vol = 100 + 25 * b, P = 760 - 2.4 * dbdt;
+    $('hRib').textContent = dbdt > 0.04 ? '上舉、向外 ↑' : dbdt < -0.04 ? '下降、向內 ↓' : '靜止';
+    $('hDia').textContent = dbdt > 0.04 ? '收縮、下降 ↓' : dbdt < -0.04 ? '舒張、上升 ↑' : '靜止';
+    $('hVol').textContent = vol.toFixed(0) + ' %';
+    $('hP').textContent = P.toFixed(1) + ' mmHg' + (P < 759.9 ? '（<大氣壓）' : P > 760.1 ? '（>大氣壓）' : '');
+  }
+
+  const api = {
+    camera: CAMS.resp,
+    act(a) {
+      if (a === 'sysResp' || a === 'sysGlu') { setSys(a === 'sysResp' ? 'resp' : 'glu'); resetView(true); hideBanner(); }
+      if (a === 'inhale') { setBreath(1); banner('吸氣：肋間肌使肋骨上舉、橫膈膜收縮下降 → 胸腔變大、肺內壓下降 → 空氣進入肺', 4500); }
+      if (a === 'exhale') { setBreath(0); banner('呼氣：肋骨下降、橫膈膜舒張上升 → 胸腔變小、肺內壓上升 → 空氣排出', 4500); }
+      if (a === 'auto') { auto = !auto; $('bAuto').classList.toggle('on', auto); if (auto) autoT = Math.acos(clamp(1 - 2 * b, -1, 1)) / TAU * 5; }
+      if (a === 'meal') { if (sys !== 'glu') { setSys('glu'); resetView(true); } gut0 += 145; banner('🍱 剛吃飽：小腸吸收葡萄糖 → 血糖上升 → 胰臟分泌<b style="color:#3d6fbf">胰島素</b>（藍）→ 肝臟把葡萄糖存成肝醣', 5500); }
+      if (a === 'fast') { if (sys !== 'glu') { setSys('glu'); resetView(true); } drain += 78; banner('🏃 飢餓／運動：細胞消耗葡萄糖 → 血糖下降 → 胰臟分泌<b style="color:#c0453f">升糖素</b>（紅）→ 肝醣分解成葡萄糖回到血液', 5500); }
+    },
+    update(dt) {
+      t += dt;
+      updateBreath(dt);
+      updateGlucose(dt);
+      syncPanel();
+    },
+    hud() {
+      if (sys === 'resp') {
+        const P = 760 - 2.4 * dbdt;
+        const ph = dbdt > 0.04 ? '<span class="bl">吸氣中</span>：胸腔變大 → 肺內壓 ' + P.toFixed(1) + ' mmHg < 大氣壓 → 空氣進入'
+          : dbdt < -0.04 ? '<span class="rd">呼氣中</span>：胸腔變小 → 肺內壓 ' + P.toFixed(1) + ' mmHg > 大氣壓 → 空氣排出' : '暫停：肺內壓 = 大氣壓 760 mmHg';
+        return `<div class="big">${ph}</div><div class="sm">肋骨 ${dbdt > 0.04 ? '上舉' : dbdt < -0.04 ? '下降' : '—'} ・ 橫膈膜 ${dbdt > 0.04 ? '下降（收縮）' : dbdt < -0.04 ? '上升（舒張）' : '—'} ・ 胸腔體積 ${(100 + 25 * b).toFixed(0)}%</div>`;
+      }
+      const arrow = G > 110 ? '<span class="hl">偏高 ↑</span>' : G < 70 ? '<span class="rd">偏低 ↓</span>' : '<span class="gr">正常</span>';
+      const hz = I > 0.08 ? '<span class="bl">胰島素分泌中</span> → 肝臟合成肝醣' : C > 0.08 ? '<span class="rd">升糖素分泌中</span> → 肝醣分解' : '激素平衡中';
+      return `<div class="big">血糖 ${G.toFixed(0)} mg/dL ${arrow}</div><div class="sm">${hz} ・ 肝醣 ${gly.toFixed(0)}%</div>`;
+    },
+    state: () => ({ sys, b, dbdt, G, I, C, gly, glu: glu.length, lungSy: lungs[0].scale.y }),
+    dispose() { alvTex.dispose(); }
+  };
+  for (let i = 0; i < 20; i++) glu.push({ mode: 'flow', u: i / 20 });
+  setSys('resp');
+  return api;
+};
+
+/* =========================================================
+   切換（清除資源）、控制、主迴圈
+   ========================================================= */
+const root = new THREE.Group(); scene.add(root);
+let cur = null, curKey = 'depth';
+function disposeGroup(grp) {
+  grp.traverse(o => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { m.map?.dispose(); m.alphaMap?.dispose(); m.bumpMap?.dispose(); m.dispose(); });
+  });
+}
+function build(key) {
+  if (cur) { cur.dispose?.(); root.remove(cur.group); disposeGroup(cur.group); removeLabels(cur.labels); }
+  const group = new THREE.Group(); root.add(group);
+  buildLabels = [];
+  const exp = BUILD[key](group);
+  exp.group = group; exp.labels = buildLabels; buildLabels = null;
+  cur = exp; curKey = key;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === key));
+  document.querySelectorAll('.section').forEach(s => { s.hidden = s.dataset.tab !== key; });
+  hideBanner();
+  try { history.replaceState(null, '', '#' + key); } catch (e) {}
+  resetView(true);
+}
+const panel = $('panel');
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => build(b.dataset.tab)));
+panel.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b && cur?.act) cur.act(b.dataset.act); });
+// 滑桿：input 事件只記錄目標值，真正的動畫在 rAF 裡用 lerp 逼近
+panel.addEventListener('input', e => { if (e.target.matches('input[type=range]')) { paint(e.target); cur?.input?.(e.target.id, Number(e.target.value)); } });
+// 觸控防呆：面板上的手勢不會傳到 3D 畫面
+['pointerdown', 'pointermove', 'pointerup', 'touchstart', 'touchmove', 'wheel'].forEach(ev => panel.addEventListener(ev, e => e.stopPropagation(), { passive: true }));
+$('viewBtn').addEventListener('click', () => resetView(true));
+$('collapse').addEventListener('click', () => { const c = panel.classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; });
+const isMobile = () => window.matchMedia('(max-width: 767px)').matches;
+function setSheet(open) { panel.classList.toggle('open', open); $('fab').classList.toggle('hide', open); }
+$('fab').addEventListener('click', () => setSheet(true));
+$('sheetClose').addEventListener('click', () => setSheet(false));
+window.addEventListener('hashchange', () => { const k = location.hash.slice(1); if (BUILD[k] && k !== curKey) build(k); });
+
+function resetView(animated = false) {
+  if (!cur) return;
+  const c = cur.camera;
+  const [p, t] = framed(c.pos, c.target, c.mk);
+  controls.maxDistance = Math.max(60, p.distanceTo(t) * 1.5);
+  if (animated) flyTo(p, t, 1.0);
+  else { camera.position.copy(p); controls.target.copy(t); controls.update(); }
+}
+function applyViewOffset() {
+  const de = document.documentElement, w = de.clientWidth, h = de.clientHeight;
+  let ox = 0, oy = 0;
+  const hud = $('hud'), hb = hud.innerHTML ? hud.getBoundingClientRect().bottom : 0;
+  if (isMobile()) {
+    const bottom = panel.classList.contains('open') ? Math.max(0, h - panel.getBoundingClientRect().top) : 0;
+    oy = Math.round((bottom - hb) / 2);
+  } else {
+    if (!panel.classList.contains('collapsed')) ox = -Math.round(panel.getBoundingClientRect().right / 2);
+    oy = -Math.round(hb * 0.25);
+  }
+  const key = `${w}x${h}:${ox}:${oy}`;
+  if (camera.userData.k === key) return;
+  camera.userData.k = key;
+  if (ox || oy) camera.setViewOffset(w, h, ox, oy, w, h); else camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+}
+function resize() {
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.fov = camera.aspect < 1 ? 50 : 40;
+  camera.userData.k = '';
+  camera.updateProjectionMatrix();
+  cur?.layout?.();
+  resetView(false);
+}
+window.addEventListener('resize', resize);
+
+let hudT = 0;
+const clock = new THREE.Clock();
+function frame(dt) {
+  cur.update(dt);
+  hudT -= dt;
+  if (hudT <= 0) { hudT = 0.1; const html = cur.hud?.() || ''; if ($('hud').innerHTML !== html) $('hud').innerHTML = html; }
+  updateFly(dt);
+  controls.update();
+  applyViewOffset();
+  placeLabels();
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.cu = { build, frame, get cur() { return cur; } };
+
+resize();
+build(BUILD[location.hash.slice(1)] ? location.hash.slice(1) : 'depth');
+fly = null; resetView(false);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__cuReady) document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+}, 6000);
+</script>
+</body>
+</html>
