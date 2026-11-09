@@ -352,8 +352,8 @@ const COURSES = [
             k: ['橫波與縱波', '波長、頻率、波速', '聲音的產生與傳播', '頻率與音調', '振幅與響度', '聲速與回聲', '共振'] },
           { title: '光', sum: '光的直進、反射與折射，面鏡、透鏡成像與顏色。', labs: [{ t: '光的反射、折射與色光', u: 'optics-lab.html' }, { t: '光的直進與影子', u: 'shadow-lab.html' }, { t: '光的折射與視深', u: 'refraction-lab.html' }],
             k: ['光的直進與光速', '光的反射', '平面鏡與曲面鏡', '光的折射', '凸透鏡與凹透鏡', '透鏡的應用', '色光與顏色'] },
-          { title: '溫度與熱', sum: '溫度與溫標，熱量、比熱與熱平衡，熱的傳播與對物質的影響。', labs: [{ t: '溫度與熱', u: 'heat-lab.html' }, { t: '比熱雙爐對決', u: 'lab8a-classics.html#heat' }],
-            k: ['溫度計與溫標', '熱量', '比熱', '熱平衡', '傳導、對流、輻射', '熱脹冷縮', '三態變化'] },
+          { title: '溫度與熱', sum: '溫度與溫標，熱量、比熱與熱平衡，熱的傳播與對物質的影響。', labs: [{ t: '溫度與熱', u: 'heat-lab.html' }, { t: '比熱雙爐對決', u: 'lab8a-classics.html#heat' }, { t: '雙金屬片警報器', u: 'expansion-lab.html#bimetal' }, { t: '水的 4℃ 反常膨脹', u: 'expansion-lab.html#water4' }, { t: '三態變化與昇華', u: 'expansion-lab.html#sublime' }],
+            k: ['溫度計與溫標', '熱量', '比熱', '熱平衡', '傳導、對流、輻射', '熱脹冷縮', '雙金屬片', '水的反常膨脹', '三態變化', '昇華'] },
           { title: '探索物質組成', sum: '元素與化合物、原子的結構、週期表、分子與化學式。', labs: [{ t: '探索物質組成', u: 'matter-lab.html' }],
             k: ['元素與化合物', '金屬與非金屬', '元素符號', '原子說', '原子的結構', '元素週期表', '分子與化學式'] }
         ]
@@ -450,7 +450,7 @@ function renderStats() {
   const stats = [
     { n: ready, label: '個已上線單元' },
     { n: pages, label: '座 3D 互動實驗室' },
-    { n: '196', label: '題會考題型自我檢測' }
+    { n: '201', label: '題會考題型自我檢測' }
   ];
   document.getElementById('heroStats').innerHTML = stats.map(s => `<div class="stat"><b>${s.n}</b><span>${s.label}</span></div>`).join('');
 }
