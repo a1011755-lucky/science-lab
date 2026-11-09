@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>內分泌與血糖恆定實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+  .tabs.three .tab { font-size: .72rem; padding: 9px 2px; }
+  .objs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .objs.three { grid-template-columns: repeat(3, 1fr); }
+  .objs .btn { padding: 8px 4px; font-size: .78rem; margin-top: 0; }
+  .objs .btn.yes { background: #e3f1e6; color: #2e6b3f; } .objs .btn.no { background: #fde5e2; color: #a5311f; }
+  .orgcard { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin-top: 8px; font-size: .8rem; line-height: 1.65; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
+  .orgcard:empty { display: none; }
+  .orgcard h4 { font-size: .98rem; font-weight: 900; margin-bottom: 2px; }
+  .orgcard .pill { display: inline-block; font-size: .72rem; font-weight: 800; color: #fff; background: #7b5ea7; border-radius: 999px; padding: 1px 9px; margin: 2px 4px 2px 0; }
+  .orgcard i.sci { font-family: Georgia, serif; }
+  .orgcard table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .orgcard td, .orgcard th { padding: 2px 4px; border-bottom: 1px solid #efe6d8; font-size: .74rem; text-align: left; }
+  .orgcard tr.same { background: #e3f1e6; } .orgcard tr.diff td { color: #a8998a; }
+  .tag.big { font-size: .86rem; }
+  .stat table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: .74rem; }
+  .stat td, .stat th { padding: 3px 3px; border-bottom: 1px solid #efe6d8; text-align: left; white-space: nowrap; }
+  .stat tr.same { background: #e3f1e6; }
+  .tip { background: #fff3c4; color: #7a5300; border: 1.5px solid #e0b000; border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .82rem; font-weight: 800; line-height: 1.6; animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  .tip[hidden], .mapbox[hidden], .btn[hidden] { display: none; }
+  .ticks span:first-child { text-align: left; } .ticks span:last-child { text-align: right; }
+  .meter { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: .74rem; font-weight: 800; color: var(--ink-soft); }
+  .meter i { flex: 1; height: 16px; border-radius: 999px; background: linear-gradient(90deg, #f7efe6, #8b2e0f); position: relative; }
+  .meter i::after { content: ''; position: absolute; top: -4px; width: 6px; height: 24px; border-radius: 3px; background: var(--ink); left: var(--v, 50%); transform: translateX(-50%); transition: left .2s; }
+  .cap .eq { display: inline-flex; align-items: center; gap: 6px; font-size: 1.05em; font-weight: 900; }
+  .cap .arrs { display: inline-flex; flex-direction: column; line-height: .9; font-size: 1.1em; }
+  .cap .arrs span { opacity: .28; transition: opacity .3s, color .3s, transform .3s; }
+  .cap .arrs span.on { opacity: 1; color: #c62828; transform: scale(1.35); }
+  .cap .brown { color: #8b2e0f; }
+  .tabs.two { grid-template-columns: 1fr 1fr; } .tabs.two .tab { font-size: .8rem; }
+  .objs .btn small { display: block; font-size: .66rem; opacity: .8; } .objs .btn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; }
+  table.cmp { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: .76rem; background: rgba(255,255,255,.8); border-radius: 12px; overflow: hidden; }
+  table.cmp th, table.cmp td { padding: 4px 6px; border-bottom: 1px solid #efe6d8; text-align: center; } table.cmp th { text-align: left; font-weight: 800; } table.cmp thead th { text-align: center; background: rgba(161,103,74,.12); }
+  .tip.cool { background: #e3f0fb; color: #1e5a8c; border-color: #5c9fd6; } .tip.bad { background: #fde5e2; color: #a5311f; border-color: #e53935; }
+  .tag.grn { background: #2e7d32; color: #fff; } .tag.org { background: #ef6c00; color: #fff; }
+  #suMeter i { background: linear-gradient(90deg, #1e88e5 0%, #1e88e5 18%, #43a047 19%, #43a047 44%, #e53935 45%, #e53935 100%); }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g7">‹ 課程總覽</a>
+  <div class="title">內分泌與血糖恆定實驗室</div>
+  <div class="body">
+    <div class="tabs two">
+      <button class="tab on" data-tab="endo">🧍 內分泌系統<small>激素由血液運送</small></button>
+      <button class="tab" data-tab="sugar">🍬 血糖恆定<small>胰臟 × 肝臟</small></button>
+    </div>
+
+    <!-- Tab 1：內分泌與血液運輸 -->
+    <section class="sec" data-tab="endo">
+      <div class="concept" style="--cc:#9b7bc4"><div class="ct">內分泌系統</div><div class="cd">內分泌腺<b>沒有導管</b>，分泌的<b>激素</b>直接進入微血管，<br>由<b>血液</b>運送到全身的靶器官</div></div>
+      <label class="lab">點選內分泌腺</label>
+      <div class="objs" id="enBtns"></div>
+      <div class="orgcard" id="enCard"></div>
+      <div class="tip" id="enTip" hidden>💡 內分泌腺無導管，激素必須直接進入微血管，由血液運送至全身靶細胞！</div>
+      <table class="cmp"><thead><tr><th></th><th>神經系統</th><th>內分泌系統</th></tr></thead><tbody>
+        <tr><th>傳遞方式</th><td>神經元傳導訊息</td><td>激素由<b>血液</b>運送</td></tr>
+        <tr><th>反應速度</th><td>快</td><td>較慢</td></tr>
+        <tr><th>作用時間</th><td>短暫</td><td>較持久</td></tr>
+      </tbody></table>
+    </section>
+
+    <!-- Tab 2：血糖恆定 -->
+    <section class="sec" data-tab="sugar" hidden>
+      <div class="concept" style="--cc:#d9453f"><div class="ct">血糖的恆定</div><div class="cd"><b class="b">胰島素</b>：降低血糖（葡萄糖 → 肝醣）<br><b class="r">升糖素</b>：提高血糖（肝醣 → 葡萄糖）</div></div>
+      <div class="row2">
+        <button class="btn primary" id="suHigh">🍱 飯後高血糖</button>
+        <button class="btn primary" id="suLow">🏃 飢餓低血糖</button>
+      </div>
+      <button class="btn" id="suReset">↩️ 回到正常</button>
+      <div class="meter" id="suMeter"><span>血糖</span><i></i><span id="suVal">90</span></div>
+      <div class="stat" id="suStat"></div>
+      <div class="tip" id="suTip" hidden></div>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'endo', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+/* =========================================================
+   共用小工具
+   ========================================================= */
+const lerp = (a, b, k) => a + (b - a) * k;
+const sphere = (r, mat, seg = 24) => new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg * 0.6 | 0)), mat);
+const cyl = (r1, r2, h, mat, seg = 32, open = false) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg, 1, open), mat);
+const rbox = (w, h, d, mat, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001)), mat);
+const glassM = (op = 0.16) => new THREE.MeshPhysicalMaterial({ color: 0xd8ecf4, emissive: 0x9fb8c4, emissiveIntensity: 0.12, sheen: 1, sheenColor: 0xffffff, transparent: true, opacity: op, roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0.05, side: THREE.DoubleSide, depthWrite: false });
+const shellM = (c, op) => new THREE.MeshPhysicalMaterial({ color: c, transparent: true, opacity: op, roughness: 0.2, clearcoat: 0.6, side: THREE.DoubleSide, depthWrite: false });
+let rs = 4242;
+const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+const glowSprite = (rgb, s = 0.5) => { const g = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(rgb), transparent: true, depthWrite: false })); g.scale.setScalar(s); return g; };
+const ease = k => 1 - Math.exp(-k);
+function makeArrow(color) {
+  const g = new THREE.Group(); const m = clay(color, { emissive: color, emissiveIntensity: 0.25 });
+  const shaft = cyl(0.07, 0.07, 1, m, 16); const head = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.34, 20), m);
+  g.add(shaft, head); shadowed(g);
+  g.setLen = L => { L = Math.max(0.05, L); shaft.scale.y = L; shaft.position.y = L / 2; head.position.y = L + 0.17; };
+  g.setLen(1); return g;
+}
+/** 畫布貼圖面板（碼錶螢幕等） */
+function canvasPanel(w, h, pxW = 512) {
+  const c = document.createElement('canvas'); c.width = pxW; c.height = Math.round(pxW * h / w);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t, toneMapped: false }));
+  return { c, g: c.getContext('2d'), t, m };
+}
+let onTabChange = () => {};
+
+function poly(pts) { const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + pts[i].distanceTo(pts[i - 1])); return { pts, cum, len: cum[cum.length - 1] }; }
+function polyAt(P, u, out) {
+  const d = u * P.len, c = P.cum; let lo = 0, hi = c.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (c[m] <= d) lo = m; else hi = m; }
+  const k = (d - c[lo]) / Math.max(1e-9, c[hi] - c[lo]); return out.copy(P.pts[lo]).lerp(P.pts[hi], k);
+}
+/* =========================================================
+   共用：半透明人體展示殼、粉彩器官、體內血管網
+   ========================================================= */
+const organM = (c, o = {}) => new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.8, metalness: 0, sheen: 0.4, sheenColor: 0xffffff, clearcoat: 0.08, emissive: c, emissiveIntensity: 0, ...o });
+const BODY = new THREE.Group(); scene.add(BODY);
+// 展示座
+const ped = shadowed(cyl(1.25, 1.35, 0.22, clay(0xc8a27a), 48)); ped.position.y = 0.11; BODY.add(ped);
+const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 1.15, 20), new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.9, roughness: 0.1, thickness: 0.3, transparent: true, opacity: 0.6 })); pole.position.y = 0.8; BODY.add(pole);
+// 人體軀幹＋頭部輪廓（THREE.Shape → 擠壓成圓潤的 3D 殼）
+const torsoShape = (() => {
+  const R = [V2(0.0, 1.26), V2(0.72, 1.32), V2(1.04, 1.86), V2(0.86, 2.62), V2(1.0, 3.3), V2(1.02, 3.72), V2(1.27, 3.98), V2(1.24, 4.42), V2(0.92, 4.67), V2(0.3, 4.86), V2(0.24, 5.12)];
+  const head = []; for (let a = -65; a <= 245; a += 12) { const t = a * Math.PI / 180; head.push(V2(Math.cos(t) * 0.56, 5.62 + Math.sin(t) * 0.6)); }
+  const L = R.slice(1).reverse().map(p => V2(-p.x, p.y));
+  const pts = [...R, ...head, ...L];
+  const s = new THREE.Shape(); s.moveTo(pts[0].x, pts[0].y); s.splineThru(pts.slice(1)); s.closePath(); return s;
+})();
+const torsoGeo = new THREE.ExtrudeGeometry(torsoShape, { depth: 0.7, bevelEnabled: true, bevelThickness: 0.42, bevelSize: 0.22, bevelSegments: 10, curveSegments: 60 });
+torsoGeo.translate(0, 0, -0.35);
+const bodyShellM = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.9, opacity: 0.3, transparent: true, roughness: 0.35, thickness: 0.8, ior: 1.25, depthWrite: false, side: THREE.FrontSide, clearcoat: 0.6, clearcoatRoughness: 0.4 });
+const shell = new THREE.Mesh(torsoGeo, bodyShellM); shell.renderOrder = 20; BODY.add(shell);
+const rim = new THREE.LineSegments(new THREE.EdgesGeometry(torsoGeo, 50), new THREE.LineBasicMaterial({ color: 0xd8c3a5, transparent: true, opacity: 0.35, depthWrite: false })); BODY.add(rim);
+/** 平面輪廓 → 圓角擠壓的器官 */
+function extruded(shape, depth, bevel, mat, opts = {}) { const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel * 0.9, bevelSegments: 5, curveSegments: 32, ...opts }); g.translate(0, 0, -depth / 2); g.computeVertexNormals(); const m = new THREE.Mesh(g, mat); m.castShadow = true; return m; }
+function polarShape(fx, fy, n = 72) { const s = new THREE.Shape(); for (let i = 0; i <= n; i++) { const t = i / n * TAU; i ? s.lineTo(fx(t), fy(t)) : s.moveTo(fx(t), fy(t)); } return s; }
+// 大腦（定位用，淡淡的）
+const brain = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 20), organM(0xe9dcef, { transparent: true, opacity: 0.55, depthWrite: false })); brain.scale.set(0.43, 0.33, 0.4); brain.position.set(0, 5.78, 0); BODY.add(brain);
+// 腦垂腺：大腦底部的小豆子＋細柄
+const pitM = organM(0xc3a6e0);
+const PIT = new THREE.Group(); PIT.position.set(0, 5.36, 0.06); BODY.add(PIT);
+const pitBody = new THREE.Mesh(new THREE.SphereGeometry(0.075, 20, 14), pitM); pitBody.scale.set(1.25, 0.85, 1); PIT.add(pitBody);
+const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.025, 0.12, 10), pitM); stalk.position.y = 0.09; PIT.add(stalk);
+// 氣管＋蝴蝶狀甲狀腺
+const trach = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.85, 20, 1, true), organM(0xeee3d6, { side: THREE.DoubleSide })); trach.position.set(0, 4.85, 0.08); BODY.add(trach);
+for (let i = 0; i < 7; i++) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.078, 0.012, 6, 20), organM(0xe2d4c2)); r.rotation.x = Math.PI / 2; r.position.set(0, 4.5 + i * 0.11, 0.08); BODY.add(r); }
+const thyM = organM(0xf6b98a);
+const thy = extruded(polarShape(t => 0.21 * Math.cos(t), t => 0.12 * Math.sin(t) * (0.32 + 0.68 * Math.abs(Math.cos(t))) - 0.02 * Math.cos(2 * t)), 0.05, 0.035, thyM);
+thy.position.set(0, 4.92, 0.19); BODY.add(thy);
+// 心臟（血液循環的中心）
+const heartShape = (() => { const s = new THREE.Shape(); s.moveTo(0, -0.2); s.bezierCurveTo(-0.05, -0.12, -0.2, -0.05, -0.2, 0.06); s.bezierCurveTo(-0.2, 0.16, -0.08, 0.2, 0, 0.1); s.bezierCurveTo(0.08, 0.2, 0.2, 0.16, 0.2, 0.06); s.bezierCurveTo(0.2, -0.05, 0.05, -0.12, 0, -0.2); return s; })();
+const heart = extruded(heartShape, 0.12, 0.06, organM(0xe39a96)); heart.position.set(0.14, 4.05, 0.12); heart.rotation.z = -0.35; BODY.add(heart);
+// 肝臟：右上腹的楔形（右葉厚、左葉薄）
+const liverShape = (() => { const s = new THREE.Shape(); s.moveTo(-0.92, -0.22); s.quadraticCurveTo(-1.02, 0.36, -0.42, 0.4); s.quadraticCurveTo(0.2, 0.42, 0.66, 0.14); s.quadraticCurveTo(0.32, -0.02, -0.08, -0.12); s.quadraticCurveTo(-0.5, -0.33, -0.92, -0.22); return s; })();
+const liverGeo = new THREE.ExtrudeGeometry(liverShape, { depth: 0.42, bevelEnabled: true, bevelThickness: 0.12, bevelSize: 0.1, bevelSegments: 6, curveSegments: 32 });
+liverGeo.translate(0, 0, -0.21);
+{ const p = liverGeo.attributes.position; for (let i = 0; i < p.count; i++) { const k = lerp(1, 0.3, clamp((p.getX(i) + 0.95) / 1.6, 0, 1)); p.setZ(i, p.getZ(i) * k); } liverGeo.computeVertexNormals(); }
+const liverM = organM(0xa4504a);
+const LIV_S = 0.8;
+const liver = new THREE.Mesh(liverGeo, liverM); liver.position.set(-0.36, 3.56, 0.04); liver.scale.setScalar(LIV_S); liver.castShadow = true; BODY.add(liver);
+// 腎臟（豆子形）＋腎上腺（頂端的新月帽）
+const kidM = organM(0xd9a59a), adrM = organM(0xf6d55c);
+const kidneys = [], adrs = [];
+[-1, 1].forEach(sd => {
+  const tm = sd > 0 ? Math.PI : 0, wrapA = d => Math.atan2(Math.sin(d), Math.cos(d));
+  const k = extruded(polarShape(t => 0.15 * Math.cos(t) + sd * 0.07 * Math.exp(-Math.pow(wrapA(t - tm), 2) / 0.18), t => 0.23 * Math.sin(t)), 0.12, 0.06, kidM);
+  k.position.set(sd * 0.45, 2.55, -0.22); k.rotation.z = sd * 0.18; BODY.add(k); kidneys.push(k);
+  const cap = (() => { const s = new THREE.Shape(); s.moveTo(-0.14, 0); s.quadraticCurveTo(0, 0.07, 0.14, 0); s.quadraticCurveTo(0.1, 0.1, 0.03, 0.18); s.quadraticCurveTo(-0.06, 0.16, -0.14, 0); return s; })();
+  const a = extruded(cap, 0.08, 0.03, adrM); a.position.set(sd * 0.47, 2.76, -0.2); a.rotation.z = sd * 0.18; BODY.add(a); adrs.push(a);
+});
+// 胰臟：長條葉片／羽毛狀（頭在身體右側＝畫面左、尾巴伸向身體左側）
+const panShape = (() => {
+  const N = 40, top = [], bot = [];
+  for (let i = 0; i <= N; i++) { const x = i / N, w = 0.1 * (1 - 0.55 * x) + 0.07 * Math.exp(-x * x / 0.02), wig = 0.012 * Math.sin(x * 46); top.push(V2(x * 0.95, w * 0.6 + wig)); bot.push(V2(x * 0.95, -w * 0.4 - wig * 0.6)); }
+  const s = new THREE.Shape(); s.moveTo(top[0].x, top[0].y); top.slice(1).forEach(p => s.lineTo(p.x, p.y)); bot.reverse().forEach(p => s.lineTo(p.x, p.y)); s.closePath(); return s;
+})();
+const panM = organM(0xf4b6c2);
+const pan = extruded(panShape, 0.09, 0.04, panM); pan.position.set(-0.32, 2.98, 0.18); pan.rotation.z = 0.22; BODY.add(pan);
+// 性腺：骨盆腔的橢圓形構造
+const sexM = organM(0xa9c4ec);
+const gonads = [-1, 1].map(sd => { const g = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), sexM); g.scale.set(0.11, 0.15, 0.09); g.position.set(sd * 0.36, 1.68, 0.1); g.rotation.z = sd * 0.4; BODY.add(g); return g; });
+
+/* ----- 體內血管網（動脈＝粉紅、靜脈＝淡藍） ----- */
+const P = {
+  HEART: V3(0.14, 4.05, 0.12), ARCH: V3(0.02, 4.42, 0.0), NECK_A: V3(0.14, 5.0, 0.02), HEAD_A: V3(0.12, 5.55, 0.02),
+  SH_L: V3(1.02, 4.32, 0), ARM_L: V3(1.12, 3.9, 0), SH_R: V3(-1.02, 4.32, 0), ARM_R: V3(-1.12, 3.9, 0),
+  DESC: V3(0.06, 4.15, -0.16), AO_M: V3(0.06, 3.35, -0.16), AO_K: V3(0.06, 2.6, -0.16), AO_L: V3(0.06, 2.45, -0.16), BIF: V3(0.0, 1.9, -0.05),
+  LEG_L: V3(0.6, 1.36, 0), LEG_R: V3(-0.6, 1.36, 0), LIV_A: V3(-0.6, 3.52, 0.0),
+  VJ: V3(-0.13, 5.02, 0.04), SVC: V3(-0.13, 4.45, 0.04), IVC_H: V3(-0.13, 3.62, -0.06), IVC_M: V3(-0.13, 3.02, -0.12), IVC_L: V3(-0.13, 2.45, -0.12), IVC_B: V3(-0.08, 1.92, -0.04),
+  PORTAL: V3(-0.12, 3.12, 0.14), LIVER: V3(-0.55, 3.56, 0.05), HEP_V: V3(-0.22, 3.72, 0.0)
+};
+const ART_ROUTES = {
+  head: ['HEART', 'ARCH', 'NECK_A', 'HEAD_A'],
+  armL: ['HEART', 'ARCH', V3(0.5, 4.45, 0), 'SH_L', 'ARM_L'], armR: ['HEART', 'ARCH', V3(-0.5, 4.45, 0), 'SH_R', 'ARM_R'],
+  kidL: ['HEART', 'ARCH', 'DESC', 'AO_M', 'AO_K', V3(0.36, 2.58, -0.2)], kidR: ['HEART', 'ARCH', 'DESC', 'AO_M', 'AO_K', V3(-0.36, 2.58, -0.2)],
+  liver: ['HEART', 'ARCH', 'DESC', 'AO_M', V3(-0.2, 3.35, -0.02), 'LIV_A'],
+  legL: ['HEART', 'ARCH', 'DESC', 'AO_M', 'AO_K', 'AO_L', 'BIF', 'LEG_L'], legR: ['HEART', 'ARCH', 'DESC', 'AO_M', 'AO_K', 'AO_L', 'BIF', 'LEG_R'],
+  gonL: ['HEART', 'ARCH', 'DESC', 'AO_M', 'AO_K', 'AO_L', 'BIF', V3(0.34, 1.7, 0.06)], gonR: ['HEART', 'ARCH', 'DESC', 'AO_M', 'AO_K', 'AO_L', 'BIF', V3(-0.34, 1.7, 0.06)]
+};
+const VEIN_ROUTES = {
+  head: ['HEAD_A', V3(-0.12, 5.4, 0.04), 'VJ', 'SVC', 'HEART'],
+  kid: [V3(-0.36, 2.6, -0.2), V3(-0.15, 2.72, -0.14), 'IVC_M', 'IVC_H', 'HEART'], kid2: [V3(0.36, 2.6, -0.2), V3(0.1, 2.72, -0.16), 'IVC_M'],
+  legs: ['LEG_L', 'IVC_B', 'IVC_L', 'IVC_M'], legs2: ['LEG_R', 'IVC_B'], arms: ['ARM_R', 'SH_R', 'SVC'], arms2: ['ARM_L', 'SH_L', V3(0.4, 4.5, 0.04), 'SVC'],
+  portal: [V3(0.4, 3.05, 0.16), 'PORTAL', 'LIVER'], hep: ['LIVER', 'HEP_V', 'IVC_H']
+};
+const pt = k => (typeof k === 'string' ? P[k] : k).clone();
+const routePts = r => r.map(pt);
+const artM = new THREE.MeshPhysicalMaterial({ color: 0xe88f8f, roughness: 0.6, transparent: true, opacity: 0.5, depthWrite: false });
+const veinM = new THREE.MeshPhysicalMaterial({ color: 0x8fb0e0, roughness: 0.6, transparent: true, opacity: 0.5, depthWrite: false });
+const capM = new THREE.MeshBasicMaterial({ color: 0xe8a0a0, transparent: true, opacity: 0.22, depthWrite: false });
+function vessel(pts, mat, r) { const c = new THREE.CatmullRomCurve3(pts, false, 'centripetal'); const m = new THREE.Mesh(new THREE.TubeGeometry(c, Math.max(12, pts.length * 14), r, 8), mat); m.renderOrder = 5; BODY.add(m); return m; }
+Object.values(ART_ROUTES).forEach(r => vessel(routePts(r), artM, 0.028));
+Object.values(VEIN_ROUTES).forEach(r => vessel(routePts(r), veinM, 0.03));
+// 微血管：從主幹分出的細枝，若隱若現
+[[P.NECK_A, V3(0.3, 5.15, 0.1)], [P.SH_L, V3(0.8, 4.0, 0.15)], [P.SH_R, V3(-0.8, 4.0, 0.15)], [P.AO_M, V3(0.55, 3.55, 0.1)], [P.AO_M, V3(-0.55, 3.0, 0.15)], [P.AO_K, V3(0.6, 2.5, 0.1)], [P.AO_L, V3(-0.55, 2.2, 0.12)], [P.BIF, V3(0.2, 1.55, 0.15)], [P.HEAD_A, V3(-0.25, 5.85, 0.1)], [P.HEAD_A, V3(0.3, 5.9, 0.05)], [P.ARCH, V3(0.55, 4.0, 0.2)], [P.LIV_A, V3(-0.7, 3.7, 0.15)]].forEach(([a, b]) => {
+  const m = a.clone().lerp(b, 0.5).add(V3((rnd() - 0.5) * 0.2, (rnd() - 0.5) * 0.2, 0.05));
+  vessel([a.clone(), m, b], capM, 0.012);
+  [0.4, 0.8].forEach(t => { const s = a.clone().lerp(b, t); vessel([s, s.clone().add(V3((rnd() - 0.5) * 0.35, (rnd() - 0.5) * 0.3, 0.05))], capM, 0.008); });
+});
+
+/* ----- 激素粒子：一定沿著血管流動 ----- */
+function Particles(parent, max = 700) {
+  const pos = new Float32Array(max * 3).fill(-999), col = new Float32Array(max * 3);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const m = new THREE.PointsMaterial({ size: 0.13, map: glowTexture('255,255,255'), vertexColors: true, transparent: true, depthWrite: false, depthTest: false, toneMapped: false });
+  const pts = new THREE.Points(g, m); pts.frustumCulled = false; pts.renderOrder = 30; parent.add(pts);
+  const L = Array.from({ length: max }, () => ({ on: false })), tmp = V3(0, 0, 0), c = new THREE.Color();
+  return {
+    emit(path, hex, speed = 1.1, jitter = 0.06) { const p = L.find(x => !x.on); if (!p) return; const pp = path.map(v => v.clone()); pp[0].add(V3((rnd() - 0.5) * jitter, (rnd() - 0.5) * jitter, (rnd() - 0.5) * jitter)); p.on = true; p.P = poly(new THREE.CatmullRomCurve3(pp, false, 'centripetal').getPoints(pp.length * 12)); p.u = 0; p.v = speed * (0.85 + rnd() * 0.3); const i = L.indexOf(p); c.setHex(hex); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; g.attributes.color.needsUpdate = true; },
+    update(dt) { L.forEach((p, i) => { if (!p.on) { pos[i * 3 + 1] = -999; return; } p.u += dt * p.v / Math.max(0.3, p.P.len); if (p.u >= 1) { p.on = false; pos[i * 3 + 1] = -999; return; } polyAt(p.P, p.u, tmp); pos[i * 3] = tmp.x; pos[i * 3 + 1] = tmp.y; pos[i * 3 + 2] = tmp.z; }); g.attributes.position.needsUpdate = true; },
+    clear() { L.forEach(p => { p.on = false; }); },
+    count: () => L.filter(p => p.on).length, mat: m
+  };
+}
+const pickArt = keys => { const k = keys[Math.floor(rnd() * keys.length)]; return routePts(ART_ROUTES[k]); };
+
+/* =========================================================
+   Tab 1：內分泌腺與激素的血液運輸
+   ========================================================= */
+const EN = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const parts = Particles(group);
+  const GL = {
+    pit: { n: '腦垂腺', h: '生長激素', d: '位於<b>大腦底部</b>，體積最小。分泌<b>生長激素</b>促進生長，還能調控其他內分泌腺，被稱為「內分泌腺的總司令」。', col: 0xa678e0, mats: [pitM], at: () => P.HEAD_A, vein: ['HEAD_A', V3(-0.12, 5.4, 0.04), 'VJ', 'SVC', 'HEART'], src: () => PIT.position, targets: ['head', 'armL', 'armR', 'legL', 'legR', 'kidL', 'gonL', 'gonR'] },
+    thy: { n: '甲狀腺', h: '甲狀腺素', d: '位於<b>頸部、氣管前方</b>，形狀像<b>蝴蝶</b>。分泌<b>甲狀腺素</b>調節新陳代謝；製造時需要<b>碘</b>。', col: 0xff8a3d, mats: [thyM], vein: [V3(0, 4.92, 0.19), V3(-0.08, 4.95, 0.12), 'VJ', 'SVC', 'HEART'], src: () => thy.position, targets: ['head', 'armL', 'armR', 'liver', 'kidL', 'kidR', 'legL', 'legR'] },
+    adr: { n: '腎上腺', h: '腎上腺素', d: '位於<b>腎臟頂端</b>，像一頂小帽子。緊張或緊急時分泌<b>腎上腺素</b>：心跳加快、血糖上升。', col: 0xffc400, mats: [adrM], vein: () => (rnd() < 0.5 ? [V3(0.47, 2.8, -0.2), V3(0.22, 2.85, -0.16), 'IVC_M', 'IVC_H', 'HEART'] : [V3(-0.47, 2.8, -0.2), V3(-0.28, 2.88, -0.15), 'IVC_M', 'IVC_H', 'HEART']), src: () => adrs[0].position, targets: ['head', 'liver', 'armL', 'armR', 'legL', 'legR'] },
+    pan: { n: '胰島（胰臟）', h: '胰島素、升糖素', d: '<b>胰臟</b>位於腹腔中央偏左，呈長條葉片狀；其中的<b>胰島</b>分泌胰島素（降血糖）與升糖素（升血糖）。', col: 0xff6fa0, mats: [panM], vein: [V3(0.25, 3.06, 0.18), 'PORTAL', 'LIVER', 'HEP_V', 'IVC_H', 'HEART'], src: () => pan.position, targets: ['liver', 'armL', 'armR', 'legL', 'legR', 'head'] },
+    sex: { n: '性腺（睪丸／卵巢）', h: '性激素', d: '位於<b>骨盆腔</b>。青春期分泌<b>性激素</b>，促進生殖器官發育並產生<b>第二性徵</b>。', col: 0x5a9bf0, mats: [sexM], vein: () => (rnd() < 0.5 ? [V3(0.36, 1.68, 0.1), V3(0.18, 1.8, 0.04), 'IVC_B', 'IVC_L', 'IVC_M', 'IVC_H', 'HEART'] : [V3(-0.36, 1.68, 0.1), V3(-0.2, 1.8, 0.04), 'IVC_B', 'IVC_L', 'IVC_M', 'IVC_H', 'HEART']), src: () => gonads[0].position, targets: ['head', 'armL', 'armR', 'legL', 'legR', 'gonL'] }
+  };
+  const LBL = {
+    pit: addLabel('endo', '腦垂腺', 'small', V3(-0.95, 5.36, 0.4)), thy: addLabel('endo', '甲狀腺', 'small', V3(-0.95, 4.92, 0.4)),
+    adr: addLabel('endo', '腎上腺', 'small', V3(1.25, 2.82, 0.2)), pan: addLabel('endo', '胰臟', 'small', V3(1.2, 3.25, 0.3)), sex: addLabel('endo', '性腺', 'small', V3(1.0, 1.62, 0.3))
+  };
+  const lHeart = addLabel('endo', '心臟', 'small', V3(0.6, 4.25, 0.3)), lLiver = addLabel('endo', '肝臟', 'small', V3(-1.4, 3.7, 0.3)), lKid = addLabel('endo', '腎臟', 'small', V3(-1.2, 2.5, 0.2));
+  $('enBtns').innerHTML = Object.entries(GL).map(([k, g]) => `<button class="btn" data-g="${k}">${g.n.replace('（睪丸／卵巢）', '')}<small>${g.h}</small></button>`).join('');
+  const st = { gl: null, burst: 0, acc: 0 };
+  document.querySelectorAll('#enBtns .btn').forEach(b => b.addEventListener('click', () => { st.gl = b.dataset.g; st.burst = 1.6; document.querySelectorAll('#enBtns .btn').forEach(x => x.classList.toggle('on', x.dataset.g === st.gl)); }));
+  function update(dt) {
+    const g = GL[st.gl];
+    const pulse = 0.5 + 0.5 * Math.sin(wall * 6);
+    Object.values(GL).forEach(x => x.mats.forEach(m => { m.emissiveIntensity = x === g ? 0.25 + 0.45 * pulse * Math.max(0.4, st.burst / 1.6) : 0; }));
+    if (g) {
+      st.burst = Math.max(0, st.burst - dt);
+      const rate = st.burst > 0 ? 120 : 14; st.acc += rate * dt;
+      while (st.acc >= 1) { st.acc -= 1; const vein = routePts(typeof g.vein === 'function' ? g.vein() : g.vein), art = pickArt(g.targets); parts.emit([...vein, ...art.slice(1)], g.col, 1.25, st.burst > 0 ? 0.18 : 0.06); }
+    }
+    parts.update(dt);
+    Object.entries(LBL).forEach(([k, l]) => { l.el.className = 'tag small' + (k === st.gl ? ' org' : ''); });
+    $('enTip').hidden = !g;
+    setHTML('enCard', g ? `<h4>${g.n}</h4><span class="pill">${g.h}</span><div>${g.d}</div><div style="margin-top:4px">激素先進入腺體周圍的<b>微血管</b> → 經靜脈回到<b>心臟</b> → 由動脈送到<b>全身</b>，只對特定的靶器官起作用。</div>` : '點選一個內分泌腺，看它分泌的<b>激素</b>怎麼被<b>血液</b>運送到全身。');
+    setCap(g ? `<small>內分泌系統・${g.n}</small>${g.h}沒有導管可走 → 進入<b>微血管</b> → 隨<b>血液</b>流到全身<span class="huge org">血管裡的激素粒子：${parts.count()}</span>`
+      : `<small>內分泌系統</small>半透明人體裡：<b class="red">粉紅＝動脈</b>、<b class="blu">淡藍＝靜脈</b><span class="huge org">點選左側的內分泌腺</span>`);
+  }
+  return { group, update, st, GL, parts };
+})();
+
+/* =========================================================
+   Tab 2：血糖恆定（胰臟 × 肝臟）
+   ========================================================= */
+const SU = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const parts = Particles(group, 600);
+  // 立體血糖計
+  const GX = 1.85, G0 = 2.3, GH = 2.2, toY = v => G0 + clamp((v - 40) / 160, 0, 1) * GH;
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.14, GH + 0.2, 24, 1, true), glassM(0.3)); tube.position.set(GX, G0 + GH / 2, 0.3); tube.renderOrder = 6; group.add(tube);
+  const base = shadowed(cyl(0.22, 0.24, 0.12, clay(0xc8a27a), 24)); base.position.set(GX, G0 - 0.12, 0.3); group.add(base);
+  const fillM = new THREE.MeshStandardMaterial({ color: 0x66bb6a, roughness: 0.4, emissive: 0x2e7d32, emissiveIntensity: 0.2 });
+  const fill = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 1, 20), fillM); group.add(fill);
+  [[70, '70'], [110, '110']].forEach(([v]) => { const r = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.012, 6, 24), basic(0x2e7d32, 0.9)); r.rotation.x = Math.PI / 2; r.position.set(GX, toY(v), 0.3); group.add(r); });
+  const band = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, toY(110) - toY(70), 24, 1, true), new THREE.MeshBasicMaterial({ color: 0x66bb6a, transparent: true, opacity: 0.15, depthWrite: false, side: THREE.DoubleSide })); band.position.set(GX, (toY(110) + toY(70)) / 2, 0.3); group.add(band);
+  const lG = addLabel('sugar', '', 'small', V3(GX, G0 + GH + 0.35, 0.3));
+  addLabel('sugar', '正常範圍', 'small grn', V3(GX + 0.6, (toY(110) + toY(70)) / 2, 0.3));
+  const lLiv = addLabel('sugar', '肝臟', 'small', V3(-1.35, 3.6, 0.3)), lPan = addLabel('sugar', '胰臟（胰島）', 'small', V3(0.95, 2.8, 0.4));
+  const lConv = addLabel('sugar', '', 'org', V3(-0.4, 4.05, 0.4));
+  const st = { bg: 90, mode: 'normal', t: 0, acc: 0, acc2: 0, swell: 1 };
+  const setMode = m => { st.mode = m; st.t = 0; parts.clear(); if (m === 'high') st.bg = 170; if (m === 'low') st.bg = 55; if (m === 'normal') st.bg = 90; };
+  $('suHigh').addEventListener('click', () => setMode('high'));
+  $('suLow').addEventListener('click', () => setMode('low'));
+  $('suReset').addEventListener('click', () => setMode('normal'));
+  const PAN_TO_LIV = () => routePts([V3(0.3 + rnd() * 0.25, 3.08, 0.2), V3(0.1, 3.08, 0.18), 'PORTAL', 'LIVER']);
+  const BLOOD_TO_LIV = () => routePts(['HEART', 'ARCH', 'DESC', 'AO_M', V3(-0.2, 3.35, -0.02), 'LIV_A']);
+  const LIV_OUT = () => { const v = routePts(['LIVER', 'HEP_V', 'IVC_H', 'HEART']); return [...v, ...pickArt(['head', 'armL', 'armR', 'legL', 'legR', 'kidL', 'kidR']).slice(1)]; };
+  function update(dt) {
+    st.t += dt;
+    const m = st.mode; let conv = '';
+    if (m === 'high') {
+      if (st.t < 5) { st.acc += dt * 40; while (st.acc >= 1) { st.acc -= 1; parts.emit(PAN_TO_LIV(), 0x3d7fe0, 1.0, 0.12); } }
+      if (st.t > 1.4) { conv = '葡萄糖 → 肝醣'; st.acc2 += dt * 22; while (st.acc2 >= 1) { st.acc2 -= 1; parts.emit(BLOOD_TO_LIV(), 0xffc400, 1.4, 0.05); } st.bg = lerp(st.bg, 92, ease(dt * 0.45)); }
+      if (st.bg < 100 && st.t > 4) { st.mode = 'done-high'; }
+      panM.emissive.setHex(0x3d7fe0); panM.emissiveIntensity = st.t < 5 ? 0.3 + 0.3 * Math.sin(wall * 8) : 0;
+    } else if (m === 'low') {
+      if (st.t < 5) { st.acc += dt * 40; while (st.acc >= 1) { st.acc -= 1; parts.emit(PAN_TO_LIV(), 0xe53935, 1.0, 0.12); } }
+      if (st.t > 1.4) { conv = '肝醣 → 葡萄糖'; st.acc2 += dt * 26; while (st.acc2 >= 1) { st.acc2 -= 1; parts.emit(LIV_OUT(), 0xffc400, 1.3, 0.1); } st.bg = lerp(st.bg, 90, ease(dt * 0.45)); }
+      if (st.bg > 84 && st.t > 4) { st.mode = 'done-low'; }
+      panM.emissive.setHex(0xe53935); panM.emissiveIntensity = st.t < 5 ? 0.3 + 0.3 * Math.sin(wall * 8) : 0;
+    } else { panM.emissiveIntensity = 0; if (st.mode === 'done-high' && st.t < 2) conv = '葡萄糖 → 肝醣'; if (st.mode === 'done-low' && st.t < 2) conv = '肝醣 → 葡萄糖'; }
+    if (m.startsWith('done')) { st.bg = lerp(st.bg, 90, ease(dt * 0.5)); }
+    parts.update(dt);
+    // 肝臟：存肝醣時微微膨脹、釋放時發光
+    const sw = m === 'high' && st.t > 1.4 ? 1.06 : 1; st.swell = lerp(st.swell, sw, ease(dt * 2)); liver.scale.setScalar(st.swell * LIV_S);
+    liverM.emissive.setHex(0xffc400); liverM.emissiveIntensity = conv ? 0.12 + 0.1 * Math.sin(wall * 5) : 0;
+    setLabel(lConv, conv ? `🔄 ${conv}` : ''); lConv.show = !!conv; lConv.pos.set(-0.45, 4.1 + 0.06 * Math.sin(wall * 3), 0.4); lConv.off.copy(lConv.pos);
+    // 血糖計
+    const h = toY(st.bg) - G0; fill.scale.y = Math.max(0.01, h); fill.position.set(GX, G0 + h / 2, 0.3);
+    const col = st.bg > 110 ? 0xe53935 : st.bg < 70 ? 0x1e88e5 : 0x43a047; fillM.color.setHex(col); fillM.emissive.setHex(col);
+    setLabel(lG, `血糖 ${Math.round(st.bg)} mg/dL`);
+    $('suVal').textContent = Math.round(st.bg); $('suMeter').style.setProperty('--v', clamp((st.bg - 40) / 160, 0, 1) * 100 + '%');
+    const status = st.bg > 110 ? '<b class="r">偏高</b>' : st.bg < 70 ? '<b class="b">偏低</b>' : '<b class="g">正常</b>';
+    const tip = $('suTip');
+    if (m === 'high' || m === 'done-high') { tip.hidden = false; tip.className = 'tip cool'; tip.textContent = '💙 胰臟分泌胰島素 → 隨血液到肝臟 → 肝臟把葡萄糖合成肝醣儲存，血糖下降！'; }
+    else if (m === 'low' || m === 'done-low') { tip.hidden = false; tip.className = 'tip bad'; tip.textContent = '❤️ 胰臟分泌升糖素 → 隨血液到肝臟 → 肝臟把肝醣分解成葡萄糖釋放到血液，血糖上升！'; }
+    else tip.hidden = true;
+    setHTML('suStat', `血糖：<b class="o">${Math.round(st.bg)} mg/dL</b>（${status}，正常約 70～110）<br>${m === 'high' ? '飯後：<b class="b">胰島素</b>（藍色粒子）由胰臟經血管流向肝臟' : m === 'low' ? '飢餓：<b class="r">升糖素</b>（紅色粒子）由胰臟經血管流向肝臟' : '按上方按鈕，觀察胰臟與肝臟如何合作維持血糖恆定'}<br><small>黃色粒子＝葡萄糖。胰臟分泌的激素先由<b>肝門靜脈</b>送到肝臟。</small>`);
+    setCap(m === 'high' ? `<small>飯後高血糖</small>胰臟分泌<b class="blu">胰島素</b> → 肝臟：<b>葡萄糖 → 肝醣</b><span class="huge ${st.bg < 111 ? 'grn pop' : 'red'}">血糖 ${Math.round(st.bg)} mg/dL ${st.bg < 111 ? '✔ 回到正常' : '↓ 下降中'}</span>`
+      : m === 'low' ? `<small>飢餓低血糖</small>胰臟分泌<b class="red">升糖素</b> → 肝臟：<b>肝醣 → 葡萄糖</b><span class="huge ${st.bg > 69 ? 'grn pop' : 'blu'}">血糖 ${Math.round(st.bg)} mg/dL ${st.bg > 69 ? '✔ 回到正常' : '↑ 上升中'}</span>`
+        : `<small>血糖恆定</small>胰臟（胰島）與右上腹的<b>肝臟</b>合作，讓血糖維持在一定範圍<span class="huge grn">血糖 ${Math.round(st.bg)} mg/dL</span>`);
+  }
+  return { group, update, st, setMode, parts };
+})();
+onTabChange = t => { if (t !== 'sugar') { SU.parts.clear(); } if (t !== 'endo') { EN.parts.clear(); } panM.emissiveIntensity = 0; liverM.emissiveIntensity = 0; liver.scale.setScalar(LIV_S); };
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  endo: { group: EN.group, cam: () => ({ pos: [0.3, 4.0, 9.2], target: [0, 3.5, 0], fitW: window.innerWidth < window.innerHeight ? 3.4 : 4.6 }), update: EN.update },
+  sugar: { group: SU.group, cam: () => ({ pos: [0.5, 3.8, 6.8], target: [0.25, 3.2, 0], fitW: window.innerWidth < window.innerHeight ? 4.4 : 5 }), update: SU.update }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  onTabChange(t);
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, EN, SU, camera, controls, renderer, scene, placeLabels };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'endo';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+<script src="goals.js" defer></script>
+</body>
+</html>

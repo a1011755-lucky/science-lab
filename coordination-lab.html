@@ -181,10 +181,10 @@
     <!-- Tab 3 -->
     <section class="sec" data-tab="horm" hidden>
       <div class="row2">
-        <button class="btn hmode on" data-m="endo">🧍 內分泌系統</button>
-        <button class="btn hmode" data-m="plant">🌱 植物的感應</button>
+        <a class="btn" href="endocrine-lab.html" style="text-align:center;text-decoration:none">🧍 內分泌系統 ↗<small style="display:block">新版 3D 實驗室</small></a>
+        <button class="btn hmode on" data-m="plant">🌱 植物的感應</button>
       </div>
-      <div id="endoBox">
+      <div id="endoBox" hidden>
         <label class="lab">點選內分泌腺</label>
         <div class="objs" id="glBtns"></div>
         <div class="orgcard" id="glCard"></div>
@@ -194,7 +194,7 @@
           <tr><th>作用時間</th><td>短暫</td><td>較持久</td></tr>
         </tbody></table>
       </div>
-      <div id="plantBox" hidden>
+      <div id="plantBox">
         <label class="lab">光從哪裡來？</label>
         <div class="three-btn"><button class="btn lbtn" data-l="-1">⬅ 左邊</button><button class="btn lbtn on" data-l="0">⬆ 上方</button><button class="btn lbtn" data-l="1">右邊 ➡</button></div>
         <label class="chk"><input type="checkbox" id="potSide"> 把盆栽橫放（觀察向地性）</label>
@@ -621,7 +621,7 @@ const HM = (() => {
   const group = new THREE.Group(); scene.add(group);
   const ENDO = new THREE.Group(); group.add(ENDO);
   const PLANT = new THREE.Group(); group.add(PLANT);
-  const st = { mode: 'endo', gl: null, light: 0, side: false, grow: 0.25, growT: 0, touchT: 99, night: false, nk: 0 };
+  const st = { mode: 'plant', gl: null, light: 0, side: false, grow: 0.25, growT: 0, touchT: 99, night: false, nk: 0 };
 
   /* ----- 內分泌 ----- */
   const B = makeBody(ENDO, 0);
