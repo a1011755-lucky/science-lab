@@ -344,15 +344,15 @@ const COURSES = [
       {
         name: '八上', sub: '測量、物質、波動、光與熱',
         chapters: [
-          { title: '基本測量與科學概念', sum: '實驗室安全、控制變因，長度、體積、質量與密度的測量。', labs: [{ t: '科學方法與基本測量', u: 'measure-lab.html' }],
+          { title: '基本測量與科學概念', sum: '實驗室安全、控制變因，長度、體積、質量與密度的測量。', labs: [{ t: '科學方法與基本測量', u: 'measure-lab.html' }, { t: '密度與材質鑑定', u: 'lab8a-classics.html#dens' }],
             k: ['實驗室安全', '變因的控制', '長度的測量', '體積的測量', '質量的測量（天平）', '密度'] },
-          { title: '物質的世界', sum: '純物質與混合物、水溶液的濃度與溶解度、空氣的組成與氧氣。', labs: [{ t: '物質的世界：水溶液', u: 'solution-lab.html' }],
+          { title: '物質的世界', sum: '純物質與混合物、水溶液的濃度與溶解度、空氣的組成與氧氣。', labs: [{ t: '物質的世界：水溶液', u: 'solution-lab.html' }, { t: '過濾與蒸發結晶', u: 'lab8a-classics.html#sep' }],
             k: ['純物質與混合物', '混合物的分離', '水溶液的組成', '濃度', '溶解度', '空氣的組成', '氧氣的製備'] },
           { title: '波動與聲音', sum: '波的種類與性質，聲音的產生、傳播與三要素。', labs: [{ t: '波動與聲音', u: 'sound-lab.html' }],
             k: ['橫波與縱波', '波長、頻率、波速', '聲音的產生與傳播', '頻率與音調', '振幅與響度', '聲速與回聲', '共振'] },
           { title: '光', sum: '光的直進、反射與折射，面鏡、透鏡成像與顏色。', labs: [{ t: '光的反射、折射與色光', u: 'optics-lab.html' }, { t: '光的直進與影子', u: 'shadow-lab.html' }, { t: '光的折射與視深', u: 'refraction-lab.html' }],
             k: ['光的直進與光速', '光的反射', '平面鏡與曲面鏡', '光的折射', '凸透鏡與凹透鏡', '透鏡的應用', '色光與顏色'] },
-          { title: '溫度與熱', sum: '溫度與溫標，熱量、比熱與熱平衡，熱的傳播與對物質的影響。', labs: [{ t: '溫度與熱', u: 'heat-lab.html' }],
+          { title: '溫度與熱', sum: '溫度與溫標，熱量、比熱與熱平衡，熱的傳播與對物質的影響。', labs: [{ t: '溫度與熱', u: 'heat-lab.html' }, { t: '比熱雙爐對決', u: 'lab8a-classics.html#heat' }],
             k: ['溫度計與溫標', '熱量', '比熱', '熱平衡', '傳導、對流、輻射', '熱脹冷縮', '三態變化'] },
           { title: '探索物質組成', sum: '元素與化合物、原子的結構、週期表、分子與化學式。', labs: [{ t: '探索物質組成', u: 'matter-lab.html' }],
             k: ['元素與化合物', '金屬與非金屬', '元素符號', '原子說', '原子的結構', '元素週期表', '分子與化學式'] }
@@ -450,7 +450,7 @@ function renderStats() {
   const stats = [
     { n: ready, label: '個已上線單元' },
     { n: pages, label: '座 3D 互動實驗室' },
-    { n: '191', label: '題會考題型自我檢測' }
+    { n: '196', label: '題會考題型自我檢測' }
   ];
   document.getElementById('heroStats').innerHTML = stats.map(s => `<div class="stat"><b>${s.n}</b><span>${s.label}</span></div>`).join('');
 }
