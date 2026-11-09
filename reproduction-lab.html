@@ -356,11 +356,97 @@ const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = 
    共用小工具
    ========================================================= */
 const lerp = (a, b, k) => a + (b - a) * k;
-const sphere = (r, mat, seg = 24) => new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg * 0.6 | 0)), mat);
+let orgSeed = 7;
+const sphere = (r, mat, seg = 24) => { const m = new THREE.Mesh(blobGeo(r, { amp: 0.045, freq: 1.3, seed: (orgSeed = orgSeed * 1.37 % 97) , detail: seg >= 20 ? 4 : 3 }), mat); if (mat.isMeshPhysicalMaterial && !mat.sheen) { mat.sheen = 0.6; mat.sheenColor = new THREE.Color(0xffffff); mat.sheenRoughness = 0.5; } return m; };
 const cyl = (r1, r2, h, mat, seg = 32) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg), mat);
 const rbox = (w, h, d, mat, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001)), mat);
 const cap = (r, len, mat) => new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 6, 14), mat);
-const shellM = (c, op) => new THREE.MeshPhysicalMaterial({ color: c, transparent: true, opacity: op, roughness: 0.35, clearcoat: 0.6, side: THREE.DoubleSide, depthWrite: false });
+const shellM = (c, op) => new THREE.MeshPhysicalMaterial({ color: c, transparent: true, opacity: op, roughness: 0.35, clearcoat: 0.6, sheen: 0.6, sheenColor: 0xffffff, side: THREE.DoubleSide, depthWrite: false });
+/* =========================================================
+   有機生物形態（美學規範 D）
+   ・粉彩果凍材質：低飽和、帶光澤與內發光，模擬次表面散射的軟糖感
+   ・不規則水球（液泡）、表面擾動（細胞核）、雙凸透鏡（葉綠體）、
+     內膜皺褶的豆形（粒線體）、圓角擠壓的細胞壁
+   ========================================================= */
+const ORG_WHITE = new THREE.Color(0xffffff);
+const pastel = (c, k = 0.08) => new THREE.Color(c).lerp(ORG_WHITE, k);
+function jelly(c, op = 1, o = {}) {
+  const col = pastel(c);
+  return new THREE.MeshPhysicalMaterial({ color: col, roughness: 0.42, metalness: 0, sheen: 0.6, sheenColor: 0xffffff, sheenRoughness: 0.5, clearcoat: 0.35, clearcoatRoughness: 0.35, emissive: col.clone().multiplyScalar(0.07), transparent: op < 1, opacity: op, depthWrite: op >= 1, side: op < 1 ? THREE.DoubleSide : THREE.FrontSide, ...o });
+}
+function orgNoise(x, y, z, s) { return Math.sin(x * 1.7 + s) * Math.sin(y * 2.3 + s * 1.3) * Math.sin(z * 1.9 + s * 0.7) + 0.5 * Math.sin(x * 3.1 - s) * Math.sin(y * 2.9 + s * 2.1) * Math.sin(z * 3.7 + s); }
+/** 不規則的有機球體：amp＝整體歪扭、ripple＝表面細紋 */
+function blobGeo(r, { amp = 0.08, freq = 1.4, seed = 1, detail = 5, ripple = 0, rippleF = 9 } = {}) {
+  const g = new THREE.IcosahedronGeometry(1, detail), p = g.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i).normalize();
+    let k = 1 + amp * orgNoise(v.x * freq * 2, v.y * freq * 2, v.z * freq * 2, seed);
+    if (ripple) k += ripple * Math.sin(v.x * rippleF + seed) * Math.sin(v.y * rippleF * 1.1 + 1) * Math.sin(v.z * rippleF * 0.9 + seed * 2);
+    v.multiplyScalar(r * k); p.setXYZ(i, v.x, v.y, v.z);
+  }
+  g.computeVertexNormals(); return g;
+}
+/** 雙凸透鏡（平躺在 xz 平面，厚度沿 y） */
+function lensGeo(r, h) {
+  const pts = [], N = 14;
+  for (let i = 0; i <= N; i++) { const x = r * i / N; pts.push(new THREE.Vector2(Math.max(0.001, x), h / 2 * (1 - (x / r) ** 2) + 0.004)); }
+  for (let i = N; i >= 0; i--) { const x = r * i / N; pts.push(new THREE.Vector2(Math.max(0.001, x), -h / 2 * (1 - (x / r) ** 2) - 0.004)); }
+  pts.reverse(); return new THREE.LatheGeometry(pts, 32);
+}
+/** 葉綠體：扁平雙凸透鏡＋內部的葉綠餅（從側邊看得到一層層） */
+function chloroplastGeo() { const g = lensGeo(0.17, 0.11); g.scale(1.5, 1, 0.95); g.computeVertexNormals(); return g; }
+/** 粒線體：豆形外膜（長軸沿 y）＋內膜皺褶（之字形細管） */
+function mitoGeo(r = 0.14, len = 0.62) {
+  const g = blobGeo(1, { amp: 0.05, freq: 1.1, seed: 3, detail: 4 }); g.scale(r, len / 2, r * 0.82); g.computeVertexNormals(); return g;
+}
+function cristaeGeo(r = 0.14, len = 0.62) {
+  const pts = []; const n = 9;
+  for (let i = 0; i <= n * 8; i++) { const t = i / (n * 8), y = (t - 0.5) * len * 0.78; pts.push(new THREE.Vector3(Math.sin(t * n * Math.PI) * r * 0.62, y, 0)); }
+  return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 120, r * 0.09, 6);
+}
+/** 圓角擠壓的有機方塊（植物細胞壁、細胞膜）：邊緣有 bevel 的軟包覆感，再加一點點歪扭 */
+function roundBlockGeo(w, h, d, { round = 0.28, wobble = 0.025, seed = 2 } = {}) {
+  const b = Math.min(0.22, d * 0.18, h * 0.3, w * 0.3), W = w - 2 * b, H = h - 2 * b, r = Math.min(round, W / 2 - 0.01, H / 2 - 0.01);
+  const s = new THREE.Shape();
+  s.moveTo(-W / 2 + r, -H / 2); s.lineTo(W / 2 - r, -H / 2); s.quadraticCurveTo(W / 2, -H / 2, W / 2, -H / 2 + r);
+  s.lineTo(W / 2, H / 2 - r); s.quadraticCurveTo(W / 2, H / 2, W / 2 - r, H / 2); s.lineTo(-W / 2 + r, H / 2);
+  s.quadraticCurveTo(-W / 2, H / 2, -W / 2, H / 2 - r); s.lineTo(-W / 2, -H / 2 + r); s.quadraticCurveTo(-W / 2, -H / 2, -W / 2 + r, -H / 2);
+  const g = new THREE.ExtrudeGeometry(s, { depth: d - 2 * b, bevelEnabled: true, bevelThickness: b, bevelSize: b, bevelSegments: 6, curveSegments: 10, steps: 2 });
+  g.translate(0, 0, -(d - 2 * b) / 2);
+  if (wobble) { const p = g.attributes.position; for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), k = 1 + wobble * orgNoise(x * 0.9, y * 0.9, z * 0.9, seed); p.setXYZ(i, x * k, y * k, z * (1 + wobble * 0.5 * orgNoise(z, x, y, seed + 1))); } }
+  g.computeVertexNormals(); return g;
+}
+/** 立體有機心形（取代球＋圓錐拼的心臟） */
+function heartGeo(sc = 1) {
+  const s = new THREE.Shape(); s.moveTo(0, -1.0); s.bezierCurveTo(-0.3, -0.6, -1.05, -0.25, -1.0, 0.35); s.bezierCurveTo(-0.95, 0.95, -0.25, 1.05, 0, 0.55); s.bezierCurveTo(0.25, 1.05, 0.95, 0.95, 1.0, 0.35); s.bezierCurveTo(1.05, -0.25, 0.3, -0.6, 0, -1.0);
+  const g = new THREE.ExtrudeGeometry(s, { depth: 0.55, bevelEnabled: true, bevelThickness: 0.38, bevelSize: 0.22, bevelSegments: 10, curveSegments: 40 });
+  g.translate(0, 0, -0.275); g.scale(sc, sc, sc); g.computeVertexNormals(); return g;
+}
+/** 紡錘／長條細胞（沿 x 軸），表面略有起伏 */
+function spindleGeo(len, r, { blunt = 0.35, seed = 4 } = {}) {
+  const pts = [], N = 48;
+  for (let i = 0; i <= N; i++) { const t = (1 - Math.cos(Math.PI * i / N)) / 2, prof = Math.pow(Math.sin(Math.PI * t), blunt) * (1 + 0.05 * Math.sin(t * 17 + seed)); pts.push(new THREE.Vector2(Math.max(0.002, r * prof), (t - 0.5) * len)); }
+  const g = new THREE.LatheGeometry(pts, 28); g.rotateZ(Math.PI / 2); g.computeVertexNormals(); return g;
+}
+/** 花瓣（擠壓的水滴形） */
+function petalGeo(len = 0.34, w = 0.2) {
+  const s = new THREE.Shape(); s.moveTo(0, 0); s.bezierCurveTo(w, len * 0.25, w * 0.9, len * 0.85, 0, len); s.bezierCurveTo(-w * 0.9, len * 0.85, -w, len * 0.25, 0, 0);
+  const g = new THREE.ExtrudeGeometry(s, { depth: 0.01, bevelEnabled: true, bevelThickness: 0.025, bevelSize: 0.02, bevelSegments: 4, curveSegments: 20 }); g.computeVertexNormals(); return g;
+}
+
+/** 精子：扁平的頭＋擺動的長尾巴（取代小圓點） */
+function spermMesh(r, mat) {
+  const g = new THREE.Group();
+  const head = new THREE.Mesh(lensGeo(r * 1.25, r * 1.1), mat); head.rotation.z = Math.PI / 2; head.scale.set(1, 1.35, 1); g.add(head);
+  const pts = []; for (let i = 0; i <= 24; i++) { const t = i / 24; pts.push(new THREE.Vector3(-r - t * r * 11, Math.sin(t * Math.PI * 2.5) * r * 0.9 * t, 0)); }
+  g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, r * 0.16, 5), mat));
+  return g;
+}
+/** 蛋形（下寬上窄） */
+function eggGeo(rx = 0.85, ry = 1.15) {
+  const pts = []; for (let i = 0; i <= 40; i++) { const th = i / 40 * Math.PI; pts.push(new THREE.Vector2(Math.max(0.001, Math.sin(th) * rx * (1 + 0.12 * Math.cos(th))), -Math.cos(th) * ry)); }
+  return new THREE.LatheGeometry(pts, 48);
+}
 const C3 = (a, b, k) => new THREE.Color(a).lerp(new THREE.Color(b), clamp(k, 0, 1));
 let rs = 61;
 const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
@@ -457,18 +543,18 @@ const AN = (() => {
   const group = new THREE.Group(); scene.add(group);
   // 左：受精場所
   const tank = new THREE.Mesh(new RoundedBoxGeometry(4.2, 2.6, 2.2, 4, 0.15), shellM(0x8fd0f0, 0.25)); tank.position.set(-2.7, 1.5, 0); group.add(tank);
-  const bodyS = new THREE.Mesh(new THREE.SphereGeometry(1.3, 40, 28), shellM(0xf3c9a6, 0.3)); bodyS.scale.set(1.5, 1, 1); bodyS.position.set(-2.7, 1.6, 0); group.add(bodyS);
+  const bodyS = new THREE.Mesh(blobGeo(1.3, { amp: 0.05, seed: 21 }), shellM(0xf3c9a6, 0.3)); bodyS.scale.set(1.5, 1, 1); bodyS.position.set(-2.7, 1.6, 0); group.add(bodyS);
   const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(-4.3, 1.1, 0.3), V3(-3.3, 1.5, 0.3), V3(-2.4, 1.7, 0.3), V3(-1.6, 1.9, 0.3)]), 30, 0.12, 8), shellM(0xf48fb1, 0.45)); group.add(tube);
   const eggs = Array.from({ length: 40 }, () => { const e = sphere(0.09, clay(0xff8a3d, { transparent: true, opacity: 0.95 }), 10); e.userData.p = V3(-2.7 + (rnd() - 0.5) * 2.4, 0.5 + rnd() * 0.35, (rnd() - 0.5) * 1.4); e.userData.fert = rnd(); group.add(e); return e; });
-  const sperm = Array.from({ length: 50 }, () => { const s = sphere(0.025, clay(0x1e6aa8), 6); s.userData = { a: rnd() * TAU, r: rnd(), y: rnd() }; group.add(s); return s; });
+  const sperm = Array.from({ length: 50 }, () => { const s = spermMesh(0.025, clay(0x1e6aa8)); s.userData = { a: rnd() * TAU, r: rnd(), y: rnd() }; group.add(s); return s; });
   const ovum = sphere(0.18, clay(0xff8a3d), 16); ovum.position.set(-1.7, 1.9, 0.3); group.add(ovum);
   // 右：發育方式
   const egg = new THREE.Group(); egg.position.set(2.5, 1.6, 0); group.add(egg);
-  const shell = new THREE.Mesh(new THREE.SphereGeometry(1.0, 40, 28, 0, TAU, 0, Math.PI), shellM(0xfff8e1, 0.45)); shell.scale.set(0.85, 1.15, 0.85); egg.add(shell);
+  const shell = new THREE.Mesh(eggGeo(0.85, 1.15), shellM(0xfff8e1, 0.45)); egg.add(shell);
   const yolk = sphere(0.5, clay(0xffb300), 24); yolk.position.y = -0.1; egg.add(yolk);
   const embE = sphere(0.2, clay(0xef9a9a), 16); embE.position.set(0, 0.35, 0.25); egg.add(embE);
   const uterus = new THREE.Group(); uterus.position.set(2.5, 1.6, 0); group.add(uterus);
-  const ut = new THREE.Mesh(new THREE.SphereGeometry(1.1, 40, 28), shellM(0xf48fb1, 0.35)); ut.scale.set(1, 1.1, 0.9); uterus.add(ut);
+  const ut = new THREE.Mesh(blobGeo(1.1, { amp: 0.06, seed: 22 }), shellM(0xf48fb1, 0.35)); ut.scale.set(1, 1.1, 0.9); uterus.add(ut);
   const plac = cyl(0.45, 0.45, 0.14, clay(0xc62828), 24); plac.position.set(0.6, 0.55, 0); plac.rotation.z = -0.8; uterus.add(plac);
   const cord = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(0.5, 0.45, 0), V3(0.3, 0.1, 0.2), V3(0.05, -0.05, 0.1)]), 20, 0.05, 8), clay(0xe57373)); uterus.add(cord);
   const fetus = new THREE.Group(); fetus.position.set(-0.15, -0.15, 0); uterus.add(fetus);
@@ -496,7 +582,7 @@ const AN = (() => {
     eggs.forEach((e, i) => { e.visible = ext && i < (a.eggs === '很多' ? 40 : 10); e.position.copy(e.userData.p); const fert = f > 0.6 && e.userData.fert < 0.45; e.material.color.setHex(fert ? 0xff5722 : 0xffcc80); e.scale.setScalar(fert ? 1.15 : 1); });
     sperm.forEach((s, i) => {
       const u = s.userData; s.visible = f > 0.02 && f < 0.98;
-      if (ext) { const r = 0.4 + u.r * 1.4; s.position.set(-2.7 + Math.cos(u.a + wall * 1.5) * r, 0.6 + u.y * 1.2, Math.sin(u.a + wall * 1.5) * r * 0.6); }
+      if (ext) { const r = 0.4 + u.r * 1.4; s.position.set(-2.7 + Math.cos(u.a + wall * 1.5) * r, 0.6 + u.y * 1.2, Math.sin(u.a + wall * 1.5) * r * 0.6); s.rotation.y = Math.atan2(-Math.cos(u.a + wall * 1.5), -Math.sin(u.a + wall * 1.5)); }
       else { const k = clamp(f * 1.2 - u.r * 0.25, 0, 1); const p = tube.geometry.parameters.path.getPoint(k * 0.92); s.position.copy(p).add(V3(Math.sin(i + wall * 9) * 0.05, Math.cos(i * 2 + wall * 7) * 0.05, 0)); }
     });
     ovum.material.color.setHex(f > 0.85 ? 0xff5722 : 0xff8a3d); ovum.scale.setScalar(f > 0.85 ? 1.2 : 1);
@@ -532,7 +618,7 @@ const FL = (() => {
   }
   const stamens = [];
   for (let i = 0; i < 10; i++) { const a = i / 10 * TAU; const g = new THREE.Group(); g.position.set(Math.cos(a) * 0.32, 0.1, Math.sin(a) * 0.32); g.rotation.set(Math.sin(a) * 0.3, 0, -Math.cos(a) * 0.3); F.add(g); const fil = cyl(0.015, 0.015, 0.9, clay(0xfff9c4), 6); fil.position.y = 0.45; g.add(fil); const an = sphere(0.06, clay(0xfbc02d), 10); an.scale.set(1, 1.5, 1); an.position.y = 0.92; g.add(an); stamens.push({ g, fil, an }); }
-  const ovary = new THREE.Mesh(new THREE.SphereGeometry(0.28, 32, 24), shellM(0x9ccc65, 0.55)); ovary.scale.set(1, 1.2, 1); ovary.position.y = 0.35; F.add(ovary);
+  const ovary = new THREE.Mesh(blobGeo(0.28, { amp: 0.05, seed: 23 }), shellM(0x9ccc65, 0.55)); ovary.scale.set(1, 1.2, 1); ovary.position.y = 0.35; F.add(ovary);
   const style = cyl(0.04, 0.05, 0.75, clay(0xc5e1a5), 10); style.position.y = 0.95; F.add(style);
   const stigma = sphere(0.09, clay(0xaed581, { clearcoat: 1 }), 14); stigma.scale.set(1.3, 0.6, 1.3); stigma.position.y = 1.35; F.add(stigma);
   let ovules = [];
@@ -546,7 +632,7 @@ const FL = (() => {
   const bee = new THREE.Group(); group.add(bee);
   { const b = sphere(0.14, clay(0xfbc02d), 14); b.scale.set(1.5, 1, 1); bee.add(b); [-0.06, 0.06].forEach(x => { const s = cyl(0.142, 0.142, 0.04, clay(0x333333), 14); s.rotation.z = Math.PI / 2; s.position.x = x; s.scale.set(1, 1, 1); bee.add(s); }); [-1, 1].forEach(s => { const w = sphere(0.12, shellM(0xffffff, 0.6), 10); w.scale.set(1, 0.2, 0.6); w.position.set(0, 0.12, s * 0.12); bee.add(w); }); }
   const pollen = Array.from({ length: 30 }, () => { const p = sphere(0.025, clay(0xffd54f), 6); p.userData = { o: V3((rnd() - 0.5) * 3, rnd() * 1.5, (rnd() - 0.5) * 1.5) }; group.add(p); return p; });
-  const sperm = sphere(0.035, clay(0x1e6aa8), 8); group.add(sperm);
+  const sperm = spermMesh(0.035, clay(0x1e6aa8)); group.add(sperm);
   const P = (t, p) => addLabel('flw', t, 'part', p);
   const labels = [P('花瓣', V3(-1.3, 1.6, 0.4)), P('萼片', V3(-1.0, 0.75, 0.5)), P('雄蕊：花藥', V3(1.3, 2.05, 0.2)), P('雄蕊：花絲', V3(1.25, 1.5, 0.2)), P('雌蕊：柱頭', V3(-0.95, 2.35, 0)), P('雌蕊：花柱', V3(-0.95, 1.9, 0)), P('雌蕊：子房', V3(0.95, 1.2, 0.5)), P('胚珠（內有卵）', V3(-1.05, 1.15, 0.5))];
   const st = { phase: -1, k: 0, n: 1, mode: 'bee' };
