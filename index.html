@@ -549,5 +549,6 @@ const startHash = location.hash.slice(1);
 switchGrade(COURSES.some(c => c.id === startHash) ? startHash : COURSES[0].id);
 if (COURSES.some(c => c.id === startHash)) window.addEventListener('load', () => setTimeout(() => window.scrollTo({ top: document.getElementById('courses').offsetTop - 70, behavior: 'instant' }), 80));
 </script>
+<script src="stats.js" defer></script>
 </body>
 </html>
