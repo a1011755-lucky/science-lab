@@ -390,7 +390,7 @@ const COURSES = [
         chapters: [
           { title: '直線運動', sum: '從測量時間與單擺出發，分辨路徑長與位移、速率與速度，學會等速度、等加速度運動與自由落體，並能解讀運動圖表。', labs: [{ t: '直線運動', u: 'kinematics-lab.html' }, { t: 'x-t 圖・v-t 圖', u: 'kinematics-lab.html#m2' }, { t: '自由落體・上拋', u: 'kinematics-lab.html#m3' }, { t: '打點計時器', u: 'kinematics-lab.html#m4' }],
             k: ['測量時間的工具', '單擺的等時性（週期只與擺長有關）', '路徑長與位移', '速率與速度', '等速度運動', '加速度 ＝ 速度變化 ÷ 時間', '等加速度運動', '自由落體（g ≈ 9.8 m/s²）', 'x-t 圖、v-t 圖、a-t 圖的解讀', 'v-t 圖面積＝位移、斜率＝加速度'] },
-          { title: '力與運動', sum: '理解牛頓三大運動定律，用 F＝ma 解題，再認識圓周運動、向心力與萬有引力。', labs: [{ t: '牛頓力學遊樂園', u: 'newton-park.html' }, { t: '牛二：F ＝ ma', u: 'newton-park.html#m2' }, { t: '牛三：作用與反作用', u: 'newton-park.html#m3' }, { t: '萬有引力', u: 'newton-park.html#m4' }, { t: '圓周運動', u: 'newton-park.html#m5' }],
+          { title: '力與運動', sum: '理解牛頓三大運動定律，用 F＝ma 解題，再認識圓周運動、向心力與萬有引力。', labs: [{ t: '牛頓力學遊樂園', u: 'newton-park.html' }, { t: '慣性與運動狀態', u: 'inertia-lab.html' }, { t: 'F＝ma 動力實驗室', u: 'fma-lab.html' }, { t: '牛二：F ＝ ma', u: 'newton-park.html#m2' }, { t: '牛三：作用與反作用', u: 'newton-park.html#m3' }, { t: '萬有引力', u: 'newton-park.html#m4' }, { t: '圓周運動', u: 'newton-park.html#m5' }],
             k: ['牛頓第一運動定律（慣性定律）', '牛頓第二運動定律：F ＝ m × a', '1 牛頓 ＝ 1 kg × 1 m/s²', '牛頓第三運動定律（作用力與反作用力）', '作用力與反作用力 vs. 力平衡', '滑車實驗：力、質量與加速度', '等速圓周運動與向心力', '萬有引力', '萬有引力提供天體圓周運動的向心力'] },
           { title: '功與能', sum: '學會功、功率與能量的關係，動能與位能的轉換及力學能守恆，再用力矩理解槓桿與簡單機械。', labs: [{ t: '功與能', u: 'work-energy.html' }, { t: '正功・負功・零功（向量沙盒）', u: 'work-vector-lab.html' }, { t: '力學能守恆', u: 'work-energy.html#m2' }, { t: '彈力位能', u: 'work-energy.html#m3' }],
             k: ['功 ＝ 力 × 沿力方向的位移', '正功與負功', '作功為零的情況', '功率 ＝ 功 ÷ 時間', '動能（與質量、速度平方成正比）', '重力位能 ＝ mgh', '彈力位能', '力學能守恆', '力矩 ＝ 力 × 力臂', '槓桿原理：順時針力矩＝逆時針力矩', '簡單機械（槓桿、滑輪、輪軸、斜面）：省力不省功', '生活中的能源與能量轉換'] },
@@ -450,7 +450,7 @@ function renderStats() {
   const stats = [
     { n: ready, label: '個已上線單元' },
     { n: pages, label: '座 3D 互動實驗室' },
-    { n: '226', label: '題會考題型自我檢測' }
+    { n: '236', label: '題會考題型自我檢測' }
   ];
   document.getElementById('heroStats').innerHTML = stats.map(s => `<div class="stat"><b>${s.n}</b><span>${s.label}</span></div>`).join('');
 }
