@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>立體磁學與微觀磁域實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+  .tabs.three .tab { font-size: .72rem; padding: 9px 2px; }
+  .objs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .objs.three { grid-template-columns: repeat(3, 1fr); }
+  .objs .btn { padding: 8px 4px; font-size: .78rem; margin-top: 0; }
+  .objs .btn.yes { background: #e3f1e6; color: #2e6b3f; } .objs .btn.no { background: #fde5e2; color: #a5311f; }
+  .orgcard { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin-top: 8px; font-size: .8rem; line-height: 1.65; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
+  .orgcard:empty { display: none; }
+  .orgcard h4 { font-size: .98rem; font-weight: 900; margin-bottom: 2px; }
+  .orgcard .pill { display: inline-block; font-size: .72rem; font-weight: 800; color: #fff; background: #7b5ea7; border-radius: 999px; padding: 1px 9px; margin: 2px 4px 2px 0; }
+  .orgcard i.sci { font-family: Georgia, serif; }
+  .orgcard table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .orgcard td, .orgcard th { padding: 2px 4px; border-bottom: 1px solid #efe6d8; font-size: .74rem; text-align: left; }
+  .orgcard tr.same { background: #e3f1e6; } .orgcard tr.diff td { color: #a8998a; }
+  .tag.big { font-size: .86rem; }
+  .stat table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: .74rem; }
+  .stat td, .stat th { padding: 3px 3px; border-bottom: 1px solid #efe6d8; text-align: left; white-space: nowrap; }
+  .stat tr.same { background: #e3f1e6; }
+  .tip { background: #fff3c4; color: #7a5300; border: 1.5px solid #e0b000; border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .82rem; font-weight: 800; line-height: 1.6; animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  .tip[hidden], .mapbox[hidden], .btn[hidden] { display: none; }
+  .ticks span:first-child { text-align: left; } .ticks span:last-child { text-align: right; }
+  .meter { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: .74rem; font-weight: 800; color: var(--ink-soft); }
+  .meter i { flex: 1; height: 16px; border-radius: 999px; background: linear-gradient(90deg, #f7efe6, #8b2e0f); position: relative; }
+  .meter i::after { content: ''; position: absolute; top: -4px; width: 6px; height: 24px; border-radius: 3px; background: var(--ink); left: var(--v, 50%); transform: translateX(-50%); transition: left .2s; }
+  .cap .eq { display: inline-flex; align-items: center; gap: 6px; font-size: 1.05em; font-weight: 900; }
+  .cap .arrs { display: inline-flex; flex-direction: column; line-height: .9; font-size: 1.1em; }
+  .cap .arrs span { opacity: .28; transition: opacity .3s, color .3s, transform .3s; }
+  .cap .arrs span.on { opacity: 1; color: #c62828; transform: scale(1.35); }
+  .cap .brown { color: #8b2e0f; }
+  .tip.ok { background: #e3f1e6; color: #1f5f32; border-color: #3f9a57; }
+  .tip.bad { background: #fde5e2; color: #a5311f; border-color: #e53935; }
+  .tip.cool { background: #e3f0fb; color: #1e5a8c; border-color: #5c9fd6; }
+  .tag.grn { background: #2e7d32; color: #fff; }
+  .tag.nP { background: #e53935; color: #fff; font-weight: 900; } .tag.sP { background: #1e6aa8; color: #fff; font-weight: 900; } .tag.neg { background: #3a3d42; color: #fff; font-weight: 900; } .tag.big { font-size: 1rem; padding: 3px 11px; }
+  .chk { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: .82rem; font-weight: 800; color: var(--ink-soft); } .chk input { width: 18px; height: 18px; accent-color: #a1674a; }
+  .btn.hbtn { margin-top: 10px; border: 2px dashed #e0a030; background: rgba(255,248,230,.9); color: #8a5a00; font-weight: 900; display: flex; justify-content: space-between; align-items: center; }
+  .btn.hbtn small { font-size: .72rem; padding: 2px 9px; border-radius: 999px; background: #e9e2d6; color: #7a6a5a; }
+  .btn.hbtn.on { border-style: solid; background: #fff1c9; box-shadow: 0 0 0 3px rgba(255,179,0,.18); }
+  .btn.hbtn.on small { background: #ffb300; color: #fff; }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g9">‹ 課程總覽</a>
+  <div class="title">立體磁學與微觀磁域實驗室</div>
+  <div class="body">
+    <div class="tabs three">
+      <button class="tab on" data-tab="field">🧲 立體磁力線<small>透視地磁儀</small></button>
+      <button class="tab" data-tab="domain">🔬 微觀磁域<small>折斷與退磁</small></button>
+      <button class="tab" data-tab="coil">🌀 電磁鐵<small>螺線管核心</small></button>
+    </div>
+
+    <!-- Tab 1：立體磁力線 -->
+    <section class="sec" data-tab="field">
+      <div class="concept" style="--cc:#c62828"><div class="ct">磁力線</div><div class="cd">磁鐵外部由 <b>N 極出發、回到 S 極</b>，是<b>立體的封閉曲線</b>；越密的地方磁場越強</div></div>
+      <label class="lab" for="fdType">磁鐵種類</label>
+      <select id="fdType">
+        <option value="bar">棒狀磁鐵</option>
+        <option value="u">U 型磁鐵</option>
+        <option value="earth">地球（透視地磁）</option>
+      </select>
+      <div class="row2">
+        <button class="btn primary" id="fdDust">🧂 撒下鐵粉</button>
+        <button class="btn" id="fdClear">🧹 清除鐵粉</button>
+      </div>
+      <label class="chk"><input type="checkbox" id="fdLines" checked> 顯示發光磁力線</label>
+      <div class="stat" id="fdStat"></div>
+      <div class="tip" id="fdTip" hidden>⚠️ 注意陷阱：指北針的 N 極會被地磁的 S 極吸引，所以地理北極其實是地磁南極！</div>
+    </section>
+
+    <!-- Tab 2：微觀磁域 -->
+    <section class="sec" data-tab="domain">
+      <div class="concept" style="--cc:#7b5ea7"><div class="ct">磁域</div><div class="cd">磁鐵內部有無數微小的<b>磁域</b>；<br>磁域方向<b>整齊一致</b>，才會顯出磁性</div></div>
+      <div class="row2">
+        <button class="btn primary" id="dmBreak">🔨 折斷磁鐵</button>
+        <button class="btn primary" id="dmHeat">🔥 高溫加熱</button>
+      </div>
+      <button class="btn" id="dmReset">🔄 換一根新磁鐵</button>
+      <div class="stat" id="dmStat"></div>
+      <div class="tip" id="dmTip" hidden></div>
+    </section>
+
+    <!-- Tab 3：螺線管電磁鐵 -->
+    <section class="sec" data-tab="coil">
+      <div class="concept" style="--cc:#d35400"><div class="ct">電磁鐵</div><div class="cd">電流由電池<b>正極</b>流出、流回<b>負極</b>；<br>線圈<b>匝數越多</b>、<b>電流越大</b>，磁場越強</div></div>
+      <div class="row2">
+        <button class="btn primary" id="clPower">⚡ 接通電源</button>
+        <button class="btn" id="clRev">🔄 反轉電池正負極</button>
+      </div>
+      <label class="lab" for="clTurns">🌀 線圈匝數<b><span id="clTurnsV">10</span> 匝</b></label>
+      <input class="big" type="range" id="clTurns" min="5" max="20" step="1" value="10">
+      <div class="ticks"><span>疏（5 匝）</span><span></span><span>密（20 匝）</span></div>
+      <label class="lab" for="clI">🔋 電流大小<b><span id="clIV">1.0</span> A</b></label>
+      <input class="big" type="range" id="clI" min="0.2" max="3" step="0.1" value="1">
+      <div class="ticks"><span>0.2 A</span><span></span><span>3 A</span></div>
+            <div class="stat" id="clStat"></div>
+      <div class="tip" id="clTip" hidden></div>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'field', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+/* =========================================================
+   共用小工具
+   ========================================================= */
+const lerp = (a, b, k) => a + (b - a) * k;
+const sphere = (r, mat, seg = 24) => new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg * 0.6 | 0)), mat);
+const cyl = (r1, r2, h, mat, seg = 32, open = false) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg, 1, open), mat);
+const rbox = (w, h, d, mat, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001)), mat);
+const glassM = (op = 0.16) => new THREE.MeshPhysicalMaterial({ color: 0xd8ecf4, emissive: 0x9fb8c4, emissiveIntensity: 0.12, sheen: 1, sheenColor: 0xffffff, transparent: true, opacity: op, roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0.05, side: THREE.DoubleSide, depthWrite: false });
+const shellM = (c, op) => new THREE.MeshPhysicalMaterial({ color: c, transparent: true, opacity: op, roughness: 0.2, clearcoat: 0.6, side: THREE.DoubleSide, depthWrite: false });
+let rs = 4242;
+const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+const glowSprite = (rgb, s = 0.5) => { const g = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(rgb), transparent: true, depthWrite: false })); g.scale.setScalar(s); return g; };
+const ease = k => 1 - Math.exp(-k);
+function makeArrow(color) {
+  const g = new THREE.Group(); const m = clay(color, { emissive: color, emissiveIntensity: 0.25 });
+  const shaft = cyl(0.07, 0.07, 1, m, 16); const head = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.34, 20), m);
+  g.add(shaft, head); shadowed(g);
+  g.setLen = L => { L = Math.max(0.05, L); shaft.scale.y = L; shaft.position.y = L / 2; head.position.y = L + 0.17; };
+  g.setLen(1); return g;
+}
+/** 畫布貼圖面板（碼錶螢幕等） */
+function canvasPanel(w, h, pxW = 512) {
+  const c = document.createElement('canvas'); c.width = pxW; c.height = Math.round(pxW * h / w);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t, toneMapped: false }));
+  return { c, g: c.getContext('2d'), t, m };
+}
+let onTabChange = () => {};
+
+/** 酒精燈（含火焰） */
+function alcoholLamp() {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.LatheGeometry([V2(0.001, 0), V2(0.42, 0), V2(0.5, 0.15), V2(0.48, 0.42), V2(0.2, 0.62), V2(0.14, 0.66)], 40), glassM(0.38)); g.add(body);
+  const fuel = new THREE.Mesh(new THREE.LatheGeometry([V2(0.001, 0.02), V2(0.44, 0.02), V2(0.48, 0.16), V2(0.46, 0.3), V2(0.001, 0.3)], 40), shellM(0xbfe3ff, 0.45)); g.add(fuel);
+  const neck = shadowed(cyl(0.12, 0.13, 0.12, metal(0xb7a07a), 20)); neck.position.y = 0.7; g.add(neck);
+  const wick = cyl(0.03, 0.03, 0.14, clay(0xf6f0e2), 10); wick.position.y = 0.82; g.add(wick);
+  const flame = new THREE.Group(); flame.position.y = 0.9; g.add(flame);
+  const outer = new THREE.Mesh(new THREE.SphereGeometry(0.11, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffa233, transparent: true, opacity: 0.8, toneMapped: false })); outer.scale.set(1, 2.6, 1); outer.position.y = 0.2; flame.add(outer);
+  const inner = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), new THREE.MeshBasicMaterial({ color: 0x5aa7ff, transparent: true, opacity: 0.85, toneMapped: false })); inner.scale.set(1, 2.2, 1); inner.position.y = 0.1; flame.add(inner);
+  const glow = glowSprite('255,170,60', 1.1); glow.position.y = 0.25; flame.add(glow);
+  shadowed(neck);
+  g.setLit = (on, t) => { flame.visible = on; if (on) { const f = 1 + Math.sin(t * 23) * 0.06 + Math.sin(t * 37) * 0.04; outer.scale.set(1, 2.6 * f, 1); glow.scale.setScalar(1.1 * f); } };
+  g.setLit(false, 0); return g;
+}
+/* =========================================================
+   選擇性 Bloom：磁力線、流動光點、磁域箭頭發光
+   ========================================================= */
+const BLOOM = 1;
+const glowLayer = o => { o.traverse(c => c.layers.enable(BLOOM)); return o; };
+const bloomComposer = new EffectComposer(renderer);
+bloomComposer.renderToScreen = false;
+bloomComposer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth || 1, window.innerHeight || 1), 0.55, 0.35, 0.0);
+bloomComposer.addPass(bloom);
+const overlay = new FullScreenQuad(new THREE.ShaderMaterial({
+  uniforms: { tBloom: { value: bloomComposer.renderTarget2.texture }, uGain: { value: 0.75 } },
+  vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+  fragmentShader: 'uniform sampler2D tBloom; uniform float uGain; varying vec2 vUv; void main() { vec3 c = texture2D(tBloom, vUv).rgb; float m = max(max(c.r, c.g), c.b); vec3 col = m > 1e-4 ? pow(c / m, vec3(0.4545)) : vec3(0.0); gl_FragColor = vec4(col, 1.0 - exp(-m * uGain)); }',
+  blending: THREE.NormalBlending, depthTest: false, depthWrite: false, transparent: true
+}));
+const BLACK = new THREE.Color(0x000000);
+let bloomOn = false, handOn = false;
+const HAND_LAYER = 2;
+scene.traverse(o => { if (o.isLight) o.layers.enable(HAND_LAYER); });
+function renderAll(dt) {
+  if (bloomOn) {
+    const bg = scene.background, env = scene.environment;
+    scene.background = BLACK; scene.environment = null;
+    camera.layers.set(BLOOM); bloomComposer.render(dt); camera.layers.set(0);
+    scene.background = bg; scene.environment = env;
+  }
+  renderer.setRenderTarget(null); renderer.render(scene, camera);
+  if (bloomOn) { renderer.autoClear = false; overlay.render(renderer); renderer.autoClear = true; }
+  // 安培右手最後畫、浮在磁力線光暈之上
+  if (handOn) { const bg = scene.background; scene.background = null; renderer.autoClear = false; renderer.clearDepth(); camera.layers.set(HAND_LAYER); renderer.render(scene, camera); camera.layers.set(0); renderer.autoClear = true; scene.background = bg; }
+}
+
+/* =========================================================
+   磁場運算：以磁荷模型（N＝＋、S＝－）算 Vector3 場，追蹤磁力線
+   ========================================================= */
+const RED = 0xe53935, BLU = 0x1e6aa8;
+const tB = V3(0, 0, 0), tM = V3(0, 0, 0);
+function fieldAt(p, Q, out) {
+  out.set(0, 0, 0);
+  for (const c of Q) { const dx = p.x - c.p.x, dy = p.y - c.p.y, dz = p.z - c.p.z, r2 = dx * dx + dy * dy + dz * dz + 1e-4, k = c.q / (r2 * Math.sqrt(r2)); out.x += dx * k; out.y += dy * k; out.z += dz * k; }
+  return out;
+}
+function trace(start, Q, { step = 0.045, max = 520, bound = 7.5, stopR = 0.16, inside = null } = {}) {
+  const pts = [start.clone()], p = start.clone();
+  for (let i = 0; i < max; i++) {
+    fieldAt(p, Q, tB); const l = tB.length(); if (l < 1e-8) break;
+    tM.copy(p).addScaledVector(tB, step * 0.5 / l); fieldAt(tM, Q, tB); p.addScaledVector(tB, step / tB.length());
+    pts.push(p.clone());
+    if (Q.some(c => c.q < 0 && p.distanceTo(c.p) < stopR)) break;
+    if (inside && i > 2 && inside(p)) break;
+    if (p.length() > bound) return null;
+  }
+  return pts.length > 5 ? pts : null;
+}
+function fib(n) { const out = []; const ga = Math.PI * (3 - Math.sqrt(5)); for (let i = 0; i < n; i++) { const y = 1 - (i + 0.5) / n * 2, r = Math.sqrt(1 - y * y), t = ga * i; out.push(V3(Math.cos(t) * r, y, Math.sin(t) * r)); } return out; }
+function traceAll(Q, nSeeds, { seedR = 0.3, inside = null, bound = 7.5, keep = () => true, minY = -99 } = {}) {
+  const lines = [];
+  for (const c of Q.filter(c => c.q > 0)) for (const d of fib(nSeeds)) {
+    if (!keep(d)) continue;
+    const s = c.p.clone().addScaledVector(d, seedR); if (inside && inside(s)) continue;
+    const L = trace(s, Q, { inside, bound }); if (L && L.every(p => p.y > minY)) lines.push(L);
+  }
+  return lines;
+}
+/** 折線：預先算累積長度，方便取點 */
+function poly(pts) { const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + pts[i].distanceTo(pts[i - 1])); return { pts, cum, len: cum[cum.length - 1] }; }
+function polyAt(P, u, out) {
+  const d = u * P.len, c = P.cum; let lo = 0, hi = c.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (c[m] <= d) lo = m; else hi = m; }
+  const k = (d - c[lo]) / Math.max(1e-9, c[hi] - c[lo]); return out.copy(P.pts[lo]).lerp(P.pts[hi], k);
+}
+/** 發光磁力線（細管）＋沿線流動的光點粒子 */
+function FieldViz(parent, color, nFlow = 420) {
+  const g = new THREE.Group(); parent.add(g);
+  const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, toneMapped: false, depthWrite: false });
+  const pos = new Float32Array(nFlow * 3), pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const pm = new THREE.PointsMaterial({ map: glowTexture('255,240,200'), color: 0xfff2c4, size: 0.2, transparent: true, depthWrite: false, toneMapped: false });
+  const pts = new THREE.Points(pg, pm); pts.frustumCulled = false; glowLayer(pts); g.add(pts);
+  const flow = Array.from({ length: nFlow }, (_, i) => ({ li: i, u: rnd() }));
+  // 磁場方向箭頭：沿磁力線每隔一段放一個圓錐，尖端指向磁場方向（N → S）
+  const headGeo = new THREE.ConeGeometry(0.075, 0.22, 12);
+  const heads = new THREE.InstancedMesh(headGeo, mat, 900); heads.count = 0; heads.frustumCulled = false; glowLayer(heads); g.add(heads);
+  let P = [], tubes = [];
+  const tmp = V3(0, 0, 0);
+  return {
+    g, mat, pm,
+    set(lines, r = 0.014) {
+      tubes.forEach(t => { t.geometry.dispose(); g.remove(t); }); tubes = [];
+      P = lines.map(poly);
+      lines.forEach(L => { const step = Math.max(1, Math.floor(L.length / 90)), sp = L.filter((_, i) => i % step === 0 || i === L.length - 1); const t = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(sp), Math.min(160, sp.length * 2), r, 6), mat); glowLayer(t); g.add(t); tubes.push(t); });
+      flow.forEach((f, i) => { f.li = P.length ? i % P.length : 0; });
+      let hc = 0; const a = V3(0, 0, 0), b = V3(0, 0, 0), c = V3(0, 0, 0), q = new THREE.Quaternion(), one = V3(1, 1, 1), m4 = new THREE.Matrix4();
+      for (const L of P) { const n = Math.max(1, Math.round(L.len / 1.25)); for (let k = 0; k < n && hc < 900; k++) { const u = (k + 0.5) / n; polyAt(L, u, c); polyAt(L, Math.max(0, u - 0.01), a); polyAt(L, Math.min(1, u + 0.01), b); b.sub(a); if (b.lengthSq() < 1e-10) continue; q.setFromUnitVectors(V3(0, 1, 0), b.normalize()); m4.compose(c, q, one); heads.setMatrixAt(hc++, m4); } }
+      heads.count = hc; heads.instanceMatrix.needsUpdate = true;
+    },
+    update(dt, speed = 1, active = 1) {
+      const n = P.length ? Math.round(nFlow * active) : 0;
+      for (let i = 0; i < nFlow; i++) {
+        const f = flow[i];
+        if (i >= n || !P.length) { pos[i * 3 + 1] = -999; continue; }
+        const L = P[f.li]; f.u += dt * speed * 0.9 / Math.max(0.5, L.len); if (f.u > 1) { f.u -= 1; f.li = (f.li + 7) % P.length; }
+        polyAt(P[f.li], f.u, tmp); pos[i * 3] = tmp.x; pos[i * 3 + 1] = tmp.y; pos[i * 3 + 2] = tmp.z;
+      }
+      pg.attributes.position.needsUpdate = true;
+    },
+    count: () => P.length
+  };
+}
+/** 磁域箭頭（InstancedMesh）幾何：圓柱＋圓錐，指向 +x */
+function arrowGeo(len, r) {
+  const sh = new THREE.CylinderGeometry(r, r, len * 0.62, 8); sh.translate(0, -len * 0.19, 0);
+  const hd = new THREE.ConeGeometry(r * 2.3, len * 0.38, 10); hd.translate(0, len * 0.31, 0);
+  const g = mergeGeometries([sh, hd]); g.rotateZ(-Math.PI / 2); return g;
+}
+const Xq = (() => { const q = new THREE.Quaternion(); return dir => q.clone().setFromUnitVectors(V3(1, 0, 0), dir.clone().normalize()); })();
+const randQ = () => new THREE.Quaternion().setFromEuler(new THREE.Euler(rnd() * TAU, rnd() * TAU, rnd() * TAU));
+const tmpMat = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpS = V3(1, 1, 1), tmpP = V3(0, 0, 0);
+
+/* =========================================================
+   Tab 1：立體磁力線與透視地磁儀
+   ========================================================= */
+const FD = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const Y0 = 2.6;
+  const center = new THREE.Group(); center.position.y = Y0; group.add(center);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(1.2, 1.9, 48), new THREE.MeshBasicMaterial({ color: 0xd8c3a0, transparent: true, opacity: 0.35, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.012; group.add(ring);
+  // 棒狀磁鐵
+  const bar = new THREE.Group(); center.add(bar);
+  const bN = shadowed(rbox(1.5, 0.6, 0.6, clay(RED), 0.06)); bN.position.x = -0.75; bar.add(bN);
+  const bS = shadowed(rbox(1.5, 0.6, 0.6, clay(BLU), 0.06)); bS.position.x = 0.75; bar.add(bS);
+  const lBN = addLabel('field', 'N', 'big nP', V3(-1.85, Y0 + 0.05, 0)), lBS = addLabel('field', 'S', 'big sP', V3(1.85, Y0 + 0.05, 0));
+  const Q_BAR = [{ p: V3(-1.25, 0, 0), q: 1 }, { p: V3(1.25, 0, 0), q: -1 }];
+  const inBar = p => Math.abs(p.x) < 1.52 && Math.abs(p.y) < 0.31 && Math.abs(p.z) < 0.31;
+  // U 型磁鐵（開口朝上）
+  const U = new THREE.Group(); center.add(U);
+  const uL = shadowed(rbox(0.46, 1.6, 0.46, clay(RED), 0.06)); uL.position.set(-0.65, 0.1, 0); U.add(uL);
+  const uR = shadowed(rbox(0.46, 1.6, 0.46, clay(BLU), 0.06)); uR.position.set(0.65, 0.1, 0); U.add(uR);
+  const uArc = shadowed(new THREE.Mesh(new THREE.TorusGeometry(0.65, 0.23, 16, 32, Math.PI), clay(0xb9bcc2))); uArc.rotation.z = Math.PI; uArc.position.y = -0.7; U.add(uArc);
+  const lUN = addLabel('field', 'N', 'big nP', V3(-0.65, Y0 + 1.25, 0)), lUS = addLabel('field', 'S', 'big sP', V3(0.65, Y0 + 1.25, 0));
+  const Q_U = [{ p: V3(-0.65, 0.72, 0), q: 1 }, { p: V3(0.65, 0.72, 0), q: -1 }];
+  const inU = p => (Math.abs(Math.abs(p.x) - 0.65) < 0.24 && p.y > -0.72 && p.y < 0.91 && Math.abs(p.z) < 0.24) || (p.y < -0.6 && Math.abs(Math.hypot(p.x, p.y + 0.7) - 0.65) < 0.24 && Math.abs(p.z) < 0.24);
+  // 地球（半透明，內部傾斜棒狀磁鐵：上 S 下 N）
+  const ER = 1.75, TILT = 0.19;
+  const earth = new THREE.Group(); center.add(earth);
+  const eTex = (() => {
+    const c = document.createElement('canvas'); c.width = 512; c.height = 256; const g = c.getContext('2d');
+    g.fillStyle = '#6fa8d6'; g.fillRect(0, 0, 512, 256);
+    const land = [[90, 80, 60, 40], [130, 150, 34, 60], [250, 70, 70, 34], [270, 140, 40, 55], [370, 90, 85, 45], [420, 175, 40, 22], [256, 240, 260, 16], [200, 20, 50, 12]];
+    g.fillStyle = '#8bbf72'; land.forEach(([x, y, rx, ry]) => { for (let k = 0; k < 7; k++) { g.beginPath(); g.ellipse(x + (rnd() - 0.5) * rx, y + (rnd() - 0.5) * ry, rx * (0.4 + rnd() * 0.4), ry * (0.4 + rnd() * 0.4), rnd() * 3, 0, TAU); g.fill(); } });
+    g.fillStyle = '#f2f6f8'; g.fillRect(0, 0, 512, 12); g.fillRect(0, 244, 512, 12);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+  })();
+  const globe = new THREE.Mesh(new THREE.SphereGeometry(ER, 48, 32), new THREE.MeshPhysicalMaterial({ map: eTex, transparent: true, opacity: 0.4, roughness: 0.5, clearcoat: 0.6, depthWrite: false, side: THREE.DoubleSide })); globe.renderOrder = 3; earth.add(globe);
+  const axis = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, ER * 2.6, 6), basic(0x5d4037, 0.6)); earth.add(axis);
+  const mag = new THREE.Group(); mag.rotation.z = TILT; earth.add(mag);
+  const mS = shadowed(rbox(0.36, 1.1, 0.36, clay(BLU), 0.05)); mS.position.y = 0.55; mag.add(mS);
+  const mN = shadowed(rbox(0.36, 1.1, 0.36, clay(RED), 0.05)); mN.position.y = -0.55; mag.add(mN);
+  const ax = V3(-Math.sin(TILT), Math.cos(TILT), 0);
+  const Q_E = [{ p: ax.clone().multiplyScalar(-0.85), q: 1 }, { p: ax.clone().multiplyScalar(0.85), q: -1 }];
+  const inE = p => { const a = p.dot(ax), perp = p.clone().addScaledVector(ax, -a).length(); return Math.abs(a) < 1.12 && perp < 0.2; };
+  const compasses = [];
+  [[0, 0], [0, 90], [0, 180], [0, 270], [38, 45], [38, 225], [-38, 135], [-38, 315], [62, 160], [-62, 340]].forEach(([la, lo]) => {
+    const lat = la * Math.PI / 180, lon = lo * Math.PI / 180, n = V3(Math.cos(lat) * Math.cos(lon), Math.sin(lat), Math.cos(lat) * Math.sin(lon));
+    const cg = new THREE.Group(); cg.position.copy(n).multiplyScalar(ER + 0.03); cg.quaternion.setFromUnitVectors(V3(0, 1, 0), n); earth.add(cg);
+    const disc = shadowed(cyl(0.17, 0.17, 0.04, clay(0xfaf6ee), 24)); cg.add(disc);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.02, 6, 24), metal(0xb08d57)); rim.rotation.x = Math.PI / 2; rim.position.y = 0.02; cg.add(rim);
+    const nd = new THREE.Group(); nd.position.y = 0.05; cg.add(nd);
+    const nN = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.15, 8), clay(RED, { emissive: 0x7a0000, emissiveIntensity: 0.4 })); nN.rotation.z = -Math.PI / 2; nN.position.x = 0.075; nd.add(nN);
+    const nS = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.15, 8), clay(0xeeeeee)); nS.rotation.z = Math.PI / 2; nS.position.x = -0.075; nd.add(nS);
+    // 指針 N 端沿著當地磁場在地表切面的方向
+    const b = fieldAt(cg.position, Q_E, V3(0, 0, 0)); b.addScaledVector(n, -b.dot(n)).normalize();
+    const xw = V3(1, 0, 0).applyQuaternion(cg.quaternion), zw = V3(0, 0, 1).applyQuaternion(cg.quaternion);
+    nd.rotation.y = -Math.atan2(b.dot(zw), b.dot(xw)); compasses.push(cg);
+  });
+  const lGN = addLabel('field', '🧭 地理北極（地磁 S 極）', 'small', V3(0, Y0 + ER + 0.55, 0));
+  const lGS = addLabel('field', '地理南極（地磁 N 極）', 'small', V3(0, Y0 - ER - 0.4, 0));
+  // 磁力線與鐵粉
+  const viz = FieldViz(center, 0xffb74d);
+  const filM = metal(0x3d3f44, { roughness: 0.5 });
+  let fil = null, filData = [], filT = 0;
+  const st = { type: 'bar', dust: false };
+  function build() {
+    const t = st.type;
+    bar.visible = t === 'bar'; U.visible = t === 'u'; earth.visible = t === 'earth';
+    [lBN, lBS].forEach(l => { l.show = t === 'bar'; }); [lUN, lUS].forEach(l => { l.show = t === 'u'; }); [lGN, lGS].forEach(l => { l.show = t === 'earth'; });
+    let lines;
+    if (t === 'bar') lines = traceAll(Q_BAR, 240, { seedR: 0.36, inside: inBar, keep: d => d.x < 0.55, bound: 2.45, minY: -2.4 });
+    else if (t === 'u') lines = traceAll(Q_U, 240, { seedR: 0.3, inside: inU, keep: d => d.y > -0.6, bound: 2.4, minY: -2.4 });
+    else lines = traceAll(Q_E, 46, { seedR: 0.3, inside: inE, bound: 4.2 });
+    if (t === 'earth') { viz.g.parent !== earth && earth.add(viz.g); } else if (viz.g.parent !== center) center.add(viz.g);
+    viz.set(t === 'earth' ? lines : lines.filter((_, i) => i % 3 === 0));
+    clearDust(); st.lines = lines;
+    $('fdDust').disabled = t === 'earth';
+  }
+  function clearDust() { if (fil) { center.remove(fil); fil.geometry.dispose(); fil.dispose(); fil = null; } filData = []; st.dust = false; }
+  function dust() {
+    clearDust(); if (st.type === 'earth') return;
+    const tmp = V3(0, 0, 0), D = V3(0, 0, 0), pick = [];
+    st.lines.forEach(L => { const P = poly(L); for (let s = 0.06 + rnd() * 0.08; s < P.len; s += 0.15) { polyAt(P, s / P.len, tmp); const q = tmp.clone().add(V3((rnd() - 0.5) * 0.09, (rnd() - 0.5) * 0.09, (rnd() - 0.5) * 0.09)); fieldAt(q, st.type === 'bar' ? Q_BAR : Q_U, D); pick.push({ p: q, d: D.clone().normalize() }); } });
+    const n = Math.min(3200, pick.length);
+    for (let i = pick.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [pick[i], pick[j]] = [pick[j], pick[i]]; }
+    fil = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.014, 0.07, 2, 6).rotateZ(-Math.PI / 2), filM, n); fil.castShadow = true; center.add(fil);
+    for (let i = 0; i < n; i++) { const k = pick[i]; filData.push({ t: k.p, q: Xq(k.d), s: V3(k.p.x + (rnd() - 0.5) * 2.4, 4.5 + rnd() * 2.5, k.p.z + (rnd() - 0.5) * 2.4), r: randQ(), delay: rnd() * 1.8 }); }
+    filT = 0; st.dust = true;
+  }
+  $('fdType').addEventListener('change', () => { st.type = $('fdType').value; build(); });
+  $('fdDust').addEventListener('click', dust);
+  $('fdClear').addEventListener('click', clearDust);
+  function update(dt) {
+    bloomOn = $('fdLines').checked;
+    viz.g.visible = $('fdLines').checked;
+    viz.update(dt, 1.1, 1);
+    if (st.type === 'earth') earth.rotation.y += dt * 0.25;
+    if (fil && filT < 4) {
+      filT += dt;
+      filData.forEach((f, i) => {
+        const k = clamp((filT - f.delay) / 1.1, 0, 1), e = 1 - Math.pow(1 - k, 3);
+        tmpP.copy(f.s).lerp(f.t, e); tmpQ.copy(f.r).slerp(f.q, smooth(0.55, 1, k));
+        tmpMat.compose(tmpP, tmpQ, tmpS); fil.setMatrixAt(i, tmpMat);
+      });
+      fil.instanceMatrix.needsUpdate = true;
+    }
+    $('fdTip').hidden = st.type !== 'earth';
+    const name = { bar: '棒狀磁鐵', u: 'U 型磁鐵', earth: '地球' }[st.type];
+    setHTML('fdStat', st.type === 'earth'
+      ? `地球內部就像一根<b>傾斜的大磁鐵</b>：<br>・<b class="b">上方（地理北極附近）＝ 地磁 S 極</b><br>・<b class="r">下方（地理南極附近）＝ 地磁 N 極</b><br>地表 ${compasses.length} 個小羅盤的<b class="r">紅色 N 針</b>都指向地理北極，和磁力線上<b class="o">箭頭（磁場方向）</b>一致。<br><small>地磁軸與自轉軸約夾 11°，所以磁北極和地理北極不在同一點。</small>`
+      : `目前：<b>${name}</b>　磁力線 <b class="o">${viz.count()}</b> 條${st.dust ? `　鐵粉 <b>${filData.length}</b> 粒` : ''}<br>・磁力線在磁鐵外部由 <b class="r">N 極</b>出發，回到 <b class="b">S 極</b><br>・線上的<b class="o">箭頭 ＝ 磁場方向</b>（指北針 N 極所指的方向）<br>・兩極附近磁力線最密，磁力最強<br>・磁力線<b>不會相交</b>，在空間中是立體的<br><small>按「撒下鐵粉」，鐵粉會沿著磁力線排列。拖曳畫面可以從各個角度看。</small>`);
+    setCap(st.type === 'earth' ? `<small>透視地磁儀</small>指北針的 <b class="red">N 極</b>指向地理北極<span class="huge red">地理北極 ＝ 地磁 S 極！</span>`
+      : `<small>立體磁力線・${name}</small>磁力線由 <b class="red">N</b> 出發、繞到外側回到 <b class="blu">S</b>，是<b>立體的封閉曲線</b><span class="huge org">${st.dust ? '鐵粉排出了立體的磁力線！' : '按「撒下鐵粉」看看'}</span>`);
+  }
+  build();
+  return { group, update, st, build, dust, viz };
+})();
+
+/* =========================================================
+   Tab 2：微觀磁域與退磁
+   ========================================================= */
+const DM = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const Y = 2.5, L = 4.4, W = 0.9;
+  const glass = c => new THREE.MeshPhysicalMaterial({ color: c, transparent: true, opacity: 0.2, roughness: 0.15, clearcoat: 1, depthWrite: false, side: THREE.DoubleSide });
+  const halves = [-1, 1].map(s => {
+    const g = new THREE.Group(); g.position.set(0, Y, 0); group.add(g);
+    const box = new THREE.Mesh(new RoundedBoxGeometry(L / 2 - 0.02, W, W, 3, 0.06), glass(s < 0 ? 0xff9c9c : 0x9cc4ff)); box.position.x = s * L / 4; box.renderOrder = 4; g.add(box);
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(L / 2 - 0.02, W, W)), new THREE.LineBasicMaterial({ color: s < 0 ? 0xc62828 : 0x1e6aa8, transparent: true, opacity: 0.45 })); edges.position.x = s * L / 4; g.add(edges);
+    const outer = new THREE.Mesh(new THREE.BoxGeometry(0.04, W * 0.98, W * 0.98), clay(s < 0 ? RED : BLU)); outer.position.x = s * (L / 2 - 0.02); g.add(outer);
+    const inner = new THREE.Mesh(new THREE.BoxGeometry(0.04, W * 0.98, W * 0.98), clay(s < 0 ? BLU : RED)); inner.position.x = s * 0.03; inner.visible = false; g.add(inner);
+    return { g, s, inner };
+  });
+  const lN = addLabel('domain', 'N', 'big nP', V3(-L / 2 - 0.35, Y, 0)), lS = addLabel('domain', 'S', 'big sP', V3(L / 2 + 0.35, Y, 0));
+  const lNewS = addLabel('domain', '新的 S', 'nP2 sP', V3(0, Y + 0.75, 0)), lNewN = addLabel('domain', '新的 N', 'nP2 nP', V3(0, Y + 0.75, 0));
+  // 磁域箭頭：22 × 4 × 4 個，全部指向左（N）
+  const NX = 22, NY = 4, NZ = 4, N = NX * NY * NZ;
+  const domM = new THREE.MeshStandardMaterial({ color: 0xffd54f, emissive: 0xffb300, emissiveIntensity: 0.8, roughness: 0.4 });
+  const dom = new THREE.InstancedMesh(arrowGeo(0.15, 0.016), domM, N); glowLayer(dom); group.add(dom);
+  const DD = []; const ALIGN = Xq(V3(-1, 0, 0));
+  for (let i = 0; i < NX; i++) for (let j = 0; j < NY; j++) for (let k = 0; k < NZ; k++) DD.push({ p: V3(-L / 2 + 0.16 + i * (L - 0.32) / (NX - 1), -W / 2 + 0.16 + j * (W - 0.32) / (NY - 1), -W / 2 + 0.16 + k * (W - 0.32) / (NZ - 1)), r: randQ(), w: rnd() * TAU });
+  // 外部磁力線光暈
+  const viz = FieldViz(group, 0xffb74d, 300); viz.g.position.y = Y;
+  const insideAny = qs => p => qs.some(([a, b]) => p.x > a && p.x < b && Math.abs(p.y) < W / 2 + 0.01 && Math.abs(p.z) < W / 2 + 0.01);
+  function setLines(sep) {
+    const d = sep, Q = d < 0.01 ? [{ p: V3(-1.95, 0, 0), q: 1 }, { p: V3(1.95, 0, 0), q: -1 }] : [{ p: V3(-1.95 - d, 0, 0), q: 1 }, { p: V3(-0.25 - d, 0, 0), q: -1 }, { p: V3(0.25 + d, 0, 0), q: 1 }, { p: V3(1.95 + d, 0, 0), q: -1 }];
+    const boxes = d < 0.01 ? [[-L / 2, L / 2]] : [[-L / 2 - d, -d], [d, L / 2 + d]];
+    viz.set(traceAll(Q, 80, { seedR: 0.56, inside: insideAny(boxes), keep: dd => Math.abs(dd.x) < 0.95 || dd.x < 0, bound: 3.4, minY: -2.3 }));
+  }
+  const lamp = alcoholLamp(); lamp.position.set(0, 0, 0.1); lamp.scale.setScalar(1.15); group.add(lamp);
+  const st = { broken: false, sep: 0, heat: false, h: 0, linesFor: -1, tip: '' };
+  $('dmBreak').addEventListener('click', () => { st.broken = true; st.tip = 'break'; });
+  $('dmHeat').addEventListener('click', () => { st.heat = true; st.tip = 'heat'; });
+  $('dmReset').addEventListener('click', () => { st.broken = false; st.sep = 0; st.heat = false; st.h = 0; st.tip = ''; setLines(0); st.linesFor = 0; });
+  setLines(0); st.linesFor = 0;
+  function update(dt) {
+    bloomOn = true;
+    const target = st.broken ? 0.75 : 0; st.sep = lerp(st.sep, target, ease(dt * 4)); if (Math.abs(st.sep - target) < 0.002) st.sep = target;
+    if (st.broken && st.sep === target && st.linesFor !== target) { setLines(target); st.linesFor = target; }
+    halves.forEach(h => { h.g.position.x = h.s * st.sep; h.inner.visible = st.sep > 0.05; const k = smooth(0.05, 0.4, st.sep); h.inner.scale.set(1, k + 0.001, k + 0.001); });
+    if (st.heat) st.h = Math.min(1, st.h + dt / 2.4);
+    const disorder = smooth(0, 1, st.h);
+    lamp.visible = st.heat; lamp.setLit(st.heat, wall); lamp.position.y = st.heat ? lerp(-1.2, 0, smooth(0, 0.25, st.h)) : -1.2;
+    DD.forEach((d, i) => {
+      const off = d.p.x < 0 ? -st.sep : st.sep;
+      tmpP.set(d.p.x + off, d.p.y + Y, d.p.z);
+      tmpQ.copy(ALIGN).slerp(d.r, disorder);
+      if (st.heat) { const w = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.sin(wall * 9 + d.w) * 0.35 * disorder, Math.cos(wall * 7 + d.w) * 0.35 * disorder, 0)); tmpQ.multiply(w); }
+      tmpMat.compose(tmpP, tmpQ, tmpS); dom.setMatrixAt(i, tmpMat);
+    });
+    dom.instanceMatrix.needsUpdate = true;
+    domM.emissiveIntensity = lerp(0.85, 0.35, disorder);
+    const fieldK = 1 - smooth(0, 0.45, st.h);
+    viz.mat.opacity = 0.85 * fieldK * (st.broken && st.linesFor !== 0.75 ? 0.25 : 1); viz.pm.opacity = fieldK; viz.g.visible = fieldK > 0.02;
+    viz.update(dt, 1, fieldK);
+    lN.off.set(-L / 2 - 0.35 - st.sep, Y, 0); lS.off.set(L / 2 + 0.35 + st.sep, Y, 0); lN.pos.copy(lN.off); lS.pos.copy(lS.off);
+    lNewS.off.set(-st.sep - 0.05, Y + 0.75, 0); lNewN.off.set(st.sep + 0.05, Y + 0.75, 0); lNewS.pos.copy(lNewS.off); lNewN.pos.copy(lNewN.off);
+    lNewS.show = lNewN.show = st.sep > 0.3 && fieldK > 0.3;
+    [lN, lS].forEach(l => { l.el.style.opacity = 0.25 + 0.75 * fieldK; });
+    const tip = $('dmTip');
+    if (st.tip === 'heat') { tip.hidden = false; tip.className = 'tip bad'; tip.textContent = '🔥 高溫或重擊會打亂磁域排列，導致「退磁」現象！'; }
+    else if (st.tip === 'break') { tip.hidden = false; tip.className = 'tip ok'; tip.textContent = '🧲 磁域方向一致，折斷後立刻產生新的 N、S 極！'; }
+    else tip.hidden = true;
+    $('dmBreak').disabled = st.broken; $('dmHeat').disabled = st.heat;
+    const order = Math.round(100 * (1 - disorder));
+    setHTML('dmStat', `磁域數量：<b>${N}</b> 個（每個箭頭＝一個小磁域）<br>排列整齊度：<b class="${order > 50 ? 'g' : 'r'}">${order}%</b><br>狀態：<b>${st.heat ? (st.h < 1 ? '加熱中，磁域開始亂轉…' : '已退磁（磁性消失）') : st.broken ? '折成兩段，各自都是完整的磁鐵' : '完整的磁鐵'}</b><br><small>${st.broken ? '每一段都有 N 極和 S 極，永遠無法分出單獨的 N 極或 S 極。' : '箭頭全部指向左邊，所以左端是 N 極、右端是 S 極。'}</small>`);
+    setCap(st.heat ? `<small>退磁</small>受熱後磁域<b>熱運動加劇、方向變亂</b>，磁性互相抵消<span class="huge red ${st.h >= 1 ? 'pop' : ''}">${st.h >= 1 ? '磁域雜亂 → 磁性消失！' : '磁域正在被打亂…'}</span>`
+      : st.broken ? `<small>折斷磁鐵</small>磁域方向<b>完全不變</b>，斷口立刻出現新的磁極<span class="huge grn pop">N S ｜ N S：兩根完整的磁鐵！</span>`
+        : `<small>微觀磁域</small>磁鐵內部有數百個小磁域，<b>方向整齊一致</b>，所以有磁性<span class="huge org">折斷後，會只剩 N 極或 S 極嗎？</span>`);
+  }
+  return { group, update, st, dom, viz, halves };
+})();
+
+/* =========================================================
+   Tab 3：螺線管與電磁鐵（乾電池正負極）
+   ========================================================= */
+const CL = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const Y = 2.2, R = 0.56, X0 = -1.6, X1 = 1.6;
+  // 軟鐵釘（半透明）
+  const nailM = new THREE.MeshPhysicalMaterial({ color: 0xb8bcc4, metalness: 0.4, roughness: 0.3, transparent: true, opacity: 0.32, depthWrite: false, clearcoat: 1 });
+  const nail = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 4.3, 32), nailM); nail.rotation.z = Math.PI / 2; nail.position.set(0, Y, 0); nail.renderOrder = 4; group.add(nail);
+  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.12, 32), nailM); head.rotation.z = Math.PI / 2; head.position.set(-2.2, Y, 0); group.add(head);
+  const tipC = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.45, 32), nailM); tipC.rotation.z = -Math.PI / 2; tipC.position.set(2.37, Y, 0); group.add(tipC);
+  [-2.0, 2.0].forEach(x => { const s = shadowed(rbox(0.3, Y - 0.3, 0.5, clay(0xc8a27a), 0.05)); s.position.set(x, (Y - 0.3) / 2, 0); group.add(s); });
+  // 3D 乾電池：凸起的正極（紅）、平坦的負極（深灰）；預設正極在左
+  const BZ = 1.9, BY = 0.32;
+  const bat = new THREE.Group(); bat.position.set(0, BY, BZ); group.add(bat);
+  const labelTex = (() => {
+    const c = document.createElement('canvas'); c.width = 256; c.height = 512; const g = c.getContext('2d');
+    g.fillStyle = '#2f3e4e'; g.fillRect(0, 0, 256, 512); g.fillStyle = '#e8b04a'; g.fillRect(0, 0, 256, 150);
+    g.fillStyle = '#ffffff'; g.font = '900 90px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    for (const x of [64, 192]) { g.fillText('+', x, 78); g.fillText('−', x, 440); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+  })();
+  const body = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 1.1, 40, 1, true), new THREE.MeshStandardMaterial({ map: labelTex, roughness: 0.45, metalness: 0.2, side: THREE.DoubleSide })));
+  body.rotation.z = Math.PI / 2; bat.add(body);
+  const posCap = shadowed(cyl(0.27, 0.27, 0.05, metal(RED, { roughness: 0.3 }), 40)); posCap.rotation.z = Math.PI / 2; posCap.position.x = -0.575; bat.add(posCap);
+  const nub = shadowed(cyl(0.1, 0.11, 0.1, metal(RED, { roughness: 0.25 }), 24)); nub.rotation.z = Math.PI / 2; nub.position.x = -0.65; bat.add(nub);
+  const negCap = shadowed(cyl(0.27, 0.27, 0.04, metal(0x3a3d42, { roughness: 0.4 }), 40)); negCap.rotation.z = Math.PI / 2; negCap.position.x = 0.57; bat.add(negCap);
+  const cradle = shadowed(rbox(1.5, 0.12, 0.62, clay(0xc8a27a), 0.05)); cradle.position.set(0, 0.06, BZ); group.add(cradle);
+  const lPos = addLabel('coil', '＋ 正極', 'small nP', V3(0, 0, 0)), lNeg = addLabel('coil', '－ 負極', 'small neg', V3(0, 0, 0));
+  // 導線（左線接電池左端、右線接右端）
+  const wireM = clay(0xb71c1c);
+  const W1 = [V3(X0, Y + R, 0), V3(X0 - 0.25, Y + R, 0), V3(X0 - 0.25, 0.06, 0.2), V3(X0 - 0.25, 0.06, BZ), V3(-0.95, 0.06, BZ), V3(-0.95, BY, BZ), V3(-0.71, BY, BZ)];
+  const W2 = [V3(X1, Y + R, 0), V3(X1 + 0.25, Y + R, 0), V3(X1 + 0.25, 0.06, 0.2), V3(X1 + 0.25, 0.06, BZ), V3(0.95, 0.06, BZ), V3(0.95, BY, BZ), V3(0.6, BY, BZ)];
+  [W1, W2].forEach(P => { for (let i = 0; i < P.length - 1; i++) { const s = shadowed(new THREE.Mesh(UNIT_CYL, wireM)); placeSeg(s, P[i], P[i + 1], 0.035); group.add(s); } });
+  // 線圈（依匝數重建）＋整個電路路徑：左電池端 → 左導線 → 線圈 → 右導線 → 右電池端
+  const copper = metal(0xc77b3d, { roughness: 0.3 });
+  let coil = null, circuit = null;
+  class Helix extends THREE.Curve { constructor(n) { super(); this.n = n; } getPoint(t, o = new THREE.Vector3()) { const a = t * this.n * TAU; return o.set(lerp(X0, X1, t), Y + R * Math.cos(a), R * Math.sin(a)); } }
+  function buildCoil(n) {
+    if (coil) { group.remove(coil); coil.geometry.dispose(); }
+    const h = new Helix(n); coil = shadowed(new THREE.Mesh(new THREE.TubeGeometry(h, n * 48, 0.05, 8), copper)); group.add(coil);
+    const hp = Array.from({ length: n * 48 + 1 }, (_, i) => h.getPoint(i / (n * 48)));
+    circuit = poly([...W1.slice().reverse(), ...hp, ...W2]);
+  }
+  // 發光的黃色電流小箭頭（InstancedMesh），由正極流向負極
+  const NA = 110;
+  const arrG = new THREE.ConeGeometry(0.06, 0.17, 10);
+  const arrM = new THREE.MeshBasicMaterial({ color: 0xffe14d, toneMapped: false });
+  const arrows = new THREE.InstancedMesh(arrG, arrM, NA); arrows.frustumCulled = false; glowLayer(arrows); group.add(arrows);
+  const arrU = Array.from({ length: NA }, (_, i) => i / NA);
+  // 鐵釘內的磁域
+  const NX = 18, N = NX * 9;
+  const domM = new THREE.MeshStandardMaterial({ color: 0xffd54f, emissive: 0xffb300, emissiveIntensity: 0.4, roughness: 0.4 });
+  const dom = new THREE.InstancedMesh(arrowGeo(0.16, 0.015), domM, N); glowLayer(dom); group.add(dom);
+  const DD = []; const AL_P = Xq(V3(1, 0, 0)), AL_M = Xq(V3(-1, 0, 0)), alQ = new THREE.Quaternion().copy(AL_P);
+  for (let i = 0; i < NX; i++) for (let j = 0; j < 3; j++) for (let k = 0; k < 3; k++) DD.push({ p: V3(-1.95 + i * 3.9 / (NX - 1), Y - 0.13 + j * 0.13, -0.13 + k * 0.13), r: randQ() });
+  const viz = FieldViz(group, 0xffa040, 480);
+  const lR = addLabel('coil', 'N', 'big nP', V3(2.95, Y, 0)), lL = addLabel('coil', 'S', 'big sP', V3(-2.75, Y, 0));
+  // 迴紋針
+  const clipM = metal(0xd5d8de, { roughness: 0.25 });
+  const clips = Array.from({ length: 14 }, (_, i) => { const m = shadowed(new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.016, 6, 18), clipM)); m.scale.set(1.7, 1, 1); const home = V3(2.9 + (i % 4) * 0.28 + rnd() * 0.08, 0.02, -0.5 + Math.floor(i / 4) * 0.32 + rnd() * 0.06); m.position.copy(home); m.rotation.x = -Math.PI / 2; m.rotation.z = rnd() * 3; group.add(m); return { m, home, rz: m.rotation.z }; });
+
+
+  const st = { on: false, turns: 10, I: 1, k: 0, level: '', rev: false, batRot: 0, flash: 0 };
+  $('clPower').addEventListener('click', () => { st.on = !st.on; });
+  $('clTurns').addEventListener('input', () => { st.turns = +$('clTurns').value; buildCoil(st.turns); });
+  $('clI').addEventListener('input', () => { st.I = +$('clI').value; });
+  $('clRev').addEventListener('click', () => { st.rev = !st.rev; st.flash = 4; });
+  buildCoil(st.turns);
+  const a = V3(0, 0, 0), b = V3(0, 0, 0), c = V3(0, 0, 0), q = new THREE.Quaternion(), one = V3(1, 1, 1), m4 = new THREE.Matrix4(), UP = V3(0, 1, 0);
+  function update(dt) {
+    const s = st.on ? clamp(st.turns * st.I / 60, 0, 1) : 0, dir = st.rev ? -1 : 1;
+    st.k = lerp(st.k, st.on ? 1 : 0, ease(dt * (st.on ? 10 : 3)));
+    st.flash = Math.max(0, st.flash - dt);
+    bloomOn = st.k > 0.02;
+    // 電池瞬間轉 180°（平滑）
+    st.batRot = lerp(st.batRot, st.rev ? Math.PI : 0, ease(dt * 9)); bat.rotation.y = st.batRot;
+    bat.updateMatrixWorld(); lPos.pos.copy(bat.localToWorld(V3(-0.68, 0.42, 0))); lNeg.pos.copy(bat.localToWorld(V3(0.6, 0.42, 0))); lPos.off.copy(lPos.pos); lNeg.off.copy(lNeg.pos);
+    // 磁力線（N 端隨電流方向改變）
+    const key = st.on ? `${Math.round(s * 10)}|${dir}` : '';
+    if (key !== st.level) { st.level = key; if (key) { const n = Math.round(24 + 70 * s); viz.set(traceAll([{ p: V3(2.05 * dir, 0, 0), q: 1 }, { p: V3(-2.05 * dir, 0, 0), q: -1 }], n, { seedR: 0.36, inside: p => Math.abs(p.x) < 2.3 && Math.hypot(p.y, p.z) < 0.3, bound: 3.6, minY: -2.1 }).map(L => L.map(p => p.add(V3(0, Y, 0))))); } }
+    viz.g.visible = st.k > 0.02 && !!st.level;
+    viz.mat.opacity = st.k * (0.35 + 0.6 * s); viz.pm.opacity = st.k; viz.pm.size = 0.14 + 0.14 * s;
+    viz.mat.color.setHex(s > 0.6 ? 0xffd27a : 0xffa040);
+    viz.update(dt, 0.6 + 1.4 * s, st.on ? 0.3 + 0.7 * s : 0);
+    // 磁域對齊（方向跟著 N 極）
+    alQ.slerp(st.rev ? AL_M : AL_P, ease(dt * 10));
+    DD.forEach((d, i) => { tmpQ.copy(d.r).slerp(alQ, st.k); tmpMat.compose(d.p, tmpQ, tmpS); dom.setMatrixAt(i, tmpMat); });
+    dom.instanceMatrix.needsUpdate = true; domM.emissiveIntensity = 0.4 + 0.8 * st.k * (0.4 + 0.6 * s);
+    nailM.emissive.setHex(0xffa040); nailM.emissiveIntensity = 0.12 * st.k * s;
+    // 電流箭頭：正極 → 線圈 → 負極
+    arrows.visible = st.on;
+    if (st.on) {
+      const v = (0.9 + 0.45 * st.I) / circuit.len;
+      for (let i = 0; i < NA; i++) {
+        arrU[i] = (arrU[i] + dir * v * dt + 1) % 1; const u = arrU[i];
+        polyAt(circuit, u, c); polyAt(circuit, Math.max(0, u - 0.002), a); polyAt(circuit, Math.min(1, u + 0.002), b);
+        b.sub(a).multiplyScalar(dir); if (b.lengthSq() < 1e-12) b.set(1, 0, 0);
+        q.setFromUnitVectors(UP, b.normalize()); m4.compose(c, q, one); arrows.setMatrixAt(i, m4);
+      }
+      arrows.instanceMatrix.needsUpdate = true;
+    }
+    // N、S 標籤互換
+    const rightN = !st.rev;
+    setLabel(lR, rightN ? 'N' : 'S'); setLabel(lL, rightN ? 'S' : 'N');
+    lR.el.className = 'tag big ' + (rightN ? 'nP' : 'sP'); lL.el.className = 'tag big ' + (rightN ? 'sP' : 'nP');
+    lR.show = lL.show = st.k > 0.5;
+    // 迴紋針吸在鐵釘尖端
+    const nAtt = st.on ? Math.round(14 * s) : 0;
+    clips.forEach((cc, i) => {
+      const att = i < nAtt, tgt = att ? V3(2.62 + (i % 2) * 0.1, Y - 0.25 - i * 0.16, (i % 3 - 1) * 0.05) : cc.home;
+      cc.m.position.lerp(tgt, ease(dt * (att ? 7 : 4)));
+      cc.m.rotation.x = lerp(cc.m.rotation.x, att ? 0 : -Math.PI / 2, ease(dt * 6)); cc.m.rotation.z = lerp(cc.m.rotation.z, att ? Math.PI / 2 : cc.rz, ease(dt * 6));
+    });
+    // 文字
+    $('clTurnsV').textContent = st.turns; $('clIV').textContent = st.I.toFixed(1);
+    $('clPower').textContent = st.on ? '⏻ 切斷電源' : '⚡ 接通電源';
+    $('clRev').textContent = st.rev ? '🔄 反轉電池（正極改回左邊）' : '🔄 反轉電池正負極';
+    const tip = $('clTip');
+    if (st.flash > 0) { tip.hidden = false; tip.className = 'tip bad'; tip.textContent = '🔄 電流方向反轉，磁場方向跟著顛倒，N、S 極互換！'; }
+        else tip.hidden = true;
+    const B = st.turns * st.I, posSide = st.rev ? '右' : '左', nSide = st.rev ? '左端（釘頭）' : '右端（釘尖）';
+    setHTML('clStat', `電源：<b class="${st.on ? 'g' : ''}">${st.on ? '通電中' : '未通電'}</b>　電池正極在<b class="r">${posSide}</b>邊<br>電流：正極 → ${st.rev ? '右' : '左'}導線 → 線圈 → ${st.rev ? '左' : '右'}導線 → 負極<br>電磁鐵 N 極：<b class="r">${st.on ? nSide : '—'}</b><br>匝數 <b>${st.turns}</b> × 電流 <b>${st.I.toFixed(1)}</b> A ＝ 磁力指標 <b class="o">${st.on ? B.toFixed(0) : 0}</b>　迴紋針 <b>${nAtt}</b> 個<br><small>黃色小箭頭就是電流方向（由正極流出、流回負極）。斷電後軟鐵的磁域恢復雜亂，磁性消失。</small>`);
+    setCap(!st.on ? `<small>螺線管與電磁鐵</small>軟鐵釘內的磁域<b>雜亂無章</b>，沒有磁性<span class="huge org">按「接通電源」看看</span>`
+      : st.flash > 0 ? `<small>反轉電池正負極</small>電流反向 → 磁域整排轉向 → <b>N、S 極互換</b><span class="huge red pop">現在 N 極在${nSide}！</span>`
+        : `<small>電磁鐵</small>電流由<b class="red">正極</b>流出繞過線圈 → 磁域整齊對齊 → 鐵釘被磁化<span class="huge ${s > 0.6 ? 'red' : 'org'}">N 極在${nSide}（${nAtt} 個迴紋針）</span>`);
+  }
+  return { group, update, st, viz, dom, bat, arrows };
+})();
+onTabChange = t => { bloomOn = false; handOn = false; };
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  field: { group: FD.group, cam: () => ({ pos: [0, 4.3, 10], target: [0, 2.6, 0], fitW: window.innerWidth < window.innerHeight ? 7 : 8.2 }), update: FD.update },
+  domain: { group: DM.group, cam: () => ({ pos: [0, 3.9, 8.6], target: [0, 2.3, 0], fitW: window.innerWidth < window.innerHeight ? 6.6 : 7.6 }), update: DM.update },
+  coil: { group: CL.group, cam: () => ({ pos: [0.4, 4.4, 9.4], target: [0.6, 2.0, 0], fitW: window.innerWidth < window.innerHeight ? 8.6 : 8.2 }), update: CL.update }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  onTabChange(t);
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  bloomComposer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); bloomComposer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderAll(dt);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, FD, DM, CL, bloom, camera, controls, renderer, scene, placeLabels };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'field';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+<script src="goals.js" defer></script>
+</body>
+</html>
