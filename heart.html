@@ -269,6 +269,35 @@ function deform(x, y, z) {
   const k = 1 + 0.1 * (bump(-0.6) + bump(0.62));          // 左右心房的鼓起
   return V3(X * k, Y * k, Z * k);
 }
+
+/* ----- 有機形態（美學規範 D）：不規則細胞、紡錘肌肉、雙凹圓盤紅血球 ----- */
+function orgNoise(x, y, z, s) { return Math.sin(x * 1.7 + s) * Math.sin(y * 2.3 + s * 1.3) * Math.sin(z * 1.9 + s * 0.7) + 0.5 * Math.sin(x * 3.1 - s) * Math.sin(y * 2.9 + s * 2.1) * Math.sin(z * 3.7 + s); }
+function orgSmooth(g) { const p = g.attributes.position, n = g.attributes.normal, m = new Map(); for (let i = 0; i < p.count; i++) { const k = Math.round(p.getX(i) * 1e4) + "," + Math.round(p.getY(i) * 1e4) + "," + Math.round(p.getZ(i) * 1e4); let a = m.get(k); if (!a) { a = [0, 0, 0, []]; m.set(k, a); } a[0] += n.getX(i); a[1] += n.getY(i); a[2] += n.getZ(i); a[3].push(i); } for (const a of m.values()) { const l = Math.hypot(a[0], a[1], a[2]) || 1; for (const i of a[3]) n.setXYZ(i, a[0] / l, a[1] / l, a[2] / l); } n.needsUpdate = true; }
+function blobGeo(r, { amp = 0.08, freq = 1.4, seed = 1, detail = 5, ripple = 0, rippleF = 9 } = {}) {
+  const g = new THREE.IcosahedronGeometry(1, detail), p = g.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i).normalize();
+    let k = 1 + amp * orgNoise(v.x * freq * 2, v.y * freq * 2, v.z * freq * 2, seed);
+    if (ripple) k += ripple * Math.sin(v.x * rippleF + seed) * Math.sin(v.y * rippleF * 1.1 + 1) * Math.sin(v.z * rippleF * 0.9 + seed * 2);
+    v.multiplyScalar(r * k); p.setXYZ(i, v.x, v.y, v.z);
+  }
+  g.computeVertexNormals(); orgSmooth(g); return g;
+}
+function spindleGeo(len, r, { blunt = 0.35, seed = 4 } = {}) {
+  const pts = [], N = 48;
+  for (let i = 0; i <= N; i++) { const t = (1 - Math.cos(Math.PI * i / N)) / 2, prof = Math.pow(Math.sin(Math.PI * t), blunt) * (1 + 0.05 * Math.sin(t * 17 + seed)); pts.push(new THREE.Vector2(Math.max(0.002, r * prof), (t - 0.5) * len)); }
+  const g = new THREE.LatheGeometry(pts, 28); g.rotateZ(Math.PI / 2); g.computeVertexNormals(); return g;
+}
+function discCellGeo(r = 0.1) {
+  const up = [], N = 16;
+  for (let i = 0; i <= N; i++) { const p = Math.sin(i / N * Math.PI / 2), h = Math.sqrt(Math.max(0, 1 - p * p)) * (0.207 + 2.0 * p * p - 1.12 * p ** 4) * r / 2; up.push([p * r, Math.max(h, 0.0005)]); }
+  const pts = []; for (let i = 0; i <= N; i++) pts.push(new THREE.Vector2(Math.max(0.001, up[i][0]), -up[i][1]));
+  for (let i = N - 1; i >= 0; i--) pts.push(new THREE.Vector2(Math.max(0.001, up[i][0]), up[i][1]));
+  const g = new THREE.LatheGeometry(pts, 20); g.computeVertexNormals(); return g;
+}
+let orgSeed = 6;
+const oblob = (r, o = {}) => blobGeo(r, { amp: 0.06, seed: (orgSeed = orgSeed * 1.37 % 97), detail: 5, ...o });
+const MUSCLE_GEO = spindleGeo(2, 1, { blunt: 0.6, seed: 2 }).rotateZ(Math.PI / 2);
 const MUSCLE = 0xc94b58, MUSCLE_IN = 0x8e2a36;
 {
   const g = new THREE.SphereGeometry(1, 120, 90);
@@ -509,12 +538,12 @@ const BODY_BEDS = capillaryBed(BODY_Y, 2.7, -2.7, RED, BLUE);   // 組織：紅 
 // 肺泡（上方）與組織細胞（下方）
 const alveoli = [], cells = [];
 for (let i = 0; i < 16; i++) {
-  const m = new THREE.Mesh(new THREE.SphereGeometry(0.32 + Math.random() * 0.12, 24, 16), jelly(0xffd6e0, { opacity: 0.7 }));
+  const m = new THREE.Mesh(oblob(0.32 + Math.random() * 0.12, { amp: 0.08 }), jelly(0xffd6e0, { opacity: 0.7 }));
   m.position.set(-3 + (i % 8) * 0.86, LUNG_Y + 0.95 + Math.floor(i / 8) * 0.55, (i % 2 ? 0.8 : -0.8) + (Math.random() - 0.5) * 0.4);
   scene.add(m); alveoli.push(m);
 }
 for (let i = 0; i < 14; i++) {
-  const m = new THREE.Mesh(new RoundedBoxGeometry(0.62, 0.5, 0.62, 3, 0.16), clay([0xd8f3e4, 0xe7defa, 0xfff0c9][i % 3]));
+  const m = new THREE.Mesh(oblob(0.33, { amp: 0.1 }), clay([0xd8f3e4, 0xe7defa, 0xfff0c9][i % 3])); m.scale.y = 0.8;
   m.position.set(-3 + (i % 7) * 1.0, BODY_Y - 1.0 - Math.floor(i / 7) * 0.62, (i % 2 ? 0.9 : -0.9) + (Math.random() - 0.5) * 0.3);
   m.castShadow = true;
   scene.add(m); cells.push(m);
@@ -647,7 +676,7 @@ function lap() {
 }
 
 const N = 90;
-const pGeo = new THREE.SphereGeometry(0.11, 14, 10);
+const pGeo = discCellGeo(0.14);
 const particles = [];
 for (let i = 0; i < N; i++) {
   const mat = new THREE.MeshStandardMaterial({ color: BLUE, emissive: BLUE, emissiveIntensity: 1.1, roughness: 0.3 });

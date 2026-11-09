@@ -243,6 +243,35 @@ controls.minDistance = 1.5; controls.maxDistance = 60;
 const rubber = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.58, metalness: 0.12, envMapIntensity: 0.6, ...o });
 const rubberGhost = (color, op = 0.5) => rubber(color, { transparent: true, opacity: op, depthWrite: false, side: THREE.DoubleSide });
 const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+
+/* ----- 有機形態（美學規範 D）：不規則細胞、紡錘肌肉、雙凹圓盤紅血球 ----- */
+function orgNoise(x, y, z, s) { return Math.sin(x * 1.7 + s) * Math.sin(y * 2.3 + s * 1.3) * Math.sin(z * 1.9 + s * 0.7) + 0.5 * Math.sin(x * 3.1 - s) * Math.sin(y * 2.9 + s * 2.1) * Math.sin(z * 3.7 + s); }
+function orgSmooth(g) { const p = g.attributes.position, n = g.attributes.normal, m = new Map(); for (let i = 0; i < p.count; i++) { const k = Math.round(p.getX(i) * 1e4) + "," + Math.round(p.getY(i) * 1e4) + "," + Math.round(p.getZ(i) * 1e4); let a = m.get(k); if (!a) { a = [0, 0, 0, []]; m.set(k, a); } a[0] += n.getX(i); a[1] += n.getY(i); a[2] += n.getZ(i); a[3].push(i); } for (const a of m.values()) { const l = Math.hypot(a[0], a[1], a[2]) || 1; for (const i of a[3]) n.setXYZ(i, a[0] / l, a[1] / l, a[2] / l); } n.needsUpdate = true; }
+function blobGeo(r, { amp = 0.08, freq = 1.4, seed = 1, detail = 5, ripple = 0, rippleF = 9 } = {}) {
+  const g = new THREE.IcosahedronGeometry(1, detail), p = g.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i).normalize();
+    let k = 1 + amp * orgNoise(v.x * freq * 2, v.y * freq * 2, v.z * freq * 2, seed);
+    if (ripple) k += ripple * Math.sin(v.x * rippleF + seed) * Math.sin(v.y * rippleF * 1.1 + 1) * Math.sin(v.z * rippleF * 0.9 + seed * 2);
+    v.multiplyScalar(r * k); p.setXYZ(i, v.x, v.y, v.z);
+  }
+  g.computeVertexNormals(); orgSmooth(g); return g;
+}
+function spindleGeo(len, r, { blunt = 0.35, seed = 4 } = {}) {
+  const pts = [], N = 48;
+  for (let i = 0; i <= N; i++) { const t = (1 - Math.cos(Math.PI * i / N)) / 2, prof = Math.pow(Math.sin(Math.PI * t), blunt) * (1 + 0.05 * Math.sin(t * 17 + seed)); pts.push(new THREE.Vector2(Math.max(0.002, r * prof), (t - 0.5) * len)); }
+  const g = new THREE.LatheGeometry(pts, 28); g.rotateZ(Math.PI / 2); g.computeVertexNormals(); return g;
+}
+function discCellGeo(r = 0.1) {
+  const up = [], N = 16;
+  for (let i = 0; i <= N; i++) { const p = Math.sin(i / N * Math.PI / 2), h = Math.sqrt(Math.max(0, 1 - p * p)) * (0.207 + 2.0 * p * p - 1.12 * p ** 4) * r / 2; up.push([p * r, Math.max(h, 0.0005)]); }
+  const pts = []; for (let i = 0; i <= N; i++) pts.push(new THREE.Vector2(Math.max(0.001, up[i][0]), -up[i][1]));
+  for (let i = N - 1; i >= 0; i--) pts.push(new THREE.Vector2(Math.max(0.001, up[i][0]), up[i][1]));
+  const g = new THREE.LatheGeometry(pts, 20); g.computeVertexNormals(); return g;
+}
+let orgSeed = 6;
+const oblob = (r, o = {}) => blobGeo(r, { amp: 0.06, seed: (orgSeed = orgSeed * 1.37 % 97), detail: 5, ...o });
+const MUSCLE_GEO = spindleGeo(2, 1, { blunt: 0.6, seed: 2 }).rotateZ(Math.PI / 2);
 function woodTexture(base = '#cfa983', rep = [3, 1.4]) {
   const c = document.createElement('canvas'); c.width = 512; c.height = 256;
   const g = c.getContext('2d');
@@ -466,7 +495,7 @@ BUILD.anatomy = (g) => {
     { pts: [...P.rpv, ...P.lCommon, ...P.brach], g: [H.GATE.MIT, H.GATE.AOV], oxy: true }
   ].map(p => ({ ...gatedCurve(p.pts, p.g), oxy: p.oxy }));
   const N = 150;
-  const pGeo = new THREE.SphereGeometry(0.075, 12, 8);
+  const pGeo = discCellGeo(0.095);
   const matO = rubber(0xd98a86, { emissive: 0xd98a86, emissiveIntensity: 0.15 }), matD = rubber(0x7f9fcc, { emissive: 0x7f9fcc, emissiveIntensity: 0.15 });
   const parts = Array.from({ length: N }, (_, i) => {
     const path = paths[i % 4];
@@ -596,7 +625,7 @@ BUILD.circ = (g) => {
   // 身體組織（下方）
   const tissue = new THREE.Group(); tissue.position.set(0, 0.75, 0);
   const tBox = new THREE.Mesh(new RoundedBoxGeometry(5.2, 1.1, 2.0, 5, 0.45), rubber(0xf0dcc4)); tissue.add(tBox);
-  for (let i = 0; i < 26; i++) { const c = new THREE.Mesh(new THREE.SphereGeometry(rnd(0.16, 0.24), 16, 12), rubber([0xf5e6d3, 0xeed6c4, 0xf2dfca][i % 3])); c.position.set(rnd(-2.3, 2.3), rnd(0.35, 0.6), rnd(-0.75, 0.85)); c.scale.y = 0.7; tissue.add(c); }
+  for (let i = 0; i < 26; i++) { const c = new THREE.Mesh(oblob(rnd(0.16, 0.24), { amp: 0.1, detail: 4 }), rubber([0xf5e6d3, 0xeed6c4, 0xf2dfca][i % 3])); c.position.set(rnd(-2.3, 2.3), rnd(0.35, 0.6), rnd(-0.75, 0.85)); c.scale.y = 0.7; tissue.add(c); }
   g.add(shadowed(tissue));
   const lTissue = addLabel('身體組織（組織微血管）'); lTissue.pos.set(0, -0.1, 1.3);
   // 循環路徑（世界座標）
@@ -630,7 +659,7 @@ BUILD.circ = (g) => {
   seg([bodyCap[bodyCap.length - 1], W(V3(...P.ivc[0]))], 0x93b0da, 0.2);
   // 血流粒子
   const NP = 140;
-  const rbcGeo = new THREE.SphereGeometry(0.075, 12, 8);
+  const rbcGeo = discCellGeo(0.095);
   const rbcs = new THREE.InstancedMesh(rbcGeo, rubber(0xffffff), NP); rbcs.instanceMatrix.setUsage(THREE.DynamicDrawUsage); g.add(rbcs);
   const parts = Array.from({ length: NP }, (_, i) => ({ loop: loops[i % 2], u: Math.random(), k: rnd(0.85, 1.15), off: V3(rnd(-0.06, 0.06), rnd(-0.06, 0.06), rnd(-0.06, 0.06)) }));
   const inR = (u, a, b) => a <= b ? u >= a && u <= b : u >= a || u <= b;
@@ -742,7 +771,7 @@ BUILD.vessel = (g) => {
     holder.add(flap, cup); g.add(shadowed(pv));
     return { holder, s };
   })).flat();
-  const muscles = [-1, 1].map(s => { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 20), rubber(0xc97f7d)); m.scale.set(0.5, 1.5, 0.85); m.position.set(XV + s * 1.5, Y0 + 3.0, 0); g.add(shadowed(m)); return m; });
+  const muscles = [-1, 1].map(s => { const m = new THREE.Mesh(MUSCLE_GEO, rubber(0xc97f7d)); m.scale.set(0.5, 1.5, 0.85); m.position.set(XV + s * 1.5, Y0 + 3.0, 0); g.add(shadowed(m)); return m; });
   // 微血管：半透明網格（單層細胞）
   const cellTex = (() => {
     const c = document.createElement('canvas'); c.width = 256; c.height = 512;
@@ -758,10 +787,10 @@ BUILD.vessel = (g) => {
   })();
   const capillary = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, H, 32, 1, true), new THREE.MeshStandardMaterial({ map: cellTex, transparent: true, opacity: 0.55, roughness: 0.6, side: THREE.DoubleSide, depthWrite: false }));
   capillary.position.set(XC, Y0 + H / 2, 0); capillary.renderOrder = 6; g.add(capillary);
-  for (let i = 0; i < 10; i++) { const s = i % 2 ? 1 : -1; const c = new THREE.Mesh(new THREE.SphereGeometry(rnd(0.32, 0.42), 24, 16), rubber(0xf1e0c8)); c.position.set(XC + s * rnd(0.8, 1.1), Y0 + 0.4 + i * 0.52, rnd(-0.3, 0.3)); c.scale.z = 0.7; const nuc = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 10), rubber(0xb98aa6)); nuc.position.copy(c.position).add(V3(0, 0, 0.25)); g.add(shadowed(c), nuc); }
+  for (let i = 0; i < 10; i++) { const s = i % 2 ? 1 : -1; const c = new THREE.Mesh(oblob(rnd(0.32, 0.42), { amp: 0.09 }), rubber(0xf1e0c8)); c.position.set(XC + s * rnd(0.8, 1.1), Y0 + 0.4 + i * 0.52, rnd(-0.3, 0.3)); c.scale.z = 0.7; const nuc = new THREE.Mesh(oblob(0.1, { amp: 0.1, detail: 3 }), rubber(0xb98aa6)); nuc.position.copy(c.position).add(V3(0, 0, 0.25)); g.add(shadowed(c), nuc); }
   // 血球
-  const rbcGeo = new THREE.SphereGeometry(0.13, 16, 10);
-  const mkRBC = color => { const m = new THREE.Mesh(rbcGeo, rubber(color)); m.scale.set(1, 0.5, 1); g.add(m); return m; };
+  const rbcGeo = discCellGeo(0.15);
+  const mkRBC = color => { const m = new THREE.Mesh(rbcGeo, rubber(color)); m.rotation.set(Math.random() * 3, 0, Math.random() * 3); g.add(m); return m; };
   const art = Array.from({ length: 34 }, () => ({ m: mkRBC(0xd98a86), y: rnd(0, H), r: rnd(0, 0.38), a: rnd(Math.PI * 0.55, Math.PI * 1.45) }));
   const vn = Array.from({ length: 30 }, () => ({ m: mkRBC(0x7f9fcc), y: rnd(0, H), r: rnd(0, 0.52), a: rnd(Math.PI * 0.55, Math.PI * 1.45) }));
   const cap = Array.from({ length: 6 }, (_, i) => { const m = mkRBC(0xd98a86); m.material = m.material.clone(); return { m, y: i * (H / 6) }; });
