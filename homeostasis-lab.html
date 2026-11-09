@@ -105,6 +105,8 @@
   .three-btn .btn { padding: 9px 2px; font-size: .8rem; }
   .orgcard { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin-top: 8px; font-size: .8rem; line-height: 1.65; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
   .orgcard:empty { display: none; }
+  .gnow { display: flex; align-items: baseline; justify-content: center; gap: 8px; background: rgba(255,255,255,.88); border-radius: 14px; padding: 6px 10px; margin: 6px 0 2px; font-size: .8rem; font-weight: 800; color: var(--ink-soft); }
+  .gnow b { font-size: 1.7rem; font-weight: 900; font-variant-numeric: tabular-nums; transition: color .3s; }
   .orgcard h4 { font-size: .98rem; font-weight: 900; margin-bottom: 2px; }
   .nbar { display: grid; grid-template-columns: 5em 1fr 3.4em; gap: 4px 6px; align-items: center; font-size: .74rem; font-weight: 800; }
   .nbar .bar { height: 10px; border-radius: 99px; background: #e9e1d3; overflow: hidden; }
@@ -115,7 +117,7 @@
   .sw { display: inline-block; width: 12px; height: 12px; border-radius: 4px; vertical-align: -2px; margin-right: 3px; border: 1px solid rgba(0,0,0,.15); }
   .tag.part { font-size: .66rem; padding: 2px 7px; background: rgba(62,44,37,.82); color: #fff; }
   .tag.org { background: #d08a2e; color: #fff; }
-  .tag.ins { background: #1e88e5; color: #fff; } .tag.glc { background: #ef6c00; color: #fff; }
+  .tag.ins { background: #1e88e5; color: #fff; } .tag.glc { background: #d9453f; color: #fff; }
 </style>
 <script src="mobile.js"></script>
 <script type="importmap">
@@ -180,7 +182,8 @@
         <button class="btn hbtn" data-h="wat">💧 水分</button>
       </div>
       <div id="gluBox">
-        <div class="row2"><button class="btn" id="eat">🍚 吃一餐</button><button class="btn" id="fast">⏩ 很久沒吃東西</button></div>
+        <div class="gnow" id="gNow"></div>
+        <div class="row2"><button class="btn" id="eat">🍱 飯後高血糖</button><button class="btn" id="fast">🏃 飢餓低血糖</button></div>
         <div class="row2"><button class="btn" id="sport">🏀 打球（腎上腺素）</button><button class="btn" id="diab">💉 胰島素不足</button></div>
       </div>
       <div id="tmpBox" hidden>
@@ -404,22 +407,65 @@ function makeBody(parent, x = 0, op = 0.25) {
    ========================================================= */
 const BR = (() => {
   const group = new THREE.Group(); scene.add(group);
-  const B = makeBody(group, 0, 0.18);
+  const B = makeBody(group, 0, 0.1);
   const T = new THREE.Group(); group.add(T);
-  const pink = clay(0xf28b9b, { clearcoat: 0.5, transparent: true, opacity: 0.9 });
-  const air = clay(0xe57373);
-  const trachea = tubeM([[0, 5.15, 0.35], [0, 4.9, 0.15], [0, 4.5, 0.1], [0, 4.15, 0.1]], 0.07, clay(0xe9a3a3)); T.add(trachea);
-  [-1, 1].forEach(s => T.add(tubeM([[0, 4.15, 0.1], [s * 0.2, 4.05, 0.1], [s * 0.42, 3.85, 0.1]], 0.05, clay(0xe9a3a3))));
-  const lungs = [-1, 1].map(s => { const l = sphere(0.5, pink, 32); l.position.set(s * 0.45, 3.65, 0.05); l.userData.s = s; T.add(l); return l; });
-  // 肋骨（半圈）
-  const ribM = clay(0xf5f0e6, { transparent: true, opacity: 0.85 });
-  const ribs = Array.from({ length: 6 }, (_, i) => { const r = new THREE.Mesh(new THREE.TorusGeometry(0.78 - Math.abs(i - 2) * 0.03, 0.035, 8, 40, Math.PI), ribM); r.position.set(0, 4.25 - i * 0.24, 0); r.userData.y = r.position.y; T.add(r); return r; });
-  const sternum = rbox(0.1, 1.3, 0.06, ribM, 0.03); sternum.position.set(0, 3.7, 0.45); T.add(sternum);
-  const dia = new THREE.Mesh(new THREE.SphereGeometry(0.85, 32, 12, 0, TAU, 0, Math.PI * 0.42), clay(0xc0574e, { transparent: true, opacity: 0.8, side: THREE.DoubleSide })); dia.scale.set(1, 0.45, 0.6); dia.position.y = 2.85; T.add(dia);
+  /* ---- 立體胸腔模型（在 A 的局部座標裡建模，再縮放放進身體） ----
+     肋骨 9 對：後端以脊椎為軸心，吸氣時「向上、向外」擴張（水桶提把運動）
+     橫膈膜：圓頂狀肌肉，每幀改頂點；吸氣收縮變平、往下壓，呼氣舒張往上拱
+     肺葉：粉白色、帶肺泡紋理，底部凹面貼著橫膈膜，跟著胸腔一起變大 */
+  const A = new THREE.Group(); A.scale.set(0.37, 0.37, 0.3); A.position.set(0, 1.58, 0.02); T.add(A);
+  const R2 = (a, b) => a + Math.random() * (b - a);
+  const boneMat = new THREE.MeshStandardMaterial({ color: 0xf1e6d3, roughness: 0.48 });
+  for (let i = 0; i < 12; i++) { const v = rbox(0.36, 0.3, 0.32, boneMat, 0.08); v.position.set(0, 3.0 + i * 0.4, -1.12); A.add(shadowed(v)); }
+  const ribs = [];
+  for (let i = 0; i < 9; i++) {
+    const yi = 6.9 - i * 0.4, rx = 1.1 + 0.62 * Math.sin(Math.min(1, (i + 1) / 6) * Math.PI / 2), zf = 1.02, zb = -1.0;
+    const zc = (zf + zb) / 2, a = (zf - zb) / 2, f0 = -Math.PI / 2 + 0.14, f1 = 1.2, drop = 0.55 + i * 0.03;
+    [1, -1].forEach(side => {
+      const pts = [];
+      for (let k = 0; k <= 16; k++) { const f = lerp(f0, f1, k / 16), u = k / 16; pts.push(V3(side * rx * Math.cos(f), -drop * (u * u * (3 - 2 * u)), zc + a * Math.sin(f) - zb)); }
+      const grp = new THREE.Group(); grp.position.set(0, yi, zb);
+      grp.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, 0.07, 8), boneMat));
+      A.add(shadowed(grp)); ribs.push({ grp, i });
+    });
+  }
+  const sternum = shadowed(rbox(0.34, 2.3, 0.16, boneMat, 0.07)); A.add(sternum);
+  // 肺泡紋理
+  const alv = document.createElement('canvas'); alv.width = alv.height = 256;
+  const ag = alv.getContext('2d'); ag.fillStyle = '#f4d9d5'; ag.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 420; i++) { ag.fillStyle = `rgba(${200 + R2(0, 40) | 0},${140 + R2(0, 40) | 0},${140 + R2(0, 30) | 0},${R2(0.15, 0.4)})`; ag.beginPath(); ag.arc(R2(0, 256), R2(0, 256), R2(3, 9), 0, TAU); ag.fill(); }
+  const alvTex = new THREE.CanvasTexture(alv); alvTex.colorSpace = THREE.SRGBColorSpace; alvTex.wrapS = alvTex.wrapT = THREE.RepeatWrapping; alvTex.repeat.set(2, 2);
+  const lungMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: alvTex, roughness: 0.72, bumpMap: alvTex, bumpScale: 0.6 });
+  const LUNG_TOP = 7.0, LUNG_H = 3.0;
+  const lungGeo = (side) => {
+    const geo = new THREE.SphereGeometry(1, 44, 32), p = geo.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      let x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+      const yn = (y + 1) / 2, w = 0.5 + 0.5 * Math.sin(Math.min(1, (1 - yn) * 1.6 + 0.15) * Math.PI / 2);
+      x *= 0.78 * w; z *= 0.95 * w;
+      if (x * side < 0) x *= 0.5;                                   // 內側（靠心臟）較平
+      let Y = -LUNG_H + yn * LUNG_H;
+      if (yn < 0.25) Y += 0.35 * (1 - (x * x / 0.6 + z * z / 0.9)) * (1 - yn / 0.25);   // 底部凹面貼橫膈膜
+      p.setXYZ(i, x, Y, z);
+    }
+    geo.computeVertexNormals(); return geo;
+  };
+  const lungs = [1, -1].map(side => { const m = new THREE.Mesh(lungGeo(-side), lungMat); m.position.set(side * 0.92, LUNG_TOP, -0.05); m.userData.side = side; A.add(shadowed(m)); return m; });
+  const airMat = new THREE.MeshStandardMaterial({ color: 0xe9d7cf, roughness: 0.5 });
+  A.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(0, 9.65, 1.0), V3(0, 9.0, 0.3), V3(0, 7.62, 0)]), 16, 0.15, 12), airMat));
+  [1, -1].forEach(s => A.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(0, 7.62, 0), V3(s * 0.4, 7.2, 0), V3(s * 0.75, 6.4, 0)]), 16, 0.1, 10), airMat)));
+  const diaGeo = new THREE.RingGeometry(0.02, 1, 64, 14); diaGeo.rotateX(-Math.PI / 2);
+  const dBase = Float32Array.from(diaGeo.attributes.position.array);
+  const dia = new THREE.Mesh(diaGeo, new THREE.MeshStandardMaterial({ color: 0xc9776b, roughness: 0.6, side: THREE.DoubleSide, transparent: true, opacity: 0.9 }));
+  dia.castShadow = true; A.add(dia);
+  const DRX = 1.7, DRZ = 1.08, RIM = 3.15;
+  const domeAt = (x, z, dome) => RIM + dome * Math.max(0, 1 - (x / DRX) ** 2 - (z / DRZ) ** 2);
+  // 空氣路徑（世界座標，預先算好，避免每幀重建曲線造成卡頓）
+  const airPath = [1, -1].map(s => new THREE.CatmullRomCurve3([V3(0, 5.6, 0.6), V3(0, 5.15, 0.32), V3(0, 4.4, 0.02), V3(s * 0.15, 4.25, 0.02), V3(s * 0.28, 3.95, 0.02)]));
   const stemG = glowSprite('255,190,60', 0.6); stemG.position.set(0, 5.1, -0.1); T.add(stemG);
   const pts = Array.from({ length: 24 }, (_, i) => { const p = sphere(0.04, clay(0x7cc4f5), 8); p.userData.k = i / 24; p.userData.s = i % 2 ? 1 : -1; T.add(p); return p; });
   const L = (t, p) => addLabel('br', t, 'part', p);
-  [L('鼻', V3(-0.55, 5.35, 0.5)), L('氣管', V3(-0.6, 4.6, 0.2)), L('支氣管', V3(0.95, 4.0, 0.3)), L('肺', V3(-1.25, 3.7, 0.2)), L('肋骨', V3(1.2, 3.4, 0.4)), L('橫膈', V3(1.2, 2.75, 0.3)), L('腦幹（呼吸中樞）', V3(-1.4, 5.15, 0))];
+  [L('鼻', V3(-0.55, 5.35, 0.5)), L('氣管', V3(-0.42, 4.55, 0.2)), L('支氣管', V3(0.72, 4.2, 0.3)), L('肺', V3(-0.5, 3.55, 0.45)), L('肋骨', V3(0.95, 3.45, 0.4)), L('橫膈膜', V3(0.95, 2.85, 0.3)), L('腦幹（呼吸中樞）', V3(-1.4, 5.15, 0))];
   const lPress = addLabel('br', '', 'yel', V3(0, 4.9, 1.2));
   const st = { act: 'rest', auto: true, ph: 0, b: 0, manual: null, co2: 0.3 };
   document.querySelectorAll('.abtn').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('.abtn').forEach(x => x.classList.toggle('on', x === b)); st.act = b.dataset.a; }));
@@ -434,21 +480,28 @@ const BR = (() => {
     if (st.auto) { st.ph += dt * rate / 60; st.b = 0.5 - 0.5 * Math.cos(st.ph * TAU); }
     else if (st.manual !== null) st.b = lerp(st.b, st.manual, Math.min(1, dt * 2.5));
     const b = st.b, inhale = b > prevB + 1e-4, exhale = b < prevB - 1e-4;
-    ribs.forEach((r, i) => { r.rotation.x = -0.25 * b; r.position.y = r.userData.y + 0.07 * b; r.position.z = 0.05 * b; });
-    dia.position.y = 2.85 - 0.3 * b; dia.scale.y = 0.45 - 0.2 * b;
-    lungs.forEach(l => { const k = 1 + 0.22 * b; l.scale.set(k * 0.95, k * 1.45, k * 0.85); l.position.y = 3.65 - 0.08 * b; });
+    st.dbdt = lerp(st.dbdt || 0, (b - prevB) / Math.max(dt, 1e-4), Math.min(1, dt * 8));
+    // 肋骨上舉、向外擴張；胸骨跟著往上往前
+    ribs.forEach(R => { R.grp.rotation.x = -0.16 * b * (1 - R.i * 0.04); R.grp.scale.x = 1 + 0.07 * b; });
+    sternum.position.set(0, 5.55 + 0.2 * b, 1.06 + 0.12 * b); sternum.rotation.x = -0.12 - 0.04 * b;
+    // 橫膈膜：吸氣收縮變平下降、呼氣舒張往上拱
+    const dome = lerp(1.05, 0.42, b), dp = diaGeo.attributes.position;
+    for (let i = 0; i < dp.count; i++) { const x = dBase[i * 3] * DRX * (1 + 0.04 * b), z = dBase[i * 3 + 2] * DRZ; dp.setXYZ(i, x, domeAt(x, z, dome), z); }
+    dp.needsUpdate = true; diaGeo.computeVertexNormals();
+    // 肺葉：頂端固定，底部貼著橫膈膜 → 跟著胸腔一起膨脹／縮小
+    lungs.forEach(L => { const bottom = domeAt(L.position.x, 0, dome) + 0.04; L.scale.set((1 + 0.08 * b) * (L.userData.side > 0 ? 0.92 : 1), (LUNG_TOP - bottom) / LUNG_H, 1 + 0.08 * b); });
     stemG.material.opacity = 0.4 + 0.5 * clamp((st.co2 - 0.3) / 0.55, 0, 1) + 0.1 * Math.sin(wall * 6);
     pts.forEach((p, i) => {
       const k = p.userData.k, s = p.userData.s;
-      const prog = (k + b * 0.999) % 1;
-      const path = [V3(0, 5.6, 0.6), V3(0, 5.15, 0.35), V3(0, 4.15, 0.1), V3(s * 0.42, 3.85, 0.1), V3(s * 0.45, 3.5, 0.1)];
       const u = clamp(b * 1.15 - k * 0.3, 0, 1);
-      const c = new THREE.CatmullRomCurve3(path); p.position.copy(c.getPoint(u)); p.visible = u > 0.02 && u < 0.99;
+      airPath[s > 0 ? 0 : 1].getPoint(u, p.position); p.visible = u > 0.02 && u < 0.99;
     });
     const vol = Math.round(100 + 40 * b);
+    const P = 760 - 2.4 * st.dbdt;                                   // 肺內壓（mmHg）：胸腔變大的瞬間略低於大氣壓
     setLabel(lPress, inhale ? '⬆ 吸氣：胸腔變大、肺內壓力變小' : exhale ? '⬇ 呼氣：胸腔變小、肺內壓力變大' : b > 0.5 ? '吸飽氣' : '呼完氣');
     const bar = (n, v, c, t) => `<span>${n}</span><div class="bar"><i style="width:${Math.round(v * 100)}%;background:${c}"></i></div><span>${t}</span>`;
     setHTML('brStat', `<div class="nbar">${bar('血液 CO₂', st.co2, '#8d6e63', st.co2 > 0.6 ? '偏高' : '正常')}${bar('呼吸頻率', (rate - 10) / 30, '#1e6aa8', Math.round(rate) + ' 次')}${bar('胸腔體積', b, '#e57373', b > 0.5 ? '大' : '小')}</div>
+      <div style="margin-top:6px">肺內壓：<b>${P.toFixed(1)} mmHg</b>${P < 759.9 ? '（<b style="color:#1e6aa8">低於</b>大氣壓 → 空氣進入）' : P > 760.1 ? '（<b style="color:#c62828">高於</b>大氣壓 → 空氣排出）' : '（＝ 大氣壓）'}</div>
       <div style="margin-top:6px">${inhale || b > 0.5 ? '吸氣：<b>肋骨上升、橫膈下降</b> → 胸腔變大 → 空氣進入肺' : '呼氣：<b>肋骨下降、橫膈上升</b> → 胸腔變小 → 空氣排出'}</div>
       <div style="margin-top:4px">肺沒有肌肉，要靠肋骨和橫膈改變胸腔大小。</div>`);
     setCap(st.act === 'run' ? `<small>激烈運動</small>細胞的呼吸作用增加 → 血液 CO₂ 變多 → <b>腦幹</b>讓呼吸加快（每分鐘約 ${Math.round(rate)} 次）` : '<small>休息時</small>成人每分鐘呼吸約 <b>15～18 次</b>，由<b>腦幹</b>自動控制');
@@ -542,8 +595,30 @@ const HO = (() => {
   const group = new THREE.Group(); scene.add(group);
   const B = makeBody(group, 0, 0.3);
   const R = B.root;
-  const liver = sphere(0.45, clay(0x8d4b3b), 24); liver.scale.set(1.2, 0.55, 0.6); liver.position.set(-0.3, 3.35, 0.15); R.add(liver);
-  const panc = cap(0.1, 0.55, clay(0xf3c26b)); panc.rotation.z = Math.PI / 2; panc.position.set(0.2, 3.0, 0.1); R.add(panc);
+  // 肝臟：深紅色、右葉厚左葉薄的楔形（不是圓球）；存肝醣時會微微膨脹
+  const liverGeo = new THREE.SphereGeometry(1, 44, 30); {
+    const p = liverGeo.attributes.position;
+    for (let i = 0; i < p.count; i++) { let x = p.getX(i), y = p.getY(i), z = p.getZ(i); y *= 0.55 + 0.45 * (0.5 - x * 0.5); if (y > 0) y *= 1 - 0.25 * (x + 1) / 2; p.setXYZ(i, x * 0.5, y * 0.27, z * 0.3); }
+    liverGeo.computeVertexNormals();
+  }
+  const liverMat = new THREE.MeshStandardMaterial({ color: 0x8e3b3b, roughness: 0.42, emissive: 0x000000 });
+  const liver = shadowed(new THREE.Mesh(liverGeo, liverMat)); liver.position.set(-0.28, 3.3, 0.12); R.add(liver);
+  // 胰臟：淺黃色、表面凹凸的長條腺體（胰頭較大）
+  const pancMat = new THREE.MeshStandardMaterial({ color: 0xf2d98a, roughness: 0.55, emissive: 0x000000 });
+  const pancGeo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(-0.02, 2.98, 0.1), V3(0.16, 3.02, 0.12), V3(0.34, 3.05, 0.1), V3(0.5, 3.12, 0.05)]), 48, 0.06, 12); {
+    const p = pancGeo.attributes.position, n = pancGeo.attributes.normal;
+    for (let i = 0; i < p.count; i++) { const k = 0.012 * Math.sin(p.getX(i) * 60) * Math.sin(p.getY(i) * 85 + p.getZ(i) * 50); p.setXYZ(i, p.getX(i) + n.getX(i) * k, p.getY(i) + n.getY(i) * k, p.getZ(i) + n.getZ(i) * k); }
+    pancGeo.computeVertexNormals();
+  }
+  const panc = shadowed(new THREE.Mesh(pancGeo, pancMat)); R.add(panc);
+  const pancHead = shadowed(sphere(0.1, pancMat, 20)); pancHead.position.set(-0.05, 2.97, 0.1); pancHead.scale.set(1, 0.85, 0.8); R.add(pancHead);
+  const PANC = V3(0.2, 3.03, 0.12);
+  const pancGlow = new THREE.PointLight(0x5b8fd9, 0, 1.2, 1.5); pancGlow.position.set(0.2, 3.05, 0.4); R.add(pancGlow);
+  // 肝醣顆粒：數量 ∝ 肝醣存量
+  const NGL = 50, glyMesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.018, 0), new THREE.MeshStandardMaterial({ color: 0xffe9a8, emissive: 0xb88a20, emissiveIntensity: 0.5 }), NGL);
+  R.add(glyMesh);
+  const glySpots = Array.from({ length: NGL }, () => { const a = rnd() * TAU, h = rnd() * 1.5 - 0.6; return V3(Math.cos(a) * 0.42, h * 0.11, Math.abs(Math.sin(a)) * 0.26 + 0.01); });
+  const gdum = new THREE.Object3D();
   const kid = [-1, 1].map(s => { const k = sphere(0.16, clay(0x9c4a3a), 16); k.scale.set(0.7, 1.15, 0.6); k.position.set(s * 0.3, 2.85, -0.12); R.add(k); return k; });
   const bladder = sphere(0.2, clay(0xffe082, { transparent: true, opacity: 0.85 }), 20); bladder.position.set(0, 2.25, 0.15); R.add(bladder);
   [-1, 1].forEach(s => R.add(tubeM([[s * 0.3, 2.7, -0.1], [s * 0.2, 2.45, 0.05], [s * 0.08, 2.33, 0.12]], 0.025, clay(0xe0c070))));
@@ -551,22 +626,29 @@ const HO = (() => {
   const sweat = Array.from({ length: 20 }, (_, i) => { const d = sphere(0.045, clay(0x9fd8ff, { transparent: true, opacity: 0.9, clearcoat: 1 }), 8); d.userData.p = V3((rnd() - 0.5) * 1.3, 2.7 + rnd() * 2.6, 0.45); R.add(d); return d; });
   const vessel = new THREE.CatmullRomCurve3([V3(0.15, 3.95, 0.3), V3(0.7, 3.4, 0.3), V3(0.5, 2.6, 0.3), V3(-0.5, 2.6, 0.3), V3(-0.7, 3.4, 0.3), V3(-0.15, 3.95, 0.3)], true);
   R.add(new THREE.Mesh(new THREE.TubeGeometry(vessel, 80, 0.04, 8, true), clay(0xd32f2f, { transparent: true, opacity: 0.5 })));
-  const gluP = Array.from({ length: 40 }, (_, i) => { const d = sphere(0.045, clay(0xffb300), 8); d.userData.k = i / 40; R.add(d); return d; });
-  const horm = Array.from({ length: 16 }, () => { const s = glowSprite('255,255,255', 0.25); s.visible = false; s.userData = { t: 1 }; R.add(s); return s; });
+  // 葡萄糖：六角形小粒子在血管裡流動
+  const hexGeo = new THREE.CylinderGeometry(0.045, 0.045, 0.03, 6), gluMat = new THREE.MeshStandardMaterial({ color: 0xfff2c4, emissive: 0xe0b040, emissiveIntensity: 0.5, roughness: 0.35 });
+  const gluP = Array.from({ length: 40 }, (_, i) => { const d = new THREE.Mesh(hexGeo, gluMat); d.userData.k = i / 40; R.add(d); return d; });
+  // 被肝臟吸入／釋放的葡萄糖（飛行動畫）
+  const flyers = Array.from({ length: 16 }, () => { const d = new THREE.Mesh(hexGeo, gluMat); d.visible = false; d.userData = { t: 1 }; R.add(d); return d; });
+  const spawnFly = (a, b) => { const f = flyers.find(x => x.userData.t >= 1); if (f) f.userData = { t: 0, a: a.clone(), b: b.clone() }; };
+  let prevN = -1;
+  // 激素：立體小球（藍＝胰島素、紅＝升糖素、橘＝腎上腺素）
+  const horm = Array.from({ length: 24 }, () => { const s = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 8), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.6, roughness: 0.3 })); s.visible = false; s.userData = { t: 1 }; R.add(s); return s; });
   const lizard = new THREE.Group(); lizard.position.set(2.3, 1.9, 0.4); group.add(lizard);
   { const b = cap(0.15, 0.6, clay(0x7cb342)); b.rotation.z = Math.PI / 2; lizard.add(b); const h = sphere(0.14, clay(0x7cb342), 12); h.position.x = 0.45; lizard.add(h); const tl = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.7, 10), clay(0x7cb342)); tl.rotation.z = Math.PI / 2; tl.position.x = -0.65; lizard.add(tl); const rock = rbox(1.3, 0.25, 0.7, clay(0xa1887f), 0.1); rock.position.y = -0.25; lizard.add(rock); }
   const lLiz = addLabel('ho', '', 'small', V3(2.3, 2.6, 0.4));
   const lBody = addLabel('ho', '', 'yel', V3(1.9, 4.6, 0.3));
   const lInfo = addLabel('ho', '', 'org', V3(-1.6, 3.0, 0.5));
   const st = { mode: 'glu', g: 90, gut: 0, gly: 0.6, adr: 0, diab: false, hist: [], env: 25, water: 0.5, sweatT: 0, uPh: 0 };
-  document.querySelectorAll('.hbtn').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('.hbtn').forEach(x => x.classList.toggle('on', x === b)); st.mode = b.dataset.h; ['gluBox', 'tmpBox', 'watBox'].forEach(id => $(id).hidden = id !== st.mode + 'Box'); st.hist = []; }));
+  document.querySelectorAll('.hbtn').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('.hbtn').forEach(x => x.classList.toggle('on', x === b)); st.mode = b.dataset.h; ['gluBox', 'tmpBox', 'watBox'].forEach(id => $(id).hidden = id !== st.mode + 'Box'); st.hist = []; goView(TABS.ho.cam()); }));
   $('eat').addEventListener('click', () => { st.gut += 90; });
   $('fast').addEventListener('click', () => { st.fastT = 6; });
   $('sport').addEventListener('click', () => { st.adr = 4; });
   $('diab').addEventListener('click', () => { st.diab = !st.diab; $('diab').classList.toggle('on', st.diab); });
   $('drink').addEventListener('click', () => { st.water = Math.min(1, st.water + 0.3); });
   $('sweat').addEventListener('click', () => { st.sweatT = 5; });
-  const spawnH = (col, from, to) => { const s = horm.find(h => h.userData.t >= 1); if (!s) return; s.userData = { t: 0, a: from.clone(), b: to.clone() }; s.material.color.setHex(col); };
+  const spawnH = (col, from, to) => { const s = horm.find(h => h.userData.t >= 1); if (!s) return; s.userData = { t: 0, a: from.clone(), b: to.clone(), off: V3(rnd() * 0.1 - 0.05, rnd() * 0.1 - 0.05, 0) }; s.material.color.setHex(col); s.material.emissive.setHex(col); };
   let hs = 0;
   function chart(vals, lo, hi, band, unit, col) {
     const c = $('hoChart'), g = c.getContext('2d'), W = c.width, H = c.height; g.clearRect(0, 0, W, H);
@@ -600,21 +682,39 @@ const HO = (() => {
       if (st.diab && st.g > 180) st.g -= (st.g - 180) * 0.05 * dt;   // 過多的糖隨尿排出
       st.g = clamp(st.g, 40, 260);
       push(st.g);
-      const panW = panc.getWorldPosition(V3(0, 0, 0)), livW = liver.getWorldPosition(V3(0, 0, 0)), toR = v => R.worldToLocal(v);
-      if (rnd() < (ins + glc + (st.adr > 0 ? 0.6 : 0)) * dt * 8) {
-        if (ins > glc && ins > 0.05) spawnH(0x1e88e5, toR(panW.clone()), toR(livW.clone()));
-        else if (glc > 0.05) spawnH(0xef6c00, toR(panW.clone()), toR(livW.clone()));
-        if (st.adr > 0) spawnH(0xd84315, V3(0.3, 2.95, -0.1), toR(livW.clone()));
+      const LIV = liver.position;
+      if (rnd() < (ins + glc + (st.adr > 0 ? 0.6 : 0)) * dt * 10) {
+        if (ins > glc && ins > 0.05) spawnH(0x3d7fe0, PANC, LIV);            // 胰島素（藍）：胰臟 → 肝臟
+        else if (glc > 0.05) spawnH(0xd9453f, PANC, LIV);                    // 升糖素（紅）：胰臟 → 肝臟
+        if (st.adr > 0) spawnH(0xef8a1a, V3(0.3, 2.85, -0.1), LIV);          // 腎上腺素（橘）：腎上腺 → 肝臟
       }
+      // 胰臟發光：藍＝分泌胰島素、紅＝分泌升糖素
+      const pulse = 0.6 + 0.4 * Math.sin(wall * 6);
+      pancMat.emissive.setRGB(0.55 * glc * pulse, 0.12 * (ins + glc) * pulse, 0.6 * ins * pulse);
+      pancGlow.color.setRGB(glc > ins ? 0.95 : 0.36, 0.45, ins >= glc ? 0.95 : 0.36); pancGlow.intensity = 1.6 * Math.max(ins, glc) * pulse;
+      // 血管中的葡萄糖粒子數 ∝ 血糖；數量變化時，用飛行動畫表現「存進肝臟／從肝臟放出／從小腸吸收」
       const n = Math.round(clamp((st.g - 40) / 200, 0.05, 1) * 40);
-      gluP.forEach((d, i) => { d.visible = i < n; d.position.copy(vessel.getPoint((d.userData.k + wall * 0.05) % 1)); });
-      liver.material.emissive.setHex(ins > 0.1 || glc > 0.1 ? 0x331100 : 0);
+      if (prevN >= 0 && n !== prevN) {
+        const near = vessel.getPoint(0.67);                                   // 血管靠近肝臟的位置
+        if (n < prevN && ins > 0.05) spawnFly(near, LIV);
+        else if (n > prevN && glc > 0.05) spawnFly(LIV, near);
+        else if (n > prevN && st.gut > 1) spawnFly(V3(0, 2.4, 0.2), vessel.getPoint(0.5));
+      }
+      prevN = n;
+      gluP.forEach((d, i) => { d.visible = i < n; d.position.copy(vessel.getPoint((d.userData.k + wall * 0.05) % 1)); d.rotation.set(Math.PI / 2, wall + i, 0); });
+      // 肝臟：存肝醣時膨脹、分解時縮小；激素抵達時微微發亮
+      liver.scale.setScalar(0.88 + 0.24 * st.gly);
+      liverMat.emissive.setRGB((ins > 0.1 || glc > 0.1 ? 0.2 : 0) * pulse, (ins > 0.1 || glc > 0.1 ? 0.08 : 0) * pulse, 0.02);
+      const ng = Math.round(st.gly * NGL);
+      for (let i = 0; i < NGL; i++) { gdum.position.copy(glySpots[i]).multiplyScalar(liver.scale.x).add(LIV); gdum.scale.setScalar(i < ng ? 1 : 0.001); gdum.rotation.set(i, i * 2, 0); gdum.updateMatrix(); glyMesh.setMatrixAt(i, gdum.matrix); }
+      glyMesh.instanceMatrix.needsUpdate = true;
       setLabel(lBody, `血糖 ${Math.round(st.g)} mg/dL`, st.g > 140 || st.g < 70 ? 'red' : 'yel');
       info = ins > 0.1 ? '胰島素：葡萄糖 → 肝糖' : glc > 0.1 ? '升糖素：肝糖 → 葡萄糖' : '';
       setLabel(lInfo, info, ins > 0.1 ? 'ins' : 'glc'); lInfo.show = !!info;
       chart(st.hist, 40, 240, [70, 140], 'mg/dL', '#ef6c00');
       $('chartT').textContent = '📈 血糖濃度變化';
-      setHTML('hoCard', `<h4>血糖的恆定</h4>胰臟的<b>胰島</b>分泌兩種作用相反的激素，像蹺蹺板一樣：<br>・<b style="color:#1e88e5">胰島素</b>：血糖高時分泌，讓葡萄糖進入細胞、轉成<b>肝糖</b>儲存 → 血糖下降<br>・<b style="color:#ef6c00">升糖素</b>：血糖低時分泌，把肝糖分解成葡萄糖 → 血糖上升<br>・<b>腎上腺素</b>：緊急時快速讓血糖上升<br>肝糖存量：${Math.round(st.gly * 100)}%${st.diab ? '<br><b class="r">胰島素不足 → 血糖居高不下，多的糖隨尿液排出（糖尿病）</b>' : ''}`);
+      setHTML('gNow', `<span>血糖濃度</span><b style="color:${st.g > 140 ? '#d35400' : st.g < 70 ? '#c62828' : '#4f7d5c'}">${Math.round(st.g)}</b><span>mg/dL ${st.g > 140 ? '偏高 ↑' : st.g < 70 ? '偏低 ↓' : '正常'}</span>`);
+      setHTML('hoCard', `<h4>血糖的恆定</h4>胰臟的<b>胰島</b>分泌兩種作用相反的激素，像蹺蹺板一樣：<br>・<b style="color:#1e88e5">胰島素</b>：血糖高時分泌，讓葡萄糖進入細胞、轉成<b>肝糖</b>儲存 → 血糖下降<br>・<b style="color:#d9453f">升糖素</b>：血糖低時分泌，把肝糖分解成葡萄糖 → 血糖上升<br>・<b>腎上腺素</b>：緊急時快速讓血糖上升<br>肝糖存量：${Math.round(st.gly * 100)}%${st.diab ? '<br><b class="r">胰島素不足 → 血糖居高不下，多的糖隨尿液排出（糖尿病）</b>' : ''}`);
       setCap(st.diab ? '<small>胰島素分泌不足</small>血糖無法下降 → <b class="red">糖尿病</b>' : st.adr > 0 ? '<small>緊急／激烈運動</small><b>腎上腺素</b>讓血糖快速上升，提供能量' : st.g > 120 ? '<small>剛吃飽</small>血糖上升 → <b class="blu">胰島素</b>增加，把葡萄糖存成肝糖' : st.g < 80 ? '<small>很久沒吃東西</small>血糖下降 → <b class="org">升糖素</b>增加，肝糖分解成葡萄糖' : '<small>血糖的恆定</small>胰島素與升糖素互相配合，讓血糖維持在正常範圍');
     } else if (st.mode === 'tmp') {
       const env = Number($('envT').value); $('envV').textContent = env + '°C';
@@ -650,7 +750,11 @@ const HO = (() => {
       setCap(st.sweatT > 0 ? '<small>大量流汗</small>水分從皮膚散失 → 腎臟<b>減少尿量</b>，保留水分' : urineRate > 1 ? '<small>喝了很多水</small>體內水分多 → 腎臟<b>增加尿量</b>，排出多餘的水' : '<small>水分的恆定</small>腎臟調節尿量，維持體內水分平衡');
     }
     if (hs > 0.1) hs = 0;
-    horm.forEach(s => { if (s.userData.t >= 1) { s.visible = false; return; } s.userData.t += dt / 1.5; s.visible = st.mode === 'glu'; s.position.copy(s.userData.a).lerp(s.userData.b, Math.min(1, s.userData.t)); s.position.z += 0.3; });
+    // 激素沿弧線從胰臟飛到肝臟
+    horm.forEach(s => { if (s.userData.t >= 1) { s.visible = false; return; } s.userData.t += dt / 1.4; const k = Math.min(1, s.userData.t); s.visible = st.mode === 'glu'; s.position.copy(s.userData.a).lerp(s.userData.b, k).add(s.userData.off); s.position.y += Math.sin(Math.PI * k) * 0.35; s.position.z += 0.3; });
+    flyers.forEach(f => { if (f.userData.t >= 1) { f.visible = false; return; } f.userData.t += dt / 0.8; const k = Math.min(1, f.userData.t); f.visible = st.mode === 'glu'; f.position.copy(f.userData.a).lerp(f.userData.b, k); f.scale.setScalar(1 - 0.5 * Math.abs(k - 0.5)); });
+    glyMesh.visible = pancGlow.visible = st.mode === 'glu';
+    if (st.mode !== 'glu') { pancMat.emissive.setHex(0); liverMat.emissive.setHex(0); }
   }
   return { group, update, st };
 })();
@@ -660,9 +764,9 @@ function updateHo(dt) { HO.update(dt); }
    Tab 切換、鏡頭
    ========================================================= */
 const TABS = {
-  br: { group: BR.group, cam: () => ({ pos: [1.6, 4.2, 7.5], target: [0, 3.9, 0], fitW: window.innerWidth < window.innerHeight ? 3.4 : 5 }), update: updateBr },
+  br: { group: BR.group, cam: () => ({ pos: [1.4, 4.1, 6.4], target: [0, 3.7, 0], fitW: window.innerWidth < window.innerHeight ? 3.0 : 3.8 }), update: updateBr },
   rx: { group: RX.group, cam: () => ({ pos: [0, 3.2, 10.5], target: [-0.2, 1.3, 0], fitW: window.innerWidth < window.innerHeight ? 10.5 : 11.5 }), update: updateRx },
-  ho: { group: HO.group, cam: () => ({ pos: [1.4, 3.8, 9], target: [0.8, 3.0, 0], fitW: window.innerWidth < window.innerHeight ? 6.2 : 6.5 }), update: updateHo }
+  ho: { group: HO.group, cam: () => HO.st.mode === 'glu' ? { pos: [0.7, 3.6, 5.2], target: [0.05, 3.1, 0], fitW: window.innerWidth < window.innerHeight ? 2.6 : 3.2 } : { pos: [1.4, 3.8, 9], target: [0.8, 3.0, 0], fitW: window.innerWidth < window.innerHeight ? 6.2 : 6.5 }, update: updateHo }
 };
 function setTab(t) {
   tab = t;

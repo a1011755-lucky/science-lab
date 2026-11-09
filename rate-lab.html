@@ -47,6 +47,7 @@
   .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
   input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
   input.big[type=range] { height: 40px; }
+  .warn { background: #fff4df; border: 2px solid #e8b860; color: #7a4c12; font-weight: 800; border-radius: 14px; padding: 9px 12px; margin-top: 8px; font-size: .82rem; line-height: 1.6; }
   .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
   select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
   .btn {
@@ -165,10 +166,10 @@
     <section class="sec" data-tab="rate" hidden>
       <div class="concept" style="--cc:#d35400"><div class="ct">影響反應速率的因素</div><div class="cd">溫度越高、濃度越大、表面積越大（粉末）<br>→ 反應越快</div></div>
       <label class="lab" for="temp">🌡️ 溫度<b><span id="tempV">20</span> ℃</b></label>
-      <input class="big" type="range" id="temp" min="0" max="2" step="1" value="0">
+      <input class="big" type="range" id="temp" min="20" max="60" step="1" value="20">
       <div class="ticks"><span>20℃</span><span>40℃</span><span>60℃</span></div>
       <label class="lab" for="conc">🧪 鹽酸濃度<b><span id="concV">0.1</span> M</b></label>
-      <input class="big" type="range" id="conc" min="0" max="1" step="1" value="0">
+      <input class="big" type="range" id="conc" min="0.1" max="1" step="0.1" value="0.1">
       <div class="ticks"><span>0.1 M</span><span>1.0 M</span></div>
       <label class="lab" for="surf">🪨 大理石表面積<b id="surfV">大塊</b></label>
       <input class="big" type="range" id="surf" min="0" max="1" step="1" value="0">
@@ -178,7 +179,8 @@
         <button class="btn" id="clearBtn">🧹 清除曲線</button>
       </div>
       <div class="stat" id="rateStat"></div>
-      <p class="desc">大理石質量固定、鹽酸過量：條件不同只會改變<b>快慢</b>，最後產生的 CO₂ 總量一樣。</p>
+      <div class="warn">⚠️ 注意！變因只改變反應「快慢」，在限量試劑不變下，最終總產量完全相等！</div>
+      <p class="desc">大理石（0.41 g）是<b>限量試劑</b>、鹽酸過量：大理石用完反應就停止，最多產生 100 mL CO₂（氣體體積換算成同溫同壓比較）。</p>
     </section>
 
     <!-- Tab 3 -->
@@ -210,6 +212,7 @@ const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
 const V2 = (x, y) => new THREE.Vector2(x, y);
 const clamp = THREE.MathUtils.clamp;
 const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const ease = (dt, k) => 1 - Math.exp(-dt * k);           // 與幀率無關的平滑追蹤係數
 const TAU = Math.PI * 2;
 
 /* =========================================================
@@ -525,15 +528,17 @@ function updateColl(dt) {
 /* =========================================================
    Tab 2：反應速率（大理石＋鹽酸）
    ---------------------------------------------------------
-   產氣量 V(t) ＝ 80 mL × (1 − e^(−k t))，大理石質量固定、鹽酸過量。
+   產氣量 V(t) ＝ 100 mL × (1 − e^(−k t))：大理石是限量試劑（質量固定）、鹽酸過量。
+   k 只決定「多快」到達終點；終點 100 mL 由限量試劑決定，所有曲線最後必定收斂到同一條水平線。
    k 隨溫度（每升高 20℃ 約 2 倍）、濃度（1.0 M 約 4 倍）、表面積（粉末約 5 倍）增加。
+   時間軸 300 秒：最慢的條件（20℃、0.1 M、大塊）也能在圖內達到 99.8%。
    這是示意模型：讓學生比較快慢，數字不是真實實驗數據。
    ========================================================= */
-const RT = { group: new THREE.Group(), T: 0, C: 0, S: 0, run: false, t: 0, curves: [], tSim: 60, wall: 9, acc: 0 };
+const RT = { group: new THREE.Group(), T: 20, C: 0.1, S: 0, Tshow: 20, Cshow: 0.1, run: false, t: 0, curves: [], tSim: 300, speed: 8, acc: 0, bubQ: 0, V: 0 };
 scene.add(RT.group);
-const FX = -4.2, VMAX = 80;
-const TEMPS = [20, 40, 60], CONCS = [0.1, 1.0];
-const rateK = () => 0.02 * Math.pow(2, RT.T) * (RT.C ? 4 : 1) * (RT.S ? 5 : 1);
+const FX = -4.2, VMAX = 100;
+const kOf = (T, C, S) => 0.022 * Math.pow(2, (T - 20) / 20) * Math.pow(C / 0.1, 0.602) * (S ? 5 : 1);
+const rateK = () => kOf(RT.T, RT.C, RT.S);
 const hot = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.8, 0.5, 40), clay(0xd9d3c7)));
 hot.position.set(FX, 0.25, 0); RT.group.add(hot);
 const hotTop = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.04, 40), clay(0x3e3a39, { emissive: 0xff4a1a, emissiveIntensity: 0 }));
@@ -551,6 +556,12 @@ const powder = makePts(flask, 260, dotTexture('#f4f1ea', 'rgba(150,140,130,.8)')
 for (let i = 0; i < powder.N; i++) { const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * 1.05; powder.pos.set([Math.cos(a) * r, 0.1 + Math.random() * 0.08, Math.sin(a) * r], i * 3); }
 const bub = makePts(flask, 500, dotTexture('#ffffff', 'rgba(110,140,170,.85)'), 0.12);
 const bubOn = new Uint8Array(bub.N), bubV = new Float32Array(bub.N);
+// 瓶口氣球：收集 CO₂，越多越鼓（所有條件最後鼓到一樣大）
+const balloonMat = new THREE.MeshPhysicalMaterial({ color: 0xf0b49a, roughness: 0.35, clearcoat: 0.6, transparent: true, opacity: 0.93 });
+const balloon = shadowed(new THREE.Mesh(new THREE.SphereGeometry(1, 40, 28), balloonMat)); flask.add(balloon);
+const bNeck = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.52, 0.2, 32), balloonMat); bNeck.position.y = 2.8; flask.add(bNeck);
+function setBalloon(f) { const r = 0.22 + 0.68 * Math.cbrt(f); balloon.scale.set(r, r * 1.12, r); balloon.position.y = 2.85 + r * 1.02; }
+setBalloon(0);
 // 圖表面板
 const GP = { w: 7.4, h: 5.2 };
 const graph = new THREE.Group(); graph.position.set(3.0, 3.6, -0.3); RT.group.add(graph);
@@ -560,58 +571,77 @@ const gtex = new THREE.CanvasTexture(gc); gtex.colorSpace = THREE.SRGBColorSpace
 graph.add(new THREE.Mesh(new THREE.PlaneGeometry(GP.w, GP.h), new THREE.MeshBasicMaterial({ map: gtex, toneMapped: false })));
 add(graph, shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 3.4, 12), metal(0x9aa3ab))), 0, -GP.h / 2 - 1.7, -0.2);
 const CURVE_C = ['#d35400', '#1e6aa8', '#2f8452', '#7b5ea7', '#c62828'];
-function condText() { return `${TEMPS[RT.T]}℃・${CONCS[RT.C]} M・${RT.S ? '粉末' : '大塊'}`; }
+function condText() { return `${RT.T}℃・${RT.C.toFixed(1)} M・${RT.S ? '粉末' : '大塊'}`; }
 function drawGraph() {
   const g = gc.getContext('2d'), W = gc.width, H = gc.height, L = 80, R = 24, T = 50, B = 70, pw = W - L - R, ph = H - T - B;
-  const X = t => L + t / RT.tSim * pw, Y = v => T + ph - v / 100 * ph;
+  const X = t => L + t / RT.tSim * pw, Y = v => T + ph - v / 120 * ph;   // 上方留空間給 100 mL 虛線標示
   g.fillStyle = '#fffaf0'; g.fillRect(0, 0, W, H);
   g.fillStyle = '#3e2c25'; g.font = '800 26px sans-serif'; g.textAlign = 'center'; g.fillText('CO₂ 產量 vs 時間', W / 2, 34);
   g.strokeStyle = 'rgba(141,115,102,.25)'; g.lineWidth = 1;
-  for (let v = 0; v <= 100; v += 20) { g.beginPath(); g.moveTo(L, Y(v)); g.lineTo(L + pw, Y(v)); g.stroke(); }
+  for (let v = 0; v <= 120; v += 20) { g.beginPath(); g.moveTo(L, Y(v)); g.lineTo(L + pw, Y(v)); g.stroke(); }
   g.strokeStyle = '#5d4037'; g.lineWidth = 3; g.beginPath(); g.moveTo(L, T); g.lineTo(L, T + ph); g.lineTo(L + pw, T + ph); g.stroke();
   g.fillStyle = '#5d4037'; g.font = '700 18px sans-serif'; g.textAlign = 'right';
-  for (let v = 0; v <= 100; v += 20) g.fillText(v, L - 8, Y(v) + 6);
-  g.textAlign = 'center'; for (let t = 0; t <= 60; t += 10) g.fillText(t, X(t), T + ph + 26);
+  for (let v = 0; v <= 120; v += 20) g.fillText(v, L - 8, Y(v) + 6);
+  g.textAlign = 'center'; for (let t = 0; t <= RT.tSim; t += 50) g.fillText(t, X(t), T + ph + 26);
   g.fillText('時間（秒）', L + pw / 2, H - 12);
   g.save(); g.translate(26, T + ph / 2); g.rotate(-Math.PI / 2); g.fillText('CO₂ 體積（mL）', 0, 0); g.restore();
-  g.setLineDash([8, 6]); g.strokeStyle = '#8d7366'; g.lineWidth = 2; g.beginPath(); g.moveTo(L, Y(VMAX)); g.lineTo(L + pw, Y(VMAX)); g.stroke(); g.setLineDash([]);
-  g.fillStyle = '#8d7366'; g.font = '700 16px sans-serif'; g.textAlign = 'left'; g.fillText('最終產量相同（80 mL）', L + 10, Y(VMAX) - 8);
+  // 預先畫好的「最終總產量」水平虛線
+  g.setLineDash([12, 8]); g.strokeStyle = '#c62828'; g.lineWidth = 3; g.beginPath(); g.moveTo(L, Y(VMAX)); g.lineTo(L + pw, Y(VMAX)); g.stroke(); g.setLineDash([]);
+  g.fillStyle = '#c62828'; g.font = '800 17px sans-serif'; g.textAlign = 'right'; g.fillText('最終總產量 100 mL（限量試劑決定）', L + pw - 4, Y(VMAX) - 9);
   RT.curves.forEach((c, i) => {
-    g.strokeStyle = c.col; g.lineWidth = c.live ? 6 : 4; g.beginPath();
+    g.strokeStyle = c.col; g.lineWidth = c.live ? 6 : 4; g.lineJoin = 'round'; g.beginPath();
     const tEnd = c.live ? RT.t : RT.tSim;
-    for (let s = 0; s <= 120; s++) { const t = tEnd * s / 120, v = VMAX * (1 - Math.exp(-c.k * t)); s ? g.lineTo(X(t), Y(v)) : g.moveTo(X(t), Y(v)); }
+    // 曲線取樣：前段密、後段疏（快速反應的陡峭前段也畫得平滑）
+    for (let s = 0; s <= 160; s++) { const t = tEnd * Math.pow(s / 160, 2), v = VMAX * (1 - Math.exp(-c.k * t)); s ? g.lineTo(X(t), Y(v)) : g.moveTo(X(t), Y(v)); }
     g.stroke();
-    g.fillStyle = c.col; g.font = '800 17px sans-serif'; g.textAlign = 'left';
-    g.fillText('● ' + c.label, L + 14, T + ph - 18 - i * 24);
+    if (c.live) { const v = VMAX * (1 - Math.exp(-c.k * RT.t)); g.fillStyle = c.col; g.beginPath(); g.arc(X(RT.t), Y(v), 7, 0, Math.PI * 2); g.fill(); }
+    const t95 = Math.log(20) / c.k;
+    g.fillStyle = c.col; g.font = '800 17px sans-serif'; g.textAlign = 'right';
+    g.fillText(`● ${c.label}　達 95%：${t95 < 10 ? t95.toFixed(1) : t95.toFixed(0)} 秒`, L + pw - 6, T + ph - 18 - (RT.curves.length - 1 - i) * 24);
   });
   gtex.needsUpdate = true;
 }
 drawGraph();
 function setSliders() {
-  $('tempV').textContent = TEMPS[RT.T]; $('concV').textContent = CONCS[RT.C]; $('surfV').textContent = RT.S ? '粉末' : '大塊';
+  $('tempV').textContent = RT.T; $('concV').textContent = RT.C.toFixed(1); $('surfV').textContent = RT.S ? '粉末' : '大塊';
   chunks.forEach(c => { c.visible = !RT.S; }); powder.p.visible = !!RT.S;
 }
-for (const [id, key] of [['temp', 'T'], ['conc', 'C'], ['surf', 'S']]) $(id).addEventListener('input', e => { RT[key] = Number(e.target.value); setSliders(); });
+// 滑桿只記錄目標值；加熱板亮度、讀數等在 requestAnimationFrame 裡用 lerp 平滑跟上
+for (const [id, key] of [['temp', 'T'], ['conc', 'C'], ['surf', 'S']]) $(id).addEventListener('input', e => {
+  RT[key] = Number(e.target.value);
+  if (key === 'S' && RT.run) { RT.S = RT.curves[RT.curves.length - 1].S; e.target.value = RT.S; setCap('<small>反應進行中</small>等這次反應結束，再換大理石的顆粒大小喔！'); }
+  setSliders();
+});
 setSliders();
 $('runBtn').addEventListener('click', () => {
   RT.curves.forEach(c => { c.live = false; });
   if (RT.curves.length >= 5) RT.curves.shift();
-  RT.curves.push({ k: rateK(), col: CURVE_C[RT.curves.length % CURVE_C.length], label: condText(), live: true });
+  RT.curves.push({ k: rateK(), S: RT.S, col: CURVE_C[RT.curves.length % CURVE_C.length], label: condText(), live: true });
   RT.curves.forEach((c, i) => { c.col = CURVE_C[i]; });
-  RT.run = true; RT.t = 0; bubOn.fill(0);
+  RT.run = true; RT.t = 0; RT.V = 0; RT.bubQ = 0; bubOn.fill(0);
 });
-$('clearBtn').addEventListener('click', () => { RT.curves = []; RT.run = false; RT.t = 0; drawGraph(); });
+$('clearBtn').addEventListener('click', () => { RT.curves = []; RT.run = false; RT.t = 0; RT.V = 0; drawGraph(); });
 const lbFlask = addLabel('rate', '大理石 ＋ 鹽酸', 'small', V3(FX, 3.8, 0));
 const lbHot = addLabel('rate', '', 'red small', V3(FX, 0.3, 1.9));
 function updateRate(dt) {
-  const k = RT.run || RT.curves.length ? (RT.curves.length ? RT.curves[RT.curves.length - 1].k : rateK()) : rateK();
-  if (RT.run) { RT.t = Math.min(RT.tSim, RT.t + dt * RT.tSim / RT.wall); if (RT.t >= RT.tSim) { RT.run = false; RT.curves.forEach(c => { c.live = false; }); } drawGraph(); }
+  RT.Tshow += (RT.T - RT.Tshow) * ease(dt, 6); RT.Cshow += (RT.C - RT.Cshow) * ease(dt, 6);
+  const live = RT.curves[RT.curves.length - 1];
+  const k = live ? live.k : rateK();
+  if (RT.run) {
+    RT.t = Math.min(RT.tSim, RT.t + dt * RT.speed);
+    if (1 - Math.exp(-k * RT.t) >= 0.998 || RT.t >= RT.tSim) { RT.run = false; RT.curves.forEach(c => { c.live = false; }); }   // 限量試劑用完 → 反應停止
+    drawGraph();
+  }
   const prog = RT.curves.length ? 1 - Math.exp(-k * RT.t) : 0;
-  const rate = RT.run ? k * Math.exp(-k * RT.t) : 0;                     // 目前的反應速率（相對）
-  // 氣泡：產生速率跟反應速率成正比
-  RT.acc += dt * Math.min(400, rate * 900);
-  while (RT.acc > 1) { RT.acc--; const i = bubOn.indexOf(0); if (i < 0) break; bubOn[i] = 1; bubV[i] = 0.9 + Math.random() * 0.6;
+  const dV = VMAX * prog - RT.V; RT.V = VMAX * prog;
+  const rate = RT.run ? k * VMAX * Math.exp(-k * RT.t) : 0;              // 目前的反應速率（mL/s）
+  // 氣泡：每產生 1 mL CO₂ 冒 4 顆 → 不論快慢，總氣泡數一樣；反應快時一口氣狂冒
+  if (dV > 0) RT.bubQ += dV * 4;
+  RT.acc += dt * 700;
+  while (RT.acc > 1 && RT.bubQ >= 1) { RT.acc--; RT.bubQ--; const i = bubOn.indexOf(0); if (i < 0) break; bubOn[i] = 1; bubV[i] = 0.9 + Math.random() * 0.6;
     const a = Math.random() * TAU, r = RT.S ? Math.sqrt(Math.random()) * 1.0 : 0.3 + Math.random() * 0.5; bub.pos.set([Math.cos(a) * r, 0.2, Math.sin(a) * r], i * 3); }
+  if (RT.acc > 1) RT.acc = 1;
+  setBalloon(prog);
   for (let i = 0; i < bub.N; i++) {
     if (!bubOn[i]) continue; const j = i * 3;
     bub.pos[j + 1] += bubV[i] * dt * 1.6;
@@ -620,15 +650,17 @@ function updateRate(dt) {
     if (y > 3.4) { bubOn[i] = 0; bub.pos[j + 1] = -50; }
   }
   bub.geo.attributes.position.needsUpdate = true;
-  chunks.forEach(c => c.scale.setScalar(Math.max(0.2, Math.cbrt(1 - 0.85 * prog))));
-  for (let i = 0; i < powder.N; i++) powder.pos[i * 3 + 1] = i < powder.N * (1 - 0.95 * prog) ? powder.pos[i * 3 + 1] : -50;
+  // 大理石（限量試劑）隨反應消耗，產量到 100 mL 時剛好用完
+  chunks.forEach(c => c.scale.setScalar(Math.max(0.001, Math.cbrt(1 - prog))));
+  for (let i = 0; i < powder.N; i++) powder.pos[i * 3 + 1] = i < powder.N * (1 - prog) ? (powder.pos[i * 3 + 1] < -1 ? 0.1 + (i % 7) * 0.012 : powder.pos[i * 3 + 1]) : -50;
   powder.geo.attributes.position.needsUpdate = true;
-  hotTop.material.emissiveIntensity = RT.T * 0.45; setLabel(lbHot, `🔥 加熱板 ${TEMPS[RT.T]}℃`);
-  const cur = RT.curves[RT.curves.length - 1];
+  hotTop.material.emissiveIntensity = (RT.Tshow - 20) / 20 * 0.45; setLabel(lbHot, `🔥 加熱板 ${RT.Tshow.toFixed(0)}℃`);
+  const cur = live;
+  const warn = '<br><span class="red">⚠️ 變因只改變反應「快慢」，限量試劑不變，最終總產量完全相等！</span>';
   if (!RT.curves.length) setCap(`<small>⏱️ 反應速率</small>調整溫度、濃度、表面積，按「<b>▶ 開始反應</b>」，看氣泡和曲線`);
-  else if (RT.run) setCap(`<small>${cur.label}・反應中… ${RT.t.toFixed(0)} 秒</small><span class="huge">CO₂ 產量 ${(VMAX * prog).toFixed(1)} mL</span>${k > 0.15 ? '反應很快：曲線一開始就很<b>陡</b>' : k > 0.05 ? '反應速率中等' : '反應很慢：曲線很<b>平緩</b>'}`);
-  else setCap(`<small>比較曲線</small><span class="huge">越快的反應，曲線一開始越陡</span>但大理石的量一樣，最後都停在同一條水平線（80 mL）`);
-  setHTML('rateStat', `條件：<b>${condText()}</b><br>相對反應速率：<b class="o">${(rateK() / 0.02).toFixed(0)} 倍</b>（以 20℃、0.1 M、大塊為 1）<br>${RT.curves.length ? `目前產氣量：<b class="b">${(VMAX * prog).toFixed(1)} mL</b>` : '尚未開始'}`);
+  else if (RT.run) setCap(`<small>${cur.label}・反應中… ${RT.t.toFixed(0)} 秒</small><span class="huge">CO₂ 產量 ${(VMAX * prog).toFixed(1)} / 100 mL</span>${rate > 10 ? '氣泡狂冒！曲線一開始<b>極度陡峭</b>' : rate > 3 ? '反應速率中等' : '反應很慢：曲線很<b>平緩</b>'}`);
+  else setCap(`<small>反應結束：${cur.label} 共產生 ${(VMAX * prog).toFixed(0)} mL</small><span class="huge">所有曲線最後都停在 100 mL 虛線上</span>限量試劑決定最終產量，溫度、濃度、表面積只決定到達終點的快慢${RT.curves.length > 1 ? warn : ''}`);
+  setHTML('rateStat', `條件：<b>${condText()}</b><br>相對反應速率：<b class="o">${(kOf(RT.Tshow, RT.Cshow, RT.S) / 0.022).toFixed(1)} 倍</b>（以 20℃、0.1 M、大塊為 1）<br>${RT.curves.length ? `目前產氣量：<b class="b">${(VMAX * prog).toFixed(1)} mL</b>　瞬時速率：<b>${rate.toFixed(1)} mL/s</b><br>剩餘大理石：<b>${(100 * (1 - prog)).toFixed(0)} %</b>` : '尚未開始'}`);
 }
 
 /* =========================================================
