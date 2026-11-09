@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>功與能：物理向量沙盒</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+  .tabs.three .tab { font-size: .72rem; padding: 9px 2px; }
+  .objs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .objs.three { grid-template-columns: repeat(3, 1fr); }
+  .objs .btn { padding: 8px 4px; font-size: .78rem; margin-top: 0; }
+  .objs .btn.yes { background: #e3f1e6; color: #2e6b3f; } .objs .btn.no { background: #fde5e2; color: #a5311f; }
+  .orgcard { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin-top: 8px; font-size: .8rem; line-height: 1.65; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
+  .orgcard:empty { display: none; }
+  .orgcard h4 { font-size: .98rem; font-weight: 900; margin-bottom: 2px; }
+  .orgcard .pill { display: inline-block; font-size: .72rem; font-weight: 800; color: #fff; background: #7b5ea7; border-radius: 999px; padding: 1px 9px; margin: 2px 4px 2px 0; }
+  .orgcard i.sci { font-family: Georgia, serif; }
+  .orgcard table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .orgcard td, .orgcard th { padding: 2px 4px; border-bottom: 1px solid #efe6d8; font-size: .74rem; text-align: left; }
+  .orgcard tr.same { background: #e3f1e6; } .orgcard tr.diff td { color: #a8998a; }
+  .tag.big { font-size: .86rem; }
+  .stat table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: .74rem; }
+  .stat td, .stat th { padding: 3px 3px; border-bottom: 1px solid #efe6d8; text-align: left; white-space: nowrap; }
+  .stat tr.same { background: #e3f1e6; }
+  .tip { background: #fff3c4; color: #7a5300; border: 1.5px solid #e0b000; border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .82rem; font-weight: 800; line-height: 1.6; animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  .tip[hidden], .mapbox[hidden], .btn[hidden] { display: none; }
+  .ticks span:first-child { text-align: left; } .ticks span:last-child { text-align: right; }
+  .meter { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: .74rem; font-weight: 800; color: var(--ink-soft); }
+  .meter i { flex: 1; height: 16px; border-radius: 999px; background: linear-gradient(90deg, #f7efe6, #8b2e0f); position: relative; }
+  .meter i::after { content: ''; position: absolute; top: -4px; width: 6px; height: 24px; border-radius: 3px; background: var(--ink); left: var(--v, 50%); transform: translateX(-50%); transition: left .2s; }
+  .cap .eq { display: inline-flex; align-items: center; gap: 6px; font-size: 1.05em; font-weight: 900; }
+  .cap .arrs { display: inline-flex; flex-direction: column; line-height: .9; font-size: 1.1em; }
+  .cap .arrs span { opacity: .28; transition: opacity .3s, color .3s, transform .3s; }
+  .cap .arrs span.on { opacity: 1; color: #c62828; transform: scale(1.35); }
+  .cap .brown { color: #8b2e0f; }
+  .legend { display: flex; gap: 6px; margin: 8px 0 2px; font-size: .72rem; font-weight: 800; }
+  .legend .lg { flex: 1; text-align: center; border-radius: 999px; padding: 3px 0; color: #fff; }
+  .legend .f { background: #ff5a36; } .legend .s { background: #29b6f6; } .legend .w { background: #424242; }
+  .tag.vF { background: #ff5a36; color: #fff; font-weight: 900; } .tag.vS { background: #29b6f6; color: #fff; font-weight: 900; } .tag.vW { background: #424242; color: #fff; font-weight: 900; } .tag.org { background: #ef6c00; color: #fff; font-weight: 900; }
+  .tip.ok { background: #e3f1e6; color: #1f5f32; border-color: #3f9a57; } .tip.bad { background: #fde5e2; color: #a5311f; border-color: #e53935; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+  .half { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px 9px; font-size: .76rem; line-height: 1.6; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
+  .half h4 { font-size: .86rem; font-weight: 900; margin-bottom: 2px; }
+  .half .res { margin-top: 4px; font-weight: 900; font-size: .9rem; border-radius: 10px; padding: 3px 6px; text-align: center; }
+  .half .res.pos { background: #e3f1e6; color: #1f5f32; } .half .res.neg { background: #fde5e2; color: #a5311f; } .half .res.zero { background: #efe9df; color: #7a6a5a; }
+  .zbtn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g9">‹ 課程總覽</a>
+  <div class="title">功與能：物理向量沙盒</div>
+  <div class="body">
+    <div class="tabs three">
+      <button class="tab on" data-tab="car">🚗 加速與煞車<small>正功・負功</small></button>
+      <button class="tab" data-tab="lift">🏋️ 啞鈴升降台<small>誰作正功？</small></button>
+      <button class="tab" data-tab="zero">🪨 不作功陷阱<small>靜止・垂直</small></button>
+    </div>
+    <div class="legend"><span class="lg f">施力 F</span><span class="lg s">位移 S</span><span class="lg w">重力 W</span></div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="car">
+      <div class="concept" style="--cc:#e64a19"><div class="ct">W ＝ F × S × cosθ</div><div class="cd">力與位移<b>同向（0°）</b>→ 正功；<br>力與位移<b>反向（180°）</b>→ 負功</div></div>
+      <div class="row2">
+        <button class="btn primary" id="caGas">🦶 踩油門</button>
+        <button class="btn primary" id="caBrake">🛑 急煞車</button>
+      </div>
+      <button class="btn" id="caReset">↩️ 回到起點</button>
+      <div class="stat" id="caStat"></div>
+      <div class="tip" id="caTip" hidden></div>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="lift" hidden>
+      <div class="concept" style="--cc:#5d4037"><div class="ct">同一個運動，不同的力</div><div class="cd">每一個力都要<b>各自</b>判斷作功的正負：<br>看「這個力」和「位移」同向還是反向</div></div>
+      <div class="row2">
+        <button class="btn primary" id="liUp">⬆️ 向上舉起</button>
+        <button class="btn primary" id="liDown">⬇️ 放下啞鈴</button>
+      </div>
+      <div class="split">
+        <div class="half" id="liHand"></div>
+        <div class="half" id="liEarth"></div>
+      </div>
+      <div class="stat" id="liStat"></div>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="sec" data-tab="zero" hidden>
+      <div class="concept" style="--cc:#455a64"><div class="ct">作功為零的兩種情況</div><div class="cd">① 沒有位移（S ＝ 0）<br>② 力與位移<b>垂直（90°）</b></div></div>
+      <div class="row2">
+        <button class="btn zbtn on" data-z="rock">🪨 推不動的巨石</button>
+        <button class="btn zbtn" data-z="walk">💼 提重物走路</button>
+      </div>
+      <button class="btn primary" id="zeGo">💪 用力推</button>
+      <button class="btn" id="zeReset">↩️ 重來</button>
+      <div class="stat" id="zeStat"></div>
+      <div class="tip" id="zeTip" hidden></div>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'car', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+/* =========================================================
+   共用小工具
+   ========================================================= */
+const lerp = (a, b, k) => a + (b - a) * k;
+const sphere = (r, mat, seg = 24) => new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg * 0.6 | 0)), mat);
+const cyl = (r1, r2, h, mat, seg = 32, open = false) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg, 1, open), mat);
+const rbox = (w, h, d, mat, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001)), mat);
+const glassM = (op = 0.16) => new THREE.MeshPhysicalMaterial({ color: 0xd8ecf4, emissive: 0x9fb8c4, emissiveIntensity: 0.12, sheen: 1, sheenColor: 0xffffff, transparent: true, opacity: op, roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0.05, side: THREE.DoubleSide, depthWrite: false });
+const shellM = (c, op) => new THREE.MeshPhysicalMaterial({ color: c, transparent: true, opacity: op, roughness: 0.2, clearcoat: 0.6, side: THREE.DoubleSide, depthWrite: false });
+let rs = 4242;
+const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+const glowSprite = (rgb, s = 0.5) => { const g = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(rgb), transparent: true, depthWrite: false })); g.scale.setScalar(s); return g; };
+const ease = k => 1 - Math.exp(-k);
+function makeArrow(color) {
+  const g = new THREE.Group(); const m = clay(color, { emissive: color, emissiveIntensity: 0.25 });
+  const shaft = cyl(0.07, 0.07, 1, m, 16); const head = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.34, 20), m);
+  g.add(shaft, head); shadowed(g);
+  g.setLen = L => { L = Math.max(0.05, L); shaft.scale.y = L; shaft.position.y = L / 2; head.position.y = L + 0.17; };
+  g.setLen(1); return g;
+}
+/** 畫布貼圖面板（碼錶螢幕等） */
+function canvasPanel(w, h, pxW = 512) {
+  const c = document.createElement('canvas'); c.width = pxW; c.height = Math.round(pxW * h / w);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t, toneMapped: false }));
+  return { c, g: c.getContext('2d'), t, m };
+}
+let onTabChange = () => {};
+
+/* =========================================================
+   3D 向量箭頭：Cylinder ＋ Cone（施力＝橘紅、位移＝水藍、重力＝深灰）
+   ========================================================= */
+const COL_F = 0xff5a36, COL_S = 0x29b6f6, COL_W = 0x424242;
+const YAX = V3(0, 1, 0);
+function Vec(color, glow = true, r = 0.07) {
+  const g = new THREE.Group();
+  const m = new THREE.MeshStandardMaterial({ color, emissive: glow ? color : 0x000000, emissiveIntensity: glow ? 0.28 : 0, roughness: 0.35, metalness: 0.05 });
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, 18), m);
+  const HL = r * 4.6; const head = new THREE.Mesh(new THREE.ConeGeometry(r * 2.4, HL, 24), m);
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(r * 1.05, 14, 10), m);
+  g.add(shaft, head, cap); shadowed(g);
+  g.len = 0; g.target = 0;
+  g.set = (from, dir, len) => {
+    g.position.copy(from); g.quaternion.setFromUnitVectors(YAX, dir.clone().normalize());
+    g.target = len;
+  };
+  g.tick = dt => {
+    g.len = lerp(g.len, g.target, ease(dt * 10)); g.visible = g.len > 0.04;
+    const hl = Math.min(HL, g.len * 0.55), sl = Math.max(0.001, g.len - hl);
+    shaft.scale.y = sl; shaft.position.y = sl / 2; head.scale.set(1, hl / HL, 1); head.position.y = sl + hl / 2;
+  };
+  g.tip = () => g.localToWorld(V3(0, g.len, 0));
+  g.visible = false;
+  return g;
+}
+/** 箭頭＋跟著尖端的標籤 */
+function VecL(tabKey, color, cls, text, glow = true, r = 0.07) {
+  const v = Vec(color, glow, r), l = addLabel(tabKey, text, 'small ' + cls, V3(0, 0, 0));
+  v.lab = l; v.tickL = (dt, off = V3(0, 0.28, 0)) => { v.tick(dt); v.updateMatrixWorld(); l.show = v.visible && v.len > 0.3; l.pos.copy(v.tip()).add(off); l.off.copy(l.pos); };
+  return v;
+}
+const woodM = (c = 0xd9b98e) => clay(c, { roughness: 0.75 });
+
+/* =========================================================
+   Tab 1：加速與煞車（平行方向的正負功）
+   ========================================================= */
+const CA = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const X0 = -3.9, XEND = 3.6, M = 2, FG = 4, FB = 6;
+  // 原木跑道
+  const track = shadowed(rbox(9.2, 0.16, 1.7, woodM(0xd2a878), 0.05)); track.position.y = 0.08; group.add(track);
+  for (let i = 0; i < 9; i++) { const ln = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.005, 0.06), basic(0xfff6e6, 0.9)); ln.position.set(-4 + i, 0.165, 0); group.add(ln); }
+  [-0.86, 0.86].forEach(z => { const rail = shadowed(rbox(9.2, 0.12, 0.08, woodM(0xb88a5a), 0.03)); rail.position.set(0, 0.22, z); group.add(rail); });
+  const flag = new THREE.Group(); flag.position.set(4.3, 0.16, -0.7); group.add(flag);
+  const fp = shadowed(cyl(0.03, 0.03, 1.2, woodM(0x8d6e63), 8)); fp.position.y = 0.6; flag.add(fp);
+  const fc = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.3), new THREE.MeshStandardMaterial({ color: 0xe57373, side: THREE.DoubleSide })); fc.position.set(0.24, 1.05, 0); flag.add(fc);
+  // 小木車
+  const car = new THREE.Group(); group.add(car);
+  const body = shadowed(rbox(1.25, 0.42, 0.82, woodM(0xe8c99a), 0.12)); body.position.y = 0.5; car.add(body);
+  const cab = shadowed(rbox(0.62, 0.34, 0.7, woodM(0xd7a86e), 0.12)); cab.position.set(-0.12, 0.86, 0); car.add(cab);
+  const wheels = [];
+  [[-0.4, 0.42], [0.4, 0.42], [-0.4, -0.42], [0.4, -0.42]].forEach(([x, z]) => { const w = shadowed(cyl(0.2, 0.2, 0.14, woodM(0x6d4c41), 24)); w.rotation.x = Math.PI / 2; w.position.set(x, 0.36, z); car.add(w); wheels.push(w); const hub = cyl(0.07, 0.07, 0.16, woodM(0xf3e2c4), 12); hub.rotation.x = Math.PI / 2; hub.position.copy(w.position); car.add(hub); });
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 8), new THREE.MeshBasicMaterial({ color: 0xfff3b0 })); head.position.set(0.64, 0.55, 0.25); car.add(head);
+  const VF = VecL('car', COL_F, 'vF', '', true, 0.08), VS = VecL('car', COL_S, 'vS', '位移 S', true, 0.07);
+  group.add(VF, VS);
+  // 煞車火花
+  const sparks = Array.from({ length: 16 }, () => { const s = glowSprite('255,200,120', 0.18); s.visible = false; s.userData = { t: rnd() }; group.add(s); return s; });
+  const st = { x: X0, v: 0, mode: 'idle', W: 0, s0: X0, phase: '' };
+  const go = m => { if (m === 'gas' && st.x > XEND - 0.6) return; st.mode = m; st.s0 = st.x; st.W = 0; st.phase = m; };
+  $('caGas').addEventListener('click', () => go('gas'));
+  $('caBrake').addEventListener('click', () => { if (st.v > 0.01) go('brake'); });
+  $('caReset').addEventListener('click', () => { st.x = X0; st.v = 0; st.mode = 'idle'; st.phase = ''; st.W = 0; });
+  function update(dt) {
+    let F = 0, auto = '';
+    if (st.mode === 'gas') { F = FG; if (st.v >= 3) { st.mode = 'coast'; } }
+    if (st.mode === 'coast' && st.x > XEND - 1.6) { go('brake'); auto = '（快到終點，自動煞車）'; }
+    if (st.mode === 'gas' && st.x > XEND - 1.6) { go('brake'); }
+    if (st.mode === 'brake') { F = -FB; }
+    const a = F / M; const v0 = st.v; st.v = Math.max(0, st.v + a * dt); if (st.mode === 'brake' && st.v <= 0) { st.v = 0; st.mode = 'stop'; }
+    const dx = (v0 + st.v) / 2 * dt; st.x += dx; if (st.mode === 'gas' || st.mode === 'brake') st.W += F * dx;
+    car.position.x = st.x; wheels.forEach(w => { w.rotation.y -= dx / 0.2; });
+    head.material.color.setHex(st.mode === 'brake' ? 0xff6b6b : 0xfff3b0);
+    // 向量
+    const moving = st.v > 0.02;
+    VF.set(V3(st.x + (F < 0 ? 0.0 : -0.1), 1.45, 0), V3(Math.sign(F) || 1, 0, 0), F ? 0.35 * Math.abs(F) : 0);
+    VS.set(V3(st.x - 0.1, 1.95, 0), V3(1, 0, 0), moving ? 1.3 : 0);
+    setLabel(VF.lab, F < 0 ? '摩擦力 f（向後）' : '施力 F（向前）');
+    VF.tickL(dt); VS.tickL(dt);
+    sparks.forEach(s => { s.visible = st.mode === 'brake'; if (!s.visible) return; const u = s.userData; u.t = (u.t + dt * 3) % 1; s.position.set(st.x - 0.4 - u.t * 0.6, 0.2 + Math.sin(u.t * 9) * 0.06 + u.t * 0.2, (u.t - 0.5) * 0.8); s.material.opacity = 1 - u.t; });
+    // 文字
+    const KE = 0.5 * M * st.v * st.v, s = st.x - st.s0;
+    const tip = $('caTip');
+    if (st.mode === 'gas' || (st.phase === 'gas' && st.mode === 'coast')) { tip.hidden = false; tip.className = 'tip ok'; tip.textContent = '✅ 施力與位移同向（0 度）➔ 施力作正功，車子動能增加！'; }
+    else if (st.phase === 'brake') { tip.hidden = false; tip.className = 'tip bad'; tip.textContent = '⛔ 摩擦力與位移反向（180 度）➔ 摩擦力作負功，車子動能減少！'; }
+    else tip.hidden = true;
+    const ph = st.mode === 'gas' ? '踩油門加速' : st.mode === 'coast' ? '放開油門，等速滑行' : st.mode === 'brake' ? '急煞車減速' + auto : st.mode === 'stop' ? '停下來了' : '靜止在起點';
+    setHTML('caStat', `狀態：<b>${ph}</b><br>速度 <b class="b">${st.v.toFixed(2)} m/s</b>　動能 ½mv² ＝ <b class="o">${KE.toFixed(1)} J</b>（m ＝ ${M} kg）<br>${st.phase === 'gas' ? `施力 F ＝ ${FG} N，位移 S ＝ ${s.toFixed(2)} m<br>W ＝ F × S × cos0° ＝ <b class="g">+${Math.abs(st.W).toFixed(1)} J</b>` : st.phase === 'brake' ? `摩擦力 f ＝ ${FB} N，位移 S ＝ ${s.toFixed(2)} m<br>W ＝ f × S × cos180° ＝ <b class="r">−${Math.abs(st.W).toFixed(1)} J</b>` : '按「踩油門」讓車子動起來'}`);
+    setCap(st.mode === 'gas' ? `<small>踩油門</small><b class="red">施力 F →</b>　<b class="blu">位移 S →</b>　同向（0°）<span class="huge grn">正功：動能增加 ↑ ${KE.toFixed(1)} J</span>`
+      : st.phase === 'brake' ? `<small>急煞車</small><b class="red">← 摩擦力 f</b>　<b class="blu">位移 S →</b>　反向（180°）<span class="huge red">負功：動能減少 ↓ ${KE.toFixed(1)} J</span>`
+        : st.mode === 'coast' ? `<small>等速滑行</small>沒有沿運動方向的施力（忽略阻力）<span class="huge org">動能不變：${KE.toFixed(1)} J</span>`
+          : `<small>加速與煞車</small>力與位移<b>同向</b>作正功、<b>反向</b>作負功<span class="huge org">按「踩油門」</span>`);
+  }
+  return { group, update, st, VF, VS };
+})();
+
+/* =========================================================
+   Tab 2：啞鈴升降台（施力 vs 重力）
+   ========================================================= */
+const LI = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const YL = 1.1, YH = 3.1, M = 5, G = 10, WN = M * G, U = 2;   // 2 單位 ＝ 1 公尺
+  const plat = shadowed(rbox(3.6, 0.3, 2.2, woodM(0xd2a878), 0.08)); plat.position.y = 0.15; group.add(plat);
+  [-1.55, 1.55].forEach(x => { const p = shadowed(rbox(0.22, 3.4, 0.22, woodM(0xb88a5a), 0.06)); p.position.set(x, 0.3 + 1.7, -0.75); group.add(p); for (let y = 1; y <= 3.2; y += 0.5) { const peg = shadowed(cyl(0.04, 0.04, 0.25, woodM(0x8d6e63), 8)); peg.rotation.x = Math.PI / 2; peg.position.set(x, y, -0.55); group.add(peg); } });
+  for (let h = 0; h <= 1.0001; h += 0.25) { const t = new THREE.Mesh(new THREE.BoxGeometry(h % 0.5 ? 0.12 : 0.22, 0.012, 0.012), basic(0x5d4037, 0.85)); t.position.set(-1.42, YL + h * U, -0.62); group.add(t); }
+  addLabel('lift', '0 m', 'small', V3(-1.9, YL, -0.6)); addLabel('lift', '1 m', 'small', V3(-1.9, YH, -0.6));
+  // 啞鈴
+  const db = new THREE.Group(); db.position.y = YL; group.add(db);
+  const bar = shadowed(cyl(0.05, 0.05, 2.2, metal(0xb0b4ba), 16)); bar.rotation.z = Math.PI / 2; db.add(bar);
+  [-1, 1].forEach(s => {
+    [0.78, 0.9].forEach((x, i) => { const p = shadowed(cyl(i ? 0.36 : 0.44, i ? 0.36 : 0.44, 0.11, clay(0x37474f, { roughness: 0.5 }), 32)); p.rotation.z = Math.PI / 2; p.position.x = s * x; db.add(p); });
+    const col = shadowed(cyl(0.09, 0.09, 0.08, metal(0x9aa0a6), 16)); col.rotation.z = Math.PI / 2; col.position.x = s * 1.0; db.add(col);
+  });
+  const grip = shadowed(cyl(0.065, 0.065, 0.9, clay(0xa1674a, { roughness: 0.9 }), 16)); grip.rotation.z = Math.PI / 2; db.add(grip);
+  addLabel('lift', '啞鈴 5 kg', 'small', V3(0, 0, 0), db).off.set(0, -0.62, 0.5);
+  const VF = VecL('lift', COL_F, 'vF', '手的施力 F', true, 0.08), VW = VecL('lift', COL_W, 'vW', '重力 W', false, 0.08), VS = VecL('lift', COL_S, 'vS', '位移 S', true, 0.075);
+  group.add(VF, VW, VS);
+  const st = { y: YL, dir: 0, Wh: 0, Wg: 0, y0: YL };
+  $('liUp').addEventListener('click', () => { if (st.y < YH - 0.01) { st.dir = 1; st.y0 = st.y; } });
+  $('liDown').addEventListener('click', () => { if (st.y > YL + 0.01) { st.dir = -1; st.y0 = st.y; } });
+  const half = (who, f, s, sign) => `<h4>${who}</h4><div>${f}</div><div>${s}</div><div class="res ${sign > 0 ? 'pos' : sign < 0 ? 'neg' : 'zero'}">➔ ${sign > 0 ? '作正功！' : sign < 0 ? '作負功！' : '不作功（位移＝0）'}</div>`;
+  function update(dt) {
+    if (st.dir) { st.y += st.dir * dt * 0.9; if (st.y >= YH) { st.y = YH; st.dir = 0; } if (st.y <= YL) { st.y = YL; st.dir = 0; } }
+    db.position.y = st.y + (st.dir ? 0 : 0.01 * Math.sin(wall * 3));
+    const moving = st.dir !== 0, dh = (st.y - st.y0) / U, sgn = st.dir || 0;
+    const lastDir = st.dir || st.last || 0; if (st.dir) st.last = st.dir;
+    VF.set(V3(0.2, st.y + 0.12, 0.35), V3(0, 1, 0), 1.15);
+    VW.set(V3(-0.2, st.y - 0.12, 0.35), V3(0, -1, 0), 1.15);
+    VS.set(V3(1.75, st.y + (sgn < 0 ? 0.5 : -0.5), 0.2), V3(0, sgn || 1, 0), moving ? 1.0 : 0);
+    VF.tickL(dt); VW.tickL(dt, V3(0, -0.28, 0)); VS.tickL(dt, V3(0.25, sgn < 0 ? -0.28 : 0.28, 0));
+    const handSign = moving ? sgn : 0, earthSign = moving ? -sgn : 0;
+    setHTML('liHand', half('✋ 你的手', '施力：<b class="r">向上 ↑</b>', `位移：<b class="b">${moving ? (sgn > 0 ? '向上 ↑' : '向下 ↓') : '0（靜止）'}</b>`, handSign));
+    setHTML('liEarth', half('🌍 地球引力', '重力：<b>向下 ↓</b>', `位移：<b class="b">${moving ? (sgn > 0 ? '向上 ↑' : '向下 ↓') : '0（靜止）'}</b>`, earthSign));
+    const h = (st.y - YL) / U, Wh = WN * dh, Wg = -WN * dh;
+    setHTML('liStat', `啞鈴高度：<b>${h.toFixed(2)} m</b>　重力 W ＝ mg ＝ ${M} × ${G} ＝ <b>${WN} N</b><br>這一段位移：<b class="b">${dh >= 0 ? '+' : ''}${dh.toFixed(2)} m</b><br>手的功 ＝ <b class="${Wh >= 0 ? 'g' : 'r'}">${Wh >= 0 ? '+' : ''}${Wh.toFixed(1)} J</b>　重力的功 ＝ <b class="${Wg >= 0 ? 'g' : 'r'}">${Wg >= 0 ? '+' : ''}${Wg.toFixed(1)} J</b><br><small>慢慢等速移動時，手的施力約等於重力（${WN} N），兩個功大小相同、正負相反。</small>`);
+    setCap(!moving ? `<small>啞鈴升降台</small><b class="red">手的施力 ↑</b> 與 <b>重力 ↓</b> 撐住啞鈴；沒有位移<span class="huge org">按「向上舉起」或「放下啞鈴」</span>`
+      : sgn > 0 ? `<small>向上舉起</small>位移 <b class="blu">向上 ↑</b><span class="huge"><span class="grn">手：正功</span>　｜　<span class="red">重力：負功</span></span>`
+        : `<small>放下啞鈴</small>位移 <b class="blu">向下 ↓</b>（手仍向上撐住）<span class="huge"><span class="red">手：負功</span>　｜　<span class="grn">重力：正功</span></span>`);
+  }
+  return { group, update, st, VF, VW, VS };
+})();
+
+/* =========================================================
+   Tab 3：不作功的經典陷阱
+   ========================================================= */
+const ZE = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const ground = shadowed(rbox(9, 0.12, 2.6, woodM(0xd8bf98), 0.05)); ground.position.y = 0.06; group.add(ground);
+  /** 簡約小人 */
+  function person(shirt = 0x8fb8d8) {
+    const g = new THREE.Group();
+    const skin = clay(0xf1c9a5), cloth = clay(shirt), pants = clay(0x6d7a8a);
+    const head = shadowed(sphere(0.22, skin, 24)); head.position.y = 1.72; g.add(head);
+    const torso = shadowed(rbox(0.5, 0.62, 0.3, cloth, 0.14)); torso.position.y = 1.2; g.add(torso);
+    const mk = (r, h, m) => { const p = new THREE.Group(); const c = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(r, h, 4, 10), m)); c.position.y = -h / 2 - r; p.add(c); return p; };
+    const legL = mk(0.08, 0.5, pants), legR = mk(0.08, 0.5, pants); legL.position.set(-0.12, 0.9, 0); legR.position.set(0.12, 0.9, 0); g.add(legL, legR);
+    const armL = mk(0.06, 0.45, cloth), armR = mk(0.06, 0.45, cloth); armL.position.set(-0.32, 1.46, 0); armR.position.set(0.32, 1.46, 0); g.add(armL, armR);
+    g.parts = { legL, legR, armL, armR, head };
+    return g;
+  }
+  // 情境 A：巨石
+  const A = new THREE.Group(); group.add(A);
+  const rockGeo = new THREE.IcosahedronGeometry(1.35, 4); { const p = rockGeo.attributes.position, v = V3(0, 0, 0); for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); const n = 1 + 0.07 * Math.sin(v.x * 3.1 + v.y * 2.3) + 0.05 * Math.sin(v.z * 5.2 - v.y * 4.1); v.multiplyScalar(n); p.setXYZ(i, v.x, v.y, v.z); } rockGeo.computeVertexNormals(); }
+  const rock = shadowed(new THREE.Mesh(rockGeo, clay(0x9e9890, { roughness: 0.95, flatShading: true }))); rock.position.set(0.9, 1.4, 0); A.add(rock);
+  const pusher = person(0xf0a868); pusher.position.set(-1.25, 0.12, 0); pusher.rotation.y = Math.PI / 2; pusher.rotation.z = -0.22; A.add(pusher);
+  pusher.parts.armL.rotation.x = -1.35; pusher.parts.armR.rotation.x = -1.35;
+  const sweat = Array.from({ length: 6 }, () => { const s = sphere(0.04, new THREE.MeshStandardMaterial({ color: 0x9fd3f2, transparent: true }), 8); s.userData = { t: rnd() }; A.add(s); return s; });
+  const VFa = VecL('zero', COL_F, 'vF', '施力 F ＝ 500 N', true, 0.13);
+  A.add(VFa);
+  // 情境 B：提公事包走路
+  const B = new THREE.Group(); group.add(B);
+  const walker = person(0x9cc59a); B.add(walker); walker.rotation.y = Math.PI / 2;
+  const bag = new THREE.Group(); B.add(bag);
+  const bagBody = shadowed(rbox(0.5, 0.36, 0.14, clay(0x8d5a3b, { roughness: 0.6 }), 0.05)); bag.add(bagBody);
+  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.02, 8, 16, Math.PI), clay(0x5d4037)); handle.position.y = 0.18; bag.add(handle);
+  const VFb = VecL('zero', COL_F, 'vF', '提力 F（向上）', true, 0.08), VSb = VecL('zero', COL_S, 'vS', '位移 S（水平）', true, 0.08);
+  B.add(VFb, VSb);
+  const rightM = new THREE.MeshBasicMaterial({ color: 0x5d4037, toneMapped: false });
+  const right = new THREE.Group(); B.add(right);
+  [[V3(0.3, 0, 0), V3(0.3, 0.3, 0)], [V3(0.3, 0.3, 0), V3(0, 0.3, 0)]].forEach(([a, b]) => { const s = new THREE.Mesh(UNIT_CYL, rightM); placeSeg(s, a, b, 0.018); right.add(s); });
+  const lRight = addLabel('zero', '90°', 'small org', V3(0, 0, 0));
+  const st = { sc: 'rock', go: false, t: 0, x: -3.2 };
+  const XB0 = -3.2;
+  document.querySelectorAll('.zbtn').forEach(b => b.addEventListener('click', () => { st.sc = b.dataset.z; st.go = false; st.t = 0; st.x = XB0; document.querySelectorAll('.zbtn').forEach(x => x.classList.toggle('on', x === b)); }));
+  $('zeGo').addEventListener('click', () => { if (st.sc === 'walk' && st.x > 2.4) st.x = XB0; st.go = !st.go; });
+  $('zeReset').addEventListener('click', () => { st.go = false; st.t = 0; st.x = XB0; });
+  function update(dt) {
+    const rk = st.sc === 'rock'; A.visible = rk; B.visible = !rk;
+    if (st.go) st.t += dt;
+    $('zeGo').textContent = rk ? (st.go ? '✋ 停止推' : '💪 用力推') : (st.go ? '⏸ 停下來' : '🚶 向前走');
+    if (rk) {
+      const shake = st.go ? 0.015 * Math.sin(wall * 40) : 0;
+      pusher.position.x = -1.25 + shake; pusher.rotation.z = st.go ? -0.3 : -0.12;
+      rock.position.x = 0.9;
+      VFa.set(V3(-2.45, 1.45, 1.05), V3(1, 0, 0), st.go ? 1.85 + 0.06 * Math.sin(wall * 8) : 0); VFa.tickL(dt, V3(-0.9, 0.42, 0));
+      sweat.forEach(s => { s.visible = st.go; if (!s.visible) return; const u = s.userData; u.t = (u.t + dt * 0.8) % 1; s.position.set(-1.05 + (u.t - 0.5) * 0.4, 2.0 - u.t * 0.6, 0.25); s.material.opacity = 1 - u.t; });
+      VFb.target = 0; VSb.target = 0; VFb.tickL(dt); VSb.tickL(dt); lRight.show = false; right.visible = false;
+      $('zeTip').hidden = !st.go; $('zeTip').className = 'tip'; $('zeTip').textContent = '🪨 W ＝ F × 0 ＝ 0 焦耳！沒有產生位移，白費力氣作功為零！';
+      setHTML('zeStat', `施力 F ＝ <b class="r">500 N</b>　位移 S ＝ <b class="b">0 m</b><br>W ＝ F × S ＝ 500 × 0 ＝ <b>0 J</b><br><small>雖然流汗很累，但物理上「功」要有沿著力方向的位移。</small>`);
+      setCap(st.go ? `<small>推不動的巨石</small>用了很大的<b class="red">施力 F</b>，但岩石<b>紋風不動</b>（沒有位移箭頭）<span class="huge">W ＝ F × <span class="blu">0</span> ＝ 0 焦耳</span>` : `<small>情境 A：推不動的巨石</small>按「用力推」<span class="huge org">用力推就一定有作功嗎？</span>`);
+    } else {
+      if (st.go) { st.x = Math.min(2.8, st.x + dt * 0.9); if (st.x >= 2.8) st.go = false; }
+      walker.position.set(st.x, 0.12, 0);
+      const sw = st.go ? Math.sin(wall * 7) * 0.5 : 0; const P = walker.parts;
+      P.legL.rotation.x = sw; P.legR.rotation.x = -sw; P.armL.rotation.x = -sw * 0.6; P.armR.rotation.x = 0;
+      bag.position.set(st.x + 0.02, 0.62, 0.5);
+      const o = V3(st.x + 0.02, 0.84, 0.55);
+      const dist = st.x - XB0;
+      VFb.set(o, V3(0, 1, 0), 1.0); VSb.set(o, V3(1, 0, 0), st.go || dist > 0.05 ? 1.2 : 0);
+      VFb.tickL(dt, V3(-0.2, 0.25, 0)); VSb.tickL(dt, V3(0.1, 0.28, 0));
+      right.position.copy(o).add(V3(0, 0, 0.02)); right.visible = VSb.visible && VFb.visible;
+      lRight.show = right.visible; lRight.pos.copy(o).add(V3(0.48, 0.48, 0)); lRight.off.copy(lRight.pos);
+      VFa.target = 0; VFa.tickL(dt);
+      $('zeTip').hidden = !(st.go || dist > 0.05); $('zeTip').className = 'tip'; $('zeTip').textContent = '💼 W ＝ F × S × cos(90°) ＝ 0 焦耳！施力與位移垂直，不管走多遠都不作功！';
+      setHTML('zeStat', `提公事包的力 F ＝ <b class="r">50 N（向上）</b><br>水平走了 S ＝ <b class="b">${(dist / 2).toFixed(2)} m</b>　夾角 θ ＝ <b>90°</b><br>W ＝ F × S × cos90° ＝ 50 × ${(dist / 2).toFixed(2)} × 0 ＝ <b>0 J</b><br><small>向上的力只負責「不讓公事包掉下去」，在水平方向沒有幫忙移動。</small>`);
+      setCap(dist > 0.05 ? `<small>提重物水平走路</small><b class="red">提力 F ↑</b> 與 <b class="blu">位移 S →</b> 互相垂直（90°）<span class="huge">W ＝ F × S × cos90° ＝ 0 焦耳</span>` : `<small>情境 B：提重物走路</small>按「向前走」<span class="huge org">提著重物走路，手有作功嗎？</span>`);
+    }
+  }
+  return { group, update, st, VFa, VFb, VSb };
+})();
+onTabChange = t => { if (t !== 'car' && CA.st.mode !== 'stop' && CA.st.mode !== 'idle') { CA.st.mode = 'idle'; CA.st.v = 0; CA.st.phase = ''; } if (t !== 'lift') LI.st.dir = 0; if (t !== 'zero') ZE.st.go = false; };
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  car: { group: CA.group, cam: () => ({ pos: [0, 4.2, 9.6], target: [0, 0.9, 0], fitW: window.innerWidth < window.innerHeight ? 9.6 : 10 }), update: CA.update },
+  lift: { group: LI.group, cam: () => ({ pos: [0.6, 3.4, 8.2], target: [0.2, 2.0, 0], fitW: window.innerWidth < window.innerHeight ? 5 : 5.6 }), update: LI.update },
+  zero: { group: ZE.group, cam: () => ({ pos: [0, 3.0, 9], target: [0, 1.3, 0], fitW: window.innerWidth < window.innerHeight ? 7.4 : 8.4 }), update: ZE.update }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  onTabChange(t);
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, CA, LI, ZE, camera, controls, renderer, scene, placeLabels };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'car';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+<script src="goals.js" defer></script>
+</body>
+</html>
