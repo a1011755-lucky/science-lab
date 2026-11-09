@@ -388,11 +388,11 @@ const COURSES = [
       {
         name: '九上理化', sub: '時間與運動、牛頓定律、功與能、靜電與電路',
         chapters: [
-          { title: '直線運動', sum: '從測量時間與單擺出發，分辨路徑長與位移、速率與速度，學會等速度、等加速度運動與自由落體，並能解讀運動圖表。', labs: [{ t: '直線運動', u: 'kinematics-lab.html' }],
+          { title: '直線運動', sum: '從測量時間與單擺出發，分辨路徑長與位移、速率與速度，學會等速度、等加速度運動與自由落體，並能解讀運動圖表。', labs: [{ t: '直線運動', u: 'kinematics-lab.html' }, { t: 'x-t 圖・v-t 圖', u: 'kinematics-lab.html#m2' }, { t: '自由落體・上拋', u: 'kinematics-lab.html#m3' }, { t: '打點計時器', u: 'kinematics-lab.html#m4' }],
             k: ['測量時間的工具', '單擺的等時性（週期只與擺長有關）', '路徑長與位移', '速率與速度', '等速度運動', '加速度 ＝ 速度變化 ÷ 時間', '等加速度運動', '自由落體（g ≈ 9.8 m/s²）', 'x-t 圖、v-t 圖、a-t 圖的解讀', 'v-t 圖面積＝位移、斜率＝加速度'] },
-          { title: '力與運動', sum: '理解牛頓三大運動定律，用 F＝ma 解題，再認識圓周運動、向心力與萬有引力。', labs: [{ t: '牛頓力學遊樂園', u: 'newton-park.html' }],
+          { title: '力與運動', sum: '理解牛頓三大運動定律，用 F＝ma 解題，再認識圓周運動、向心力與萬有引力。', labs: [{ t: '牛頓力學遊樂園', u: 'newton-park.html' }, { t: '牛二：F ＝ ma', u: 'newton-park.html#m2' }, { t: '牛三：作用與反作用', u: 'newton-park.html#m3' }, { t: '萬有引力', u: 'newton-park.html#m4' }, { t: '圓周運動', u: 'newton-park.html#m5' }],
             k: ['牛頓第一運動定律（慣性定律）', '牛頓第二運動定律：F ＝ m × a', '1 牛頓 ＝ 1 kg × 1 m/s²', '牛頓第三運動定律（作用力與反作用力）', '作用力與反作用力 vs. 力平衡', '滑車實驗：力、質量與加速度', '等速圓周運動與向心力', '萬有引力', '萬有引力提供天體圓周運動的向心力'] },
-          { title: '功與能', sum: '學會功、功率與能量的關係，動能與位能的轉換及力學能守恆，再用力矩理解槓桿與簡單機械。', labs: [{ t: '功與能', u: 'work-energy.html' }],
+          { title: '功與能', sum: '學會功、功率與能量的關係，動能與位能的轉換及力學能守恆，再用力矩理解槓桿與簡單機械。', labs: [{ t: '功與能', u: 'work-energy.html' }, { t: '力學能守恆', u: 'work-energy.html#m2' }, { t: '彈力位能', u: 'work-energy.html#m3' }],
             k: ['功 ＝ 力 × 沿力方向的位移', '作功為零的情況', '功率 ＝ 功 ÷ 時間', '動能（與質量、速度平方成正比）', '重力位能 ＝ mgh', '彈力位能', '力學能守恆', '力矩 ＝ 力 × 力臂', '槓桿原理：順時針力矩＝逆時針力矩', '簡單機械（槓桿、滑輪、輪軸、斜面）：省力不省功', '生活中的能源與能量轉換'] },
           { title: '基本的靜電現象與電路', sum: '從摩擦起電、靜電感應到感應起電，再學會電流、電壓、電阻、歐姆定律與串並聯電路。', labs: [{ t: '靜電三部曲', u: 'static-circuit.html' }, { t: '電路三劍客', u: 'static-circuit.html#trio' }, { t: '歐姆定律', u: 'static-circuit.html#ohm' }, { t: '串聯與並聯', u: 'static-circuit.html#series' }],
             k: ['摩擦起電（電子轉移）', '同性相斥、異性相吸', '靜電感應與感應起電', '驗電器', '直流電路的組成', '電流（安培計串聯）', '電壓（伏特計並聯）', '電阻與歐姆定律：V ＝ I × R', '串聯：電流處處相等、電壓分配', '並聯：電壓相等、電流分配'] }
@@ -401,7 +401,7 @@ const COURSES = [
       {
         name: '九下理化', sub: '電流的熱、化學、磁效應與電磁感應',
         chapters: [
-          { title: '電的應用', sum: '認識電流的熱效應、電能與電功率、直流電與交流電、節能與安全用電，再學會電池、電解與電鍍等電流的化學效應。', labs: [{ t: '亮度競技場', u: 'power-lab.html#arena' }, { t: '吹風機熱能廠', u: 'power-lab.html#dryer' }, { t: '電池、電解與電鍍', u: 'electrochem.html' }],
+          { title: '電的應用', sum: '認識電流的熱效應、電能與電功率、直流電與交流電、節能與安全用電，再學會電池、電解與電鍍等電流的化學效應。', labs: [{ t: '亮度競技場', u: 'power-lab.html#arena' }, { t: '吹風機熱能廠', u: 'power-lab.html#dryer' }, { t: '電池、電解與電鍍', u: 'electrochem.html' }, { t: '電解硫酸銅', u: 'electrochem.html#s2' }, { t: '電鍍', u: 'electrochem.html#s3' }, { t: '電解水', u: 'electrochem.html#s4' }],
             k: ['電流的熱效應', '電能 ＝ 電功率 × 時間', '電功率 P ＝ I × V', '1 度電 ＝ 1 千瓦小時', '直流電與交流電', '節能用電', '安全用電與電器規格（短路、超載、保險絲）', '伏打電池與鋅銅電池', '常見的電池（乾電池、鉛蓄電池、鋰電池）', '電解與電鍍', '電鍍的應用'] },
           { title: '電與磁', sum: '從磁鐵、磁力線與地磁出發，理解電流磁效應與電磁鐵，再用右手開掌定則說明電動機，最後認識電磁感應與發電機。', labs: [{ t: '安培右手', u: 'em-lab.html#wire' }, { t: '電動機', u: 'em-lab.html#motor' }, { t: '電磁感應', u: 'em-lab.html#lenz' }],
             k: ['磁鐵與磁性', '磁力線（N 出 S 入、越密越強）', '地球磁場', '電流磁效應（厄斯特實驗）', '安培右手定則', '電磁鐵與其應用', '電流與磁場的交互作用', '右手開掌定則', '電動機原理（電能 → 力學能）', '電磁感應與感應電流（冷次定律）', '發電機原理（力學能 → 電能）'] }
@@ -410,15 +410,15 @@ const COURSES = [
       {
         name: '地球科學', sub: '地球、天氣與宇宙',
         chapters: [
-          { title: '水與陸地', sum: '地球上的水、水循環與地表的變化。', labs: [{ t: '水與陸地', u: 'water-lab.html' }], tag: '地科',
+          { title: '水與陸地', sum: '地球上的水、水循環與地表的變化。', labs: [{ t: '水與陸地', u: 'water-lab.html' }, { t: '自流井', u: 'water-lab.html#well' }, { t: '地層下陷', u: 'water-lab.html#sink' }], tag: '地科',
             k: ['水循環', '地表水與地下水', '海水的運動', '風化、侵蝕、搬運、沉積', '岩石與礦物'] },
-          { title: '板塊運動與地球歷史', sum: '地球內部構造、板塊運動、地震與台灣的地質。', labs: [{ t: '地球內部與板塊運動', u: 'plates-lab.html' }, { t: '台灣地震', u: 'taiwan-earthquake.html' }], tag: '地科',
+          { title: '板塊運動與地球歷史', sum: '地球內部構造、板塊運動、地震與台灣的地質。', labs: [{ t: '地球內部與板塊運動', u: 'plates-lab.html' }, { t: '中洋脊', u: 'plates-lab.html#ridge' }, { t: '造山運動', u: 'plates-lab.html#conv' }, { t: '斷層', u: 'plates-lab.html#fault' }, { t: '台灣地震', u: 'taiwan-earthquake.html' }], tag: '地科',
             k: ['地球內部構造', '板塊運動', '地震與火山', '褶皺與斷層', '地層與化石'] },
-          { title: '宇宙中的天體', sum: '月相、周日運動、天球與太陽的視運動、四季。', labs: [{ t: '月相', u: 'moon-phases.html' }, { t: '周日運動', u: 'daily-motion.html' }, { t: '天球與太陽視運動', u: 'celestial-lab.html' }], tag: '地科',
+          { title: '宇宙中的天體', sum: '月相、周日運動、天球與太陽的視運動、四季。', labs: [{ t: '月相', u: 'moon-phases.html' }, { t: '周日運動', u: 'daily-motion.html' }, { t: '天球與太陽視運動', u: 'celestial-lab.html' }, { t: '太陽軌跡', u: 'celestial-lab.html#sun' }, { t: '緯度時光機', u: 'celestial-lab.html#lat' }], tag: '地科',
             k: ['月相變化', '周日運動', '天球', '太陽視運動', '晝夜與四季', '日食與月食'] },
           { title: '千變萬化的天氣', sum: '大氣分層、氣壓與風、鋒面與颱風。', labs: [{ t: '大氣分層', u: 'atmo-lab.html#layers' }, { t: '高低氣壓', u: 'atmo-lab.html#pressure' }, { t: '鋒面', u: 'atmo-lab.html#front' }, { t: '颱風風向', u: 'typhoon-wind.html' }, { t: '颱風風量', u: 'clay-sim.html#typhoon' }], tag: '地科',
             k: ['大氣分層', '氣壓與風', '高氣壓與低氣壓', '冷鋒與暖鋒', '颱風', '天氣圖'] },
-          { title: '全球氣候變遷與因應', sum: '溫室效應、全球暖化與節能減碳。', labs: [{ t: '全球氣候變遷與因應', u: 'env-lab.html' }], tag: '地科',
+          { title: '全球氣候變遷與因應', sum: '溫室效應、全球暖化與節能減碳。', labs: [{ t: '全球氣候變遷與因應', u: 'env-lab.html' }, { t: '土石流', u: 'env-lab.html#debris' }, { t: '空氣品質', u: 'env-lab.html#aqi' }], tag: '地科',
             k: ['溫室效應', '全球暖化', '極端氣候', '節能減碳'] }
         ]
       }

@@ -847,7 +847,7 @@ function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFr
 window.kin = { M1, M2, M3, M4, setMode, frame, camera, controls, scene };   // 除錯 / 驗證用
 
 resize();
-setMode('m1');
+setMode(document.querySelector('.section[data-mode="' + location.hash.slice(1) + '"]') ? location.hash.slice(1) : 'm1');
 animate();
 </script>
 

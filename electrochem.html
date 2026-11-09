@@ -1211,7 +1211,7 @@ function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFr
 window.ec = { setStation, build, frame, get cur() { return cur; }, run: v => { running = v; }, setSpeed: v => { speed = v; } };
 
 resize();
-setStation('s1');
+setStation(document.querySelector('.section[data-mode="' + location.hash.slice(1) + '"]') ? location.hash.slice(1) : 's1');
 animate();
 </script>
 
