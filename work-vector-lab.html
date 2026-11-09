@@ -412,6 +412,59 @@ function canvasPanel(w, h, pxW = 512) {
 let onTabChange = () => {};
 
 /* =========================================================
+   極簡原木人偶（美學規範 A）
+   ・面向 +x，左右手腳在 ±z；所有關節都是 Group，支點就在關節上
+   ・關節 rotation.z ＞ 0 ＝ 四肢往前（+x）擺；軀幹 rotation.z ＞ 0 ＝ 向後仰
+   ・root 原點在腳底；pelvis 在臀部高度
+   ========================================================= */
+function mannequin() {
+  const wood = new THREE.MeshStandardMaterial({ color: 0xdeb887, roughness: 0.7, metalness: 0 });
+  const jointM = new THREE.MeshStandardMaterial({ color: 0xcfa66f, roughness: 0.7, metalness: 0 });
+  const lathe = (pts, seg = 28) => new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), seg);
+  const part = (geo, m = wood) => { const x = new THREE.Mesh(geo, m); x.castShadow = true; x.receiveShadow = true; return x; };
+  const ball = r => part(new THREE.SphereGeometry(r, 18, 12), jointM);
+  // 紡錘形四肢：從原點往 −y 延伸 len，上粗下細
+  const limb = (len, r0, r1) => part(lathe([[0.001, 0], [r0 * 0.55, -0.03 * len], [r0, -0.14 * len], [(r0 + r1) * 0.53, -0.5 * len], [r1, -0.86 * len], [r1 * 0.55, -0.97 * len], [0.001, -len]]));
+  const LEG = 0.95;
+  const root = new THREE.Group();
+  const pelvis = new THREE.Group(); pelvis.position.y = LEG; root.add(pelvis);
+  const hip = part(lathe([[0.001, -0.1], [0.12, -0.09], [0.17, -0.02], [0.16, 0.07], [0.11, 0.12], [0.001, 0.12]])); hip.scale.z = 1.25; pelvis.add(hip);
+  // 軀幹（腰部為支點）
+  const torso = new THREE.Group(); torso.position.y = 0.1; pelvis.add(torso);
+  const waist = ball(0.075); torso.add(waist);
+  const chest = part(lathe([[0.001, 0.03], [0.1, 0.05], [0.13, 0.16], [0.18, 0.36], [0.2, 0.47], [0.17, 0.56], [0.08, 0.6], [0.001, 0.6]])); chest.scale.set(0.85, 1, 1.25); torso.add(chest);
+  // 頸部與頭（頸部為支點）
+  const neck = new THREE.Group(); neck.position.y = 0.6; torso.add(neck);
+  neck.add(part(new THREE.CylinderGeometry(0.045, 0.055, 0.12, 14)).translateY(0.05));
+  const head = new THREE.Group(); head.position.y = 0.1; neck.add(head);
+  const skull = part(lathe([[0.001, 0], [0.08, 0.015], [0.12, 0.09], [0.135, 0.17], [0.125, 0.25], [0.085, 0.31], [0.001, 0.33]], 32)); skull.scale.x = 1.1; head.add(skull);
+  // 手臂：肩→肘→手
+  const arm = s => {
+    const sh = new THREE.Group(); sh.position.set(0, 0.5, s * 0.25); torso.add(sh);
+    sh.add(ball(0.06));
+    sh.add(limb(0.32, 0.055, 0.042));
+    const el = new THREE.Group(); el.position.y = -0.34; sh.add(el);
+    el.add(ball(0.045));
+    el.add(limb(0.3, 0.045, 0.035));
+    const hand = part(lathe([[0.001, 0], [0.04, -0.03], [0.05, -0.08], [0.035, -0.13], [0.001, -0.15]], 18)); hand.scale.z = 0.55; hand.position.y = -0.31; el.add(hand);
+    return { sh, el, hand };
+  };
+  // 腿：髖→膝→腳
+  const leg = s => {
+    const hp = new THREE.Group(); hp.position.set(0, -0.06, s * 0.1); pelvis.add(hp);
+    hp.add(ball(0.07));
+    hp.add(limb(0.44, 0.075, 0.055));
+    const kn = new THREE.Group(); kn.position.y = -0.45; hp.add(kn);
+    kn.add(ball(0.055));
+    kn.add(limb(0.42, 0.055, 0.04));
+    const foot = part(lathe([[0.001, 0], [0.045, 0.02], [0.05, 0.1], [0.035, 0.17], [0.001, 0.19]], 18)); foot.rotation.z = -Math.PI / 2; foot.scale.z = 1.3; foot.position.set(-0.04, -0.44, 0); kn.add(foot);
+    return { hp, kn, foot };
+  };
+  const armL = arm(-1), armR = arm(1), legL = leg(-1), legR = leg(1);
+  return { root, pelvis, torso, neck, head, armL, armR, legL, legR, wood, LEG };
+}
+
+/* =========================================================
    3D 向量箭頭：Cylinder ＋ Cone（施力＝橘紅、位移＝水藍、重力＝深灰）
    ========================================================= */
 const COL_F = 0xff5a36, COL_S = 0x29b6f6, COL_W = 0x424242;
@@ -559,30 +612,20 @@ const LI = (() => {
 const ZE = (() => {
   const group = new THREE.Group(); scene.add(group);
   const ground = shadowed(rbox(9, 0.12, 2.6, woodM(0xd8bf98), 0.05)); ground.position.y = 0.06; group.add(ground);
-  /** 簡約小人 */
-  function person(shirt = 0x8fb8d8) {
-    const g = new THREE.Group();
-    const skin = clay(0xf1c9a5), cloth = clay(shirt), pants = clay(0x6d7a8a);
-    const head = shadowed(sphere(0.22, skin, 24)); head.position.y = 1.72; g.add(head);
-    const torso = shadowed(rbox(0.5, 0.62, 0.3, cloth, 0.14)); torso.position.y = 1.2; g.add(torso);
-    const mk = (r, h, m) => { const p = new THREE.Group(); const c = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(r, h, 4, 10), m)); c.position.y = -h / 2 - r; p.add(c); return p; };
-    const legL = mk(0.08, 0.5, pants), legR = mk(0.08, 0.5, pants); legL.position.set(-0.12, 0.9, 0); legR.position.set(0.12, 0.9, 0); g.add(legL, legR);
-    const armL = mk(0.06, 0.45, cloth), armR = mk(0.06, 0.45, cloth); armL.position.set(-0.32, 1.46, 0); armR.position.set(0.32, 1.46, 0); g.add(armL, armR);
-    g.parts = { legL, legR, armL, armR, head };
-    return g;
-  }
   // 情境 A：巨石
   const A = new THREE.Group(); group.add(A);
   const rockGeo = new THREE.IcosahedronGeometry(1.35, 4); { const p = rockGeo.attributes.position, v = V3(0, 0, 0); for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); const n = 1 + 0.07 * Math.sin(v.x * 3.1 + v.y * 2.3) + 0.05 * Math.sin(v.z * 5.2 - v.y * 4.1); v.multiplyScalar(n); p.setXYZ(i, v.x, v.y, v.z); } rockGeo.computeVertexNormals(); }
   const rock = shadowed(new THREE.Mesh(rockGeo, clay(0x9e9890, { roughness: 0.95, flatShading: true }))); rock.position.set(0.9, 1.4, 0); A.add(rock);
-  const pusher = person(0xf0a868); pusher.position.set(-1.25, 0.12, 0); pusher.rotation.y = Math.PI / 2; pusher.rotation.z = -0.22; A.add(pusher);
-  pusher.parts.armL.rotation.x = -1.35; pusher.parts.armR.rotation.x = -1.35;
+  const PM = mannequin(), pusher = PM.root; pusher.position.set(-1.5, 0.12, 0); A.add(pusher);
+  [PM.armL, PM.armR].forEach(a => { a.sh.rotation.z = 1.5; a.el.rotation.z = 0.15; });
+  PM.legL.hp.rotation.z = -0.45; PM.legL.kn.rotation.z = 0.1; PM.legR.hp.rotation.z = 0.35; PM.legR.kn.rotation.z = -0.35;
   const sweat = Array.from({ length: 6 }, () => { const s = sphere(0.04, new THREE.MeshStandardMaterial({ color: 0x9fd3f2, transparent: true }), 8); s.userData = { t: rnd() }; A.add(s); return s; });
   const VFa = VecL('zero', COL_F, 'vF', '施力 F ＝ 500 N', true, 0.13);
   A.add(VFa);
   // 情境 B：提公事包走路
   const B = new THREE.Group(); group.add(B);
-  const walker = person(0x9cc59a); B.add(walker); walker.rotation.y = Math.PI / 2;
+  const WM = mannequin(), walker = WM.root; B.add(walker);
+  WM.armR.sh.rotation.z = 0.05;
   const bag = new THREE.Group(); B.add(bag);
   const bagBody = shadowed(rbox(0.5, 0.36, 0.14, clay(0x8d5a3b, { roughness: 0.6 }), 0.05)); bag.add(bagBody);
   const handle = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.02, 8, 16, Math.PI), clay(0x5d4037)); handle.position.y = 0.18; bag.add(handle);
@@ -603,7 +646,7 @@ const ZE = (() => {
     $('zeGo').textContent = rk ? (st.go ? '✋ 停止推' : '💪 用力推') : (st.go ? '⏸ 停下來' : '🚶 向前走');
     if (rk) {
       const shake = st.go ? 0.015 * Math.sin(wall * 40) : 0;
-      pusher.position.x = -1.25 + shake; pusher.rotation.z = st.go ? -0.3 : -0.12;
+      pusher.position.x = -1.5 + shake; PM.torso.rotation.z = st.go ? -0.42 : -0.2;
       rock.position.x = 0.9;
       VFa.set(V3(-2.45, 1.45, 1.05), V3(1, 0, 0), st.go ? 1.85 + 0.06 * Math.sin(wall * 8) : 0); VFa.tickL(dt, V3(-0.9, 0.42, 0));
       sweat.forEach(s => { s.visible = st.go; if (!s.visible) return; const u = s.userData; u.t = (u.t + dt * 0.8) % 1; s.position.set(-1.05 + (u.t - 0.5) * 0.4, 2.0 - u.t * 0.6, 0.25); s.material.opacity = 1 - u.t; });
@@ -614,10 +657,10 @@ const ZE = (() => {
     } else {
       if (st.go) { st.x = Math.min(2.8, st.x + dt * 0.9); if (st.x >= 2.8) st.go = false; }
       walker.position.set(st.x, 0.12, 0);
-      const sw = st.go ? Math.sin(wall * 7) * 0.5 : 0; const P = walker.parts;
-      P.legL.rotation.x = sw; P.legR.rotation.x = -sw; P.armL.rotation.x = -sw * 0.6; P.armR.rotation.x = 0;
-      bag.position.set(st.x + 0.02, 0.62, 0.5);
-      const o = V3(st.x + 0.02, 0.84, 0.55);
+      const sw = st.go ? Math.sin(wall * 7) * 0.45 : 0;
+      WM.legL.hp.rotation.z = sw; WM.legR.hp.rotation.z = -sw; WM.legL.kn.rotation.z = -Math.max(0, -sw) * 0.8; WM.legR.kn.rotation.z = -Math.max(0, sw) * 0.8; WM.armL.sh.rotation.z = -sw * 0.6;
+      bag.position.set(st.x + 0.04, 0.6, 0.36);
+      const o = V3(st.x + 0.04, 0.8, 0.5);
       const dist = st.x - XB0;
       VFb.set(o, V3(0, 1, 0), 1.0); VSb.set(o, V3(1, 0, 0), st.go || dist > 0.05 ? 1.2 : 0);
       VFb.tickL(dt, V3(-0.2, 0.25, 0)); VSb.tickL(dt, V3(0.1, 0.28, 0));

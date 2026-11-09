@@ -503,11 +503,6 @@ const BU = (() => {
     const ball = shadowed(sphere(0.13, clay(0xef8a3d, { roughness: 0.4 }), 24)); ball.position.y = -LEN - 0.1; pv.add(ball);
     return pv;
   });
-  // 乘客（跟著傾斜）
-  const pax = new THREE.Group(); pax.position.set(-0.65, 0.74, -0.35); bus.add(pax);
-  const body = shadowed(rbox(0.38, 0.6, 0.26, clay(0x9cc59a), 0.12)); body.position.y = 0.95; pax.add(body);
-  const headM = shadowed(sphere(0.17, clay(0xf1c9a5), 20)); headM.position.y = 1.42; pax.add(headM);
-  [-0.09, 0.09].forEach(z => { const lg = shadowed(cyl(0.06, 0.06, 0.62, clay(0x6d7a8a), 8)); lg.position.set(0, 0.32, z); pax.add(lg); });
   const lAng = addLabel('bus', '', 'small org', V3(0, 0, 0));
   addLabel('bus', '前進方向 →', 'small', V3(2.4, 3.25, 0.2));
   const st = { v: 0, a: 0, mode: 'stop', th: 0, w: 0, off: 0, msg: '', msgT: 0 };
@@ -525,7 +520,6 @@ const BU = (() => {
     const sub = 8, h = dt / sub, L = LEN + 0.1;
     for (let i = 0; i < sub; i++) { const acc = -(9.8 / L) * Math.sin(st.th) - (st.a / L) * Math.cos(st.th) - 0.85 * st.w; st.w += acc * h; st.th += st.w * h; }
     straps.forEach(p => { p.rotation.z = -st.th; });
-    pax.rotation.z = -st.th * 0.35;
     bus.rotation.z = st.a * 0.0025; bus.position.y = 0.02 * Math.sin(wall * 9) * Math.min(1, st.v / 4);
     st.off = (st.off + st.v * dt) % 32;
     const wrap = x => ((x % 32) + 32) % 32 - 15;

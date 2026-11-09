@@ -454,6 +454,70 @@ const skinMat = () => new THREE.MeshPhysicalMaterial({ color: 0xeb9a70, transpar
 /** 手的描邊：背面稍微外推的深色輪廓，米色背景上才看得清楚 */
 const outlineM = new THREE.MeshBasicMaterial({ color: 0x8a4b2c, side: THREE.BackSide, transparent: true, opacity: 0.85 });
 outlineM.onBeforeCompile = s => { s.vertexShader = s.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  transformed += normal * 0.022;'); };
+/* =========================================================
+   全息毛玻璃投影（美學規範 B）
+   THREE.Shape 畫 2D 輪廓 → ExtrudeGeometry 圓角擠壓 → EdgesGeometry 發光邊線
+   ========================================================= */
+function holoMat(op = 0.4, color = 0xf6d2bd) {
+  return new THREE.MeshPhysicalMaterial({ color, transmission: 0.8, opacity: op, transparent: true, roughness: 0.35, thickness: 0.6, ior: 1.2, depthWrite: false, side: THREE.DoubleSide, emissive: 0x000000 });
+}
+function holoEdgeMat(color = 0xffa477, op = 0.6) { return new THREE.LineBasicMaterial({ color, transparent: true, opacity: op, depthWrite: false }); }
+function holoPiece(shape, depth, bevel, mat, edgeMat) {
+  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel * 0.8, bevelSegments: 6, curveSegments: 40 });
+  g.translate(0, 0, -depth / 2);
+  const m = new THREE.Mesh(g, mat); m.renderOrder = 8;
+  if (edgeMat) { const e = new THREE.LineSegments(new THREE.EdgesGeometry(g, 60), edgeMat); e.renderOrder = 9; m.add(e); }
+  return m;
+}
+/** 頭＋頸＋軀幹的平滑側影（左右對稱） */
+function holoBodyShape(o) {
+  const V = (x, y) => new THREE.Vector2(x, y);
+  const R = [V(0, o.hipY), V(o.hipW * 0.7, o.hipY + 0.03), V(o.hipW, o.hipY + 0.3), V(o.waistW, o.waistY), V(o.chestW, o.chestY), V(o.shW, o.shY - 0.18), V(o.shW * 0.82, o.shY + 0.06), V(o.neckW * 1.35, o.neckY - 0.1), V(o.neckW, o.neckY)];
+  const t0 = -Math.acos(Math.min(0.98, o.neckW / o.headR)), head = [];
+  for (let i = 1; i < 24; i++) { const t = t0 + (Math.PI - 2 * t0) * i / 24; head.push(V(Math.cos(t) * o.headR, o.headY + Math.sin(t) * o.headR * 1.08)); }
+  const L = R.slice(1).reverse().map(p => V(-p.x, p.y));
+  const pts = [...R, ...head, ...L];
+  const s = new THREE.Shape(); s.moveTo(pts[0].x, pts[0].y); s.splineThru(pts.slice(1)); s.closePath(); return s;
+}
+/** 上粗下細、兩端圓弧的肢段輪廓（從 y＝0 往下 len） */
+function holoLimbShape(len, w0, w1) {
+  const s = new THREE.Shape();
+  s.moveTo(w0 / 2, 0); s.lineTo(w1 / 2, -len);
+  s.absarc(0, -len, w1 / 2, 0, -Math.PI, true);
+  s.lineTo(-w0 / 2, 0);
+  s.absarc(0, 0, w0 / 2, Math.PI, 0, true);
+  return s;
+}
+/** 沿著輪廓的發光細管，讓形狀在淺色背景上也清楚 */
+function holoOutline(shape, color, r = 0.02, z = 0.07) {
+  const pts = shape.getSpacedPoints(240).map(p => new THREE.Vector3(p.x, p.y, z));
+  const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 480, r, 6, true), new THREE.MeshBasicMaterial({ color, toneMapped: false }));
+  m.renderOrder = 10; return m;
+}
+function holoOval(rx, ry) { const s = new THREE.Shape(); s.absellipse(0, 0, rx, ry, 0, Math.PI * 2, false, 0); return s; }
+
+const thumbsUpShape = (() => {
+  const s = new THREE.Shape();
+  s.moveTo(0.52, 0.26);
+  const F = [[0.41, -0.7, 0.11], [0.185, -0.79, 0.115], [-0.04, -0.75, 0.11], [-0.245, -0.64, 0.095]];
+  s.lineTo(0.52, F[0][1]);
+  F.forEach(([cx, ty, r], i) => {
+    s.absarc(cx, ty, r, 0, Math.PI, true);
+    if (i < F.length - 1) { const x = cx - r, nx = F[i + 1]; s.quadraticCurveTo(x, ty + 0.14, x, Math.max(ty, nx[1]) + 0.02); s.lineTo(x, nx[1]); }
+  });
+  s.lineTo(-0.34, -0.32);
+  s.quadraticCurveTo(-0.62, -0.46, -0.8, -0.2);
+  s.lineTo(-1.12, -0.08);
+  s.quadraticCurveTo(-1.2, 0.22, -1.12, 0.5);
+  s.quadraticCurveTo(-0.4, 0.66, 0.3, 0.64);
+  s.quadraticCurveTo(0.55, 0.7, 0.78, 0.62);
+  s.lineTo(1.2, 0.6);
+  s.absarc(1.2, 0.47, 0.13, Math.PI / 2, -Math.PI / 2, true);
+  s.lineTo(0.66, 0.31);
+  s.quadraticCurveTo(0.56, 0.3, 0.52, 0.26);
+  return s;
+})();
+
 function outlineHand(g) { const list = []; g.traverse(o => { if (o.isMesh && o.material.color && o.material.color.getHex() === 0xeb9a70) list.push(o); }); for (const o of list) o.add(new THREE.Mesh(o.geometry, outlineM)); return g; }
 function tube(points, r, mat, closed = false) {
   return new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points, closed, 'centripetal'), Math.max(24, points.length * 12), r, 10, closed), mat);
@@ -536,28 +600,15 @@ const curDots = glowLayer(new THREE.InstancedMesh(SPH, glowMat(0xffc04d), 18)); 
 const curArrow = makeArrow(0xffa726, { r: 0.05, head: 0.17 }); WR.group.add(curArrow);
 const lI = addLabel('wire', '', 'cur', V3(0.55, WH + 0.25, 0));
 const lB = addLabel('wire', '磁力線（同心圓）', 'lam', V3(2.7, 4.75, 0));
-// 半透明 3D 右手：握住導線，拇指＝電流、四指＝磁場
+// 全息毛玻璃右手（美學規範 B）：握住導線，拇指＝電流、四指＝磁場
 const gripHand = new THREE.Group(); gripHand.position.set(0, HAND_Y, 0); WR.group.add(gripHand);
 {
-  const sk = skinMat();
-  // 手掌（在導線右側）與手腕
-  const palm = new THREE.Mesh(new RoundedBoxGeometry(0.34, 1.05, 0.62, 4, 0.14), sk); palm.position.set(0.52, -0.08, 0.05); palm.rotation.y = -0.15; gripHand.add(palm);
-  gripHand.add(capsuleBetween(V3(0.7, -0.35, 0.05), V3(1.9, -0.7, 0.1), 0.24, sk));
-  // 四指：從手掌出發，沿著磁場方向繞過導線（φ 遞減）
-  [0.24, 0.01, -0.22, -0.44].forEach((y, i) => {
-    const pts = [], end = -3.75 + i * 0.12;
-    for (let k = 0; k <= 24; k++) {
-      const ph = lerp(0.42, end, k / 24), r = lerp(0.5, 0.28, smooth(0, 0.3, k / 24));
-      pts.push(V3(Math.cos(ph) * r, y - k * 0.004, Math.sin(ph) * r));
-    }
-    const f = tube(pts, 0.085 - i * 0.004, sk); gripHand.add(f);
-    const tip = new THREE.Mesh(SPH, sk); tip.scale.setScalar(0.085 - i * 0.004); tip.position.copy(pts[pts.length - 1]); gripHand.add(tip);
-  });
-  // 大拇指：沿著導線往上
-  gripHand.add(capsuleBetween(V3(0.42, 0.3, 0.2), V3(0.32, 1.02, 0.14), 0.1, sk));
-  // 拇指與四指的指示箭頭
-  outlineHand(gripHand);
-  const thumbArrow = makeArrow(0xffa726, { r: 0.04, head: 0.13 }); setArrow(thumbArrow, V3(0.32, 1.15, 0.14), UP, 0.55); gripHand.add(thumbArrow);
+  const S = 0.95, rot = (x, y) => V3(-y * S, x * S, 0);             // 比讚輪廓轉 90°：大拇指朝上（沿導線）
+  const off = rot(-0.28, -0.12).negate();                             // 讓拳頭中心套在導線上
+  const icon = holoPiece(thumbsUpShape, 0.12, 0.06, holoMat(0.4, 0xffc39a), holoEdgeMat(0xff9a5a, 0.9));
+  icon.rotation.z = Math.PI / 2; icon.scale.setScalar(S); icon.position.copy(off); gripHand.add(icon);
+  icon.add(holoOutline(thumbsUpShape, 0xff8a3d, 0.024, 0.075));
+  const thumbArrow = makeArrow(0xffa726, { r: 0.04, head: 0.13 }); setArrow(thumbArrow, rot(1.42, 0.47).add(off), UP, 0.55); gripHand.add(thumbArrow);
   const fArrow = makeArrow(0x29b6f6, { r: 0.04, head: 0.13 });
   setArrow(fArrow, V3(-0.05, 0.42, 0.42), V3(-1, 0, -0.05), 0.4); gripHand.add(fArrow);
 }
@@ -716,16 +767,23 @@ const LOOP = [V3(CW, 0.13, CZL), V3(CW, 0.13, -CZL), V3(-CW, 0.13, -CZL), V3(-CW
 const loopLen = [2 * CZL, 2 * CW, 2 * CZL], loopTot = loopLen.reduce((a, b) => a + b);
 const coilArrows = glowLayer(new THREE.InstancedMesh(CONE, glowMat(0xffb300), 10)); coilArrows.frustumCulled = false; rotor.add(coilArrows);
 // 右手開掌模型：手指沿 +X（磁場）、拇指沿 +Z（電流）、掌心朝 +Y（受力）
-function makeOpenHand() {
-  const g = new THREE.Group(), sk = skinMat();
-  const palm = new THREE.Mesh(new RoundedBoxGeometry(0.95, 0.2, 0.82, 4, 0.09), sk); g.add(palm);
-  [-0.28, -0.09, 0.1, 0.29].forEach((z, i) => {
-    const len = [0.62, 0.78, 0.74, 0.66][i];
-    g.add(capsuleBetween(V3(0.42, 0, z * 1.05), V3(0.42 + len, 0, z * 1.18), 0.075, sk));
+/** 右手開掌（全息毛玻璃，美學規範 B）：四指沿 +X（磁場）、拇指沿 +Z（電流）、掌心朝 +Y（受力） */
+const openHandShape = (() => {
+  const s = new THREE.Shape(), F = [[-0.28, 0.62, 0.068], [-0.09, 0.76, 0.074], [0.1, 0.72, 0.072], [0.29, 0.64, 0.066]];
+  s.moveTo(-1.05, -0.24); s.lineTo(-0.45, -0.3); s.lineTo(0.42, F[0][0] - F[0][2] - 0.01);
+  F.forEach(([v, len, w], i) => {
+    s.lineTo(0.42 + len, v - w); s.absarc(0.42 + len, v, w, -Math.PI / 2, Math.PI / 2, false);
+    if (i < F.length - 1) { s.lineTo(0.45, v + w); s.lineTo(0.45, F[i + 1][0] - F[i + 1][2]); }
   });
-  g.add(capsuleBetween(V3(0.05, 0, 0.36), V3(0.2, 0, 0.95), 0.09, sk));
-  g.add(capsuleBetween(V3(-0.45, 0, 0), V3(-1.05, 0, 0), 0.28, sk));
-  outlineHand(g);
+  s.lineTo(0.42, 0.37); s.lineTo(0.26, 0.38); s.lineTo(0.27, 0.92); s.absarc(0.18, 0.92, 0.09, 0, Math.PI, false);
+  s.lineTo(0.02, 0.4); s.lineTo(-0.45, 0.34); s.lineTo(-1.05, 0.24); s.lineTo(-1.05, -0.24);
+  return s;
+})();
+function makeOpenHand() {
+  const g = new THREE.Group();
+  const icon = holoPiece(openHandShape, 0.12, 0.05, holoMat(0.4, 0xffc39a), holoEdgeMat(0xff9a5a, 0.9));
+  icon.rotation.x = Math.PI / 2; g.add(icon);                          // 輪廓的 y（拇指）→ +Z，厚度沿 Y
+  icon.add(holoOutline(openHandShape, 0xff8a3d, 0.022, 0.07));
   const F = makeArrow(0xe53935, { r: 0.06, head: 0.2 }); setArrow(F, V3(0.1, 0.12, 0), UP, 1.15); g.add(F);
   const I = makeArrow(0xffa726, { r: 0.035, head: 0.12 }); setArrow(I, V3(0.2, 0.05, 1.0), V3(0, 0, 1), 0.38); g.add(I);
   const B = makeArrow(0x42a5f5, { r: 0.035, head: 0.12 }); setArrow(B, V3(1.25, 0.05, 0), V3(1, 0, 0), 0.38); g.add(B);

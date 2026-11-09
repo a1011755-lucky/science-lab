@@ -246,37 +246,68 @@ function setArrow(A, origin, dir, len) {
   A.quaternion.setFromUnitVectors(UP, dir.clone().normalize());
 }
 
-/** 圓潤黏土人：腳底為原點；upper 以臀部為支點，可前後傾 */
+/* =========================================================
+   極簡原木人偶（美學規範 A）
+   ・面向 +x，左右手腳在 ±z；所有關節都是 Group，支點就在關節上
+   ・關節 rotation.z ＞ 0 ＝ 四肢往前（+x）擺；軀幹 rotation.z ＞ 0 ＝ 向後仰
+   ・root 原點在腳底；pelvis 在臀部高度
+   ========================================================= */
+function mannequin() {
+  const wood = new THREE.MeshStandardMaterial({ color: 0xdeb887, roughness: 0.7, metalness: 0 });
+  const jointM = new THREE.MeshStandardMaterial({ color: 0xcfa66f, roughness: 0.7, metalness: 0 });
+  const lathe = (pts, seg = 28) => new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), seg);
+  const part = (geo, m = wood) => { const x = new THREE.Mesh(geo, m); x.castShadow = true; x.receiveShadow = true; return x; };
+  const ball = r => part(new THREE.SphereGeometry(r, 18, 12), jointM);
+  // 紡錘形四肢：從原點往 −y 延伸 len，上粗下細
+  const limb = (len, r0, r1) => part(lathe([[0.001, 0], [r0 * 0.55, -0.03 * len], [r0, -0.14 * len], [(r0 + r1) * 0.53, -0.5 * len], [r1, -0.86 * len], [r1 * 0.55, -0.97 * len], [0.001, -len]]));
+  const LEG = 0.95;
+  const root = new THREE.Group();
+  const pelvis = new THREE.Group(); pelvis.position.y = LEG; root.add(pelvis);
+  const hip = part(lathe([[0.001, -0.1], [0.12, -0.09], [0.17, -0.02], [0.16, 0.07], [0.11, 0.12], [0.001, 0.12]])); hip.scale.z = 1.25; pelvis.add(hip);
+  // 軀幹（腰部為支點）
+  const torso = new THREE.Group(); torso.position.y = 0.1; pelvis.add(torso);
+  const waist = ball(0.075); torso.add(waist);
+  const chest = part(lathe([[0.001, 0.03], [0.1, 0.05], [0.13, 0.16], [0.18, 0.36], [0.2, 0.47], [0.17, 0.56], [0.08, 0.6], [0.001, 0.6]])); chest.scale.set(0.85, 1, 1.25); torso.add(chest);
+  // 頸部與頭（頸部為支點）
+  const neck = new THREE.Group(); neck.position.y = 0.6; torso.add(neck);
+  neck.add(part(new THREE.CylinderGeometry(0.045, 0.055, 0.12, 14)).translateY(0.05));
+  const head = new THREE.Group(); head.position.y = 0.1; neck.add(head);
+  const skull = part(lathe([[0.001, 0], [0.08, 0.015], [0.12, 0.09], [0.135, 0.17], [0.125, 0.25], [0.085, 0.31], [0.001, 0.33]], 32)); skull.scale.x = 1.1; head.add(skull);
+  // 手臂：肩→肘→手
+  const arm = s => {
+    const sh = new THREE.Group(); sh.position.set(0, 0.5, s * 0.25); torso.add(sh);
+    sh.add(ball(0.06));
+    sh.add(limb(0.32, 0.055, 0.042));
+    const el = new THREE.Group(); el.position.y = -0.34; sh.add(el);
+    el.add(ball(0.045));
+    el.add(limb(0.3, 0.045, 0.035));
+    const hand = part(lathe([[0.001, 0], [0.04, -0.03], [0.05, -0.08], [0.035, -0.13], [0.001, -0.15]], 18)); hand.scale.z = 0.55; hand.position.y = -0.31; el.add(hand);
+    return { sh, el, hand };
+  };
+  // 腿：髖→膝→腳
+  const leg = s => {
+    const hp = new THREE.Group(); hp.position.set(0, -0.06, s * 0.1); pelvis.add(hp);
+    hp.add(ball(0.07));
+    hp.add(limb(0.44, 0.075, 0.055));
+    const kn = new THREE.Group(); kn.position.y = -0.45; hp.add(kn);
+    kn.add(ball(0.055));
+    kn.add(limb(0.42, 0.055, 0.04));
+    const foot = part(lathe([[0.001, 0], [0.045, 0.02], [0.05, 0.1], [0.035, 0.17], [0.001, 0.19]], 18)); foot.rotation.z = -Math.PI / 2; foot.scale.z = 1.3; foot.position.set(-0.04, -0.44, 0); kn.add(foot);
+    return { hp, kn, foot };
+  };
+  const armL = arm(-1), armR = arm(1), legL = leg(-1), legR = leg(1);
+  return { root, pelvis, torso, neck, head, armL, armR, legL, legR, wood, LEG };
+}
+
+/** 原木人偶版人物：腳底為原點；upper 以腰部為支點，可前後傾（正值＝向後仰）
+    w＝胖瘦、h＝高矮；color 用在脖子上的小圍巾，方便分辨是誰 */
 function makePerson(color, { w = 1, h = 1 } = {}) {
-  const g = new THREE.Group();
-  const skin = clay(0xffd9bf), cloth = clay(color), pants = clay(0x4a5568);
-  const legH = 0.7 * h;
-  [-0.16, 0.16].forEach(z => {
-    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.11 * w, legH - 0.2, 6, 12), pants);
-    leg.position.set(0, legH / 2, z * w);
-    g.add(leg);
-  });
-  const upper = new THREE.Group();
-  upper.position.y = legH;
-  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.3 * w, 0.55 * h, 8, 20), cloth);
-  torso.position.y = 0.45 * h;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.27 * Math.sqrt(w), 24, 18), skin);
-  head.position.y = 1.0 * h + 0.18 * w;
-  const eyeMat = clay(0x2b2b2b);
-  [-0.09, 0.09].forEach(z => { const e = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), eyeMat); e.position.set(0.24 * Math.sqrt(w), head.position.y + 0.04, z); upper.add(e); });
-  const arms = [-1, 1].map(s => {
-    const pivot = new THREE.Group();
-    pivot.position.set(0, 0.75 * h, s * (0.3 * w + 0.1));
-    const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.09 * w, 0.45 * h, 6, 12), skin);
-    arm.position.y = -0.28 * h;
-    pivot.add(arm);
-    upper.add(pivot);
-    return pivot;
-  });
-  upper.add(torso, head);
-  g.add(upper);
-  g.userData = { upper, arms, height: legH + head.position.y + 0.3 };
-  return shadowed(g);
+  const M = mannequin(), g = M.root;
+  g.scale.set(w, h, w);
+  const scarf = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.03, 10, 24), new THREE.MeshStandardMaterial({ color, roughness: 0.6 }));
+  scarf.rotation.x = Math.PI / 2; scarf.position.y = 0.02; M.neck.add(scarf);
+  g.userData = { upper: M.torso, arms: [M.armL.sh, M.armR.sh], height: 2.05 * h, M };
+  return g;
 }
 
 /* ----- 標籤與橫幅 ----- */
