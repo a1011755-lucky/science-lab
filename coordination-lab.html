@@ -385,7 +385,39 @@ const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = 
    共用小工具
    ========================================================= */
 const lerp = (a, b, k) => a + (b - a) * k;
-const sphere = (r, mat, seg = 24) => new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg * 0.6 | 0)), mat);
+/* ----- 有機形態（美學規範 D） ----- */
+function orgNoise(x, y, z, s) { return Math.sin(x * 1.7 + s) * Math.sin(y * 2.3 + s * 1.3) * Math.sin(z * 1.9 + s * 0.7) + 0.5 * Math.sin(x * 3.1 - s) * Math.sin(y * 2.9 + s * 2.1) * Math.sin(z * 3.7 + s); }
+function orgSmooth(g) { const p = g.attributes.position, n = g.attributes.normal, m = new Map(); for (let i = 0; i < p.count; i++) { const k = Math.round(p.getX(i) * 1e4) + "," + Math.round(p.getY(i) * 1e4) + "," + Math.round(p.getZ(i) * 1e4); let a = m.get(k); if (!a) { a = [0, 0, 0, []]; m.set(k, a); } a[0] += n.getX(i); a[1] += n.getY(i); a[2] += n.getZ(i); a[3].push(i); } for (const a of m.values()) { const l = Math.hypot(a[0], a[1], a[2]) || 1; for (const i of a[3]) n.setXYZ(i, a[0] / l, a[1] / l, a[2] / l); } n.needsUpdate = true; }
+function blobGeo(r, { amp = 0.08, freq = 1.4, seed = 1, detail = 5, ripple = 0, rippleF = 9 } = {}) {
+  const g = new THREE.IcosahedronGeometry(1, detail), p = g.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i).normalize();
+    let k = 1 + amp * orgNoise(v.x * freq * 2, v.y * freq * 2, v.z * freq * 2, seed);
+    if (ripple) k += ripple * Math.sin(v.x * rippleF + seed) * Math.sin(v.y * rippleF * 1.1 + 1) * Math.sin(v.z * rippleF * 0.9 + seed * 2);
+    v.multiplyScalar(r * k); p.setXYZ(i, v.x, v.y, v.z);
+  }
+  g.computeVertexNormals(); orgSmooth(g); return g;
+}
+function spindleGeo(len, r, { blunt = 0.35, seed = 4 } = {}) {
+  const pts = [], N = 48;
+  for (let i = 0; i <= N; i++) { const t = (1 - Math.cos(Math.PI * i / N)) / 2, prof = Math.pow(Math.sin(Math.PI * t), blunt) * (1 + 0.05 * Math.sin(t * 17 + seed)); pts.push(new THREE.Vector2(Math.max(0.002, r * prof), (t - 0.5) * len)); }
+  const g = new THREE.LatheGeometry(pts, 28); g.rotateZ(Math.PI / 2); g.computeVertexNormals(); return g;
+}
+function heartGeo(sc = 1) {
+  const s = new THREE.Shape(); s.moveTo(0, -1.0); s.bezierCurveTo(-0.3, -0.6, -1.05, -0.25, -1.0, 0.35); s.bezierCurveTo(-0.95, 0.95, -0.25, 1.05, 0, 0.55); s.bezierCurveTo(0.25, 1.05, 0.95, 0.95, 1.0, 0.35); s.bezierCurveTo(1.05, -0.25, 0.3, -0.6, 0, -1.0);
+  const g = new THREE.ExtrudeGeometry(s, { depth: 0.55, bevelEnabled: true, bevelThickness: 0.38, bevelSize: 0.22, bevelSegments: 10, curveSegments: 40 });
+  g.translate(0, 0, -0.275); g.scale(sc, sc, sc); g.computeVertexNormals(); return g;
+}
+function petalGeo(len = 0.34, w = 0.2) {
+  const s = new THREE.Shape(); s.moveTo(0, 0); s.bezierCurveTo(w, len * 0.25, w * 0.9, len * 0.85, 0, len); s.bezierCurveTo(-w * 0.9, len * 0.85, -w, len * 0.25, 0, 0);
+  const g = new THREE.ExtrudeGeometry(s, { depth: 0.01, bevelEnabled: true, bevelThickness: 0.025, bevelSize: 0.02, bevelSegments: 4, curveSegments: 20 }); g.computeVertexNormals(); return g;
+}
+let orgSeed = 4;
+const sphere = (r, mat, seg = 24, o = {}) => new THREE.Mesh(blobGeo(r, { amp: 0.035, seed: (orgSeed = orgSeed * 1.37 % 97), detail: seg >= 20 ? 5 : 3, ...o }), mat);
+const ball3 = (r, mat, seg = 24) => new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg * 0.6 | 0)), mat);
+/** 肌肉：中間飽滿、兩端收細的紡錘形（沿 y 軸，取代膠囊） */
+const muscle = (r, len, mat) => new THREE.Mesh(spindleGeo(len + 2 * r, r * 1.1, { blunt: 0.55, seed: r * 10 }).rotateZ(Math.PI / 2), mat);
+function flatLeafGeo(len, w) { const g = petalGeo(len, w); g.rotateZ(-Math.PI / 2); g.rotateX(Math.PI / 2); g.computeVertexNormals(); return g; }
 const cyl = (r1, r2, h, mat, seg = 32) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg), mat);
 const rbox = (w, h, d, mat, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001)), mat);
 const cap = (r, len, mat) => new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 6, 14), mat);
@@ -468,8 +500,8 @@ const NV = (() => {
   const R = B.limbs.R;
   const nM = clay(0xffd54f, { clearcoat: 0.6 });
   // 中樞神經
-  const brain = sphere(0.36, clay(0xf4a6b6, { clearcoat: 0.6 }), 32); brain.scale.set(1, 0.85, 1.15); brain.position.set(0, 5.5, 0.02); B.root.add(brain);
-  const cereb = sphere(0.15, clay(0xe57397), 20); cereb.scale.set(1.3, 0.8, 1); cereb.position.set(0, 5.17, -0.27); B.root.add(cereb);
+  const brain = sphere(0.36, clay(0xf4a6b6, { clearcoat: 0.6 }), 32, { amp: 0.04, detail: 7, ripple: 0.035, rippleF: 24 }); brain.scale.set(1, 0.85, 1.15); brain.position.set(0, 5.5, 0.02); B.root.add(brain);
+  const cereb = sphere(0.15, clay(0xe57397), 20, { ripple: 0.04, rippleF: 30, detail: 6 }); cereb.scale.set(1.3, 0.8, 1); cereb.position.set(0, 5.17, -0.27); B.root.add(cereb);
   const stem = cyl(0.07, 0.06, 0.38, clay(0xd9a46a), 12); stem.position.set(0, 5.02, -0.12); B.root.add(stem);
   const cord = tubeM([[0, 4.85, -0.15], [0, 4.2, -0.2], [0, 3.3, -0.22], [0, 2.5, -0.18]], 0.06, nM); B.root.add(cord);
   const eyes = [-1, 1].map(s => { const e = sphere(0.07, clay(0x333333), 12); e.position.set(s * 0.17, 5.45, 0.45); B.root.add(e); return e; });
@@ -483,9 +515,9 @@ const NV = (() => {
   R.knee.add(tubeM([[0, 0, 0.15], [0, -0.6, 0.12], [0, -1.1, 0.12]], 0.025, thin));
   // 肌肉（動器）
   const musM = () => clay(0xe57373, { transparent: true, opacity: 0.85 });
-  const armMus = cap(0.13, 0.45, musM()); armMus.position.set(0, -0.55, 0.08); R.arm.add(armMus);
-  const legMus = cap(0.17, 0.5, musM()); legMus.position.set(0, -0.5, 0.12); R.leg.add(legMus);
-  const legMusL = cap(0.17, 0.5, musM()); legMusL.position.set(0, -0.5, 0.12); B.limbs.L.leg.add(legMusL);
+  const armMus = muscle(0.13, 0.45, musM()); armMus.position.set(0, -0.55, 0.08); R.arm.add(armMus);
+  const legMus = muscle(0.17, 0.5, musM()); legMus.position.set(0, -0.5, 0.12); R.leg.add(legMus);
+  const legMusL = muscle(0.17, 0.5, musM()); legMusL.position.set(0, -0.5, 0.12); B.limbs.L.leg.add(legMusL);
   // 道具：熱水杯、卡車、橡皮槌、飛來的球
   const cup = new THREE.Group(); group.add(cup);
   { const c = cyl(0.22, 0.2, 0.45, metal(0xb0b6bf)); c.position.y = 0.225; cup.add(c); const w = cyl(0.19, 0.19, 0.05, clay(0xbfe3f7)); w.position.y = 0.42; cup.add(w); }
@@ -495,7 +527,7 @@ const NV = (() => {
   { truck.add(Object.assign(shadowed(rbox(2.2, 1.1, 1.0, clay(0x3f74c9), 0.1)), {})); truck.children[0].position.y = 0.85; const cab = shadowed(rbox(0.8, 0.8, 1.0, clay(0xe9edf2), 0.1)); cab.position.set(-1.45, 0.7, 0); truck.add(cab); [-1.3, 0.6].forEach(x => [-0.5, 0.5].forEach(z => { const w = cyl(0.25, 0.25, 0.15, clay(0x333333), 16); w.rotation.x = Math.PI / 2; w.position.set(x, 0.25, z); truck.add(w); })); }
   const hammer = new THREE.Group(); group.add(hammer);
   { const h = cyl(0.03, 0.03, 0.8, clay(0x8d6e63), 8); h.rotation.z = Math.PI / 2; h.position.x = 0.4; hammer.add(h); const hd = cyl(0.12, 0.12, 0.3, clay(0xe53935), 16); hd.position.x = 0; hammer.add(hd); }
-  const ball = sphere(0.14, clay(0xffb74d), 16); group.add(ball);
+  const ball = ball3(0.14, clay(0xffb74d), 16); group.add(ball);
 
   // 路徑點：[物件, 區域座標]
   const P = (o, x, y, z) => [o, V3(x, y, z)];
@@ -602,9 +634,12 @@ const RL = (() => {
   const rm = new THREE.Mesh(new THREE.BoxGeometry(0.42, 3.0, 0.04), [clay(0xf4e2a8), clay(0xf4e2a8), clay(0xf4e2a8), clay(0xf4e2a8), new THREE.MeshStandardMaterial({ map: rtex }), clay(0xf4e2a8)]);
   rm.position.y = 1.5; ruler.add(rm);
   // 接尺的手（拇指與食指）
-  const skin = clay(0xf0b48c);
+  const skin = holoMat(0.42);
+  /** 全息指節／手臂：沿 y 軸、兩端圓弧（取代膠囊） */
+  const cap = (r, len) => { const L = len + 2 * r, sh = holoLimbShape(L - 2 * r, 2 * r, 2 * r * 0.88), m = holoPiece(sh, r * 1.2, r * 0.45, skin, null), o = holoOutline(sh, 0xffa477, 0.012, r * 1.05, 0.8); m.add(o); m.geometry.translate(0, (L - 2 * r) / 2, 0); o.geometry.translate(0, (L - 2 * r) / 2, 0); return m; };
   const hand = new THREE.Group(); hand.position.set(0, FY, 0); group.add(hand);
-  const palm = rbox(0.7, 0.9, 0.4, skin, 0.18); palm.position.set(0.55, -0.35, 0); hand.add(palm);
+  const palmS = new THREE.Shape(); { const w = 0.35, h = 0.45, r = 0.18; palmS.moveTo(-w + r, -h); palmS.lineTo(w - r, -h); palmS.quadraticCurveTo(w, -h, w, -h + r); palmS.lineTo(w, h - r); palmS.quadraticCurveTo(w, h, w - r, h); palmS.lineTo(-w + r, h); palmS.quadraticCurveTo(-w, h, -w, h - r); palmS.lineTo(-w, -h + r); palmS.quadraticCurveTo(-w, -h, -w + r, -h); }
+  const palm = holoPiece(palmS, 0.28, 0.07, skin, null); palm.add(holoOutline(palmS, 0xffa477, 0.012, 0.21, 0.8)); palm.position.set(0.55, -0.35, 0); hand.add(palm);
   const thumb = new THREE.Group(); thumb.position.set(0.3, 0, 0.25); hand.add(thumb);
   { const c = cap(0.09, 0.45, skin); c.rotation.z = Math.PI / 2; c.position.x = -0.25; thumb.add(c); }
   const index = new THREE.Group(); index.position.set(0.3, 0, -0.25); hand.add(index);
@@ -667,8 +702,8 @@ const HM = (() => {
 
   /* ----- 內分泌 ----- */
   const B = makeBody(ENDO, 0);
-  const heart = sphere(0.2, clay(0xc62828), 20); heart.position.set(0.12, 3.95, 0.12); B.root.add(heart);
-  const liver = sphere(0.35, clay(0x8d4b3b), 20); liver.scale.set(1.2, 0.55, 0.6); liver.position.set(-0.3, 3.4, 0.12); B.root.add(liver);
+  const heart = new THREE.Mesh(heartGeo(0.17), clay(0xc62828, { clearcoat: 0.6 })); heart.rotation.z = 0.35; heart.position.set(0.12, 3.95, 0.12); B.root.add(heart);
+  const liver = sphere(0.35, clay(0x8d4b3b), 20, { amp: 0.1, freq: 1.1 }); liver.scale.set(1.2, 0.55, 0.6); liver.position.set(-0.3, 3.4, 0.12); B.root.add(liver);
   [-1, 1].forEach(s => { const k = sphere(0.14, clay(0x9c4a3a), 16); k.scale.set(0.7, 1.1, 0.6); k.position.set(s * 0.28, 2.85, -0.15); B.root.add(k); });
   const G = {
     pit: { n: '腦垂腺', h: '生長激素', d: '促進<b>生長</b>（骨骼、肌肉）；也能分泌激素，調控其他內分泌腺，被稱為「內分泌腺的總司令」。', pos: [0, 5.28, 0.05], col: 0x8e6bbf, targets: [[0.95, 2.5, 0], [-0.95, 2.5, 0], [0.38, 1.2, 0], [-0.38, 1.2, 0]] },
@@ -691,7 +726,7 @@ const HM = (() => {
   const stemM = clay(0x7cb342), rootM = clay(0xd7b98e);
   let stemMesh = null, rootMesh = null;
   const tipLeaves = new THREE.Group(); PLANT.add(tipLeaves);
-  [-1, 1].forEach(s => { const l = sphere(0.22, clay(0x4caf50), 16); l.scale.set(1.4, 0.2, 0.7); l.position.x = s * 0.25; l.rotation.z = s * 0.3; tipLeaves.add(l); });
+  { const lg = flatLeafGeo(0.6, 0.18), lm = clay(0x4caf50); [-1, 1].forEach(s => { const g = new THREE.Group(); g.position.x = s * 0.02; g.rotation.z = s * 0.3; const l = new THREE.Mesh(lg, lm); if (s < 0) l.rotation.y = Math.PI; g.add(l); tipLeaves.add(g); }); }
   const sunS = glowSprite('255,215,90', 2.6); PLANT.add(sunS);
   // 含羞草
   const mim = new THREE.Group(); mim.position.set(2.3, 0, 0); PLANT.add(mim);
@@ -699,8 +734,8 @@ const HM = (() => {
   const mstem = cyl(0.04, 0.05, 1.6, clay(0x8d6e63), 8); mstem.position.y = 1.6; mim.add(mstem);
   const pet = new THREE.Group(); pet.position.y = 2.2; mim.add(pet);
   const rach = cyl(0.025, 0.025, 1.6, clay(0x9ccc65), 6); rach.rotation.z = Math.PI / 2; rach.position.x = 0.8; pet.add(rach);
-  const leaflets = [];
-  for (let i = 0; i < 10; i++) [-1, 1].forEach(s => { const pv = new THREE.Group(); pv.position.set(0.2 + i * 0.14, 0, 0); pet.add(pv); const lf = sphere(0.09, clay(0x66bb6a), 10); lf.scale.set(0.6, 0.12, 1.6); lf.position.z = s * 0.15; pv.add(lf); pv.userData.s = s; leaflets.push(pv); });
+  const leaflets = [], mimLeafG = flatLeafGeo(0.29, 0.07), mimLeafM = clay(0x66bb6a);
+  for (let i = 0; i < 10; i++) [-1, 1].forEach(s => { const pv = new THREE.Group(); pv.position.set(0.2 + i * 0.14, 0, 0); pet.add(pv); const lf = new THREE.Mesh(mimLeafG, mimLeafM); lf.rotation.y = -s * Math.PI / 2; lf.position.z = s * 0.01; pv.add(lf); pv.userData.s = s; leaflets.push(pv); });
   const lMim = addLabel('horm', '含羞草', 'small', V3(2.3, 3.1, 0));
   $('touch').addEventListener('click', () => { st.touchT = 0; });
   $('night').addEventListener('click', () => { st.night = !st.night; $('night').textContent = st.night ? '☀️ 變成白天' : '🌙 變成晚上'; });
