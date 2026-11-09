@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>古生物演化特徵考證室</title>
+<style>
+  :root {
+    --bg: #e8e5df;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs.two { grid-template-columns: 1fr 1fr; }
+  .tabs.two .tab { font-size: .8rem; }
+  .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+  .tabs.three .tab { font-size: .72rem; padding: 9px 2px; }
+  .objs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .objs.three { grid-template-columns: repeat(3, 1fr); }
+  .objs .btn { padding: 8px 4px; font-size: .78rem; margin-top: 0; }
+  .objs .btn.yes { background: #e3f1e6; color: #2e6b3f; } .objs .btn.no { background: #fde5e2; color: #a5311f; }
+  .orgcard { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin-top: 8px; font-size: .8rem; line-height: 1.65; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
+  .orgcard:empty { display: none; }
+  .orgcard h4 { font-size: .98rem; font-weight: 900; margin-bottom: 2px; }
+  .orgcard .pill { display: inline-block; font-size: .72rem; font-weight: 800; color: #fff; background: #7b5ea7; border-radius: 999px; padding: 1px 9px; margin: 2px 4px 2px 0; }
+  .orgcard i.sci { font-family: Georgia, serif; }
+  .orgcard table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .orgcard td, .orgcard th { padding: 2px 4px; border-bottom: 1px solid #efe6d8; font-size: .74rem; text-align: left; }
+  .orgcard tr.same { background: #e3f1e6; } .orgcard tr.diff td { color: #a8998a; }
+  .tag.big { font-size: .86rem; }
+  .stat table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: .74rem; }
+  .stat td, .stat th { padding: 3px 3px; border-bottom: 1px solid #efe6d8; text-align: left; white-space: nowrap; }
+  .stat tr.same { background: #e3f1e6; }
+  .tip { background: #fff3c4; color: #7a5300; border: 1.5px solid #e0b000; border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .82rem; font-weight: 800; line-height: 1.6; animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  .tip[hidden], .mapbox[hidden], .btn[hidden] { display: none; }
+  .ticks span:first-child { text-align: left; } .ticks span:last-child { text-align: right; }
+  .meter { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: .74rem; font-weight: 800; color: var(--ink-soft); }
+  .meter i { flex: 1; height: 16px; border-radius: 999px; background: linear-gradient(90deg, #f7efe6, #8b2e0f); position: relative; }
+  .meter i::after { content: ''; position: absolute; top: -4px; width: 6px; height: 24px; border-radius: 3px; background: var(--ink); left: var(--v, 50%); transform: translateX(-50%); transition: left .2s; }
+  .cap .eq { display: inline-flex; align-items: center; gap: 6px; font-size: 1.05em; font-weight: 900; }
+  .cap .arrs { display: inline-flex; flex-direction: column; line-height: .9; font-size: 1.1em; }
+  .cap .arrs span { opacity: .28; transition: opacity .3s, color .3s, transform .3s; }
+  .cap .arrs span.on { opacity: 1; color: #c62828; transform: scale(1.35); }
+  .cap .brown { color: #8b2e0f; }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g7">‹ 課程總覽</a>
+  <div class="title">古生物演化特徵考證室</div>
+  <div class="body">
+    <div class="tabs two">
+      <button class="tab on" data-tab="horse">🐎 馬的演化<small>腳趾與臼齒</small></button>
+      <button class="tab" data-tab="archaeo">🪶 始祖鳥<small>爬蟲與鳥類的過渡</small></button>
+    </div>
+
+    <!-- Tab 1：馬的演化 -->
+    <section class="sec" data-tab="horse">
+      <div class="concept" style="--cc:#8b6b4a"><div class="ct">適應草原的演化</div><div class="cd">體型<b>變大</b>、腳趾<b>減少</b>（利於奔跑）、<br>臼齒咀嚼面<b>變大變平整</b>（磨碎草本植物）</div></div>
+      <label class="lab" for="epT">⏳ 地質年代<b id="epTV">5500 萬年前</b></label>
+      <input class="big" type="range" id="epT" min="0" max="100" step="0.5" value="0">
+      <div class="ticks"><span>始祖馬</span><span>中新馬</span><span>現代馬</span></div>
+      <div class="row2">
+        <button class="btn" id="epPlay">▶ 縮時播放</button>
+        <button class="btn" id="epReset">↩️ 回到始祖馬</button>
+      </div>
+      <div class="stat" id="epStat"></div>
+      <div class="tip" id="epTip" hidden>💡 腳趾減少利於在草原上奔跑；咀嚼面變大、出現琺瑯質皺褶，能磨碎堅硬的草本植物！</div>
+    </section>
+
+    <!-- Tab 2：始祖鳥 -->
+    <section class="sec" data-tab="archaeo">
+      <div class="concept" style="--cc:#6d5a8a"><div class="ct">始祖鳥：過渡物種</div><div class="cd">爬蟲類特徵：<b>牙齒、指爪、長尾骨</b><br>鳥類特徵：<b>羽毛</b></div></div>
+      <div class="desc">👆 點岩板上<b>發光的熱點</b>，或按下面的按鈕考證特徵。</div>
+      <div class="objs three">
+        <button class="btn" id="apBeak">🦷 鳥喙</button>
+        <button class="btn" id="apHand">🦴 翅膀末端</button>
+        <button class="btn" id="apTail">🪶 尾巴</button>
+      </div>
+      <button class="btn" id="apAll">🔭 看整塊岩板</button>
+      <div class="stat" id="apStat"></div>
+      <div class="tip" id="apTip" hidden></div>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'horse', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+/* =========================================================
+   共用小工具
+   ========================================================= */
+const lerp = (a, b, k) => a + (b - a) * k;
+const sphere = (r, mat, seg = 24) => new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg * 0.6 | 0)), mat);
+const cyl = (r1, r2, h, mat, seg = 32, open = false) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg, 1, open), mat);
+const rbox = (w, h, d, mat, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001)), mat);
+const glassM = (op = 0.16) => new THREE.MeshPhysicalMaterial({ color: 0xd8ecf4, emissive: 0x9fb8c4, emissiveIntensity: 0.12, sheen: 1, sheenColor: 0xffffff, transparent: true, opacity: op, roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0.05, side: THREE.DoubleSide, depthWrite: false });
+const shellM = (c, op) => new THREE.MeshPhysicalMaterial({ color: c, transparent: true, opacity: op, roughness: 0.2, clearcoat: 0.6, side: THREE.DoubleSide, depthWrite: false });
+let rs = 4242;
+const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+const glowSprite = (rgb, s = 0.5) => { const g = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(rgb), transparent: true, depthWrite: false })); g.scale.setScalar(s); return g; };
+const ease = k => 1 - Math.exp(-k);
+function makeArrow(color) {
+  const g = new THREE.Group(); const m = clay(color, { emissive: color, emissiveIntensity: 0.25 });
+  const shaft = cyl(0.07, 0.07, 1, m, 16); const head = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.34, 20), m);
+  g.add(shaft, head); shadowed(g);
+  g.setLen = L => { L = Math.max(0.05, L); shaft.scale.y = L; shaft.position.y = L / 2; head.position.y = L + 0.17; };
+  g.setLen(1); return g;
+}
+/** 畫布貼圖面板（碼錶螢幕等） */
+function canvasPanel(w, h, pxW = 512) {
+  const c = document.createElement('canvas'); c.width = pxW; c.height = Math.round(pxW * h / w);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t, toneMapped: false }));
+  return { c, g: c.getContext('2d'), t, m };
+}
+let onTabChange = () => {};
+
+/* =========================================================
+   博物館考古光影：暖灰背景、極低角度側光 DirectionalLight
+   ========================================================= */
+scene.background = new THREE.Color(0xe8e5df);
+const key = new THREE.DirectionalLight(0xfff0d6, 2.7);
+key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.0002; key.shadow.normalBias = 0.008;
+Object.assign(key.shadow.camera, { left: -5.2, right: 5.2, top: 4.2, bottom: -4.2, near: 1, far: 30 }); key.shadow.camera.updateProjectionMatrix();
+scene.add(key, key.target);
+scene.traverse(o => { if (o.isAmbientLight) o.intensity = 0.45; if (o.isDirectionalLight && o !== key) { o.intensity = 0.3; o.castShadow = false; } });
+const aimKey = (x, y, z) => { key.position.set(x + 10, y + 2, z + 5); key.target.position.set(x, y, z); };
+/** 強烈 Canvas Noise：多層雜訊＋孔洞與顆粒 */
+const ROCK_CANVAS = (() => {
+  const N = 256, c = document.createElement('canvas'); c.width = c.height = N; const g = c.getContext('2d'); const img = g.createImageData(N, N);
+  const oct = [4, 8, 16, 32, 64, 128].map(f => { const a = new Float32Array(f * f); for (let i = 0; i < a.length; i++) a[i] = rnd(); return { f, a }; });
+  const sm = t => t * t * (3 - 2 * t);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    let v = 0, amp = 0.5, tot = 0;
+    for (const o of oct) {
+      const fx = x / N * o.f, fy = y / N * o.f, x0 = fx | 0, y0 = fy | 0, sx = sm(fx - x0), sy = sm(fy - y0), f = o.f;
+      const A = o.a[(y0 % f) * f + x0 % f], B = o.a[(y0 % f) * f + (x0 + 1) % f], C = o.a[((y0 + 1) % f) * f + x0 % f], D = o.a[((y0 + 1) % f) * f + (x0 + 1) % f];
+      v += amp * lerp(lerp(A, B, sx), lerp(C, D, sx), sy); tot += amp; amp *= 0.7;
+    }
+    v /= tot; v = clamp((v - 0.5) * 1.8 + 0.5, 0, 1);
+    const k = (y * N + x) * 4, val = 255 * (0.45 + 0.55 * v);
+    img.data[k] = img.data[k + 1] = img.data[k + 2] = val; img.data[k + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  for (let i = 0; i < 2600; i++) { const d = rnd() < 0.72; g.fillStyle = d ? `rgba(20,15,10,${0.2 + rnd() * 0.35})` : `rgba(255,252,245,${0.2 + rnd() * 0.35})`; g.beginPath(); g.arc(rnd() * N, rnd() * N, 0.4 + rnd() * 1.6, 0, TAU); g.fill(); }
+  for (let i = 0; i < 70; i++) { g.fillStyle = `rgba(10,8,5,${0.25 + rnd() * 0.3})`; g.beginPath(); g.ellipse(rnd() * N, rnd() * N, 1 + rnd() * 3, 1 + rnd() * 2.2, rnd() * 3, 0, TAU); g.fill(); }
+  return c;
+})();
+const COLOR_CANVAS = (() => { const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'); g.fillStyle = '#e9e3d6'; g.fillRect(0, 0, 256, 256); g.globalAlpha = 0.42; g.drawImage(ROCK_CANVAS, 0, 0); return c; })();
+function colorTex(rx = 1, ry = 1) { const t = new THREE.CanvasTexture(COLOR_CANVAS); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; }
+function rockTex(rx = 1, ry = 1) { const t = new THREE.CanvasTexture(ROCK_CANVAS); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; }
+const stoneMat = (color, rep = [3, 2], bump = 7) => { const t = rockTex(...rep); return new THREE.MeshStandardMaterial({ color, roughness: 1, metalness: 0, map: colorTex(...rep), bumpMap: t, bumpScale: bump, envMapIntensity: 0.15 }); };
+/** 泛黃骨色、完全不反光 */
+const boneMat = (color = 0xd6c094) => { const t = rockTex(2, 2); return new THREE.MeshStandardMaterial({ color, roughness: 1.0, metalness: 0, map: colorTex(2, 2), bumpMap: t, bumpScale: 2.5, envMapIntensity: 0.12 }); };
+// 木桌改成博物館石材地台
+table.material.map = colorTex(14, 7); table.material.color.setHex(0xc9c2b6); table.material.roughness = 1; table.material.clearcoat = 0; table.material.needsUpdate = true;
+const RZ = 0.2; // 浮雕壓扁比例
+/** 浮雕骨頭：Capsule ＋ 兩端骨節，z 方向壓扁到 0.2 */
+function rbone(g, a, b, r, m, knob = 1.3) {
+  const len = Math.max(0.001, Math.hypot(b.x - a.x, b.y - a.y) - r * 2);
+  const c = new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 4, 14), m);
+  c.position.set((a.x + b.x) / 2, (a.y + b.y) / 2, r * RZ * 0.4); c.rotation.z = Math.atan2(b.y - a.y, b.x - a.x) - Math.PI / 2; c.scale.z = RZ; g.add(shadowed(c));
+  if (knob) [a, b].forEach(p => { const s = new THREE.Mesh(new THREE.SphereGeometry(r * knob, 14, 10), m); s.position.set(p.x, p.y, r * knob * RZ * 0.4); s.scale.z = RZ; g.add(shadowed(s)); });
+  return c;
+}
+function rblob(g, p, rx, ry, m, rot = 0) { const s = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), m); s.scale.set(rx, ry, Math.min(rx, ry) * RZ); s.position.set(p.x, p.y, Math.min(rx, ry) * RZ * 0.4); s.rotation.z = rot; g.add(shadowed(s)); return s; }
+/** 彎曲骨爪／牙齒：薄的 ExtrudeGeometry 新月形 */
+function clawGeo(L, w) {
+  const s = new THREE.Shape(); s.moveTo(0, -w / 2); s.quadraticCurveTo(L * 0.6, -w * 0.6, L, -w * 1.6); s.quadraticCurveTo(L * 0.55, w * 0.1, 0, w / 2); s.lineTo(0, -w / 2);
+  const g = new THREE.ExtrudeGeometry(s, { depth: w * 0.35, bevelEnabled: true, bevelThickness: w * 0.12, bevelSize: w * 0.12, bevelSegments: 2, curveSegments: 10 }); return g;
+}
+function claw(g, p, ang, L, w, m) { const c = new THREE.Mesh(clawGeo(L, w), m); c.position.set(p.x, p.y, 0); c.rotation.z = ang; g.add(shadowed(c)); return c; }
+const hotTex = glowTexture('255,196,80');
+function hotspot(fg, p, part, picks) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: hotTex, transparent: true, depthWrite: false, depthTest: false })); s.position.set(p.x, p.y, 0.25); s.renderOrder = 10; fg.add(s);
+  const dot = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 10), new THREE.MeshBasicMaterial({ color: 0xffe9a8, toneMapped: false })); dot.position.copy(s.position); fg.add(dot);
+  const pk = new THREE.Mesh(new THREE.SphereGeometry(0.36, 10, 8), new THREE.MeshBasicMaterial()); pk.visible = false; pk.position.copy(s.position); pk.userData.part = part; fg.add(pk); picks.push(pk);
+  return { s, dot };
+}
+
+/* =========================================================
+   Tab 1：馬的演化 ─ 前肢浮雕＋臼齒
+   ========================================================= */
+const HE = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  // 左：前肢骨骼浮雕岩板
+  const plinthM = stoneMat(0x8f877b, [2, 1], 4);
+  const pl1 = shadowed(rbox(3.6, 0.4, 1.4, plinthM, 0.05)); pl1.position.set(-1.95, 0.2, 0); group.add(pl1);
+  const slabG = new THREE.Group(); slabG.position.set(-1.95, 2.65, -0.05); slabG.rotation.x = -0.07; group.add(slabG);
+  const slab = shadowed(new THREE.Mesh(new THREE.BoxGeometry(3.3, 4.5, 0.4), stoneMat(0xb3a58c, [4.5, 6], 8))); slabG.add(slab);
+  const fg = new THREE.Group(); fg.position.z = 0.2; slabG.add(fg);
+  const bM = boneMat(), hoofM = boneMat(0xb39a72);
+  const leg = new THREE.Group(); fg.add(leg);
+  // 前臂（橈骨＋尺骨）、肘突、腕骨
+  rbone(leg, V2(0, 1.85), V2(0, 0.62), 0.15, bM, 1.4);
+  rbone(leg, V2(0.13, 1.6), V2(0.09, 0.95), 0.045, bM, 1.1);
+  rbone(leg, V2(0.05, 1.95), V2(0.24, 2.12), 0.08, bM, 1.2);
+  [[-0.17, 0.42], [0, 0.44], [0.17, 0.42], [-0.12, 0.27], [0.06, 0.27], [0.22, 0.29]].forEach(([x, y]) => rblob(leg, V2(x, y), 0.085, 0.065, bM));
+  function digit(x, main) {
+    const g = new THREE.Group(); g.position.set(x, 0.18, 0); leg.add(g);
+    rbone(g, V2(0, 0), V2(0, -1.05), 0.08, bM, 1.25);
+    const ph = new THREE.Group(); ph.position.y = -1.12; g.add(ph);
+    rbone(ph, V2(0, 0), V2(0, -0.3), 0.072, bM, 1.2);
+    rbone(ph, V2(0, -0.36), V2(0, -0.55), 0.065, bM, 1.15);
+    let hoof;
+    if (main) {
+      const s = new THREE.Shape(); s.moveTo(-0.11, 0); s.lineTo(0.11, 0); s.quadraticCurveTo(0.2, -0.16, 0.13, -0.3); s.quadraticCurveTo(0, -0.34, -0.13, -0.3); s.quadraticCurveTo(-0.2, -0.16, -0.11, 0);
+      hoof = new THREE.Mesh(new THREE.ExtrudeGeometry(s, { depth: 0.03, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.02, bevelSegments: 2 }), hoofM); hoof.position.set(0, -0.6, 0); ph.add(shadowed(hoof));
+    } else { hoof = rbone(ph, V2(0, -0.6), V2(0, -0.74), 0.035, bM, 0.9); }
+    return { g, ph, hoof, x };
+  }
+  const D2 = digit(-0.2, false), D3 = digit(0, true), D4 = digit(0.2, false), D5 = digit(0.37, false);
+  // 右：臼齒（ExtrudeGeometry 側壁＋細分咀嚼面頂點變形）
+  const pl2 = shadowed(rbox(2.6, 0.4, 1.8, plinthM, 0.05)); pl2.position.set(2.15, 0.2, 0); group.add(pl2);
+  const ped = shadowed(new THREE.Mesh(new THREE.BoxGeometry(1.9, 1.0, 1.4), stoneMat(0xa89a82, [3.5, 2], 7))); ped.position.set(2.15, 0.9, 0); group.add(ped);
+  const toothOuter = new THREE.Group(); toothOuter.position.set(2.15, 1.32, 0.05); toothOuter.rotation.x = 0.62; group.add(toothOuter);
+  const tooth = new THREE.Group(); tooth.rotation.x = -Math.PI / 2; toothOuter.add(tooth);
+  const A = 0.5, B = 0.42, NE = 4;
+  const sup = (t) => { const c = Math.cos(t), s = Math.sin(t); return V2(A * Math.sign(c) * Math.pow(Math.abs(c), 2 / NE), B * Math.sign(s) * Math.pow(Math.abs(s), 2 / NE)); };
+  const shape = new THREE.Shape(); for (let i = 0; i <= 72; i++) { const p = sup(i / 72 * TAU); i ? shape.lineTo(p.x, p.y) : shape.moveTo(p.x, p.y); }
+  const sideGeo = new THREE.ExtrudeGeometry(shape, { depth: 1, steps: 8, bevelEnabled: false });
+  { const p = sideGeo.attributes.position; for (let i = 0; i < p.count; i++) { const z = p.getZ(i), k = lerp(0.72, 1, smooth(0, 0.8, z)) * (1 + 0.04 * Math.sin(z * Math.PI)); p.setXY(i, p.getX(i) * k, p.getY(i) * k); } sideGeo.computeVertexNormals(); }
+  const toothSideM = boneMat(0xcdb48a); const hidden = new THREE.MeshBasicMaterial({ visible: false });
+  const side = shadowed(new THREE.Mesh(sideGeo, [hidden, toothSideM])); tooth.add(side);
+  const TOPN = 90, topGeo = new THREE.PlaneGeometry(2, 2, TOPN, TOPN);
+  const tp = topGeo.attributes.position, base = new Float32Array(tp.count * 2), rho = new Float32Array(tp.count);
+  for (let i = 0; i < tp.count; i++) {
+    const u = tp.getX(i), v = tp.getY(i), m = Math.max(Math.abs(u), Math.abs(v)), q = Math.pow(Math.pow(Math.abs(u), NE) + Math.pow(Math.abs(v), NE), 1 / NE) || 1;
+    const f = m / q; base[i * 2] = u * f; base[i * 2 + 1] = v * f; rho[i] = m;
+  }
+  const colors = new Float32Array(tp.count * 3); topGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  const topM = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0, envMapIntensity: 0.12, bumpMap: rockTex(2, 2), bumpScale: 0.8 });
+  const top = new THREE.Mesh(topGeo, topM); top.castShadow = true; top.receiveShadow = true; tooth.add(top);
+  const CUSPS = [[-0.52, 0.48, 0.34], [0.52, 0.48, 0.3], [-0.52, -0.48, 0.32], [0.52, -0.48, 0.34], [0, 0.12, 0.2], [0, -0.2, 0.18]];
+  const LOOPS = [[-0.45, 0.4, 0.3, 0.22, 0], [0.45, 0.4, 0.3, 0.22, 1.3], [-0.45, -0.42, 0.3, 0.24, 2.1], [0.45, -0.42, 0.3, 0.24, 0.6], [0, 0, 0.14, 0.3, 1]];
+  const cuspH = (u, v) => CUSPS.reduce((s, [cx, cy, h]) => s + h * Math.exp(-((u - cx) ** 2 + (v - cy) ** 2) / 0.07), 0);
+  const groove = (u, v, r) => {
+    let gmax = 0;
+    for (const [cx, cy, rx, ry, ph] of LOOPS) { const dx = (u - cx) / rx, dy = (v - cy) / ry, th = Math.atan2(dy, dx), d = Math.abs(Math.hypot(dx, dy) * (1 + 0.16 * Math.sin(th * 6 + ph)) - 1) * Math.min(rx, ry); gmax = Math.max(gmax, Math.exp(-((d / 0.045) ** 2))); }
+    return gmax;
+  };
+  const G0 = new Float32Array(tp.count), C0 = new Float32Array(tp.count);
+  for (let i = 0; i < tp.count; i++) { const u = tp.getX(i), v = tp.getY(i); G0[i] = groove(u, v, rho[i]); C0[i] = cuspH(u, v); }
+  const cBase = new THREE.Color(0xcdb68c), cDark = new THREE.Color(0x3a281a), cEnamel = new THREE.Color(0xf1e6cc), tmpC = new THREE.Color();
+  let lastK = -1;
+  function morphTooth(k) {
+    if (Math.abs(k - lastK) < 1e-4) return; lastK = k;
+    for (let i = 0; i < tp.count; i++) {
+      const r = rho[i], edge = 1 - Math.pow(r, 10), h = edge * ((1 - k) * (C0[i] + 0.05) - k * G0[i] * 0.11 + k * 0.01);
+      tp.setXYZ(i, base[i * 2] * A, base[i * 2 + 1] * B, 1 + h);
+      const gg = k * G0[i]; tmpC.copy(cBase).lerp(cEnamel, k * Math.min(1, G0[i] * 3) * 0.6).lerp(cDark, gg * 0.85);
+      if (k < 1) tmpC.lerp(cEnamel, (1 - k) * Math.min(1, C0[i] * 2.2) * 0.5);
+      colors[i * 3] = tmpC.r; colors[i * 3 + 1] = tmpC.g; colors[i * 3 + 2] = tmpC.b;
+    }
+    tp.needsUpdate = true; topGeo.attributes.color.needsUpdate = true; topGeo.computeVertexNormals();
+  }
+  const roots = [-1, 1].map(s => { const r = shadowed(new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.5, 14), toothSideM)); r.rotation.x = -Math.PI / 2; r.position.set(s * 0.2, 0, -0.2); tooth.add(r); return r; });
+  addLabel('horse', '前肢骨骼浮雕', 'small', V3(-1.95, 0.02, 0.8));
+  addLabel('horse', '臼齒（咀嚼面）', 'small', V3(2.15, 0.02, 1.0));
+  const lToe = addLabel('horse', '', 'small red', V3(-1.95, 0.55, 0.5));
+  const lTooth = addLabel('horse', '', 'small', V3(2.15, 2.75, 0.3));
+  const STG = [
+    { ma: 55, n: '始祖馬', h: 40, toe: '4 趾', tooth: '小、尖突明顯（吃嫩葉）', env: '溼潤的森林' },
+    { ma: 37, n: '漸新馬', h: 60, toe: '3 趾', tooth: '稍大、尖突變矮', env: '森林變稀疏' },
+    { ma: 20, n: '中新馬', h: 100, toe: '3 趾（側趾不著地）', tooth: '齒冠變高、咀嚼面變大', env: '草原擴張' },
+    { ma: 5, n: '上新馬', h: 125, toe: '單趾', tooth: '高齒冠、咀嚼面寬平', env: '草原' },
+    { ma: 0, n: '現代馬', h: 160, toe: '單趾（馬蹄）', tooth: '巨大、平整、琺瑯質皺褶', env: '開闊的草原' }
+  ];
+  const KS = [0, 0.3, 0.55, 0.85, 1];
+  const at = (s, f) => { const u = clamp(s / 25, 0, 4), i = Math.min(3, Math.floor(u)); return lerp(f(i), f(i + 1), u - i); };
+  const st = { s: 0, shown: 0, play: false };
+  $('epT').addEventListener('input', () => { st.s = +$('epT').value; st.play = false; });
+  $('epPlay').addEventListener('click', () => { if (st.s >= 100) st.s = 0; st.play = !st.play; });
+  $('epReset').addEventListener('click', () => { st.s = 0; st.play = false; $('epT').value = 0; });
+  function update(dt) {
+    aimKey(0, 2.2, 0);
+    if (st.play) { st.s = Math.min(100, st.s + dt * 9); $('epT').value = st.s; if (st.s >= 100) st.play = false; }
+    st.shown = lerp(st.shown, st.s, ease(dt * 6)); if (Math.abs(st.shown - st.s) < 0.02) st.shown = st.s;
+    const s = st.shown, k = at(s, i => KS[i]), ma = at(s, i => STG[i].ma), Hcm = at(s, i => STG[i].h), S = STG[Math.round(s / 25)];
+    // 前肢：整體放大、主趾加粗＋馬蹄、側趾萎縮消失
+    leg.scale.setScalar(lerp(0.58, 1, smooth(0, 1, k))); leg.position.y = lerp(0.55, 0, smooth(0, 1, k));
+    const v5 = 1 - smooth(0, 0.3, k); D5.g.visible = v5 > 0.01; D5.g.scale.set(Math.max(0.001, v5 * lerp(1, 0.6, k)), Math.max(0.001, v5), 1); D5.g.rotation.z = 0.16 * (1 - k);
+    const sideK = smooth(0.3, 0.88, k);
+    [D2, D4].forEach((d, i) => {
+      const sg = i ? 1 : -1; d.g.visible = sideK < 0.99;
+      d.g.scale.set(lerp(1, 0.35, sideK), lerp(1, 0.5, sideK), 1); d.ph.scale.setScalar(Math.max(0.001, 1 - smooth(0.3, 0.75, k)));
+      d.g.rotation.z = sg * 0.12 * (1 - k); d.g.position.x = sg * lerp(0.2, 0.13, k);
+    });
+    D3.g.scale.set(lerp(1, 2.3, smooth(0, 1, k)), 1, 1); D3.hoof.scale.set(lerp(0.55, 0.62, k), lerp(0.5, 1.15, k), 1);
+    const nToe = k < 0.299 ? 4 : k < 0.849 ? 3 : 1;
+    setLabel(lToe, nToe === 1 ? '單趾（馬蹄）' : nToe + ' 趾');
+    // 臼齒：放大、齒冠變高、尖突整平 → 琺瑯質皺褶
+    const w = lerp(0.9, 1.55, smooth(0, 1, k)), hh = lerp(0.55, 1.35, smooth(0, 1, k));
+    tooth.scale.set(w, w, hh); toothOuter.position.y = 1.32 + hh * 0.05;
+    morphTooth(k);
+    setLabel(lTooth, k < 0.45 ? '頂部尖突明顯' : k < 0.8 ? '尖突逐漸磨平' : '平整＋波浪狀深溝');
+    $('epTV').textContent = ma < 0.05 ? '現代' : `${Math.round(ma * 100)} 萬年前`;
+    $('epTip').hidden = s < 8;
+    $('epPlay').textContent = st.play ? '⏸ 暫停' : st.s >= 100 ? '▶ 再播一次' : '▶ 縮時播放';
+    setHTML('epStat', `代表物種：<b class="o">${S.n}</b>（${S.ma ? '約 ' + S.ma * 100 + ' 萬年前' : '現代'}）<br>環境：<b>${S.env}</b>　肩高：<b>約 ${Math.round(Hcm)} cm</b><br>前肢腳趾：<b class="r">${S.toe}</b><br>臼齒：<b class="b">${S.tooth}</b><br><small>化石模型大小已調整比例，方便比較。</small>`);
+    setCap(`<small>馬的演化　${ma < 0.05 ? '現代' : `約 ${Math.round(ma * 100)} 萬年前`}・${S.env}</small>體型<b>變大</b>、腳趾<b>減少</b>、咀嚼面<b>變大變平整</b><span class="huge ${k > 0.95 ? 'grn pop' : 'org'}">${S.n}　${S.toe}</span>`);
+  }
+  return { group, update, st, D2, D3, D5, morphTooth };
+})();
+
+/* =========================================================
+   Tab 2：始祖鳥化石（死亡後仰姿態）
+   ========================================================= */
+const AP = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const plinth = shadowed(rbox(8.0, 0.36, 1.6, stoneMat(0x8f877b, [3, 1], 4), 0.05)); plinth.position.set(0, 0.18, 0); group.add(plinth);
+  const sg = new THREE.Group(); sg.position.set(0, 2.95, -0.2); sg.rotation.x = -0.08; group.add(sg);
+  const slab = shadowed(new THREE.Mesh(new THREE.BoxGeometry(7.6, 5.1, 0.5), stoneMat(0xc4b597, [8, 5.5], 8))); sg.add(slab);
+  const fg = new THREE.Group(); fg.position.set(-0.05, -0.1, 0.25); fg.scale.set(1.12, 1.12, 1); sg.add(fg);
+  const bM = boneMat(), teethM = boneMat(0xe4d3ac), clawM = boneMat(0xc9b287), tailM = boneMat();
+  // 羽毛壓痕貼圖：平行細線（羽枝）＋羽軸
+  const featherTex = (() => {
+    const c = document.createElement('canvas'); c.width = 96; c.height = 512; const g = c.getContext('2d');
+    g.save(); g.beginPath(); g.moveTo(48, 6); g.bezierCurveTo(92, 120, 86, 420, 50, 506); g.bezierCurveTo(30, 420, 14, 140, 48, 6); g.clip();
+    g.fillStyle = 'rgba(118,94,64,.92)'; g.fillRect(0, 0, 96, 512);
+    g.strokeStyle = 'rgba(52,38,24,1)'; g.lineWidth = 1.8;
+    for (let y = -60; y < 560; y += 9) { g.beginPath(); g.moveTo(48, y + 30); g.lineTo(96, y); g.moveTo(48, y + 30); g.lineTo(0, y); g.stroke(); }
+    g.restore();
+    g.strokeStyle = 'rgba(60,44,28,.95)'; g.lineWidth = 4; g.beginPath(); g.moveTo(48, 4); g.lineTo(50, 508); g.stroke();
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+  })();
+  const featherM = new THREE.MeshStandardMaterial({ map: featherTex, bumpMap: featherTex, bumpScale: 1, color: 0xffffff, transparent: true, opacity: 0.6, roughness: 1, metalness: 0, depthWrite: false, side: THREE.DoubleSide });
+  const featherGeo = (() => { const gg = new THREE.PlaneGeometry(1, 1); gg.translate(0, 0.5, 0); return gg; })();
+  function feather(base, ang, L, w) { const f = new THREE.Mesh(featherGeo, featherM); f.position.set(base.x, base.y, 0.006); f.rotation.z = ang - Math.PI / 2; f.scale.set(w, L, 1); f.receiveShadow = true; f.renderOrder = 1; fg.add(f); return f; }
+  const P = V2(0.75, -0.55), S = V2(-0.55, 0.35);
+  // 頸部後仰、頭骨與牙齒
+  const NECK = [S, V2(-0.78, 0.82), V2(-0.62, 1.28), V2(-0.2, 1.55), V2(0.25, 1.55)];
+  for (let i = 0; i < NECK.length - 1; i++) for (let j = 0; j < 3; j++) rbone(fg, NECK[i].clone().lerp(NECK[i + 1], j / 3), NECK[i].clone().lerp(NECK[i + 1], (j + 0.72) / 3), 0.055, bM, 1.15);
+  const HB = V2(0.36, 1.52), BU = V2(1.02, 1.36), BL = V2(0.98, 1.2);
+  rblob(fg, HB, 0.2, 0.15, bM, -0.2);
+  const orbit = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.02, 8, 24), bM); orbit.position.set(HB.x + 0.04, HB.y + 0.03, 0.03); orbit.scale.z = RZ; fg.add(shadowed(orbit));
+  rbone(fg, V2(HB.x + 0.12, HB.y + 0.02), BU, 0.055, bM, 0.8);
+  rbone(fg, V2(HB.x + 0.08, HB.y - 0.1), BL, 0.04, bM, 0.8);
+  const teeth = [];
+  const toothAt = (p, dir) => { const t = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.085, 10), teethM); t.position.set(p.x + Math.cos(dir) * 0.04, p.y + Math.sin(dir) * 0.04, 0.012); t.rotation.z = dir - Math.PI / 2; t.scale.z = RZ * 1.5; fg.add(shadowed(t)); teeth.push(t); };
+  for (let i = 0; i < 8; i++) { const p = V2(HB.x + 0.14, HB.y + 0.0).lerp(BU, 0.18 + i * 0.1); p.y -= 0.05; toothAt(p, -Math.PI / 2 - 0.25); }
+  for (let i = 0; i < 7; i++) { const p = V2(HB.x + 0.1, HB.y - 0.1).lerp(BL, 0.2 + i * 0.1); p.y += 0.035; toothAt(p, Math.PI / 2 - 0.2); }
+  // 軀幹
+  for (let i = 0; i < 9; i++) rbone(fg, S.clone().lerp(P, i / 9), S.clone().lerp(P, (i + 0.75) / 9), 0.06, bM, 1.15);
+  for (let i = 0; i < 7; i++) { const a = S.clone().lerp(P, 0.12 + i * 0.1), m = V2(a.x - 0.18 + i * 0.03, a.y - 0.3), b = V2(a.x - 0.05 + i * 0.05, a.y - 0.62 + i * 0.03); rbone(fg, a, m, 0.025, bM, 0); rbone(fg, m, b, 0.022, bM, 0); }
+  rbone(fg, V2(-0.66, 0.2), V2(-0.45, -0.08), 0.028, bM, 0); rbone(fg, V2(-0.32, 0.25), V2(-0.45, -0.08), 0.028, bM, 0);
+  rblob(fg, P, 0.32, 0.15, bM, -0.35); rbone(fg, P, V2(0.45, -1.1), 0.035, bM, 1.2);
+  // 翅膀：肱骨、橈尺骨、掌骨、三根指頭＋彎曲骨爪；羽毛從前臂往後長，指爪突出羽毛外
+  const claws = [];
+  function wing(E, W, fingers, fa0, fa1, n, fl) {
+    rbone(fg, S, E, 0.065, bM, 1.3);
+    rbone(fg, E, W, 0.045, bM, 1.2); rbone(fg, V2(E.x + 0.02, E.y - 0.08), V2(W.x + 0.03, W.y - 0.07), 0.032, bM, 1.0);
+    fingers.forEach(f => {
+      const m1 = W.clone().lerp(f, 0.45), m2 = W.clone().lerp(f, 0.78);
+      rbone(fg, W, m1, 0.03, bM, 1.2); rbone(fg, m1, m2, 0.026, bM, 1.15); rbone(fg, m2, f, 0.022, bM, 1.1);
+      const ang = Math.atan2(f.y - m2.y, f.x - m2.x); claws.push(claw(fg, f, ang, 0.2, 0.06, clawM));
+    });
+    for (let i = 0; i < n; i++) { const u = i / (n - 1), b = E.clone().lerp(W, u * 1.08), L = lerp(fl[0], fl[1], Math.pow(u, 0.7)); feather(b, lerp(fa0, fa1, u), L, 0.34); }
+  }
+  wing(V2(-1.35, 1.0), V2(-2.15, 0.72), [V2(-2.72, 1.12), V2(-2.95, 0.86), V2(-2.82, 0.58)], 3.4, 4.15, 13, [0.75, 1.45]);
+  wing(V2(-1.12, -0.32), V2(-1.85, -0.78), [V2(-2.4, -0.62), V2(-2.5, -0.9), V2(-2.32, -1.15)], 4.35, 4.0, 12, [0.7, 1.3]);
+  // 後肢
+  function hind(K, A, F) {
+    rbone(fg, P, K, 0.06, bM, 1.25); rbone(fg, K, A, 0.05, bM, 1.2); rbone(fg, A, F, 0.04, bM, 1.15);
+    [[0.32, -0.12], [0.3, -0.27], [0.12, -0.32], [-0.2, -0.1]].forEach(([dx, dy]) => { const t = V2(F.x + dx, F.y + dy); rbone(fg, F, t, 0.022, bM, 1.15); claw(fg, t, Math.atan2(dy, dx), 0.09, 0.035, bM); });
+  }
+  hind(V2(0.45, -1.3), V2(1.1, -1.78), V2(0.95, -2.15));
+  hind(V2(1.05, -1.18), V2(1.68, -1.55), V2(1.62, -2.0));
+  // 長尾：約 22 節尾椎貫穿成對尾羽
+  const tailPt = t => V2(P.x + 0.2 + t * 2.15, P.y + 0.1 + 0.35 * Math.sin(t * 2.4));
+  const tailBones = [];
+  for (let i = 0; i < 22; i++) {
+    const t0 = i / 22, a = tailPt(t0), b = tailPt((i + 0.74) / 22), r = lerp(0.055, 0.026, t0);
+    tailBones.push(rbone(fg, a, b, r, tailM, 1.15));
+    if (i > 1) { const dir = Math.atan2(b.y - a.y, b.x - a.x), L = lerp(0.45, 0.6, t0); [-1, 1].forEach(sd => feather(a, dir + sd * 0.82, L, 0.22)); }
+  }
+  // 熱點
+  const picks = [];
+  const HS = { beak: { p: V2(0.85, 1.3) }, hand: { p: V2(-2.9, 0.85) }, tail: { p: V2(2.25, -0.25) } };
+  for (const [k, h] of Object.entries(HS)) Object.assign(h, hotspot(fg, h.p, k, picks));
+  const LB = { beak: addLabel('archaeo', '鳥喙', 'small', V3(0, 0, 0)), hand: addLabel('archaeo', '翅膀末端', 'small', V3(0, 0, 0)), tail: addLabel('archaeo', '尾巴', 'small', V3(0, 0, 0)) };
+  const TXT = {
+    beak: { t: '爬蟲類特徵：口內長有牙齒！', name: '鳥喙', cap: '上下顎各有一排<b>尖銳的小牙齒</b>；現代鳥類的喙沒有牙齒', mats: [teethM], col: 0xffcc40 },
+    hand: { t: '過渡特徵：雖有羽毛，但仍保留爬蟲類的前肢指爪！', name: '翅膀末端', cap: '翅膀上有<b>羽毛</b>壓痕，前端卻有<b>三根彎曲的骨爪</b>突出在羽毛外', mats: [clawM], col: 0xff7a2f },
+    tail: { t: '爬蟲類特徵：擁有長長的骨骼尾椎！', name: '尾巴', cap: '約 <b>22 節尾椎骨</b>貫穿尾羽中央；現代鳥類的尾骨很短', mats: [tailM], col: 0xffd54f }
+  };
+  const st = { focus: null, seen: new Set() };
+  function focus(part) {
+    st.focus = part;
+    if (!part) { goView(TABS.archaeo.cam()); return; }
+    st.seen.add(part); group.updateMatrixWorld(true);
+    const off = { beak: V2(-0.1, 0.02), hand: V2(0.55, -0.1), tail: V2(-0.4, 0) }[part];
+    const tgt = fg.localToWorld(V3(HS[part].p.x + off.x, HS[part].p.y + off.y, 0));
+    const n = V3(0, 0, 1).applyQuaternion(sg.quaternion), dist = { beak: 1.9, hand: 2.5, tail: 3.0 }[part];
+    goView({ pos: tgt.clone().addScaledVector(n, dist).add(V3(0.15, 0.2, 0)).toArray(), target: tgt.toArray() });
+  }
+  $('apBeak').addEventListener('click', () => focus('beak')); $('apHand').addEventListener('click', () => focus('hand')); $('apTail').addEventListener('click', () => focus('tail'));
+  $('apAll').addEventListener('click', () => focus(null));
+  const ray = new THREE.Raycaster(), ndc = V2(0, 0); let down = null;
+  const pick = e => { const r = renderer.domElement.getBoundingClientRect(); ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ndc, camera); const hit = ray.intersectObjects(picks, false)[0]; return hit ? hit.object.userData.part : null; };
+  renderer.domElement.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
+  renderer.domElement.addEventListener('pointerup', e => { if (tab !== 'archaeo' || !down) return; if (Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 8) return; const p = pick(e); if (p) focus(p); });
+  renderer.domElement.addEventListener('pointermove', e => { if (tab !== 'archaeo' || e.buttons) return; renderer.domElement.style.cursor = pick(e) ? 'pointer' : ''; });
+  const HM = [teethM, clawM, tailM];
+  function update(dt) {
+    aimKey(0, 2.9, 0);
+    const pulse = 0.5 + 0.5 * Math.sin(wall * 4);
+    HM.forEach(m => { m.emissive.setHex(0); m.emissiveIntensity = 0; });
+    if (st.focus) TXT[st.focus].mats.forEach(m => { m.emissive.setHex(TXT[st.focus].col); m.emissiveIntensity = 0.45 + 0.4 * pulse; });
+    for (const [k, h] of Object.entries(HS)) {
+      const on = st.focus === k; h.s.scale.setScalar((on ? 0.85 : 0.6) + 0.22 * Math.sin(wall * 5 + h.p.x)); h.s.material.opacity = st.focus && !on ? 0.3 : 0.95; h.dot.scale.setScalar(0.8 + 0.35 * pulse);
+      const L = LB[k]; L.pos.copy(fg.localToWorld(V3(h.p.x, h.p.y + 0.32, 0.25))); L.off.copy(L.pos);
+    }
+    const tip = $('apTip'); if (st.focus) { tip.hidden = false; tip.textContent = '💡 ' + TXT[st.focus].t; } else tip.hidden = true;
+    [['beak', 'apBeak'], ['hand', 'apHand'], ['tail', 'apTail']].forEach(([k, id]) => $(id).classList.toggle('yes', st.focus === k));
+    const row = (k, a, b, c) => `<tr class="${st.seen.has(k) ? 'same' : ''}"><td>${st.seen.has(k) ? '✔' : '？'} ${a}</td><td>${st.seen.has(k) ? b : '？'}</td><td>${st.seen.has(k) ? c : ''}</td></tr>`;
+    setHTML('apStat', `<table><tr><th>部位</th><th>特徵</th><th>屬於</th></tr>${row('beak', '鳥喙', '口內有牙齒', '爬蟲類')}${row('hand', '翅膀末端', '有羽毛＋三根指爪', '鳥類＋爬蟲類')}${row('tail', '尾巴', '多節長尾椎', '爬蟲類')}</table><small>已考證 <b>${st.seen.size}</b> / 3 處${st.seen.size === 3 ? '：始祖鳥兼具爬蟲類與鳥類特徵，是演化的證據！' : '。羽毛是鳥類的特徵。'}</small>`);
+    setCap(st.focus ? `<small>始祖鳥・${TXT[st.focus].name}</small>${TXT[st.focus].cap}<span class="huge ${st.focus === 'hand' ? 'org' : 'red'} pop">${TXT[st.focus].t}</span>`
+      : `<small>始祖鳥化石（約 1.5 億年前・侏羅紀）　死亡後仰姿態</small>點岩板上<b>發光的熱點</b>，考證爬蟲類與鳥類的特徵<span class="huge ${st.seen.size === 3 ? 'grn' : 'org'}">${st.seen.size === 3 ? '兼具兩類特徵 → 過渡物種' : '爬蟲類？還是鳥類？'}</span>`);
+  }
+  return { group, update, st, focus, HS, fg, sg, teeth, claws, tailBones };
+})();
+onTabChange = t => { HE.st.play = false; if (t !== 'archaeo') AP.st.focus = null; };
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  horse: { group: HE.group, cam: () => ({ pos: [0, 3.5, 9.8], target: [0, 2.3, 0], fitW: window.innerWidth < window.innerHeight ? 7.2 : 7.8 }), update: HE.update },
+  archaeo: { group: AP.group, cam: () => ({ pos: [0, 3.4, 10.4], target: [0, 2.8, 0], fitW: window.innerWidth < window.innerHeight ? 7.9 : 8.6 }), update: AP.update }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  onTabChange(t);
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, HE, AP, key, camera, controls, renderer, scene, placeLabels };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'horse';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+<script src="goals.js" defer></script>
+</body>
+</html>
