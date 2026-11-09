@@ -479,6 +479,59 @@ const SL = (() => {
 /* =========================================================
    Tab 2：公車吊環（靜者恆靜、動者恆動）
    ========================================================= */
+/* =========================================================
+   極簡原木人偶（美學規範 A）
+   ・面向 +x，左右手腳在 ±z；所有關節都是 Group，支點就在關節上
+   ・關節 rotation.z ＞ 0 ＝ 四肢往前（+x）擺；軀幹 rotation.z ＞ 0 ＝ 向後仰
+   ・root 原點在腳底；pelvis 在臀部高度
+   ========================================================= */
+function mannequin() {
+  const wood = new THREE.MeshStandardMaterial({ color: 0xdeb887, roughness: 0.7, metalness: 0 });
+  const jointM = new THREE.MeshStandardMaterial({ color: 0xcfa66f, roughness: 0.7, metalness: 0 });
+  const lathe = (pts, seg = 28) => new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), seg);
+  const part = (geo, m = wood) => { const x = new THREE.Mesh(geo, m); x.castShadow = true; x.receiveShadow = true; return x; };
+  const ball = r => part(new THREE.SphereGeometry(r, 18, 12), jointM);
+  // 紡錘形四肢：從原點往 −y 延伸 len，上粗下細
+  const limb = (len, r0, r1) => part(lathe([[0.001, 0], [r0 * 0.55, -0.03 * len], [r0, -0.14 * len], [(r0 + r1) * 0.53, -0.5 * len], [r1, -0.86 * len], [r1 * 0.55, -0.97 * len], [0.001, -len]]));
+  const LEG = 0.95;
+  const root = new THREE.Group();
+  const pelvis = new THREE.Group(); pelvis.position.y = LEG; root.add(pelvis);
+  const hip = part(lathe([[0.001, -0.1], [0.12, -0.09], [0.17, -0.02], [0.16, 0.07], [0.11, 0.12], [0.001, 0.12]])); hip.scale.z = 1.25; pelvis.add(hip);
+  // 軀幹（腰部為支點）
+  const torso = new THREE.Group(); torso.position.y = 0.1; pelvis.add(torso);
+  const waist = ball(0.075); torso.add(waist);
+  const chest = part(lathe([[0.001, 0.03], [0.1, 0.05], [0.13, 0.16], [0.18, 0.36], [0.2, 0.47], [0.17, 0.56], [0.08, 0.6], [0.001, 0.6]])); chest.scale.set(0.85, 1, 1.25); torso.add(chest);
+  // 頸部與頭（頸部為支點）
+  const neck = new THREE.Group(); neck.position.y = 0.6; torso.add(neck);
+  neck.add(part(new THREE.CylinderGeometry(0.045, 0.055, 0.12, 14)).translateY(0.05));
+  const head = new THREE.Group(); head.position.y = 0.1; neck.add(head);
+  const skull = part(lathe([[0.001, 0], [0.08, 0.015], [0.12, 0.09], [0.135, 0.17], [0.125, 0.25], [0.085, 0.31], [0.001, 0.33]], 32)); skull.scale.x = 1.1; head.add(skull);
+  // 手臂：肩→肘→手
+  const arm = s => {
+    const sh = new THREE.Group(); sh.position.set(0, 0.5, s * 0.25); torso.add(sh);
+    sh.add(ball(0.06));
+    sh.add(limb(0.32, 0.055, 0.042));
+    const el = new THREE.Group(); el.position.y = -0.34; sh.add(el);
+    el.add(ball(0.045));
+    el.add(limb(0.3, 0.045, 0.035));
+    const hand = part(lathe([[0.001, 0], [0.04, -0.03], [0.05, -0.08], [0.035, -0.13], [0.001, -0.15]], 18)); hand.scale.z = 0.55; hand.position.y = -0.31; el.add(hand);
+    return { sh, el, hand };
+  };
+  // 腿：髖→膝→腳
+  const leg = s => {
+    const hp = new THREE.Group(); hp.position.set(0, -0.06, s * 0.1); pelvis.add(hp);
+    hp.add(ball(0.07));
+    hp.add(limb(0.44, 0.075, 0.055));
+    const kn = new THREE.Group(); kn.position.y = -0.45; hp.add(kn);
+    kn.add(ball(0.055));
+    kn.add(limb(0.42, 0.055, 0.04));
+    const foot = part(lathe([[0.001, 0], [0.045, 0.02], [0.05, 0.1], [0.035, 0.17], [0.001, 0.19]], 18)); foot.rotation.z = -Math.PI / 2; foot.scale.z = 1.3; foot.position.set(-0.04, -0.44, 0); kn.add(foot);
+    return { hp, kn, foot };
+  };
+  const armL = arm(-1), armR = arm(1), legL = leg(-1), legR = leg(1);
+  return { root, pelvis, torso, neck, head, armL, armR, legL, legR, wood, LEG };
+}
+
 const BU = (() => {
   const group = new THREE.Group(); scene.add(group);
   // 道路與路邊景物（車子不動、路往後跑）
@@ -494,15 +547,52 @@ const BU = (() => {
   const wheels = [];
   [[-1.7, 1], [1.7, 1], [-1.7, -1], [1.7, -1]].forEach(([x, s]) => { const w = shadowed(cyl(0.42, 0.42, 0.3, clay(0x4e4a46), 24)); w.rotation.x = Math.PI / 2; w.position.set(x, 0.45, s * 1.0); bus.add(w); wheels.push(w); const h = cyl(0.16, 0.16, 0.32, metal(0xd5d8de), 16); h.rotation.x = Math.PI / 2; h.position.copy(w.position); bus.add(h); });
   [-0.6, 0.6].forEach(z => { const l = sphere(0.1, new THREE.MeshBasicMaterial({ color: 0xfff1b5 }), 12); l.position.set(2.72, 1.1, z); bus.add(l); });
-  const rail = shadowed(cyl(0.035, 0.035, 4.6, metal(0xb0b4ba), 12)); rail.rotation.z = Math.PI / 2; rail.position.set(0, 2.6, 0.2); bus.add(rail);
+  const RAIL_Y = 2.66;
+  const rail = shadowed(cyl(0.035, 0.035, 4.6, metal(0xb0b4ba), 12)); rail.rotation.z = Math.PI / 2; rail.position.set(0, RAIL_Y, 0.2); bus.add(rail);
   // 吊環把手：細線＋圓球
-  const LEN = 0.95;
+  const LEN = 0.3;
   const straps = [-1.3, 0, 1.3].map(x => {
-    const pv = new THREE.Group(); pv.position.set(x, 2.6, 0.2); bus.add(pv);
+    const pv = new THREE.Group(); pv.position.set(x, RAIL_Y, 0.2); bus.add(pv);
     const line = shadowed(cyl(0.012, 0.012, LEN, clay(0x5d4037), 6)); line.position.y = -LEN / 2; pv.add(line);
     const ball = shadowed(sphere(0.13, clay(0xef8a3d, { roughness: 0.4 }), 24)); ball.position.y = -LEN - 0.1; pv.add(ball);
     return pv;
   });
+  /* ----- 乘客：極簡原木人偶（美學規範 A），站在後方吊環下、右手舉起握住吊環 -----
+     身體以「腳底」為支點，跟著吊環一起傾斜；手臂用兩節 IK 讓手一直握在吊環上 */
+  const PS = 0.72, FLOOR_Y = 0.74, HOLD = straps[0];
+  const pax = mannequin(); const P = pax.root;
+  P.scale.setScalar(PS); P.position.set(HOLD.position.x, FLOOR_Y, HOLD.position.z - 0.25 * PS); bus.add(shadowed(P));
+  // 在磨砂玻璃車殼之後才畫，乘客才不會被霧化看不清楚
+  P.traverse(o => { if (o.isMesh) { o.material.transparent = true; o.renderOrder = 11; } });
+  const holdBall = HOLD.children[1];
+  pax.armL.sh.rotation.set(-0.12, 0, 0.08); pax.armL.el.rotation.z = 0.25;         // 左手自然下垂
+  const UP1 = 0.34, UP2 = 0.385, _t = V3(), _sp = V3();
+  function posePassenger() {
+    // 吊環球相對吊桿的水平位移 → 身體跟著同方向傾斜（角度較小，避免誇張或穿模）
+    // 手握的位置＝吊環球的正下方一點點（沿吊繩方向）
+    const GRIP = LEN + 0.18;
+    HOLD.getWorldPosition(_sp); holdBall.getWorldPosition(_t);
+    _t.sub(_sp).setLength(GRIP).add(_sp);
+    const tB = bus.worldToLocal(_t.clone());
+    // 身體傾斜到「肩膀大約在握點正下方」，最多 20°
+    const lean = clamp(Math.asin(clamp((tB.x - P.position.x) / (1.55 * PS), -1, 1)), -0.35, 0.35);
+    P.rotation.z = -lean;                                         // 正值＝頭往前（+x）
+    P.position.y = FLOOR_Y + Math.abs(Math.sin(lean)) * (lean > 0 ? 0.15 : 0.05) * PS;   // 腳尖／腳跟不穿過地板
+    pax.torso.rotation.z = -lean * 0.15; pax.legL.hp.rotation.z = pax.legR.hp.rotation.z = 0;
+    // 右手兩節 IK：把吊環位置換到軀幹座標，求肩、肘角度
+    P.updateMatrixWorld(true);
+    const tl = pax.torso.worldToLocal(_t.clone()), sh = pax.armR.sh.position;
+    sh.set(0, 0.5, 0.25);
+    let dx = tl.x - sh.x, dy = tl.y - sh.y;
+    // 擺到最高時伸手不夠長 → 肩膀往上聳一點去搆
+    const over = Math.hypot(dx, dy) - (UP1 + UP2 - 0.01);
+    if (over > 0) { const k = Math.min(over, 0.14) / Math.hypot(dx, dy); sh.x += dx * k; sh.y += dy * k; dx = tl.x - sh.x; dy = tl.y - sh.y; }
+    const D = clamp(Math.hypot(dx, dy), 0.1, UP1 + UP2 - 0.002);
+    const base = Math.atan2(dx, -dy);
+    const a1 = Math.acos(clamp((UP1 * UP1 + D * D - UP2 * UP2) / (2 * UP1 * D), -1, 1));
+    const g = Math.acos(clamp((UP1 * UP1 + UP2 * UP2 - D * D) / (2 * UP1 * UP2), -1, 1));
+    pax.armR.sh.rotation.set(0, 0, base + a1); pax.armR.el.rotation.z = -(Math.PI - g);
+  }
   const lAng = addLabel('bus', '', 'small org', V3(0, 0, 0));
   addLabel('bus', '前進方向 →', 'small', V3(2.4, 3.25, 0.2));
   const st = { v: 0, a: 0, mode: 'stop', th: 0, w: 0, off: 0, msg: '', msgT: 0 };
@@ -519,7 +609,9 @@ const BU = (() => {
     // 單擺在加速車廂中：θ'' ＝ −(g/L) sinθ − (a/L) cosθ − cθ'（θ>0 表示往前擺）
     const sub = 8, h = dt / sub, L = LEN + 0.1;
     for (let i = 0; i < sub; i++) { const acc = -(9.8 / L) * Math.sin(st.th) - (st.a / L) * Math.cos(st.th) - 0.85 * st.w; st.w += acc * h; st.th += st.w * h; }
-    straps.forEach(p => { p.rotation.z = -st.th; });
+    // 有人握住的那個吊環被手臂拉住，擺幅較小（最多約 31°）；另外兩個自由擺動
+    straps.forEach(p => { p.rotation.z = p === HOLD ? 0.55 * Math.tanh(st.th / 0.55) : st.th; });
+    posePassenger();
     bus.rotation.z = st.a * 0.0025; bus.position.y = 0.02 * Math.sin(wall * 9) * Math.min(1, st.v / 4);
     st.off = (st.off + st.v * dt) % 32;
     const wrap = x => ((x % 32) + 32) % 32 - 15;
