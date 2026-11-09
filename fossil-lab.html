@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>古生物化石與演化實驗室</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+  .tabs.three .tab { font-size: .72rem; padding: 9px 2px; }
+  .objs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .objs.three { grid-template-columns: repeat(3, 1fr); }
+  .objs .btn { padding: 8px 4px; font-size: .78rem; margin-top: 0; }
+  .objs .btn.yes { background: #e3f1e6; color: #2e6b3f; } .objs .btn.no { background: #fde5e2; color: #a5311f; }
+  .orgcard { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin-top: 8px; font-size: .8rem; line-height: 1.65; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
+  .orgcard:empty { display: none; }
+  .orgcard h4 { font-size: .98rem; font-weight: 900; margin-bottom: 2px; }
+  .orgcard .pill { display: inline-block; font-size: .72rem; font-weight: 800; color: #fff; background: #7b5ea7; border-radius: 999px; padding: 1px 9px; margin: 2px 4px 2px 0; }
+  .orgcard i.sci { font-family: Georgia, serif; }
+  .orgcard table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .orgcard td, .orgcard th { padding: 2px 4px; border-bottom: 1px solid #efe6d8; font-size: .74rem; text-align: left; }
+  .orgcard tr.same { background: #e3f1e6; } .orgcard tr.diff td { color: #a8998a; }
+  .tag.big { font-size: .86rem; }
+  .stat table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: .74rem; }
+  .stat td, .stat th { padding: 3px 3px; border-bottom: 1px solid #efe6d8; text-align: left; white-space: nowrap; }
+  .stat tr.same { background: #e3f1e6; }
+  .tip { background: #fff3c4; color: #7a5300; border: 1.5px solid #e0b000; border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .82rem; font-weight: 800; line-height: 1.6; animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  .tip[hidden], .mapbox[hidden], .btn[hidden] { display: none; }
+  .ticks span:first-child { text-align: left; } .ticks span:last-child { text-align: right; }
+  .meter { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: .74rem; font-weight: 800; color: var(--ink-soft); }
+  .meter i { flex: 1; height: 16px; border-radius: 999px; background: linear-gradient(90deg, #f7efe6, #8b2e0f); position: relative; }
+  .meter i::after { content: ''; position: absolute; top: -4px; width: 6px; height: 24px; border-radius: 3px; background: var(--ink); left: var(--v, 50%); transform: translateX(-50%); transition: left .2s; }
+  .cap .eq { display: inline-flex; align-items: center; gap: 6px; font-size: 1.05em; font-weight: 900; }
+  .cap .arrs { display: inline-flex; flex-direction: column; line-height: .9; font-size: 1.1em; }
+  .cap .arrs span { opacity: .28; transition: opacity .3s, color .3s, transform .3s; }
+  .cap .arrs span.on { opacity: 1; color: #c62828; transform: scale(1.35); }
+  .cap .brown { color: #8b2e0f; }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g7">‹ 課程總覽</a>
+  <div class="title">古生物化石與演化實驗室</div>
+  <div class="body">
+    <div class="tabs three">
+      <button class="tab on" data-tab="strata">⛏️ 考古坑<small>地層與指標化石</small></button>
+      <button class="tab" data-tab="horse">🐎 馬的演化<small>縮時攝影</small></button>
+      <button class="tab" data-tab="archaeo">🪶 始祖鳥<small>過渡物種</small></button>
+    </div>
+
+    <!-- Tab 1：沉積岩與指標化石 -->
+    <section class="sec" data-tab="strata">
+      <div class="concept" style="--cc:#8b6b4a"><div class="ct">地層與化石</div><div class="cd">未受擾動的沉積岩：<b>越下層越古老</b>；<br>從<b>指標化石</b>可以判斷地層的地質年代</div></div>
+      <label class="lab" for="foDig">🖌️ 考古筆刷<b><span id="foDigV">0</span>%</b></label>
+      <input class="big" type="range" id="foDig" min="0" max="100" step="1" value="0">
+      <div class="ticks"><span>開始挖掘</span><span>中層</span><span>挖到底層</span></div>
+      <div class="row2">
+        <button class="btn" id="foAuto">▶ 自動挖掘</button>
+        <button class="btn" id="foReset">🔄 重新覆土</button>
+      </div>
+      <div class="stat" id="foStat"></div>
+      <div class="tip" id="foTip" hidden>💡 指標化石特徵：生存時間短、分佈廣、數量多！</div>
+    </section>
+
+    <!-- Tab 2：馬的演化 -->
+    <section class="sec" data-tab="horse">
+      <div class="concept" style="--cc:#a1674a"><div class="ct">馬的演化</div><div class="cd">環境從<b>森林</b>變成<b>草原</b>：<br>體型變大、<b>腳趾減少</b>、<b>咀嚼面變大</b></div></div>
+      <label class="lab" for="hoT">⏳ 地質年代<b id="hoTV">5500 萬年前</b></label>
+      <input class="big" type="range" id="hoT" min="0" max="100" step="0.5" value="0">
+      <div class="ticks"><span>5500 萬年前</span><span>2000 萬年前</span><span>現代</span></div>
+      <div class="row2">
+        <button class="btn" id="hoPlay">▶ 縮時播放</button>
+        <button class="btn" id="hoReset">↩️ 回到始祖馬</button>
+      </div>
+      <div class="stat" id="hoStat"></div>
+      <div class="tip" id="hoTip" hidden>💡 腳趾減少利於草原奔跑，牙齒咀嚼面變大以磨碎堅硬的草本植物！</div>
+    </section>
+
+    <!-- Tab 3：始祖鳥 -->
+    <section class="sec" data-tab="archaeo">
+      <div class="concept" style="--cc:#7b5ea7"><div class="ct">始祖鳥：過渡物種</div><div class="cd">同時具有<b>爬蟲類</b>與<b>鳥類</b>的特徵，<br>是爬蟲類演化成鳥類的證據</div></div>
+      <div class="desc">👆 點石板上<b>閃爍的光點</b>，或按下面的按鈕觀察特徵。</div>
+      <div class="objs three">
+        <button class="btn" id="arHead">🦷 頭部</button>
+        <button class="btn" id="arWing">🪶 前肢翅膀</button>
+        <button class="btn" id="arTail">🦴 尾部</button>
+      </div>
+      <button class="btn" id="arAll">🔭 看整塊石板</button>
+      <div class="stat" id="arStat"></div>
+      <div class="tip" id="arTip" hidden></div>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'strata', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+/* =========================================================
+   共用小工具
+   ========================================================= */
+const lerp = (a, b, k) => a + (b - a) * k;
+const sphere = (r, mat, seg = 24) => new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg * 0.6 | 0)), mat);
+const cyl = (r1, r2, h, mat, seg = 32, open = false) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg, 1, open), mat);
+const rbox = (w, h, d, mat, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001)), mat);
+const glassM = (op = 0.16) => new THREE.MeshPhysicalMaterial({ color: 0xd8ecf4, emissive: 0x9fb8c4, emissiveIntensity: 0.12, sheen: 1, sheenColor: 0xffffff, transparent: true, opacity: op, roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0.05, side: THREE.DoubleSide, depthWrite: false });
+const shellM = (c, op) => new THREE.MeshPhysicalMaterial({ color: c, transparent: true, opacity: op, roughness: 0.2, clearcoat: 0.6, side: THREE.DoubleSide, depthWrite: false });
+let rs = 4242;
+const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+const glowSprite = (rgb, s = 0.5) => { const g = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(rgb), transparent: true, depthWrite: false })); g.scale.setScalar(s); return g; };
+const ease = k => 1 - Math.exp(-k);
+function makeArrow(color) {
+  const g = new THREE.Group(); const m = clay(color, { emissive: color, emissiveIntensity: 0.25 });
+  const shaft = cyl(0.07, 0.07, 1, m, 16); const head = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.34, 20), m);
+  g.add(shaft, head); shadowed(g);
+  g.setLen = L => { L = Math.max(0.05, L); shaft.scale.y = L; shaft.position.y = L / 2; head.position.y = L + 0.17; };
+  g.setLen(1); return g;
+}
+/** 畫布貼圖面板（碼錶螢幕等） */
+function canvasPanel(w, h, pxW = 512) {
+  const c = document.createElement('canvas'); c.width = pxW; c.height = Math.round(pxW * h / w);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t, toneMapped: false }));
+  return { c, g: c.getContext('2d'), t, m };
+}
+let onTabChange = () => {};
+
+/** 圖表板：畫布貼在 3D 木框上 */
+function chartBoard(w, h, px = 640) {
+  const g = new THREE.Group();
+  const frame = shadowed(rbox(w + 0.18, h + 0.18, 0.08, clay(0xc8a27a), 0.05)); frame.position.z = -0.05; g.add(frame);
+  const p = canvasPanel(w, h, px); g.add(p.m); g.panel = p; return g;
+}
+/* =========================================================
+   化石擬真：強對比 SpotLight 側光 ＋ Canvas 雜訊凹凸貼圖
+   ========================================================= */
+scene.traverse(o => { if (o.isAmbientLight) o.intensity = 0.62; if (o.isDirectionalLight) o.intensity = 0.95; });
+const spot = new THREE.SpotLight(0xfff0d8, 3.4, 0, 0.62, 0.55, 0);
+spot.castShadow = true; spot.shadow.mapSize.set(2048, 2048); spot.shadow.bias = -0.0003; spot.shadow.normalBias = 0.015;
+spot.shadow.camera.near = 1; spot.shadow.camera.far = 40;
+scene.add(spot, spot.target);
+const aimSpot = (p, t) => { spot.position.set(...p); spot.target.position.set(...t); };
+/** 多層 value noise（可無縫重複）＋ 顆粒斑點：同時當顏色貼圖與 bumpMap */
+const NOISE_CANVAS = (() => {
+  const N = 256, c = document.createElement('canvas'); c.width = c.height = N; const g = c.getContext('2d'); const img = g.createImageData(N, N);
+  const oct = [4, 8, 16, 32, 64, 128].map(f => { const a = new Float32Array(f * f); for (let i = 0; i < a.length; i++) a[i] = rnd(); return { f, a }; });
+  const sm = t => t * t * (3 - 2 * t);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    let v = 0, amp = 0.5, tot = 0;
+    for (const o of oct) {
+      const fx = x / N * o.f, fy = y / N * o.f, x0 = fx | 0, y0 = fy | 0, sx = sm(fx - x0), sy = sm(fy - y0), f = o.f;
+      const A = o.a[(y0 % f) * f + x0 % f], B = o.a[(y0 % f) * f + (x0 + 1) % f], C = o.a[((y0 + 1) % f) * f + x0 % f], D = o.a[((y0 + 1) % f) * f + (x0 + 1) % f];
+      v += amp * lerp(lerp(A, B, sx), lerp(C, D, sx), sy); tot += amp; amp *= 0.62;
+    }
+    const k = (y * N + x) * 4, val = 255 * (0.6 + 0.4 * v / tot);
+    img.data[k] = img.data[k + 1] = img.data[k + 2] = val; img.data[k + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  for (let i = 0; i < 1600; i++) { const d = rnd() < 0.7; g.fillStyle = d ? `rgba(40,30,20,${0.12 + rnd() * 0.25})` : `rgba(255,250,240,${0.15 + rnd() * 0.3})`; g.beginPath(); g.arc(rnd() * N, rnd() * N, 0.4 + rnd() * 1.3, 0, TAU); g.fill(); }
+  return c;
+})();
+function noiseTex(rx = 1, ry = 1) { const t = new THREE.CanvasTexture(NOISE_CANVAS); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; }
+/** 岩石／化石材質：MeshStandardMaterial，極度粗糙 */
+function rockMat(color, { rep = [1, 1], bump = 2.2 } = {}) {
+  const t = noiseTex(...rep);
+  return new THREE.MeshStandardMaterial({ color, roughness: 0.9, metalness: 0.1, map: t, bumpMap: t, bumpScale: bump, envMapIntensity: 0.4 });
+}
+const fossilMat = (o = {}) => rockMat(0x8b7355, { rep: [1.5, 1.5], bump: 3, ...o });
+const relief = (o, zs) => { o.scale.z *= zs; return shadowed(o); };
+/** 在平面上（xy）從 a 到 b 的一段骨頭：圓柱＋兩端關節，z 方向壓扁成浮雕 */
+function bone(g, a, b, r, m, zs = 0.6, knob = 1.35) {
+  const len = Math.hypot(b.x - a.x, b.y - a.y);
+  const c = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.85, r, len, 12), m);
+  c.position.set((a.x + b.x) / 2, (a.y + b.y) / 2, 0); c.rotation.z = Math.atan2(b.y - a.y, b.x - a.x) - Math.PI / 2; g.add(relief(c, zs));
+  if (knob) [a, b].forEach(p => { const s = new THREE.Mesh(new THREE.SphereGeometry(r * knob, 12, 8), m); s.position.set(p.x, p.y, 0); g.add(relief(s, zs)); });
+  return c;
+}
+/** 爪子／牙齒：小圓錐，指向 dir 方向 */
+function cone(g, p, dir, r, h, m, zs = 0.7) {
+  const c = new THREE.Mesh(new THREE.ConeGeometry(r, h, 10), m); c.position.set(p.x + Math.cos(dir) * h / 2, p.y + Math.sin(dir) * h / 2, 0); c.rotation.z = dir - Math.PI / 2; g.add(relief(c, zs)); return c;
+}
+
+/* ----- 化石模型 ----- */
+/** 三葉蟲：多個壓扁、重疊的 Capsule 拼出頭甲、胸節與尾甲（三葉構造） */
+function trilobite(L, m) {
+  const g = new THREE.Group();
+  const cap = (r, l, x, y, rz, sz = 0.35, z = 0) => { const c = new THREE.Mesh(new THREE.CapsuleGeometry(r, l, 6, 16), m); c.position.set(x, y, z); c.rotation.z = rz; g.add(relief(c, sz)); return c; };
+  // 頭甲（半圓）＋頭鞍＋複眼＋頰刺
+  const head = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), m); head.scale.set(0.2, 0.44, 0.1); head.position.x = -0.36; g.add(shadowed(head));
+  cap(0.075, 0.1, -0.38, 0, Math.PI / 2, 0.9, 0.04);
+  [-1, 1].forEach(s => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 8), m); eye.position.set(-0.36, s * 0.16, 0.05); eye.scale.z = 0.8; g.add(shadowed(eye));
+    const sp = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.32, 8), m); sp.position.set(-0.12, s * 0.42, 0); sp.rotation.z = -Math.PI / 2 + s * 0.15; g.add(relief(sp, 0.5));
+  });
+  // 胸節：左右肋葉（橫向 capsule）與中軸葉
+  for (let i = 0; i < 10; i++) { const x = -0.2 + i * 0.066, w = 0.66 - i * 0.034; cap(0.03, w, x, 0, 0, 0.38); }
+  cap(0.07, 0.6, 0.1, 0, Math.PI / 2, 0.75, 0.025);
+  for (let i = 0; i < 10; i++) cap(0.045, 0.02, -0.2 + i * 0.066, 0, 0, 0.9, 0.05);
+  // 尾甲
+  const py = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12), m); py.scale.set(0.13, 0.19, 0.07); py.position.x = 0.52; g.add(shadowed(py));
+  cap(0.04, 0.1, 0.52, 0, Math.PI / 2, 0.8, 0.03);
+  g.scale.set(L, L, L);
+  return g;
+}
+/** 菊石：對數螺旋路徑的 TubeGeometry，管徑隨半徑變粗，並加上放射狀肋紋 */
+function ammonite(R, m) {
+  const TURNS = 3.2, TH = TURNS * TAU, b = Math.log(2) / TAU, a = R * 0.72 / Math.exp(b * TH);
+  class Spiral extends THREE.Curve { getPoint(t, out = new THREE.Vector3()) { const th = t * TH + 1.2, r = a * Math.exp(b * th); return out.set(Math.cos(th) * r, Math.sin(th) * r, 0); } }
+  const path = new Spiral(), TS = 320, RS = 16;
+  const geo = new THREE.TubeGeometry(path, TS, 1, RS, false);
+  const pos = geo.attributes.position, cen = V3(0, 0, 0), v = V3(0, 0, 0);
+  for (let i = 0; i <= TS; i++) {
+    path.getPointAt(i / TS, cen); const r = Math.hypot(cen.x, cen.y);
+    const rib = 1 + 0.13 * Math.pow(Math.max(0, Math.sin(i / TS * 150)), 3);
+    for (let j = 0; j <= RS; j++) { const k = i * (RS + 1) + j; v.fromBufferAttribute(pos, k).sub(cen).multiplyScalar(0.34 * r * rib).add(cen); pos.setXYZ(k, v.x, v.y, v.z); }
+  }
+  geo.computeVertexNormals();
+  const g = new THREE.Group(); g.add(relief(new THREE.Mesh(geo, m), 0.5));
+  const core = new THREE.Mesh(new THREE.SphereGeometry(a * 2.5, 12, 8), m); core.scale.z = 0.4; g.add(shadowed(core));
+  return g;
+}
+/** 恐龍骨：大腿骨＋一串脊椎＋肋骨，用 Cylinder 拼湊 */
+function dinoBones(m) {
+  const g = new THREE.Group();
+  // 大腿骨
+  bone(g, V2(-0.75, -0.08), V2(0.75, 0.12), 0.09, m, 0.6, 0);
+  [[-0.78, -0.1, 0.2, 0.16], [0.8, 0.12, 0.17, 0.2]].forEach(([x, y, rx, ry]) => { const s = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10), m); s.scale.set(rx, ry, 0.1); s.position.set(x, y, 0); g.add(shadowed(s)); });
+  const tro = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 8), m); tro.position.set(-0.55, 0.12, 0); tro.scale.z = 0.6; g.add(shadowed(tro));
+  // 脊椎與肋骨
+  for (let i = 0; i < 6; i++) {
+    const x = 1.25 + i * 0.27, y = 0.05 + Math.sin(i * 0.6) * 0.05;
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.17, 14), m); c.position.set(x, y, 0); c.rotation.z = Math.PI / 2; g.add(relief(c, 0.6));
+    bone(g, V2(x, y + 0.08), V2(x - 0.04, y + 0.32), 0.03, m, 0.6, 0);
+    if (i < 4) bone(g, V2(x, y - 0.08), V2(x + 0.18 - i * 0.02, y - 0.5), 0.025, m, 0.6, 1.2);
+  }
+  return g;
+}
+/** 長毛象臼齒：齒冠上一片片琺瑯質齒板（咀嚼面朝外） */
+function mammothTooth(m, mE) {
+  const g = new THREE.Group();
+  const body = rbox(1.0, 0.62, 0.3, m, 0.1); g.add(shadowed(body));
+  for (let i = 0; i < 12; i++) { const p = rbox(0.045, 0.52, 0.12, mE, 0.02); p.position.set(-0.42 + i * 0.076, 0, 0.16); p.rotation.z = 0.05 * Math.sin(i); g.add(shadowed(p)); }
+  [[-0.3, -0.42], [0.05, -0.45], [0.35, -0.4]].forEach(([x, y]) => { const r = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.24, 12), m); r.rotation.z = Math.PI; r.position.set(x, y + 0.08, -0.04); g.add(relief(r, 0.6)); });
+  return g;
+}
+
+/* =========================================================
+   Tab 1：沉積岩與指標化石考古坑
+   ========================================================= */
+const ST = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const W = 7.6, D = 2.6, FZ = D / 2;
+  const LAY = [
+    { n: '表層', era: '新生代', time: '約 6600 萬年前～現在', y0: 2.5, y1: 3.5, c: 0xc9a86a, a: 0 },
+    { n: '中層', era: '中生代', time: '約 2.5 億～6600 萬年前', y0: 1.25, y1: 2.5, c: 0x9a5a3c, a: 33.3 },
+    { n: '底層', era: '古生代', time: '約 5.4 億～2.5 億年前', y0: 0, y1: 1.25, c: 0x5d6266, a: 66.6 }
+  ];
+  const dirt = new THREE.Color(0xb0916a);
+  LAY.forEach(L => {
+    const h = L.y1 - L.y0;
+    const m = shadowed(new THREE.Mesh(new THREE.BoxGeometry(W, h, D), rockMat(L.c, { rep: [4, 1.4], bump: 2.5 }))); m.position.set(0, (L.y0 + L.y1) / 2, 0); group.add(m);
+    for (let i = 0; i < 3; i++) { const ln = new THREE.Mesh(new THREE.BoxGeometry(W, 0.018, 0.01), basic(new THREE.Color(L.c).multiplyScalar(0.72).getHex(), 0.7)); ln.position.set(0, L.y0 + h * (0.22 + i * 0.28 + rnd() * 0.06), FZ + 0.004); group.add(ln); }
+    const cm = rockMat(new THREE.Color(L.c).lerp(dirt, 0.55).getHex(), { rep: [5, 1.2], bump: 4 }); cm.transparent = true;
+    const cv = shadowed(new THREE.Mesh(new THREE.BoxGeometry(W + 0.03, h - 0.01, 0.24), cm)); cv.position.set(0, (L.y0 + L.y1) / 2, FZ + 0.12); group.add(cv);
+    L.cover = cv; L.cm = cm;
+    L.lab = addLabel('strata', `<b>${L.era}</b>（${L.n}）`, '', V3(W / 2 + 0.85, (L.y0 + L.y1) / 2, FZ));
+  });
+  const grass = shadowed(rbox(W, 0.1, D, clay(0x8fae6b), 0.04)); grass.position.y = 3.55; group.add(grass);
+  for (let i = 0; i < 26; i++) { const t = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.28, 5), clay(0x7c9d58)); t.position.set((rnd() - 0.5) * W * 0.95, 3.72, (rnd() - 0.5) * D * 0.9); t.rotation.z = (rnd() - 0.5) * 0.5; group.add(shadowed(t)); }
+  addLabel('strata', '⬆ 較年輕<br>⬇ 較古老', 'small', V3(-W / 2 - 0.75, 1.75, FZ));
+  // 化石（中心放在剖面上，一半嵌在岩石裡）
+  const fm = fossilMat(), fmE = rockMat(0xa98d68, { rep: [1, 1], bump: 3 });
+  const F = [];
+  const put = (obj, x, y, rz, layer, name) => { obj.position.set(x, y, FZ); obj.rotation.z = rz; group.add(obj); F.push({ obj, layer, name }); return obj; };
+  put(trilobite(1.25, fm), -2.3, 0.62, 0.12, 2, '三葉蟲');
+  put(trilobite(0.85, fm), 0.35, 0.55, -0.45, 2, '三葉蟲');
+  put(trilobite(0.72, fm), 2.55, 0.7, 2.7, 2, '三葉蟲');
+  put(ammonite(0.5, fm), -2.4, 1.88, 0.3, 1, '菊石');
+  put(ammonite(0.3, fm), -1.15, 1.62, 2.1, 1, '菊石');
+  put(dinoBones(fm), 0.15, 1.85, 0.12, 1, '恐龍骨');
+  put(mammothTooth(fm, fmE), -0.7, 3.0, 0.08, 0, '長毛象牙齒');
+  put(mammothTooth(fm, fmE), 2.35, 2.98, -0.25, 0, '長毛象牙齒').scale.setScalar(0.75);
+  const flabs = [
+    addLabel('strata', '三葉蟲', 'small', V3(-2.3, 1.12, FZ + 0.3)), addLabel('strata', '菊石', 'small', V3(-2.4, 2.45, FZ + 0.3)),
+    addLabel('strata', '恐龍骨', 'small', V3(0.6, 2.32, FZ + 0.3)), addLabel('strata', '長毛象牙齒', 'small', V3(-0.7, 3.42, FZ + 0.3))
+  ];
+  const FL = [2, 1, 1, 0];
+  // 挖掘時掉落的土屑
+  const dustTex = dotTexture('#b8956a', 'rgba(110,80,50,.6)');
+  const dust = Array.from({ length: 60 }, () => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: dustTex, transparent: true, depthWrite: false })); s.visible = false; s.userData = { v: V3(0, 0, 0), life: 0 }; group.add(s); return s; });
+  let dI = 0;
+  const st = { p: 0, shown: 0, auto: false };
+  $('foDig').addEventListener('input', () => { st.p = +$('foDig').value; st.auto = false; });
+  $('foAuto').addEventListener('click', () => { if (st.p >= 100) { st.p = 0; st.shown = 0; } st.auto = !st.auto; });
+  $('foReset').addEventListener('click', () => { st.p = 0; st.auto = false; $('foDig').value = 0; });
+  const opOf = (L, p) => 1 - clamp((p - L.a) / 33.3, 0, 1);
+  function update(dt) {
+    aimSpot([-7.5, 7, 7.5], [0, 1.6, FZ]);
+    if (st.auto) { st.p = Math.min(100, st.p + dt * 14); $('foDig').value = st.p; if (st.p >= 100) st.auto = false; }
+    const prev = st.shown; st.shown = lerp(st.shown, st.p, ease(dt * 6)); if (Math.abs(st.shown - st.p) < 0.05) st.shown = st.p;
+    const P = st.shown;
+    $('foDigV').textContent = Math.round(st.p);
+    LAY.forEach((L, i) => {
+      const op = opOf(L, P); L.cm.opacity = op; L.cm.depthWrite = op > 0.98; L.cover.visible = op > 0.01;
+      L.cover.castShadow = op > 0.5; L.lab.show = op < 0.6;
+      L.cover.position.z = FZ + 0.12 + (1 - op) * 0.05;
+    });
+    flabs.forEach((l, i) => { l.show = opOf(LAY[FL[i]], P) < 0.45; });
+    // 正在挖的那一層掉土屑
+    const digging = Math.abs(P - prev) > 0.02 && P < 99.9;
+    if (digging) { const L = LAY.find(L => P >= L.a && P < L.a + 33.4) || LAY[2]; for (let n = 0; n < 2; n++) { const s = dust[dI = (dI + 1) % dust.length], u = s.userData; s.position.set((rnd() - 0.5) * W * 0.9, lerp(L.y0, L.y1, rnd()), FZ + 0.3); u.v.set((rnd() - 0.5) * 0.6, rnd() * 0.6, 0.5 + rnd() * 0.6); u.life = 0; s.visible = true; s.scale.setScalar(0.05 + rnd() * 0.07); } }
+    dust.forEach(s => { if (!s.visible) return; const u = s.userData; u.life += dt; u.v.y -= 4 * dt; s.position.addScaledVector(u.v, dt); if (s.position.y < 0.03) { s.position.y = 0.03; u.v.set(0, 0, 0); } if (u.life > 2.2) s.visible = false; });
+    const found = LAY.map(L => opOf(L, P) < 0.45);
+    $('foTip').hidden = P < 96;
+    const row = (L, i, fos) => `<tr class="${found[i] ? 'same' : ''}"><td>${L.n}</td><td>${found[i] ? `<b>${L.era}</b>` : '？'}</td><td>${found[i] ? fos : '還埋在土裡'}</td></tr>`;
+    setHTML('foStat', `挖掘進度：<b class="o">${Math.round(P)}%</b><table><tr><th>地層</th><th>地質年代</th><th>挖到的化石</th></tr>${row(LAY[0], 0, '長毛象牙齒')}${row(LAY[1], 1, '菊石、恐龍骨')}${row(LAY[2], 2, '三葉蟲')}</table><small>${found[2] ? '三層的化石都出土了！底層的三葉蟲最古老，表層的長毛象最年輕。' : '從上往下挖：越往下挖，挖到的生物年代越古老。'}</small>`);
+    const cur = P < 33.3 ? 0 : P < 66.6 ? 1 : 2, Lc = LAY[cur];
+    setCap(P < 1 ? `<small>沉積岩考古坑</small>地層被土覆蓋著。拖曳<b>考古筆刷</b>，一層一層把化石刷出來<span class="huge org">越下層 → 越古老</span>`
+      : P >= 96 ? `<small>指標化石</small>三葉蟲 → <b>古生代</b>　菊石、恐龍 → <b>中生代</b>　長毛象 → <b>新生代</b><span class="huge grn pop">指標化石：生存時間短、分佈廣、數量多</span>`
+        : `<small>正在清理：${Lc.n}</small>${found[cur] ? `出土：<b>${['長毛象牙齒', '菊石與恐龍骨', '三葉蟲'][cur]}</b>` : '小心刷開覆蓋的土……'}<span class="huge ${['org', 'red', 'blu'][cur]}">${Lc.era}（${Lc.time}）</span>`);
+  }
+  return { group, update, st, LAY };
+})();
+
+/* =========================================================
+   Tab 2：馬的演化縮時攝影
+   ========================================================= */
+const HO = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const plinth = shadowed(rbox(7.4, 0.3, 2.6, clay(0xd9c3a0), 0.08)); plinth.position.y = 0.15; group.add(plinth);
+  const BY = 0.3;
+  const boneM = rockMat(0xcdb68c, { rep: [1, 2], bump: 2.4 });
+  // 前肢骨骼
+  const leg = new THREE.Group(); leg.position.set(-1.75, BY, 0); group.add(leg);
+  const stand = shadowed(cyl(0.5, 0.56, 0.08, clay(0x8d6e63), 32)); stand.position.set(-1.75, BY + 0.04, 0); group.add(stand);
+  const rad = shadowed(cyl(0.12, 0.1, 1.25, boneM, 16)); rad.position.y = 2.32; leg.add(rad);
+  const elbow = shadowed(sphere(0.19, boneM, 16)); elbow.scale.set(1, 0.8, 0.9); elbow.position.y = 3.0; leg.add(elbow);
+  const olec = shadowed(cyl(0.06, 0.09, 0.4, boneM, 12)); olec.position.set(0.12, 3.12, 0); olec.rotation.z = -0.4; leg.add(olec);
+  const wrist = shadowed(sphere(0.15, boneM, 16)); wrist.scale.set(1.3, 0.7, 1); wrist.position.y = 1.72; leg.add(wrist);
+  const carp = shadowed(rbox(0.46, 0.2, 0.3, boneM, 0.06)); carp.position.y = 1.56; leg.add(carp);
+  function digit(x, main) {
+    const g = new THREE.Group(); g.position.set(x, 1.47, 0); leg.add(g);
+    const meta = shadowed(cyl(0.065, 0.055, 0.85, boneM, 12)); meta.position.y = -0.425; g.add(meta);
+    const knuck = shadowed(sphere(0.07, boneM, 12)); knuck.position.y = -0.86; g.add(knuck);
+    const ph = new THREE.Group(); ph.position.y = -0.9; g.add(ph);
+    const p1 = shadowed(cyl(0.06, 0.052, 0.24, boneM, 12)); p1.position.y = -0.13; ph.add(p1);
+    const p2 = shadowed(cyl(0.052, 0.048, 0.17, boneM, 12)); p2.position.y = -0.35; ph.add(p2);
+    let hoof;
+    if (main) { hoof = shadowed(cyl(0.07, 0.1, 0.16, rockMat(0x7a6650, { bump: 2 }), 20)); hoof.position.y = -0.52; ph.add(hoof); }
+    else { hoof = shadowed(new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.15, 10), boneM)); hoof.rotation.x = Math.PI; hoof.position.y = -0.52; ph.add(hoof); }
+    return { g, ph, hoof, x };
+  }
+  const D2 = digit(-0.17, false), D3 = digit(0, true), D4 = digit(0.17, false), D5 = digit(0.31, false);
+  addLabel('horse', '前肢骨骼', 'small', V3(-1.75, -0.05, 1.0));
+  const lToe = addLabel('horse', '', 'small red', V3(-1.75, 0.2, 0.9));
+  // 臼齒
+  const TX = 1.95;
+  const tStand = shadowed(cyl(0.62, 0.68, 0.08, clay(0x8d6e63), 32)); tStand.position.set(TX, BY + 0.04, 0); group.add(tStand);
+  const toothM = rockMat(0xd6c29b, { bump: 2.6 });
+  const tooth = new THREE.Group(); tooth.position.set(TX, BY + 0.08, 0); tooth.rotation.set(0.38, -0.3, 0); group.add(tooth);
+  const crown = shadowed(rbox(1, 1, 1, toothM, 0.1)); tooth.add(crown);
+  const roots = [-1, 1].map(s => { const r = shadowed(new THREE.Mesh(new THREE.ConeGeometry(0.12, 1, 12), rockMat(0xb89f78, { bump: 2 }))); r.rotation.x = Math.PI; tooth.add(r); r.userData.s = s; return r; });
+  const cusps = [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 0], [0, -0.1]].map(([sx, sz]) => { const c = shadowed(sphere(0.13, toothM, 16)); c.userData = { sx, sz }; tooth.add(c); return c; });
+  // 現代馬的平整咀嚼面：琺瑯質皺褶花紋
+  const occ = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
+    g.fillStyle = '#d9c7a0'; g.fillRect(0, 0, 256, 256);
+    g.strokeStyle = '#6b5236'; g.lineWidth = 7; g.lineJoin = 'round';
+    const loop = (cx, cy, rx, ry, w) => { g.beginPath(); for (let a = 0; a <= TAU + 0.01; a += 0.08) { const r = 1 + 0.12 * Math.sin(a * w); const x = cx + Math.cos(a) * rx * r, y = cy + Math.sin(a) * ry * r; a ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke(); };
+    g.strokeRect(14, 14, 228, 228);
+    loop(80, 80, 44, 34, 5); loop(176, 80, 44, 34, 6); loop(80, 176, 44, 36, 6); loop(176, 176, 44, 36, 5); loop(128, 128, 18, 40, 4);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+  })();
+  const occM = new THREE.MeshStandardMaterial({ map: occ, bumpMap: occ, bumpScale: 4, roughness: 0.85, metalness: 0.05, transparent: true, opacity: 0 });
+  const occP = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), occM); occP.rotation.x = -Math.PI / 2; occP.receiveShadow = true; tooth.add(occP);
+  addLabel('horse', '臼齒（上方是咀嚼面）', 'small', V3(TX, -0.05, 1.0));
+  const lTooth = addLabel('horse', '', 'small', V3(TX, 2.4, 0.4));
+  // 環境看板
+  const board = chartBoard(3.0, 1.42, 640); board.position.set(0.35, 3.25, -1.2); group.add(board);
+  const STG = [
+    { ma: 55, n: '始祖馬', h: 40, toe: '4 趾', tooth: '小、齒冠低、表面有尖突', food: '柔軟的嫩葉、果實', env: '溼潤的森林' },
+    { ma: 37, n: '漸新馬', h: 60, toe: '3 趾', tooth: '稍微變大', food: '嫩葉', env: '森林變稀疏' },
+    { ma: 20, n: '中新馬', h: 100, toe: '3 趾（側趾不著地）', tooth: '齒冠變高、咀嚼面變大', food: '開始吃草', env: '草原擴張' },
+    { ma: 5, n: '上新馬', h: 125, toe: '單趾', tooth: '高齒冠、咀嚼面寬', food: '草', env: '草原' },
+    { ma: 0, n: '現代馬', h: 160, toe: '單趾（馬蹄）', tooth: '巨大、寬闊、咀嚼面平整', food: '粗硬的草', env: '開闊的草原' }
+  ];
+  const KS = [0, 0.3, 0.55, 0.85, 1];
+  const st = { s: 0, shown: 0, play: false };
+  $('hoT').addEventListener('input', () => { st.s = +$('hoT').value; st.play = false; });
+  $('hoPlay').addEventListener('click', () => { if (st.s >= 100) { st.s = 0; } st.play = !st.play; });
+  $('hoReset').addEventListener('click', () => { st.s = 0; st.play = false; $('hoT').value = 0; });
+  const at = (s, key) => { const u = clamp(s / 25, 0, 4), i = Math.min(3, Math.floor(u)), f = u - i; return lerp(key(i), key(i + 1), f); };
+  let bKey = '';
+  function drawBoard(k, Hcm, name) {
+    const key = k.toFixed(3); if (key === bKey) return; bKey = key;
+    const { c, g } = board.panel, Wd = c.width, Ht = c.height;
+    const sky = g.createLinearGradient(0, 0, 0, Ht); sky.addColorStop(0, '#dff0f7'); sky.addColorStop(1, '#f6f1e3'); g.fillStyle = sky; g.fillRect(0, 0, Wd, Ht);
+    const GY = Ht - 70; const gc = [lerp(92, 196, k), lerp(120, 178, k), lerp(70, 92, k)].map(Math.round);
+    g.fillStyle = `rgb(${gc})`; g.fillRect(0, GY, Wd, Ht - GY);
+    const trees = Math.round(lerp(11, 0, Math.min(1, k * 1.15)));
+    for (let i = 0; i < trees; i++) { const x = 30 + ((i * 97) % (Wd - 60)), s = 0.8 + ((i * 37) % 10) / 20; g.fillStyle = '#6d4c35'; g.fillRect(x - 5, GY - 70 * s, 10, 70 * s); g.fillStyle = i % 2 ? '#4f7d4a' : '#5f8f52'; g.beginPath(); g.arc(x, GY - 85 * s, 38 * s, 0, TAU); g.fill(); }
+    g.strokeStyle = '#8d9b45'; g.lineWidth = 3; const tufts = Math.round(lerp(0, 60, k));
+    for (let i = 0; i < tufts; i++) { const x = (i * 53) % Wd, y = GY + 6 + (i * 29) % 50; g.beginPath(); g.moveTo(x, y); g.lineTo(x - 5, y - 14); g.moveTo(x, y); g.lineTo(x + 4, y - 16); g.stroke(); }
+    // 人與馬的大小比較（人 160 cm）
+    const px = 1.05, hx = Wd * 0.52, mx = Wd * 0.92;
+    const hh = Hcm * px; g.fillStyle = '#5d4037';
+    g.beginPath(); g.ellipse(hx, GY - hh * 0.62, hh * 0.55, hh * 0.2, 0, 0, TAU); g.fill();
+    g.lineWidth = Math.max(3, hh * 0.07); g.strokeStyle = '#5d4037';
+    [-0.42, -0.3, 0.32, 0.44].forEach(o => { g.beginPath(); g.moveTo(hx + hh * o, GY - hh * 0.55); g.lineTo(hx + hh * o, GY); g.stroke(); });
+    g.beginPath(); g.moveTo(hx + hh * 0.45, GY - hh * 0.7); g.lineTo(hx + hh * 0.66, GY - hh); g.stroke();
+    g.beginPath(); g.ellipse(hx + hh * 0.74, GY - hh * 0.98, hh * 0.14, hh * 0.07, 0.5, 0, TAU); g.fill();
+    g.beginPath(); g.moveTo(hx - hh * 0.55, GY - hh * 0.65); g.lineTo(hx - hh * 0.7, GY - hh * 0.35); g.stroke();
+    g.fillStyle = 'rgba(93,64,55,.5)'; const ph = 160 * px; g.beginPath(); g.arc(mx, GY - ph + 12, 12, 0, TAU); g.fill(); g.fillRect(mx - 9, GY - ph + 26, 18, ph * 0.5); g.fillRect(mx - 8, GY - ph * 0.42, 6, ph * 0.42); g.fillRect(mx + 2, GY - ph * 0.42, 6, ph * 0.42);
+    g.fillStyle = '#5d4037'; g.font = '900 30px sans-serif'; g.textAlign = 'left'; g.fillText(name, 18, 40);
+    g.font = '700 22px sans-serif'; g.fillText(`肩高約 ${Math.round(Hcm)} cm`, 18, 72); g.textAlign = 'center'; g.font = '600 18px sans-serif'; g.fillText('人 160 cm', mx, Ht - 14);
+    board.panel.t.needsUpdate = true;
+  }
+  function update(dt) {
+    aimSpot([-6, 7.5, 6.5], [0, 1.5, 0]);
+    if (st.play) { st.s = Math.min(100, st.s + dt * 9); $('hoT').value = st.s; if (st.s >= 100) st.play = false; }
+    st.shown = lerp(st.shown, st.s, ease(dt * 6)); if (Math.abs(st.shown - st.s) < 0.02) st.shown = st.s;
+    const s = st.shown, k = at(s, i => KS[i]), ma = at(s, i => STG[i].ma), Hcm = at(s, i => STG[i].h);
+    const si = Math.round(s / 25), S = STG[si];
+    // 腿：整體平滑放大、側趾縮小消失、中趾加粗
+    leg.scale.setScalar(lerp(0.62, 1, smooth(0, 1, k)));
+    const v5 = 1 - smooth(0, 0.3, k); D5.g.visible = v5 > 0.01; D5.g.scale.setScalar(Math.max(0.001, v5)); D5.g.rotation.z = 0.14 * (1 - k);
+    const sideK = smooth(0.3, 0.85, k);
+    [D2, D4].forEach((d, i) => {
+      const sg = i ? 1 : -1; d.g.visible = sideK < 0.995;
+      d.g.scale.set(lerp(1, 0.75, sideK), lerp(1, 0.5, sideK), lerp(1, 0.75, sideK)); d.ph.scale.setScalar(Math.max(0.001, 1 - smooth(0.3, 0.75, k)));
+      d.g.rotation.z = sg * 0.1 * (1 - k); d.g.position.x = sg * lerp(0.17, 0.12, k);
+    });
+    const th = lerp(1, 2.2, smooth(0, 1, k)); D3.g.scale.set(th, 1, th); D3.hoof.scale.set(lerp(0.8, 1.25, k), lerp(0.7, 1.3, k), lerp(0.8, 1.25, k));
+    const nToe = k < 0.3 - 1e-3 ? 4 : k < 0.85 - 1e-3 ? 3 : 1;
+    setLabel(lToe, `${nToe === 1 ? '單趾（馬蹄）' : nToe + ' 趾'}`);
+    // 臼齒：變大、齒冠變高、尖突消失、咀嚼面變平整
+    const w = lerp(0.5, 1.05, k), d = lerp(0.45, 0.95, k), h = lerp(0.32, 1.05, k), rl = lerp(0.4, 0.3, k);
+    crown.scale.set(w, h, d); crown.position.y = rl + h / 2;
+    roots.forEach(r => { r.scale.set(w * 0.9, rl, d * 0.9); r.position.set(r.userData.s * w * 0.25, rl / 2, 0); });
+    const cuspK = 1 - smooth(0.15, 0.9, k);
+    cusps.forEach(c => { const u = c.userData; c.visible = cuspK > 0.02; c.scale.set(w * 0.9 * cuspK + 0.001, (0.9 + 0.3 * Math.abs(u.sx)) * cuspK + 0.001, d * 0.9 * cuspK + 0.001); c.position.set(u.sx * w * 0.26, rl + h - 0.02, u.sz * d * 0.26); });
+    occM.opacity = smooth(0.35, 1, k); occP.visible = occM.opacity > 0.01; occP.scale.set(w * 0.9, d * 0.9, 1); occP.position.y = rl + h + 0.003;
+    setLabel(lTooth, k < 0.5 ? '表面崎嶇：有尖突' : '咀嚼面寬闊平整');
+    lTooth.off.set(TX, BY + 0.08 + rl + h + 0.35, 0.4); lTooth.pos.copy(lTooth.off);
+    drawBoard(k, Hcm, S.n);
+    $('hoTV').textContent = ma < 0.05 ? '現代' : `${Math.round(ma * 100)} 萬年前`;
+    $('hoTip').hidden = s < 8;
+    $('hoPlay').textContent = st.play ? '⏸ 暫停' : st.s >= 100 ? '▶ 再播一次' : '▶ 縮時播放';
+    setHTML('hoStat', `代表物種：<b class="o">${S.n}</b>（${S.ma ? '約 ' + S.ma * 100 + ' 萬年前' : '現代'}）<br>環境：<b>${S.env}</b>　食物：<b>${S.food}</b><br>肩高：<b>約 ${Math.round(Hcm)} cm</b><br>前肢腳趾：<b class="r">${S.toe}</b><br>臼齒：<b class="b">${S.tooth}</b><br><small>模型大小已調整比例，方便比較。</small>`);
+    setCap(`<small>馬的演化縮時攝影　${ma < 0.05 ? '現代' : `約 ${Math.round(ma * 100)} 萬年前`}</small>${S.env}：體型<b>變大</b>、腳趾<b>減少</b>、咀嚼面<b>變大</b><span class="huge ${k > 0.95 ? 'grn pop' : 'org'}">${S.n}　${S.toe}</span>`);
+  }
+  return { group, update, st, D2, D3, D5, crown };
+})();
+
+/* =========================================================
+   Tab 3：始祖鳥化石石板
+   ========================================================= */
+const AR = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const ledge = shadowed(rbox(6.6, 0.22, 1.1, clay(0xa1795a), 0.06)); ledge.position.set(0, 0.11, 0.2); group.add(ledge);
+  const sg = new THREE.Group(); sg.position.set(0, 2.45, 0); sg.rotation.x = -0.16; group.add(sg);
+  const slab = shadowed(rbox(6.2, 4.4, 0.42, rockMat(0xd3c19c, { rep: [3, 2.2], bump: 2.4 }), 0.12)); sg.add(slab);
+  [-2, 2].forEach(x => { const p = shadowed(cyl(0.07, 0.07, 3.6, clay(0x8d6e63), 12)); p.position.set(x, 1.8, -0.9); p.rotation.x = 0.28; group.add(p); });
+  const fg = new THREE.Group(); fg.position.set(0.3, -0.05, 0.21); sg.add(fg);
+  // 各部位材質（高亮用）
+  const base = fossilMat(), mHead = fossilMat(), mTeeth = fossilMat({ bump: 1 }), mFeather = rockMat(0xa48a66, { rep: [1, 1], bump: 2 }), mClaw = fossilMat(), mTail = fossilMat();
+  const P = V2(0.45, -0.15), S = V2(-0.45, 0.5);
+  const chain = (pts, r, m, zs) => { for (let i = 0; i < pts.length - 1; i++) bone(fg, pts[i], pts[i + 1], r, m, zs); };
+  // 頸部與頭骨（嘴微張，上下顎有牙齒）
+  const neck = [S, V2(-0.85, 0.85), V2(-0.92, 1.18), V2(-0.75, 1.4)];
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) { const a = neck[i].clone().lerp(neck[i + 1], j / 3), b = neck[i].clone().lerp(neck[i + 1], (j + 0.75) / 3); bone(fg, a, b, 0.05, base, 0.6, 1.15); }
+  const HB = V2(-0.68, 1.48);
+  const brain = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 14), mHead); brain.scale.set(0.2, 0.16, 0.09); brain.position.set(HB.x, HB.y, 0); fg.add(shadowed(brain));
+  const orbit = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.018, 8, 20), mHead); orbit.position.set(HB.x + 0.04, HB.y + 0.03, 0.06); fg.add(shadowed(orbit));
+  const tipU = V2(-0.08, 1.62), tipL = V2(-0.12, 1.4);
+  bone(fg, V2(HB.x + 0.12, HB.y + 0.04), tipU, 0.055, mHead, 0.6, 0.8);
+  bone(fg, V2(HB.x + 0.1, HB.y - 0.08), tipL, 0.04, mHead, 0.6, 0.8);
+  const teeth = [];
+  for (let i = 0; i < 7; i++) { const u = 0.2 + i * 0.11, p = V2(HB.x + 0.12, HB.y + 0.04).lerp(tipU, u); p.y -= 0.045; teeth.push(cone(fg, p, -Math.PI / 2 - 0.1, 0.018, 0.075, mTeeth, 0.9)); }
+  for (let i = 0; i < 6; i++) { const u = 0.25 + i * 0.12, p = V2(HB.x + 0.1, HB.y - 0.08).lerp(tipL, u); p.y += 0.035; teeth.push(cone(fg, p, Math.PI / 2 + 0.1, 0.016, 0.065, mTeeth, 0.9)); }
+  // 軀幹：脊椎、肋骨、叉骨、骨盆
+  for (let i = 0; i < 7; i++) { const a = S.clone().lerp(P, i / 7), b = S.clone().lerp(P, (i + 0.8) / 7); bone(fg, a, b, 0.055, base, 0.6, 1.1); }
+  for (let i = 0; i < 6; i++) { const a = S.clone().lerp(P, 0.15 + i * 0.12); bone(fg, a, V2(a.x - 0.05 + i * 0.03, a.y - 0.5 + i * 0.03), 0.022, base, 0.6, 0); }
+  bone(fg, V2(-0.55, 0.38), V2(-0.4, 0.15), 0.025, base, 0.6, 0); bone(fg, V2(-0.25, 0.4), V2(-0.4, 0.15), 0.025, base, 0.6, 0);
+  const pel = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10), base); pel.scale.set(0.32, 0.14, 0.07); pel.position.set(P.x, P.y, 0); pel.rotation.z = -0.4; fg.add(shadowed(pel));
+  // 翅膀（兩隻）：肱骨、橈尺骨、三根有爪的指頭＋羽毛印痕
+  const claws = [];
+  function wing(E, Wr, fingers, a0, a1, n) {
+    bone(fg, S, E, 0.06, base, 0.6);
+    bone(fg, E, Wr, 0.042, base, 0.6); bone(fg, V2(E.x + 0.03, E.y - 0.06), V2(Wr.x + 0.04, Wr.y - 0.05), 0.03, base, 0.6, 0.9);
+    fingers.forEach(f => { const mid = Wr.clone().lerp(f, 0.55); bone(fg, Wr, mid, 0.026, base, 0.6, 1.1); bone(fg, mid, f, 0.022, base, 0.6, 1.1); claws.push(cone(fg, f, Math.atan2(f.y - mid.y, f.x - mid.x) - 0.5, 0.045, 0.2, mClaw, 0.9)); });
+    for (let i = 0; i < n; i++) {
+      const u = i / (n - 1), b = E.clone().lerp(Wr, u), ang = lerp(a0, a1, u), L = lerp(0.5, 0.82, Math.sin(u * Math.PI * 0.8 + 0.3));
+      const c = new THREE.Mesh(new THREE.CapsuleGeometry(0.075, L, 4, 10), mFeather); c.position.set(b.x + Math.cos(ang) * L / 2, b.y + Math.sin(ang) * L / 2, 0.005); c.rotation.z = ang - Math.PI / 2; c.scale.x = 1.7; fg.add(relief(c, 0.35));
+      const rach = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.014, L, 6), mFeather); rach.position.copy(c.position); rach.position.z = 0.0; rach.rotation.z = c.rotation.z; fg.add(relief(rach, 1));
+    }
+  }
+  wing(V2(-1.25, 0.95), V2(-1.95, 0.62), [V2(-2.38, 0.98), V2(-2.6, 0.72), V2(-2.48, 0.46)], 1.05, 2.15, 12);
+  wing(V2(-0.95, -0.05), V2(-1.55, -0.55), [V2(-1.98, -0.48), V2(-2.05, -0.78), V2(-1.88, -0.98)], 4.55, 3.95, 11);
+  // 後肢
+  function legB(K, A, F) {
+    chain([P, K, A, F], 0.05, base, 0.6);
+    [[0.35, -0.12], [0.32, -0.28], [0.12, -0.32], [-0.22, -0.1]].forEach(([dx, dy], i) => { const t = V2(F.x + dx, F.y + dy); bone(fg, F, t, 0.02, base, 0.6, 1.2); cone(fg, t, Math.atan2(dy, dx) - 0.4, 0.024, 0.09, base, 0.7); });
+  }
+  legB(V2(0.15, -0.78), V2(0.72, -1.25), V2(0.58, -1.62));
+  legB(V2(0.62, -0.72), V2(1.2, -1.12), V2(1.12, -1.55));
+  // 長尾：約 21 節尾椎＋成對的尾羽
+  const tailV = [];
+  const tailPt = t => V2(P.x + 0.15 + t * 1.95, P.y - 0.05 - 0.45 * Math.sin(t * 2.2) + 0.25 * t);
+  for (let i = 0; i < 21; i++) {
+    const t0 = i / 21, t1 = (i + 0.78) / 21, a = tailPt(t0), b = tailPt(t1), r = lerp(0.05, 0.025, t0);
+    tailV.push(bone(fg, a, b, r, mTail, 0.65, 1.15));
+    if (i > 2) { const dir = Math.atan2(b.y - a.y, b.x - a.x), L = lerp(0.3, 0.42, t0); [-1, 1].forEach(sd => { const ang = dir + sd * 0.95, c = new THREE.Mesh(new THREE.CapsuleGeometry(0.05, L, 4, 8), mFeather); c.position.set(a.x + Math.cos(ang) * L / 2, a.y + Math.sin(ang) * L / 2, 0.005); c.rotation.z = ang - Math.PI / 2; c.scale.x = 1.3; fg.add(relief(c, 0.35)); }); }
+  }
+  // 發光互動點
+  const HS = { head: { p: V2(-0.4, 1.52), mats: [mHead, mTeeth], c: 0xffc94a }, wing: { p: V2(-2.25, 0.62), mats: [mFeather, mClaw], c: 0xff8a3d }, tail: { p: V2(1.75, -0.4), mats: [mTail], c: 0xffd54f } };
+  const picks = [];
+  const hsTex = glowTexture('255,190,70');
+  for (const [k, h] of Object.entries(HS)) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: hsTex, transparent: true, depthWrite: false, depthTest: false })); s.position.set(h.p.x, h.p.y, 0.3); s.renderOrder = 10; fg.add(s); h.spr = s;
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 10), new THREE.MeshBasicMaterial({ color: 0xffe08a, toneMapped: false })); dot.position.copy(s.position); fg.add(dot); h.dot = dot;
+    const pk = new THREE.Mesh(new THREE.SphereGeometry(0.34, 10, 8), new THREE.MeshBasicMaterial()); pk.visible = false; pk.position.copy(s.position); pk.userData.part = k; fg.add(pk); picks.push(pk);
+  }
+  const lH = addLabel('archaeo', '頭部', 'small', V3(0, 0, 0)), lW = addLabel('archaeo', '前肢翅膀', 'small', V3(0, 0, 0)), lT = addLabel('archaeo', '尾部', 'small', V3(0, 0, 0));
+  const LBL = { head: lH, wing: lW, tail: lT };
+  const TXT = {
+    head: { t: '爬蟲類特徵：口中有牙齒（現代鳥類無牙齒）！', b: '頭部', cap: '嘴裡有一排尖尖的<b>牙齒</b>，現代鳥類的嘴只有角質喙、沒有牙齒' },
+    wing: { t: '過渡特徵：前肢長有羽毛（鳥類），但末端保留有爪子（爬蟲類）！', b: '前肢翅膀', cap: '翅膀上有清楚的<b>羽毛印痕</b>，翅膀前端還有三根<b>帶爪的指頭</b>' },
+    tail: { t: '爬蟲類特徵：具有由多節尾椎骨組成的長尾巴！', b: '尾部', cap: '尾巴由約 <b>20 多節尾椎骨</b>組成，兩側長著成對的羽毛' }
+  };
+  const st = { focus: null, seen: new Set() };
+  function focus(part) {
+    st.focus = part;
+    if (!part) { goView(TABS.archaeo.cam()); return; }
+    st.seen.add(part);
+    const h = HS[part]; group.updateMatrixWorld(true);
+    const tgt = fg.localToWorld(V3(h.p.x + (part === 'wing' ? 0.3 : part === 'tail' ? -0.35 : 0.1), h.p.y - (part === 'head' ? 0.08 : 0), 0.1));
+    const n = V3(0, 0, 1).applyQuaternion(sg.quaternion), dist = part === 'head' ? 2.5 : 3.9;
+    const pos = tgt.clone().addScaledVector(n, dist).add(V3(0, 0.25, 0));
+    goView({ pos: pos.toArray(), target: tgt.toArray() });
+  }
+  ['head', 'wing', 'tail'].forEach(k => $('ar' + k[0].toUpperCase() + k.slice(1)).addEventListener('click', () => focus(k)));
+  $('arAll').addEventListener('click', () => focus(null));
+  // 點擊 3D 互動點（拖曳轉視角時不算點擊）
+  const ray = new THREE.Raycaster(), ndc = V2(0, 0); let down = null;
+  const pick = e => { const r = renderer.domElement.getBoundingClientRect(); ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ndc, camera); const hit = ray.intersectObjects(picks, false)[0]; return hit ? hit.object.userData.part : null; };
+  renderer.domElement.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
+  renderer.domElement.addEventListener('pointerup', e => { if (tab !== 'archaeo' || !down) return; if (Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 8) return; const p = pick(e); if (p) focus(p); });
+  renderer.domElement.addEventListener('pointermove', e => { if (tab !== 'archaeo' || e.buttons) return; renderer.domElement.style.cursor = pick(e) ? 'pointer' : ''; });
+  const allMats = [mHead, mTeeth, mFeather, mClaw, mTail];
+  function update(dt) {
+    aimSpot([-6.5, 6.5, 6], [0, 2.3, 0.3]);
+    const pulse = 0.5 + 0.5 * Math.sin(wall * 4);
+    allMats.forEach(m => { m.emissive.setHex(0x000000); m.emissiveIntensity = 0; });
+    if (st.focus) { const h = HS[st.focus]; h.mats.forEach((m, i) => { m.emissive.setHex(i && st.focus !== 'head' ? 0xff3d00 : h.c); m.emissiveIntensity = (st.focus === 'head' && i ? 0.9 : 0.45) + 0.35 * pulse; }); }
+    for (const [k, h] of Object.entries(HS)) {
+      const on = st.focus === k, s = (on ? 0.9 : 0.6) + 0.25 * Math.sin(wall * 5 + h.p.x);
+      h.spr.scale.setScalar(s); h.spr.material.opacity = st.focus && !on ? 0.35 : 0.95; h.dot.scale.setScalar(0.8 + 0.3 * pulse);
+      const L = LBL[k]; L.off.set(0, 0, 0); L.pos.copy(fg.localToWorld(V3(h.p.x, h.p.y + 0.32, 0.3))); L.off.copy(L.pos);
+    }
+    const tip = $('arTip');
+    if (st.focus) { tip.hidden = false; tip.textContent = '💡 ' + TXT[st.focus].t; } else tip.hidden = true;
+    ['head', 'wing', 'tail'].forEach(k => $('ar' + k[0].toUpperCase() + k.slice(1)).classList.toggle('yes', st.focus === k));
+    const ck = k => st.seen.has(k) ? '✔' : '？';
+    setHTML('arStat', `<table><tr><th>觀察部位</th><th>特徵</th><th>屬於</th></tr><tr class="${st.seen.has('head') ? 'same' : ''}"><td>${ck('head')} 頭部</td><td>${st.seen.has('head') ? '口中有牙齒' : '？'}</td><td>${st.seen.has('head') ? '爬蟲類' : ''}</td></tr><tr class="${st.seen.has('wing') ? 'same' : ''}"><td>${ck('wing')} 前肢</td><td>${st.seen.has('wing') ? '有羽毛／有爪' : '？'}</td><td>${st.seen.has('wing') ? '鳥類＋爬蟲類' : ''}</td></tr><tr class="${st.seen.has('tail') ? 'same' : ''}"><td>${ck('tail')} 尾部</td><td>${st.seen.has('tail') ? '多節尾椎長尾' : '？'}</td><td>${st.seen.has('tail') ? '爬蟲類' : ''}</td></tr></table><small>已觀察 <b>${st.seen.size}</b> / 3 個部位${st.seen.size === 3 ? '：始祖鳥兼具兩類特徵，是演化的證據！' : ''}</small>`);
+    setCap(st.focus ? `<small>始祖鳥・${TXT[st.focus].b}</small>${TXT[st.focus].cap}<span class="huge ${st.focus === 'wing' ? 'org' : 'red'} pop">${TXT[st.focus].t}</span>`
+      : `<small>始祖鳥化石（約 1.5 億年前，侏羅紀）</small>點石板上<b>閃爍的光點</b>，找出爬蟲類與鳥類的特徵<span class="huge ${st.seen.size === 3 ? 'grn' : 'org'}">${st.seen.size === 3 ? '兼具爬蟲類與鳥類特徵 → 過渡物種' : '爬蟲類？還是鳥類？'}</span>`);
+  }
+  return { group, update, st, focus, HS, sg, fg };
+})();
+onTabChange = t => {
+  ST.st.auto = false; HO.st.play = false;
+  if (t !== 'archaeo') AR.st.focus = null;
+};
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  strata: { group: ST.group, cam: () => ({ pos: [0, 3.5, 11], target: [0, 1.75, 0], fitW: window.innerWidth < window.innerHeight ? 8.6 : 10.4 }), update: ST.update },
+  horse: { group: HO.group, cam: () => ({ pos: [0.1, 4.2, 8.2], target: [0.1, 1.9, 0], fitW: window.innerWidth < window.innerHeight ? 6 : 6.4 }), update: HO.update },
+  archaeo: { group: AR.group, cam: () => ({ pos: [-0.2, 3.1, 9], target: [-0.2, 2.4, 0], fitW: window.innerWidth < window.innerHeight ? 6.6 : 6.9 }), update: AR.update }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  onTabChange(t);
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, ST, HO, AR, camera, controls, renderer, scene, placeLabels };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'strata';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+<script src="goals.js" defer></script>
+</body>
+</html>
