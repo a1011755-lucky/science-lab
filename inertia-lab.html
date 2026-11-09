@@ -547,7 +547,7 @@ const BU = (() => {
   const wheels = [];
   [[-1.7, 1], [1.7, 1], [-1.7, -1], [1.7, -1]].forEach(([x, s]) => { const w = shadowed(cyl(0.42, 0.42, 0.3, clay(0x4e4a46), 24)); w.rotation.x = Math.PI / 2; w.position.set(x, 0.45, s * 1.0); bus.add(w); wheels.push(w); const h = cyl(0.16, 0.16, 0.32, metal(0xd5d8de), 16); h.rotation.x = Math.PI / 2; h.position.copy(w.position); bus.add(h); });
   [-0.6, 0.6].forEach(z => { const l = sphere(0.1, new THREE.MeshBasicMaterial({ color: 0xfff1b5 }), 12); l.position.set(2.72, 1.1, z); bus.add(l); });
-  const RAIL_Y = 2.66;
+  const RAIL_Y = 2.84;
   const rail = shadowed(cyl(0.035, 0.035, 4.6, metal(0xb0b4ba), 12)); rail.rotation.z = Math.PI / 2; rail.position.set(0, RAIL_Y, 0.2); bus.add(rail);
   // 吊環把手：細線＋圓球
   const LEN = 0.3;
@@ -559,11 +559,13 @@ const BU = (() => {
   });
   /* ----- 乘客：極簡原木人偶（美學規範 A），站在後方吊環下、右手舉起握住吊環 -----
      身體以「腳底」為支點，跟著吊環一起傾斜；手臂用兩節 IK 讓手一直握在吊環上 */
-  const PS = 0.72, FLOOR_Y = 0.74, HOLD = straps[0];
+  const PS = 0.86, FLOOR_Y = 0.74, HOLD = straps[0];
   const pax = mannequin(); const P = pax.root;
   P.scale.setScalar(PS); P.position.set(HOLD.position.x, FLOOR_Y, HOLD.position.z - 0.25 * PS); bus.add(shadowed(P));
   // 在磨砂玻璃車殼之後才畫，乘客才不會被霧化看不清楚
   P.traverse(o => { if (o.isMesh) { o.material.transparent = true; o.renderOrder = 11; } });
+  // 背景也是米色系，木頭色調稍微加深，乘客才看得清楚
+  pax.wood.color.setHex(0xc9935a); P.traverse(o => { if (o.isMesh && o.material !== pax.wood) o.material.color.setHex(0xa8743f); });
   const holdBall = HOLD.children[1];
   pax.armL.sh.rotation.set(-0.12, 0, 0.08); pax.armL.el.rotation.z = 0.25;         // 左手自然下垂
   const UP1 = 0.34, UP2 = 0.385, _t = V3(), _sp = V3();
