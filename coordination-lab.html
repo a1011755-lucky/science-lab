@@ -396,22 +396,64 @@ table.scale.set(1.6, 1, 2.4); table.position.z = 13.6;
 const glowSprite = (rgb, s = 0.5) => { const g = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(rgb), transparent: true, depthWrite: false })); g.scale.setScalar(s); return g; };
 
 /** 半透明人體：手臂、小腿可以轉動 */
+/* =========================================================
+   全息毛玻璃投影（美學規範 B）
+   THREE.Shape 畫 2D 輪廓 → ExtrudeGeometry 圓角擠壓 → EdgesGeometry 發光邊線
+   ========================================================= */
+function holoMat(op = 0.4, color = 0xf6d2bd) {
+  return new THREE.MeshPhysicalMaterial({ color, transmission: 0.8, opacity: op, transparent: true, roughness: 0.35, thickness: 0.6, ior: 1.2, depthWrite: false, side: THREE.DoubleSide, emissive: 0x000000 });
+}
+function holoEdgeMat(color = 0xffa477, op = 0.6) { return new THREE.LineBasicMaterial({ color, transparent: true, opacity: op, depthWrite: false }); }
+function holoPiece(shape, depth, bevel, mat, edgeMat) {
+  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel * 0.8, bevelSegments: 6, curveSegments: 40 });
+  g.translate(0, 0, -depth / 2);
+  const m = new THREE.Mesh(g, mat); m.renderOrder = 8;
+  if (edgeMat) { const e = new THREE.LineSegments(new THREE.EdgesGeometry(g, 60), edgeMat); e.renderOrder = 9; m.add(e); }
+  return m;
+}
+/** 頭＋頸＋軀幹的平滑側影（左右對稱） */
+function holoBodyShape(o) {
+  const V = (x, y) => new THREE.Vector2(x, y);
+  const R = [V(0, o.hipY), V(o.hipW * 0.7, o.hipY + 0.03), V(o.hipW, o.hipY + 0.3), V(o.waistW, o.waistY), V(o.chestW, o.chestY), V(o.shW, o.shY - 0.18), V(o.shW * 0.82, o.shY + 0.06), V(o.neckW * 1.35, o.neckY - 0.1), V(o.neckW, o.neckY)];
+  const t0 = -Math.acos(Math.min(0.98, o.neckW / o.headR)), head = [];
+  for (let i = 1; i < 24; i++) { const t = t0 + (Math.PI - 2 * t0) * i / 24; head.push(V(Math.cos(t) * o.headR, o.headY + Math.sin(t) * o.headR * 1.08)); }
+  const L = R.slice(1).reverse().map(p => V(-p.x, p.y));
+  const pts = [...R, ...head, ...L];
+  const s = new THREE.Shape(); s.moveTo(pts[0].x, pts[0].y); s.splineThru(pts.slice(1)); s.closePath(); return s;
+}
+/** 上粗下細、兩端圓弧的肢段輪廓（從 y＝0 往下 len） */
+function holoLimbShape(len, w0, w1) {
+  const s = new THREE.Shape();
+  s.moveTo(w0 / 2, 0); s.lineTo(w1 / 2, -len);
+  s.absarc(0, -len, w1 / 2, 0, -Math.PI, true);
+  s.lineTo(-w0 / 2, 0);
+  s.absarc(0, 0, w0 / 2, Math.PI, 0, true);
+  return s;
+}
+/** 沿著輪廓的細管描邊，讓形狀在淺色背景上也清楚 */
+function holoOutline(shape, color, r = 0.02, z = 0.07, op = 1) {
+  const pts = shape.getSpacedPoints(240).map(p => new THREE.Vector3(p.x, p.y, z));
+  const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 480, r, 6, true), new THREE.MeshBasicMaterial({ color, toneMapped: false, transparent: op < 1, opacity: op, depthWrite: false }));
+  m.renderOrder = 10; return m;
+}
+function holoOval(rx, ry) { const s = new THREE.Shape(); s.absellipse(0, 0, rx, ry, 0, Math.PI * 2, false, 0); return s; }
+
+/** 全息毛玻璃人體：頭頸軀幹一體成形，手臂、大腿、小腿各自以關節為支點 */
 function makeBody(parent, x = 0) {
   const root = new THREE.Group(); root.position.x = x; parent.add(root);
-  const skin = new THREE.MeshPhysicalMaterial({ color: 0xf3c9a6, transparent: true, opacity: 0.28, roughness: 0.4, depthWrite: false, side: THREE.DoubleSide });
-  const head = sphere(0.5, skin, 32); head.position.y = 5.4; root.add(head);
-  const neck = cyl(0.17, 0.2, 0.35, skin); neck.position.y = 4.85; root.add(neck);
-  const torso = cap(0.7, 1.5, skin); torso.position.y = 3.45; torso.scale.z = 0.55; root.add(torso);
+  const skin = holoMat(0.4), edge = holoEdgeMat();
+  { const bs = holoBodyShape({ hipY: 2.05, hipW: 0.62, waistY: 2.8, waistW: 0.58, chestY: 3.75, chestW: 0.72, shY: 4.5, shW: 0.82, neckY: 4.93, neckW: 0.17, headY: 5.42, headR: 0.48 }); const core = holoPiece(bs, 0.45, 0.2, skin, null); core.add(holoOutline(bs, 0xffa477, 0.016, 0.42, 0.8)); root.add(core); }
+  const head = new THREE.Group(); head.position.y = 5.4; root.add(head);
   const limbs = {};
   [-1, 1].forEach(s => {
     const arm = new THREE.Group(); arm.position.set(s * 0.95, 4.25, 0); root.add(arm);
-    const a1 = cap(0.16, 1.5, skin); a1.position.y = -0.9; arm.add(a1);
-    const hand = sphere(0.18, skin, 16); hand.position.y = -1.85; arm.add(hand);
+    arm.add(holoPiece(holoLimbShape(1.62, 0.32, 0.24), 0.16, 0.07, skin, edge));
+    const hand = holoPiece(holoOval(0.15, 0.2), 0.1, 0.06, skin, edge); hand.position.y = -1.85; arm.add(hand);
     const leg = new THREE.Group(); leg.position.set(s * 0.38, 2.45, 0); root.add(leg);
-    const th = cap(0.22, 0.75, skin); th.position.y = -0.55; leg.add(th);
+    leg.add(holoPiece(holoLimbShape(1.05, 0.44, 0.34), 0.24, 0.09, skin, edge));
     const knee = new THREE.Group(); knee.position.y = -1.1; leg.add(knee);
-    const sh = cap(0.18, 0.75, skin); sh.position.y = -0.55; knee.add(sh);
-    const foot = rbox(0.28, 0.14, 0.5, skin, 0.06); foot.position.set(0, -1.15, 0.12); knee.add(foot);
+    knee.add(holoPiece(holoLimbShape(1.05, 0.34, 0.26), 0.2, 0.08, skin, edge));
+    const foot = holoPiece(holoOval(0.13, 0.07), 0.38, 0.05, skin, edge); foot.position.set(0, -1.15, 0.14); knee.add(foot);
     limbs[s > 0 ? 'R' : 'L'] = { arm, leg, knee };
   });
   return { root, head, limbs, skin };
