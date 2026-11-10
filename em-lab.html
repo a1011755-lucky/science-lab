@@ -203,7 +203,7 @@
 import * as THREE from 'three';
 import { enhanceLiquid } from './liquid.js';
 import { mountLook, lacquer, lacquerSolid, poleBadge, bareCopper, enamelCopper, brushedSteel, pvc } from './look.js';
-import { makeGrip, makePalm } from './hand.js';
+import { makeGrip, makePalm, stepGrip, stepPalm } from './hand.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -624,9 +624,9 @@ const curArrow = makeArrow(0xffa726, { r: 0.05, head: 0.17 }); WR.group.add(curA
 const lI = addLabel('wire', '', 'cur', V3(0.55, WH + 0.25, 0));
 const lB = addLabel('wire', '磁力線（同心圓）', 'lam', V3(2.7, 4.75, 0));
 // 實體右手握導線：拇指＝電流，四指＝磁場。光暈之後再畫一次。
-const gripHand = makeGrip('y');
-gripHand.position.set(0.02, HAND_Y, 0.08);
-gripHand.scale.setScalar(1.35);
+const gripHand = makeGrip({ axis: 'y', orbit: 0.2 });
+gripHand.position.set(0, HAND_Y, 0);
+gripHand.scale.setScalar(2.05);
 gripHand.traverse(o => o.layers.enable(HAND));
 WR.group.add(gripHand);
 const lThumb = addLabel('wire', '電流 I', 'hand cur', V3(0.12, 0.16, 0), gripHand.userData.markers.thumb);
@@ -674,7 +674,7 @@ function updateWire(dt) {
   ringArrows.count = ai; ringArrows.visible = pw > 0.02; ringArrows.instanceMatrix.needsUpdate = true;
   for (const m of ringPointMats) m.opacity = pw * (WR.hand ? 0.72 : 1);
   for (const R of RINGS) {
-    const near = WR.hand && Math.abs(R.y - HAND_Y) < 0.9;
+    const near = WR.hand && Math.abs(R.y - HAND_Y) < 1.45;
     R.torus.material.opacity = R.baseOp * pw * (near ? 0.2 : 1);
   }
   // 導線上的電流
@@ -701,6 +701,8 @@ function updateWire(dt) {
   const tgtRot = d > 0 ? 0 : Math.PI;
   WR.rot += (tgtRot - WR.rot) * (1 - Math.exp(-dt * 5));
   gripHand.rotation.x = WR.rot;
+  // 指上箭頭的角速度對齊內圈磁力線粒子（約 1.25 rad/s）；斷電就停
+  stepGrip(gripHand, dt, WR.on ? 1.25 : 0);
   const hv = WR.hand;
   gripHand.visible = hv;
   lThumb.show = lFing.show = hv;
@@ -885,7 +887,8 @@ function updateMotor(dt) {
     const Y = F.clone(), Z = I.clone(), X = Xdir.clone();
     H.g.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, Y, Z));
     H.g.position.copy(P).addScaledVector(F, -0.35).add(V3(-0.15, 0, 1.15));
-    H.g.scale.setScalar(0.82 * (1 + Math.sin(H.pop * Math.PI) * 0.18));
+    H.g.scale.setScalar(1.02 * (1 + Math.sin(H.pop * Math.PI) * 0.12));
+    stepPalm(H.g, dt, on);
   }
   handOn = MO.hand;
   lVolt.show = true; setLabel(lVolt, `${MO.V.toFixed(1)} V`, 'cur small');
