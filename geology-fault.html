@@ -139,6 +139,7 @@
     .hint { display: none; }
   }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -239,8 +240,8 @@ const V2 = (x, y) => new THREE.Vector2(x, y);
 /* =========================================================
    場景：地底剖面
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -766,7 +767,7 @@ $('collapse').addEventListener('click', () => {
    ========================================================= */
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(w, h);
   camera.aspect = w / h;
   camera.fov = w < h ? 70 : 42;

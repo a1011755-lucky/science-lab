@@ -142,6 +142,7 @@
   .half .res.pos { background: #e3f1e6; color: #1f5f32; } .half .res.neg { background: #fde5e2; color: #a5311f; } .half .res.zero { background: #efe9df; color: #7a6a5a; }
   .zbtn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -213,6 +214,10 @@ import * as THREE from 'three';
 import { enhanceLiquid } from './liquid.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { mountPresets } from './presets.js';
+import { createTrail, mountTrailToggle } from './trails.js';
+import { mountSoundToggle } from './sonify.js';
+import { runAdaptive } from './perf.js';
 
 window.__labReady = true;
 const $ = id => document.getElementById(id);
@@ -225,8 +230,8 @@ const TAU = Math.PI * 2;
 /* =========================================================
    溫暖無印風場景：米白背景、木紋桌、柔和光影
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -524,6 +529,7 @@ const PU = (() => {
   const plate = shadowed(rbox(0.08, 0.36, 0.5, clay(0x5d4037), 0.03)); arm.add(plate);
   const led = sphere(0.05, new THREE.MeshBasicMaterial({ color: 0x66bb6a }), 10); led.position.set(0, 0.42, 0.46); arm.add(led);
   const glass = beerGlass(); glass.position.set(X0, TY, 0); group.add(glass);
+  const trail = createTrail(group, { color: 0xf0c27a, radius: 0.05 });
   const lM = addLabel('push', '', 'small', V3(0, 0, 0));
   const VF = VecL('push', C_F, 'vF', true, 0.08), VA = VecL('push', C_A, 'vA', true, 0.075);
   group.add(VF, VA);
@@ -541,6 +547,9 @@ const PU = (() => {
       if (st.x >= XE - 0.33) { st.x = XE - 0.33; st.run = false; st.done = true; }
     }
     glass.position.x = st.x;
+    if (st.run || st.done) trail.stamp(glass.position);
+    trail.update(dt);
+    st.busy = !!st.run || trail.alive();
     // 推臂跟著杯子伸長（推動中貼著杯子）
     const reach = (st.run || st.done ? st.x - 0.38 : X0 - 0.42) - arm.position.x;
     const ext = st.done ? Math.max(0.75, reach - 0.25) : Math.max(0.75, reach);
@@ -559,7 +568,7 @@ const PU = (() => {
     setHTML('puStat', `<div class="formula">a ＝ F ÷ m ＝ ${st.F} ÷ ${st.m} ＝ <b>${a.toFixed(2)}</b> m/s²</div>時間 t ＝ <b>${st.t.toFixed(2)} s</b>　速度 v ＝ <b class="b">${st.v.toFixed(2)} m/s</b><br>位移 s ＝ <b class="o">${s.toFixed(2)} m</b>${st.done ? '（撞到終點軟墊）' : ''}<br><small>忽略摩擦力；動畫以慢動作播放。F 加倍 → a 加倍；m 加倍 → a 減半。</small>`);
     setCap(`<small>機械推臂・F ＝ ${st.F} N、m ＝ ${st.m} kg</small><b class="red">紅色＝外力 F</b>　<b class="grn">綠色＝加速度 a</b>　兩者方向相同<span class="huge"><span class="red">a ＝ F ÷ m</span> ＝ ${a.toFixed(2)} m/s² ➔ 加速度與外力同方向！</span>`);
   }
-  return { group, update, st, reset };
+  return { group, update, st, reset, trail, busy: () => st.busy };
 })();
 
 /* =========================================================
@@ -726,11 +735,24 @@ $('collapse').addEventListener('click', () => { const c = $('panel').classList.t
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   if (!w || !h) return;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(w, h);
   camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const bodyEl = document.querySelector('#panel .body');
+mountPresets(bodyEl, [
+  { label: '力加倍', title: '推力變 8 N，加速度變兩倍', tab: 'push', values: { puF: 8, puM: 2 }, instant: true, clicks: ['#puReset', '#puGo'] },
+  { label: '質量加倍', title: '質量變 8 kg，加速度變一半', tab: 'push', values: { puF: 4, puM: 8 }, instant: true, clicks: ['#puReset', '#puGo'] },
+  { label: '靜止、合力為 0', title: '重力和正向力互相抵消', tab: 'rest' },
+  { label: '有安全氣囊', title: '拉長停下來的時間', tab: 'bag', clicks: ['.bbtn[data-b="1"]', '#baGo'] }
+]);
+const toolRow = document.createElement('div');
+toolRow.className = 'lab-tools';
+bodyEl.querySelector('.lab-presets').after(toolRow);
+mountTrailToggle(toolRow, [PU.trail]);
+const synth = mountSoundToggle(toolRow);
 
 const clock = new THREE.Clock();
 function frame(dt) {
@@ -743,13 +765,15 @@ function frame(dt) {
     controls.target.lerpVectors(camTw.t0, camTw.t1, s);
     if (camTw.k >= 1) camTw = null;
   }
-  controls.update();
-  if (!window.innerWidth || !window.innerHeight) return;
+  const moved = controls.update();
+  if (!window.innerWidth || !window.innerHeight) return true;
   placeLabels();
   window.MobileView?.offset(camera);
+  synth.level(tab === 'push' && PU.st.run ? PU.st.F / 10 : 0);
   renderer.render(scene, camera);
+  return !!(camTw || moved || PU.busy?.());
 }
-function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+const loop = runAdaptive(dt => frame(Math.min(dt, 0.05)), { autostart: false });
 
 window.lab = { frame, setTab, PU, RE, BA, camera, controls, renderer, scene, placeLabels };
 
@@ -760,7 +784,7 @@ for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
 document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
 document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
 goView(TABS[first].cam(), true);
-animate();
+loop.wake();
 </script>
 
 <script>

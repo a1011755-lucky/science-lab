@@ -105,7 +105,7 @@ ol .spin{color:var(--spin)}
 
 <canvas id="c" aria-label="地球、月亮與陽光的 3D 示意圖"></canvas>
 
-<aside id="side" class="card">
+<aside id="side" class="card panel">
   <header>
     <a id="homeBack" href="index.html#g9">‹ 課程總覽</a>
     <h1>月亮的盈虧</h1>
@@ -184,6 +184,8 @@ ol .spin{color:var(--spin)}
   <p id="tip">—</p>
 </section>
 
+<script src="quality.js"></script>
+<script src="mobile.js"></script>
 <script type="importmap">
 { "imports": {
   "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
@@ -209,8 +211,8 @@ const $ = s => document.querySelector(s);
 
 /* ===== 渲染器、場景、相機 ===== */
 function makeRenderer(canvas) {
-  const r = new THREE.WebGLRenderer({ canvas, antialias: true });
-  r.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const r = new THREE.WebGLRenderer({ alpha: true, canvas, antialias: true });
+  r.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   r.toneMapping = THREE.ACESFilmicToneMapping;
   r.toneMappingExposure = 1.15;
   return r;
@@ -360,7 +362,13 @@ function hourWord(h) {
 /* ===== 光：太陽在 +X 方向很遠的地方 ===== */
 const sunLight = new THREE.DirectionalLight(0xfff3e0, 3.6);
 sunLight.position.set(300, 0, 0);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(1024, 1024);
+Object.assign(sunLight.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22, near: 250, far: 370 });
+sunLight.shadow.bias = -0.002;
 scene.add(sunLight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 scene.add(new THREE.AmbientLight(0x6070a0, 0.06)); // 一點點「地球照」，讓暗面隱約可見
 
 function glowTexture(stops) {
@@ -459,6 +467,7 @@ function cloudTexture() {
 const earthGroup = new THREE.Group(); scene.add(earthGroup);
 const earth = new THREE.Mesh(new THREE.SphereGeometry(EARTH_R, 96, 64), new THREE.MeshPhongMaterial({ map: earthTexture(), shininess: 22, specular: new THREE.Color(0x335577) }));
 earth.rotation.y = -2.2;
+earth.receiveShadow = true;
 const clouds = new THREE.Mesh(new THREE.SphereGeometry(EARTH_R * 1.015, 64, 48), new THREE.MeshLambertMaterial({ map: cloudTexture(), transparent: true, depthWrite: false }));
 const atmo = new THREE.Mesh(new THREE.SphereGeometry(EARTH_R * 1.12, 64, 48), new THREE.ShaderMaterial({
   transparent: true, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending,
@@ -515,6 +524,7 @@ const moonMap = canvasTex(moonCanvas);
 const moonBump = new THREE.CanvasTexture(moonCanvas);
 const moon = new THREE.Mesh(new THREE.SphereGeometry(MOON_R, 96, 64),
   new THREE.MeshStandardMaterial({ map: moonMap, bumpMap: moonBump, bumpScale: 2.5, roughness: 1, metalness: 0 }));
+moon.castShadow = true;
 scene.add(moon); // 圖層 0：主畫面與「從地球看」視窗都看得到
 const moonLabel = makeLabel('月亮', '#f3e7c4', 1.4); scene.add(moonLabel);
 
@@ -750,6 +760,7 @@ function frame() {
     controls.target.set(0, 0, 0);
   } else controls.update();
 
+  window.MobileView?.offset(camera);
   renderer.render(scene, camera);
 
   const w = rect.clientWidth, h = rect.clientHeight;

@@ -116,6 +116,7 @@
   }
   @media (prefers-reduced-motion: reduce) { .meter.roll .mp b { animation: none; } }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -203,8 +204,8 @@ const fmt = (x, d) => x.toLocaleString('en-US', { minimumFractionDigits: d, maxi
 /* =========================================================
    場景、燈光、原木桌面、Bloom 發光後製
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -943,7 +944,7 @@ $('collapse').addEventListener('click', () => { const c = $('panel').classList.t
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   if (!w || !h) return;
-  const pr = Math.min(window.devicePixelRatio, 2);
+  const pr = (window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2));
   renderer.setPixelRatio(pr); renderer.setSize(w, h);
   bloomComposer.setPixelRatio(pr); bloomComposer.setSize(w, h);
   camera.aspect = w / h;

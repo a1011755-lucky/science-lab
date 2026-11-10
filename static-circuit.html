@@ -163,6 +163,7 @@
   }
   @media (prefers-reduced-motion: reduce) { .fbox.live b { animation: none; } }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -309,8 +310,8 @@ const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t
 /* =========================================================
    場景、燈光、原木桌面
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -944,7 +945,7 @@ function drawChart(wall) {
   const cv = $('chart');
   const w = cv.clientWidth, h = cv.clientHeight;
   if (!w || !h) return;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dpr = (window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2));
   if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
   const g = cv.getContext('2d');
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1740,7 +1741,7 @@ $('collapse').addEventListener('click', () => { const c = $('panel').classList.t
 $('monCollapse').addEventListener('click', () => { const c = $('monitor').classList.toggle('collapsed'); $('monCollapse').textContent = c ? '展開' : '收合'; layoutDock(); });
 
 function resize() {
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.fov = 40;

@@ -128,6 +128,7 @@
   .tag.sens { background: #3f8ad0; color: #fff; } .tag.mot { background: #e53935; color: #fff; } .tag.cen { background: #e0a800; color: #fff; }
   .tag.part { font-size: .66rem; padding: 2px 7px; background: rgba(62,44,37,.82); color: #fff; }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -226,8 +227,8 @@ const TAU = Math.PI * 2;
 /* =========================================================
    溫暖無印風場景：米白背景、木紋桌、柔和光影
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -784,7 +785,7 @@ const HM = (() => {
         heart.scale.setScalar(1 + (st.gl === 'adr' ? 0.18 : 0.06) * Math.max(0, Math.sin(wall * (st.gl === 'adr' ? 14 : 7))));
       } else heart.scale.setScalar(1 + 0.06 * Math.max(0, Math.sin(wall * 7)));
       hp.forEach(s => { if (s.userData.t >= 1) { s.visible = false; return; } s.userData.t += dt / 2.2; s.visible = true; s.position.copy(s.userData.curve.getPoint(Math.min(1, s.userData.t))); });
-      setHTML('glCard', g ? `<h4>${g.n}</h4><span class="pill">${g.h}</span><div>${g.d}</div><div style="margin-top:4px">激素經由<b>血液</b>運送到全身，作用在特定的器官。</div>` : '點選一個內分泌腺，看它分泌的<b>激素</b>如何經由<b>血液</b>運送。內分泌腺<b>沒有導管</b>，激素直接進入血液。');
+      setHTML('glCard', g ? `<h4>${g.n}</h4><span class="pill">${g.h}</span><div>${g.d}</div><div style="margin-top:4px">激素<b>經血液運送</b>到全身，作用在特定的器官。</div>` : '點選一個內分泌腺，看它分泌的<b>激素</b>如何<b>經血液運送</b>。內分泌腺<b>無導管</b>，激素直接進入血液。');
       setCap(g ? `<small>內分泌系統</small><b>${g.n}</b>分泌<b>${g.h}</b> → 隨<b>血液</b>運送到全身` : '<small>內分泌系統</small>內分泌腺分泌<b>激素</b>，靠<b>血液</b>運送；作用較慢，但比較持久');
       return;
     }
@@ -867,7 +868,7 @@ $('collapse').addEventListener('click', () => { const c = $('panel').classList.t
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   if (!w || !h) return;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(w, h);
   camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
 }

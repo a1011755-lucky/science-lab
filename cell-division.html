@@ -130,6 +130,7 @@
     .hint { display: none; }
   }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -259,8 +260,8 @@ const COLORS = { blue: 0x3b82f6, red: 0xef4444 };
 /* =========================================================
    場景：明亮醫學實驗室
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -281,7 +282,13 @@ scene.background = (() => {
 scene.add(new THREE.HemisphereLight(0xffffff, 0xc9d9ee, 1.4));
 const key = new THREE.DirectionalLight(0xffffff, 1.3);
 key.position.set(5, 9, 10);
+key.castShadow = true;
+key.shadow.mapSize.set(1024, 1024);
+Object.assign(key.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8, near: 0.5, far: 40 });
+key.shadow.bias = -0.0008;
 scene.add(key);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const fill = new THREE.DirectionalLight(0xdbeafe, 0.5);
 fill.position.set(-8, -3, 6);
 scene.add(fill);
@@ -1092,6 +1099,7 @@ function setMode(m) {
   document.querySelectorAll('.section').forEach(s => { s.hidden = s.dataset.mode !== m; });
   lastSig = '';
   MODES[m].enter();
+  scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
   resetView();
 }
 document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
@@ -1104,7 +1112,7 @@ document.querySelectorAll('.collapse').forEach(b => b.addEventListener('click', 
 
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(w, h);
   camera.aspect = w / h;
   camera.fov = w < h ? 70 : 42;
@@ -1138,5 +1146,6 @@ setTimeout(() => {
   }
 }, 6000);
 </script>
+<script src="goals.js" defer></script>
 </body>
 </html>

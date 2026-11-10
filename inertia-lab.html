@@ -131,6 +131,7 @@
   .tag.org { background: #ef6c00; color: #fff; font-weight: 900; } .tag.grn { background: #2e7d32; color: #fff; font-weight: 900; } .tag.blu2 { background: #1e6aa8; color: #fff; font-weight: 900; }
   .tip.cool { background: #e3f0fb; color: #1e5a8c; border-color: #5c9fd6; } .tip.bad { background: #fde5e2; color: #a5311f; border-color: #e53935; }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -200,6 +201,10 @@ import * as THREE from 'three';
 import { enhanceLiquid } from './liquid.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { mountPresets } from './presets.js';
+import { createTrail, mountTrailToggle } from './trails.js';
+import { mountSoundToggle } from './sonify.js';
+import { runAdaptive } from './perf.js';
 
 window.__labReady = true;
 const $ = id => document.getElementById(id);
@@ -212,8 +217,8 @@ const TAU = Math.PI * 2;
 /* =========================================================
    溫暖無印風場景：米白背景、木紋桌、柔和光影
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -423,6 +428,7 @@ const SL = (() => {
   const hpost = shadowed(cyl(0.08, 0.08, B.y, woodM(0x8d6e63), 10)); hpost.position.set(0, B.y / 2, -0.25); group.add(hpost);
   // 金屬球
   const ball = shadowed(sphere(R, metal(0xc9ccd2, { roughness: 0.15 }), 32)); group.add(ball);
+  const trail = createTrail(group, { color: 0xefb07a, radius: 0.05 });
   const stripe = new THREE.Mesh(new THREE.TorusGeometry(R * 1.002, 0.012, 6, 32), basic(0xc62828)); ball.add(stripe);
   // 出發高度的虛線
   const drawer = Drawer(group);
@@ -457,6 +463,9 @@ const SL = (() => {
       st.maxRight = Math.max(st.maxRight, st.s);
     }
     const { p, n } = pos(st.s); ball.position.copy(p).addScaledVector(n, R);
+    trail.stamp(ball.position);
+    trail.update(dt);
+    st.busy = !!st.run || trail.alive();
     ball.rotation.z = -st.s / R; ball.visible = !st.out;
     // 虛線與同高度標記
     drawer.begin(); drawer.dash(V3(TOP.x - 0.3, TOP.y + R, 0.45), V3(st.ang > 0 ? B.x + H0 / Math.tan(st.ang * Math.PI / 180) + 0.8 : 9, TOP.y + R, 0.45), 0x2e7d32, { r: 0.02, on: 0.18, off: 0.12 }); drawer.end();
@@ -473,7 +482,7 @@ const SL = (() => {
         : st.reached ? `<small>右側 ${st.ang}°</small>球滾上右側軌道，停在<b class="grn">和出發點一樣的高度</b>，再來回滾動<span class="huge grn">回到原來的高度！</span>`
           : `<small>釋放金屬球</small>沒有摩擦力……<span class="huge org">速率 ${v.toFixed(2)}</span>`);
   }
-  return { group, update, st, reset };
+  return { group, update, st, reset, trail, busy: () => st.busy };
 })();
 
 /* =========================================================
@@ -770,11 +779,24 @@ $('collapse').addEventListener('click', () => { const c = $('panel').classList.t
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   if (!w || !h) return;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(w, h);
   camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const bodyEl = document.querySelector('#panel .body');
+mountPresets(bodyEl, [
+  { label: '水平：一直滾', title: '沒有摩擦力，水平軌道不會停', tab: 'slope', values: { slAng: 0 }, instant: true, clicks: ['#slGo'] },
+  { label: '滾回同樣高度', title: '右側 30 度，回到出發高度', tab: 'slope', values: { slAng: 30 }, instant: true, clicks: ['#slReset', '#slGo'] },
+  { label: '公車突然起步', title: '靜者恆靜，吊環向後傾', tab: 'bus', clicks: ['#buGo'] },
+  { label: '抽桌布', title: '質量大的瓶子比較留得住', tab: 'cloth', clicks: ['#clPull'] }
+]);
+const toolRow = document.createElement('div');
+toolRow.className = 'lab-tools';
+bodyEl.querySelector('.lab-presets').after(toolRow);
+mountTrailToggle(toolRow, [SL.trail]);
+const synth = mountSoundToggle(toolRow);
 
 const clock = new THREE.Clock();
 function frame(dt) {
@@ -787,13 +809,17 @@ function frame(dt) {
     controls.target.lerpVectors(camTw.t0, camTw.t1, s);
     if (camTw.k >= 1) camTw = null;
   }
-  controls.update();
-  if (!window.innerWidth || !window.innerHeight) return;
+  const moved = controls.update();
+  if (!window.innerWidth || !window.innerHeight) return true;
   placeLabels();
   window.MobileView?.offset(camera);
+  synth.level(tab === 'slope' && SL.st.run ? Math.min(1, 0.35 + (SL.st.ang === 0 ? 0.5 : 0.2)) : 0);
   renderer.render(scene, camera);
+  const busBusy = BU.st.mode !== 'stop' || Math.abs(BU.st.th) > 0.04 || Math.abs(BU.st.w) > 0.04;
+  const clothBusy = CL.st.t >= 0 && CL.st.t < 1.4;
+  return !!(camTw || moved || (tab === 'slope' && SL.busy?.()) || (tab === 'bus' && busBusy) || (tab === 'cloth' && clothBusy));
 }
-function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+const loop = runAdaptive(dt => frame(Math.min(dt, 0.05)), { autostart: false });
 
 window.lab = { frame, setTab, SL, BU, CL, camera, controls, renderer, scene, placeLabels };
 
@@ -804,7 +830,7 @@ for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
 document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
 document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
 goView(TABS[first].cam(), true);
-animate();
+loop.wake();
 </script>
 
 <script>

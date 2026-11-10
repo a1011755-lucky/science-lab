@@ -112,6 +112,7 @@
     .tag { font-size: .66rem; }
   }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -126,7 +127,7 @@
 
 <div id="scene"></div>
 
-<aside class="panel" id="panel">
+<aside class="panel glass" id="panel">
   <button class="collapse" id="collapse">收合</button>
   <a class="back" href="index.html#g9">‹ 課程總覽</a>
   <div class="title">鋒面剖面模擬器</div>
@@ -200,8 +201,8 @@ const FRONT_X = { cold: t => -5 + 9 * t, warm: t => 5 - 9 * t };
 /* =========================================================
    渲染器 / 場景 / 相機（無 Bloom）
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -627,7 +628,7 @@ $('collapse').addEventListener('click', () => {
    ========================================================= */
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(w, h);
   camera.aspect = w / h;
   camera.fov = w < h ? 70 : 42;

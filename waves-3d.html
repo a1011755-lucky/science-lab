@@ -120,6 +120,7 @@
     .hint { display: none; }
   }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -193,8 +194,8 @@ const k = 2 * Math.PI / CFG.wavelength;
    渲染器、場景、相機
    ========================================================= */
 const container = document.getElementById('scene');
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setClearColor(CFG.colors.bg);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 container.appendChild(renderer.domElement);
@@ -231,7 +232,13 @@ composer.addPass(new OutputPass());
 scene.add(new THREE.AmbientLight(0x8899ff, 0.35));
 const keyLight = new THREE.DirectionalLight(0xffffff, 1.4);
 keyLight.position.set(6, 12, 8);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(1024, 1024);
+Object.assign(keyLight.shadow.camera, { left: -18, right: 18, top: 12, bottom: -12, near: 0.5, far: 50 });
+keyLight.shadow.bias = -0.0006;
 scene.add(keyLight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const rimLight = new THREE.DirectionalLight(0x00e5ff, 0.6);
 rimLight.position.set(-8, -4, -6);
 scene.add(rimLight);
@@ -240,6 +247,11 @@ scene.add(rimLight);
 const grid = new THREE.GridHelper(40, 40, CFG.colors.gridCenter, CFG.colors.grid);
 grid.position.y = -3.4;
 scene.add(grid);
+const shadowFloor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ color: 0x050510, roughness: 1 }));
+shadowFloor.rotation.x = -Math.PI / 2;
+shadowFloor.position.y = -3.42;
+shadowFloor.receiveShadow = true;
+scene.add(shadowFloor);
 const axes = new THREE.AxesHelper(1.4);
 axes.position.set(-CFG.length / 2 - 1.2, -3.39, 0);
 axes.material.transparent = true;
@@ -396,9 +408,9 @@ function placeTag(el, x, y) {
    ========================================================= */
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(w, h);
-  composer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  composer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   composer.setSize(w, h);
   bloom.setSize(w, h);
   camera.aspect = w / h;
@@ -426,6 +438,8 @@ window.waves = { transverse, longitudinal, redIndex, get phase() { return phase;
 
 paintSlider($('freq'));
 paintSlider($('amp'));
+scene.traverse(o => { if (o.isMesh && o !== shadowFloor) o.castShadow = true; });
+shadowFloor.receiveShadow = true;
 resize();
 resetView();
 updateInfo();

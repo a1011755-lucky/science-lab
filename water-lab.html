@@ -104,6 +104,7 @@
   .btn.hold { color: #fff; background: #c0634f; font-size: .92rem; padding: 14px 6px; touch-action: none; user-select: none; -webkit-user-select: none; box-shadow: 0 6px 16px rgba(192,99,79,.3); }
   .btn.hold.on { background: #9c4433; transform: scale(.97); box-shadow: inset 0 3px 10px rgba(0,0,0,.25); }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -184,8 +185,8 @@ const TAU = Math.PI * 2;
 /* =========================================================
    溫暖無印風場景：米白背景、木紋桌、柔和光影
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -902,7 +903,7 @@ $('collapse').addEventListener('click', () => { const c = $('panel').classList.t
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   if (!w || !h) return;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(w, h);
   camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
 }

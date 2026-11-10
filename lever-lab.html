@@ -145,6 +145,7 @@
   .stat b.g { color: #2e7d32; } .stat b.r { color: #e53935; }
   .zbtn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -220,6 +221,10 @@ import * as THREE from 'three';
 import { enhanceLiquid } from './liquid.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { mountPresets } from './presets.js';
+import { createTrail, mountTrailToggle } from './trails.js';
+import { mountSoundToggle } from './sonify.js';
+import { runAdaptive } from './perf.js';
 
 window.__labReady = true;
 const $ = id => document.getElementById(id);
@@ -232,8 +237,8 @@ const TAU = Math.PI * 2;
 /* =========================================================
    溫暖無印風場景：米白背景、木紋桌、柔和光影
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -501,7 +506,9 @@ const DR = (() => {
   const ARC = ArcArrow(C_CW, 1.5, 0.09, Math.PI * 1.25); ARC.rotation.x = -Math.PI / 2; ARC.position.y = H + 0.6;
   group.add(VF, LOA, ARM, RM, ARC);
   const lF = addLabel('door', '', 'small vF', V3(0, 0, 0)), lD = addLabel('door', '', 'small vS', V3(0, 0, 0)), lL = addLabel('door', '', 'small org', V3(0, 0, 0)), lP = addLabel('door', '支點（轉軸）', 'small', V3(0, H + 1.4, 0));
-  const st = { r: 1.2, phi: 90, th: 0, w: 0, push: true };
+  const st = { r: 1.2, phi: 90, th: 0, w: 0, push: true, busy: false };
+  const trail = createTrail(group, { color: 0xe8a060, radius: 0.05 });
+  const trailTip = new THREE.Vector3();
   $('drR').addEventListener('input', () => { st.r = +$('drR').value; });
   $('drA').addEventListener('input', () => { st.phi = +$('drA').value; });
   $('drPush').addEventListener('click', () => { st.push = !st.push; });
@@ -514,6 +521,8 @@ const DR = (() => {
     st.w += ((L - c * st.w - (Math.abs(st.w) > 0.01 ? 0.4 * Math.sign(st.w) : 0)) / I) * dt;
     if (L < 1e-6 && Math.abs(st.w) < 0.02) st.w = 0;
     st.th += st.w * dt; door.rotation.y = st.th;
+    handle.getWorldPosition(trailTip); group.worldToLocal(trailTip); trail.stamp(trailTip); trail.update(dt);
+    st.busy = Math.abs(st.w) > 0.03 || trail.alive();
     const u = V3(Math.cos(st.th), 0, -Math.sin(st.th)), n = V3(-Math.sin(st.th), 0, -Math.cos(st.th));
     const f = u.clone().multiplyScalar(-Math.cos(phi)).addScaledVector(n, Math.sin(phi)).normalize();
     const P = O.clone().addScaledVector(u, st.r * K);
@@ -535,13 +544,13 @@ const DR = (() => {
     if (st.push && best) { tip.hidden = false; tip.className = 'tip ok'; tip.textContent = '🏆 力臂最長，產生最大力矩！這就是門把裝在邊緣的原因。'; }
     else if (st.push && zero) { tip.hidden = false; tip.className = 'tip bad'; tip.textContent = '🚫 施力通過支點或與門板平行，力臂為 0 ➔ 力矩為 0，門絕對推不動！'; }
     else tip.hidden = true;
-    setHTML('drStat', `<div class="formula">L ＝ F × d ＝ ${F} × ${d.toFixed(2)} ＝ <b>${L.toFixed(1)}</b> N·m</div>施力位置：離轉軸 <b>${st.r.toFixed(1)} m</b>　施力角度：<b>${st.phi}°</b><br>力臂 d ＝ ${st.r.toFixed(1)} × sin ${st.phi}° ＝ <b class="b">${d.toFixed(2)} m</b><br>門的轉速：<b class="o">${(st.w * 60 / TAU).toFixed(1)} 轉／分</b><br><small>力臂是「支點到施力延長線的垂直距離」，不是支點到施力點的距離。</small>`);
+    setHTML('drStat', `<div class="formula">力矩 L ＝ 力 × 力臂 ＝ ${F} × ${d.toFixed(2)} ＝ <b>${L.toFixed(1)}</b> N·m</div>施力位置：離轉軸 <b>${st.r.toFixed(1)} m</b>　施力方向和門板的夾角：<b>${st.phi}°</b><br>力臂（支點到施力延長線的垂直距離）＝ <b class="b">${d.toFixed(2)} m</b><br>門的轉速：<b class="o">${(st.w * 60 / TAU).toFixed(1)} 轉／分</b><br><small>力臂不是支點到施力點的直線距離。施力越接近垂直於門板，力臂越接近施力點到轉軸的距離。</small>`);
     setCap(!st.push ? `<small>旋轉門</small>沒有施力 ➔ 沒有力矩<span class="huge">門靠摩擦力慢慢停下</span>`
       : zero ? `<small>力臂 ＝ 0</small>${st.r < 0.05 ? '推在轉軸上' : '順著門板方向推'}<span class="huge red">力矩 ＝ 0，門推不動！</span>`
         : best ? `<small>推在門的邊緣、垂直推</small><b class="blu">藍色虛線＝力臂</b> 最長<span class="huge org">最大力矩 ${L.toFixed(1)} N·m！</span>`
           : `<small>旋轉門・L ＝ F × d</small><b class="blu">藍色虛線＝力臂</b>：支點到<b class="red">施力延長線</b>的垂直距離<span class="huge org">L ＝ ${F} × ${d.toFixed(2)} ＝ ${L.toFixed(1)} N·m</span>`);
   }
-  return { group, update, st };
+  return { group, update, st, trail, busy: () => st.busy };
 })();
 
 /* =========================================================
@@ -567,7 +576,9 @@ const SS = (() => {
   const labL = addLabel('seesaw', '', 'small vF', V3(0, 0, 0)), labR = addLabel('seesaw', '', 'small vF', V3(0, 0, 0));
   const dL = addLabel('seesaw', '', 'small vS', V3(0, 0, 0)), dR = addLabel('seesaw', '', 'small vS', V3(0, 0, 0));
   const tL = addLabel('seesaw', '', 'small vA', V3(-1.6, PY + 1.55, 0.5)), tR = addLabel('seesaw', '', 'small org', V3(1.6, PY + 1.55, 0.5));
-  const st = { x: 3.5, th: 0, w: 0 };
+  const st = { x: 3.5, th: 0, w: 0, busy: false };
+  const trail = createTrail(group, { color: 0xc9a36a, radius: 0.06 });
+  const trailTip = new THREE.Vector3();
   $('ssX').addEventListener('input', () => { st.x = +$('ssX').value; });
   const tmp = V3();
   function update(dt) {
@@ -577,6 +588,10 @@ const SS = (() => {
     const target = -TMAX * Math.tanh(diff / 2.2);
     st.w += (26 * (target - st.th) - 6.5 * st.w) * dt; st.th += st.w * dt;
     plank.rotation.z = st.th; plank.updateMatrixWorld(true);
+    mL.getWorldPosition(trailTip); group.worldToLocal(trailTip); trail.stamp(trailTip);
+    mR.getWorldPosition(trailTip); group.worldToLocal(trailTip); trail.stamp(trailTip);
+    trail.update(dt);
+    st.busy = Math.abs(st.w) > 0.02 || trail.alive();
     const O = V3(0, PY, 0.45);
     const draw = (mesh, m, W, g, a, rm, lab, dl, side) => {
       const c = mesh.localToWorld(V3(0, 0.28, 0)); c.z = 0.45;
@@ -607,7 +622,7 @@ const SS = (() => {
     setCap(bal ? `<small>3 kg 放在 2 m</small>順時針力矩 ＝ 逆時針力矩<span class="huge grn">達成轉動平衡！合力矩 ＝ 0</span>`
       : `<small>蹺蹺板・轉動平衡</small><b class="grn">逆時針 ${tauL.toFixed(1)}</b> ${diff > 0 ? '＜' : '＞'} <b class="org">順時針 ${tauR.toFixed(1)}</b><span class="huge ${diff > 0 ? 'org' : 'grn'}">${diff > 0 ? '右邊下沉（順時針轉）' : '左邊下沉（逆時針轉）'}</span>`);
   }
-  return { group, update, st };
+  return { group, update, st, trail, busy: () => st.busy };
 })();
 
 /* =========================================================
@@ -776,11 +791,25 @@ $('collapse').addEventListener('click', () => { const c = $('panel').classList.t
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   if (!w || !h) return;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(w, h);
   camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const bodyEl = document.querySelector('#panel .body');
+mountPresets(bodyEl, [
+  { label: '垂直推、力矩最大', title: '推在門邊，和門板垂直', tab: 'door', values: { drR: 1.2, drA: 90 } },
+  { label: '平行推、力矩為 0', title: '順著門板推，力臂是 0', tab: 'door', values: { drR: 1.2, drA: 0 } },
+  { label: '推在轉軸上', title: '施力通過支點', tab: 'door', values: { drR: 0, drA: 90 } },
+  { label: '蹺蹺板平衡', title: '3 kg 放在 2 m', tab: 'seesaw', values: { ssX: 2 } },
+  { label: '費力省時示範', title: '麵包夾是第三類槓桿', tab: 'lever', clicks: ['.lvbtn[data-m="tg"]'] }
+]);
+const toolRow = document.createElement('div');
+toolRow.className = 'lab-tools';
+bodyEl.querySelector('.lab-presets').after(toolRow);
+mountTrailToggle(toolRow, [DR.trail, SS.trail].filter(Boolean));
+const synth = mountSoundToggle(toolRow);
 
 const clock = new THREE.Clock();
 function frame(dt) {
@@ -793,13 +822,18 @@ function frame(dt) {
     controls.target.lerpVectors(camTw.t0, camTw.t1, s);
     if (camTw.k >= 1) camTw = null;
   }
-  controls.update();
-  if (!window.innerWidth || !window.innerHeight) return;
+  const moved = controls.update();
+  if (!window.innerWidth || !window.innerHeight) return true;
   placeLabels();
   window.MobileView?.offset(camera);
+  const doorAmt = tab === 'door' && DR.st.push ? (DR.st.r / 1.2) * (DR.st.phi / 90) : 0;
+  const seeAmt = tab === 'seesaw' ? Math.min(1, Math.abs(SS.st.th) / 0.4) : 0;
+  synth.level(doorAmt || seeAmt);
   renderer.render(scene, camera);
+  const owner = tab === 'door' ? DR : tab === 'seesaw' ? SS : null;
+  return !!(camTw || moved || owner?.busy?.());
 }
-function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+const loop = runAdaptive(dt => frame(Math.min(dt, 0.05)), { autostart: false });
 
 window.lab = { frame, setTab, DR, SS, LV, camera, controls, renderer, scene, placeLabels };
 
@@ -810,7 +844,7 @@ for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
 document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
 document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
 goView(TABS[first].cam(), true);
-animate();
+loop.wake();
 </script>
 
 <script>

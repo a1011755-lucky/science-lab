@@ -61,14 +61,15 @@
     .btn { width: 100%; }
   }
 </style>
+<script src="mobile.js"></script>
 </head>
-<body>
+<body data-mv-start="closed">
 <div class="wrap">
   <a class="back" href="index.html#g8">← 回課程總覽</a>
   <h1>連續橫波與質點運動</h1>
   <p class="lead">波形向右前進，但仔細看<b>紅色質點</b>：它只在原地上下振動，並沒有跟著波往右走。</p>
 
-  <section class="panel" aria-label="控制面板">
+  <section class="panel glass" aria-label="控制面板">
     <div class="ctrl">
       <label for="amp">振幅 <output id="ampVal">50</output></label>
       <input type="range" id="amp" min="0" max="100" step="1" value="50">

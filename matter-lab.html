@@ -92,6 +92,7 @@
     .tag.formula { font-size: 1.4rem; }
   }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -184,8 +185,8 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 /* =========================================================
    共用：場景、燈光、原木桌面、材質
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -871,7 +872,7 @@ $('viewBtn').addEventListener('click', () => { if (tab === 'table') setFamily(nu
 $('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
 function resize() {
   if (!window.innerWidth || !window.innerHeight) return;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.fov = 40;

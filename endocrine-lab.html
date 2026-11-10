@@ -136,6 +136,7 @@
   .tag.grn { background: #2e7d32; color: #fff; } .tag.org { background: #ef6c00; color: #fff; }
   #suMeter i { background: linear-gradient(90deg, #1e88e5 0%, #1e88e5 18%, #43a047 19%, #43a047 44%, #e53935 45%, #e53935 100%); }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -163,7 +164,7 @@
 
     <!-- Tab 1：內分泌與血液運輸 -->
     <section class="sec" data-tab="endo">
-      <div class="concept" style="--cc:#9b7bc4"><div class="ct">內分泌系統</div><div class="cd">內分泌腺<b>沒有導管</b>，分泌的<b>激素</b>直接進入微血管，<br>由<b>血液</b>運送到全身的靶器官</div></div>
+      <div class="concept" style="--cc:#9b7bc4"><div class="ct">內分泌系統</div><div class="cd">內分泌腺<b>無導管</b>，分泌的<b>激素</b>直接進入微血管，<br><b>經血液運送</b>到全身的靶器官</div></div>
       <label class="lab">點選內分泌腺</label>
       <div class="objs" id="enBtns"></div>
       <div class="orgcard" id="enCard"></div>
@@ -177,7 +178,7 @@
 
     <!-- Tab 2：血糖恆定 -->
     <section class="sec" data-tab="sugar" hidden>
-      <div class="concept" style="--cc:#d9453f"><div class="ct">血糖的恆定</div><div class="cd"><b class="b">胰島素</b>：降低血糖（葡萄糖 → 肝醣）<br><b class="r">升糖素</b>：提高血糖（肝醣 → 葡萄糖）</div></div>
+      <div class="concept" style="--cc:#d9453f"><div class="ct">血糖的恆定</div><div class="cd"><b class="b">胰島素</b>：降低血糖（葡萄糖 → 肝糖）<br><b class="r">升糖素</b>：提高血糖（肝糖 → 葡萄糖）</div></div>
       <div class="row2">
         <button class="btn primary" id="suHigh">🍱 飯後高血糖</button>
         <button class="btn primary" id="suLow">🏃 飢餓低血糖</button>
@@ -209,8 +210,8 @@ const TAU = Math.PI * 2;
 /* =========================================================
    溫暖無印風場景：米白背景、木紋桌、柔和光影
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -424,7 +425,18 @@ const rim = new THREE.LineSegments(new THREE.EdgesGeometry(torsoGeo, 50), new TH
 function extruded(shape, depth, bevel, mat, opts = {}) { const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel * 0.9, bevelSegments: 5, curveSegments: 32, ...opts }); g.translate(0, 0, -depth / 2); g.computeVertexNormals(); const m = new THREE.Mesh(g, mat); m.castShadow = true; return m; }
 function polarShape(fx, fy, n = 72) { const s = new THREE.Shape(); for (let i = 0; i <= n; i++) { const t = i / n * TAU; i ? s.lineTo(fx(t), fy(t)) : s.moveTo(fx(t), fy(t)); } return s; }
 // 大腦（定位用，淡淡的）
-const brain = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 20), organM(0xe9dcef, { transparent: true, opacity: 0.55, depthWrite: false })); brain.scale.set(0.43, 0.33, 0.4); brain.position.set(0, 5.78, 0); BODY.add(brain);
+const brainGeo = new THREE.SphereGeometry(1, 40, 28);
+{
+  const p = brainGeo.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    const lobe = 1 + 0.16 * Math.cos(Math.atan2(z, x) * 2);
+    const fold = 1 + 0.035 * Math.sin(x * 7 + y * 5) * Math.cos(z * 6);
+    p.setXYZ(i, x * lobe * fold, y * (0.9 + 0.05 * Math.sin(x * 3)), z * (0.82 + 0.1 * Math.abs(Math.cos(Math.atan2(z, x)))));
+  }
+  brainGeo.computeVertexNormals();
+}
+const brain = new THREE.Mesh(brainGeo, organM(0xe9dcef, { transparent: true, opacity: 0.55, depthWrite: false, roughness: 0.45 })); brain.scale.set(0.43, 0.33, 0.4); brain.position.set(0, 5.78, 0); BODY.add(brain);
 // 腦垂腺：大腦底部的小豆子＋細柄
 const pitM = organM(0xc3a6e0);
 const PIT = new THREE.Group(); PIT.position.set(0, 5.36, 0.06); BODY.add(PIT);
@@ -557,7 +569,7 @@ const EN = (() => {
     Object.entries(LBL).forEach(([k, l]) => { l.el.className = 'tag small' + (k === st.gl ? ' org' : ''); });
     $('enTip').hidden = !g;
     setHTML('enCard', g ? `<h4>${g.n}</h4><span class="pill">${g.h}</span><div>${g.d}</div><div style="margin-top:4px">激素先進入腺體周圍的<b>微血管</b> → 經靜脈回到<b>心臟</b> → 由動脈送到<b>全身</b>，只對特定的靶器官起作用。</div>` : '點選一個內分泌腺，看它分泌的<b>激素</b>怎麼被<b>血液</b>運送到全身。');
-    setCap(g ? `<small>內分泌系統・${g.n}</small>${g.h}沒有導管可走 → 進入<b>微血管</b> → 隨<b>血液</b>流到全身<span class="huge org">血管裡的激素粒子：${parts.count()}</span>`
+    setCap(g ? `<small>內分泌系統・${g.n}</small>${g.h}無導管 → 進入<b>微血管</b> → <b>經血液運送</b>到全身<span class="huge org">血管裡的激素粒子：${parts.count()}</span>`
       : `<small>內分泌系統</small>半透明人體裡：<b class="red">粉紅＝動脈</b>、<b class="blu">淡藍＝靜脈</b><span class="huge org">點選左側的內分泌腺</span>`);
   }
   return { group, update, st, GL, parts };
@@ -594,18 +606,18 @@ const SU = (() => {
     const m = st.mode; let conv = '';
     if (m === 'high') {
       if (st.t < 5) { st.acc += dt * 40; while (st.acc >= 1) { st.acc -= 1; parts.emit(PAN_TO_LIV(), 0x3d7fe0, 1.0, 0.12); } }
-      if (st.t > 1.4) { conv = '葡萄糖 → 肝醣'; st.acc2 += dt * 22; while (st.acc2 >= 1) { st.acc2 -= 1; parts.emit(BLOOD_TO_LIV(), 0xffc400, 1.4, 0.05); } st.bg = lerp(st.bg, 92, ease(dt * 0.45)); }
+      if (st.t > 1.4) { conv = '葡萄糖 → 肝糖'; st.acc2 += dt * 22; while (st.acc2 >= 1) { st.acc2 -= 1; parts.emit(BLOOD_TO_LIV(), 0xffc400, 1.4, 0.05); } st.bg = lerp(st.bg, 92, ease(dt * 0.45)); }
       if (st.bg < 100 && st.t > 4) { st.mode = 'done-high'; }
       panM.emissive.setHex(0x3d7fe0); panM.emissiveIntensity = st.t < 5 ? 0.3 + 0.3 * Math.sin(wall * 8) : 0;
     } else if (m === 'low') {
       if (st.t < 5) { st.acc += dt * 40; while (st.acc >= 1) { st.acc -= 1; parts.emit(PAN_TO_LIV(), 0xe53935, 1.0, 0.12); } }
-      if (st.t > 1.4) { conv = '肝醣 → 葡萄糖'; st.acc2 += dt * 26; while (st.acc2 >= 1) { st.acc2 -= 1; parts.emit(LIV_OUT(), 0xffc400, 1.3, 0.1); } st.bg = lerp(st.bg, 90, ease(dt * 0.45)); }
+      if (st.t > 1.4) { conv = '肝糖 → 葡萄糖'; st.acc2 += dt * 26; while (st.acc2 >= 1) { st.acc2 -= 1; parts.emit(LIV_OUT(), 0xffc400, 1.3, 0.1); } st.bg = lerp(st.bg, 90, ease(dt * 0.45)); }
       if (st.bg > 84 && st.t > 4) { st.mode = 'done-low'; }
       panM.emissive.setHex(0xe53935); panM.emissiveIntensity = st.t < 5 ? 0.3 + 0.3 * Math.sin(wall * 8) : 0;
-    } else { panM.emissiveIntensity = 0; if (st.mode === 'done-high' && st.t < 2) conv = '葡萄糖 → 肝醣'; if (st.mode === 'done-low' && st.t < 2) conv = '肝醣 → 葡萄糖'; }
+    } else { panM.emissiveIntensity = 0; if (st.mode === 'done-high' && st.t < 2) conv = '葡萄糖 → 肝糖'; if (st.mode === 'done-low' && st.t < 2) conv = '肝糖 → 葡萄糖'; }
     if (m.startsWith('done')) { st.bg = lerp(st.bg, 90, ease(dt * 0.5)); }
     parts.update(dt);
-    // 肝臟：存肝醣時微微膨脹、釋放時發光
+    // 肝臟：存肝糖時微微膨脹、釋放時發光
     const sw = m === 'high' && st.t > 1.4 ? 1.06 : 1; st.swell = lerp(st.swell, sw, ease(dt * 2)); liver.scale.setScalar(st.swell * LIV_S);
     liverM.emissive.setHex(0xffc400); liverM.emissiveIntensity = conv ? 0.12 + 0.1 * Math.sin(wall * 5) : 0;
     setLabel(lConv, conv ? `🔄 ${conv}` : ''); lConv.show = !!conv; lConv.pos.set(-0.45, 4.1 + 0.06 * Math.sin(wall * 3), 0.4); lConv.off.copy(lConv.pos);
@@ -616,12 +628,12 @@ const SU = (() => {
     $('suVal').textContent = Math.round(st.bg); $('suMeter').style.setProperty('--v', clamp((st.bg - 40) / 160, 0, 1) * 100 + '%');
     const status = st.bg > 110 ? '<b class="r">偏高</b>' : st.bg < 70 ? '<b class="b">偏低</b>' : '<b class="g">正常</b>';
     const tip = $('suTip');
-    if (m === 'high' || m === 'done-high') { tip.hidden = false; tip.className = 'tip cool'; tip.textContent = '💙 胰臟分泌胰島素 → 隨血液到肝臟 → 肝臟把葡萄糖合成肝醣儲存，血糖下降！'; }
-    else if (m === 'low' || m === 'done-low') { tip.hidden = false; tip.className = 'tip bad'; tip.textContent = '❤️ 胰臟分泌升糖素 → 隨血液到肝臟 → 肝臟把肝醣分解成葡萄糖釋放到血液，血糖上升！'; }
+    if (m === 'high' || m === 'done-high') { tip.hidden = false; tip.className = 'tip cool'; tip.textContent = '💙 胰臟分泌胰島素 → 隨血液到肝臟 → 肝臟把葡萄糖合成肝糖儲存，血糖下降！'; }
+    else if (m === 'low' || m === 'done-low') { tip.hidden = false; tip.className = 'tip bad'; tip.textContent = '❤️ 胰臟分泌升糖素 → 隨血液到肝臟 → 肝臟把肝糖分解成葡萄糖釋放到血液，血糖上升！'; }
     else tip.hidden = true;
     setHTML('suStat', `血糖：<b class="o">${Math.round(st.bg)} mg/dL</b>（${status}，正常約 70～110）<br>${m === 'high' ? '飯後：<b class="b">胰島素</b>（藍色粒子）由胰臟經血管流向肝臟' : m === 'low' ? '飢餓：<b class="r">升糖素</b>（紅色粒子）由胰臟經血管流向肝臟' : '按上方按鈕，觀察胰臟與肝臟如何合作維持血糖恆定'}<br><small>黃色粒子＝葡萄糖。胰臟分泌的激素先由<b>肝門靜脈</b>送到肝臟。</small>`);
-    setCap(m === 'high' ? `<small>飯後高血糖</small>胰臟分泌<b class="blu">胰島素</b> → 肝臟：<b>葡萄糖 → 肝醣</b><span class="huge ${st.bg < 111 ? 'grn pop' : 'red'}">血糖 ${Math.round(st.bg)} mg/dL ${st.bg < 111 ? '✔ 回到正常' : '↓ 下降中'}</span>`
-      : m === 'low' ? `<small>飢餓低血糖</small>胰臟分泌<b class="red">升糖素</b> → 肝臟：<b>肝醣 → 葡萄糖</b><span class="huge ${st.bg > 69 ? 'grn pop' : 'blu'}">血糖 ${Math.round(st.bg)} mg/dL ${st.bg > 69 ? '✔ 回到正常' : '↑ 上升中'}</span>`
+    setCap(m === 'high' ? `<small>飯後高血糖</small>胰臟分泌<b class="blu">胰島素</b> → 肝臟：<b>葡萄糖 → 肝糖</b><span class="huge ${st.bg < 111 ? 'grn pop' : 'red'}">血糖 ${Math.round(st.bg)} mg/dL ${st.bg < 111 ? '✔ 回到正常' : '↓ 下降中'}</span>`
+      : m === 'low' ? `<small>飢餓低血糖</small>胰臟分泌<b class="red">升糖素</b> → 肝臟：<b>肝糖 → 葡萄糖</b><span class="huge ${st.bg > 69 ? 'grn pop' : 'blu'}">血糖 ${Math.round(st.bg)} mg/dL ${st.bg > 69 ? '✔ 回到正常' : '↑ 上升中'}</span>`
         : `<small>血糖恆定</small>胰臟（胰島）與右上腹的<b>肝臟</b>合作，讓血糖維持在一定範圍<span class="huge grn">血糖 ${Math.round(st.bg)} mg/dL</span>`);
   }
   return { group, update, st, setMode, parts };
@@ -688,7 +700,7 @@ $('collapse').addEventListener('click', () => { const c = $('panel').classList.t
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   if (!w || !h) return;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(w, h);
   camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
 }

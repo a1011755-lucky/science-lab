@@ -129,6 +129,7 @@
   }
   .tag.wtag { padding: 2px 8px; font-size: .74rem; background: #fff6dc; color: #6b4a14; border: 1.5px solid #d4a84f; }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -242,8 +243,8 @@ const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t
 /* =========================================================
    場景、燈光、原木桌面（1 個單位 ＝ 1 公分）
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -1133,7 +1134,7 @@ function setBanner(html, cls = '') {
    主迴圈
    ========================================================= */
 function resize() {
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.fov = 40;

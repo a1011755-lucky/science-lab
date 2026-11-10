@@ -173,6 +173,7 @@
   #cG::-webkit-slider-thumb { border-color: #2f9a4f; }
   #cB::-webkit-slider-thumb { border-color: #3a5bd0; }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -187,7 +188,7 @@
 
 <div id="scene"></div>
 
-<aside class="panel" id="panel">
+<aside class="panel glass" id="panel">
   <button class="toggle" id="toggle">收合</button>
   <a class="back" href="index.html#g8">← 回課程總覽</a>
   <h1>3D 光學綜合實驗室</h1>
@@ -215,13 +216,13 @@
 
     <!-- 模組二：反射與折射 -->
     <section class="section" data-mode="refract" hidden>
-      <p class="desc">光從空氣（n₁ = 1）射入介質。反射角 = 入射角；折射遵守司乃耳定律 n₁·sinθ₁ = n₂·sinθ₂。</p>
+      <p class="desc">光從空氣斜斜射入水或玻璃，折射光會<b>偏向法線</b>；從水或玻璃斜斜射回空氣，會<b>偏離法線</b>。反射角等於入射角。</p>
       <div class="ctrl">
-        <label for="rAng">入射角 θ₁<output id="rAngVal"></output></label>
+        <label for="rAng">入射角<output id="rAngVal"></output></label>
         <input type="range" id="rAng" min="0" max="89" step="1" value="40">
       </div>
       <div class="ctrl">
-        <label for="rN">介質折射率 n₂<output id="rNVal"></output></label>
+        <label for="rN">介質讓光偏折的程度<output id="rNVal"></output></label>
         <input type="range" id="rN" min="1" max="2" step="0.01" value="1.5">
       </div>
       <div class="info" id="rInfo"></div>
@@ -234,7 +235,7 @@
 
     <!-- 模組三：面鏡與透鏡 -->
     <section class="section" data-mode="lens" hidden>
-      <p class="desc">高斯成像公式 1/p + 1/q = 1/f，放大率 m = −q/p。三條特殊光線的交點（或延長線交點）就是像的位置。面鏡背面的深灰色塗層（斜線）表示不反光的一面。</p>
+      <p class="desc">用三條特殊光線找像的位置。像可能是實像或虛像、正立或倒立、放大或縮小。面鏡背面的深灰色塗層（斜線）表示不反光的一面。</p>
       <div class="ctrl">
         <label for="lType">光學元件</label>
         <select id="lType">
@@ -320,8 +321,8 @@ const rad = d => d * Math.PI / 180;
 /* =========================================================
    渲染器 / 場景 / 相機 / 後製
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
@@ -351,7 +352,13 @@ const ambientLight = new THREE.AmbientLight(0xfff6ea, 1.0);
 scene.add(ambientLight);
 const keyLight = new THREE.DirectionalLight(0xfff4e2, 1.5);
 keyLight.position.set(6, 10, 8);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(1024, 1024);
+Object.assign(keyLight.shadow.camera, { left: -24, right: 24, top: 18, bottom: -14, near: 0.5, far: 60 });
+keyLight.shadow.bias = -0.0006;
 scene.add(keyLight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const rimLight = new THREE.DirectionalLight(0xffe9d0, 0.5);
 rimLight.position.set(-8, 3, -6);
 scene.add(rimLight);
@@ -359,6 +366,11 @@ scene.add(rimLight);
 const grid = new THREE.GridHelper(80, 80, COLOR.gridCenter, COLOR.grid);
 grid.position.y = -5;
 scene.add(grid);
+const shadowFloor = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ color: COLOR.bg, roughness: 1 }));
+shadowFloor.rotation.x = -Math.PI / 2;
+shadowFloor.position.y = -5.02;
+shadowFloor.receiveShadow = true;
+scene.add(shadowFloor);
 const axes = new THREE.AxesHelper(1.2);
 axes.position.set(-15, -4.99, 0);
 scene.add(axes);
@@ -713,7 +725,7 @@ const Refract = (() => {
     const n1 = 1;
     const t2 = Math.asin(n1 * Math.sin(t1) / n2);     // 司乃耳定律
     $('rAngVal').textContent = deg(t1).toFixed(0) + '°';
-    $('rNVal').textContent = n2.toFixed(2);
+    $('rNVal').textContent = n2 < 1.05 ? '幾乎不偏折' : n2 < 1.4 ? '像水' : n2 < 1.7 ? '像玻璃' : '偏折很明顯';
     glassMat.ior = n2;
 
     const O = V(0, 0);
@@ -740,20 +752,18 @@ const Refract = (() => {
     setLine(arcR, arc(r, Math.PI / 2, Math.PI / 2 - t1));
     setLine(arc2, arc(r, -Math.PI / 2, -Math.PI / 2 + t2));
     const lr = r + 0.75;
-    setLabel(lA1, `θ₁ ${deg(t1).toFixed(0)}°`, V(lr * Math.cos(Math.PI / 2 + t1 / 2) - 0.3, lr * Math.sin(Math.PI / 2 + t1 / 2)));
+    setLabel(lA1, `入射角 ${deg(t1).toFixed(0)}°`, V(lr * Math.cos(Math.PI / 2 + t1 / 2) - 0.3, lr * Math.sin(Math.PI / 2 + t1 / 2)));
     setLabel(lAR, `反射角 ${deg(t1).toFixed(0)}°`, V(lr * Math.cos(Math.PI / 2 - t1 / 2) + 0.6, lr * Math.sin(Math.PI / 2 - t1 / 2)));
-    setLabel(lA2, `θ₂ ${deg(t2).toFixed(1)}°`, V(lr * Math.cos(-Math.PI / 2 + t2 / 2) + 0.4, lr * Math.sin(-Math.PI / 2 + t2 / 2)));
-    setLabel(lAir, '空氣 n₁ = 1.00', V(3.6, 0.45));
-    setLabel(lMed, `介質 n₂ = ${n2.toFixed(2)}`, V(3.6, -0.55));
+    setLabel(lA2, `折射角 ${deg(t2).toFixed(0)}°`, V(lr * Math.cos(-Math.PI / 2 + t2 / 2) + 0.4, lr * Math.sin(-Math.PI / 2 + t2 / 2)));
+    setLabel(lAir, '空氣', V(3.6, 0.45));
+    setLabel(lMed, n2 < 1.4 ? '像水（光速較慢）' : '像玻璃（光速更慢）', V(3.6, -0.55));
     setLabel(lNormal, '法線', V(0, 4.4));
 
-    const s1 = n1 * Math.sin(t1), s2 = n2 * Math.sin(t2);
     $('rInfo').innerHTML =
-      `入射角 θ₁ = <em>${deg(t1).toFixed(1)}°</em><br>` +
-      `反射角　 = <em>${deg(t1).toFixed(1)}°</em>（反射定律）<br>` +
-      `折射角 θ₂ = <em>${deg(t2).toFixed(1)}°</em><br>` +
-      `n₁·sinθ₁ = <em>${s1.toFixed(3)}</em>　n₂·sinθ₂ = <em>${s2.toFixed(3)}</em><br>` +
-      `<b>${n2 > 1.001 ? '進入較密介質，折射光偏向法線（θ₂ &lt; θ₁）' : 'n₂ = n₁：光不偏折'}</b>`;
+      `入射角 ＝ <em>${deg(t1).toFixed(1)}°</em><br>` +
+      `反射角 ＝ <em>${deg(t1).toFixed(1)}°</em>（反射定律：入射角＝反射角）<br>` +
+      `折射角 ＝ <em>${deg(t2).toFixed(1)}°</em><br>` +
+      `<b>${n2 > 1.001 ? '進入較密的介質（光速較慢），折射光偏向法線，折射角比較小' : '和空氣差不多時，光幾乎不偏折'}</b>`;
   }
 
   return { group, update, camera: { pos: [2, 2.5, 19], target: [-1, 0.5, 0] } };
@@ -973,10 +983,10 @@ const LensMode = (() => {
     }
     const fmt = v => isFinite(v) ? v.toFixed(2) : '∞';
     $('lInfo').innerHTML =
-      `焦距 f = <em>${f > 0 ? '+' : ''}${f.toFixed(1)}</em>（${f > 0 ? '會聚' : '發散'}）<br>` +
-      `物距 p = <em>${p.toFixed(2)}</em><br>` +
-      `像距 q = <em>${fmt(q)}</em>${atInfinity ? '' : real ? (mirror ? '（鏡前）' : '（透鏡另一側）') : (mirror ? '（鏡後）' : '（與物同側）')}<br>` +
-      `放大率 m = −q/p = <em>${fmt(m)}</em><br>${nature}`;
+      `此元件會<b>${f > 0 ? '會聚' : '發散'}</b>光線<br>` +
+      `物距 ＝ <em>${p.toFixed(2)}</em><br>` +
+      `像距 ＝ <em>${fmt(Math.abs(q))}</em>${atInfinity ? '' : real ? (mirror ? '（鏡前，實像）' : '（透鏡另一側，實像）') : (mirror ? '（鏡後，虛像）' : '（與物同側，虛像）')}<br>` +
+      `${nature}`;
   }
 
   return { group, update, tick: t => animateHologram(imageArrow, t), camera: { pos: [3, 3, 21], target: [0, 0, 0] } };
@@ -1220,9 +1230,9 @@ $('toggle').addEventListener('click', () => {
    ========================================================= */
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(w, h);
-  composer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  composer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   composer.setSize(w, h);
   bloom.setSize(w, h);
   camera.aspect = w / h;
@@ -1247,6 +1257,7 @@ window.optics = { MODES, setMode };   // 除錯 / 驗證用
 
 resize();
 setMode(location.hash.slice(1));
+scene.traverse(o => { if (o.isMesh && o !== shadowFloor) o.castShadow = true; });
 animate();
 </script>
 

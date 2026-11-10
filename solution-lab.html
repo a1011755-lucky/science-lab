@@ -119,6 +119,7 @@
   }
   @media (prefers-reduced-motion: reduce) { .fbox.live b { animation: none; } }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -250,8 +251,8 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 /* =========================================================
    共用：場景、燈光、原木桌面、材質
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -653,7 +654,7 @@ function updateSat(dt) {
 function drawSatChart(T, S) {
   const cv = $('satChart'), w = cv.clientWidth, h = cv.clientHeight;
   if (!w) return;
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const dpr = (window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2));
   if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
   const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
   const L = 34, R = 10, Tp = 16, B = 26, pw = w - L - R, ph = h - Tp - B;
@@ -1012,7 +1013,7 @@ renderer.domElement.addEventListener('pointerup', ev => {
 renderer.domElement.addEventListener('pointermove', ev => { if (!ev.buttons) renderer.domElement.style.cursor = pickCup(ev) ? 'pointer' : ''; });
 
 function resize() {
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.fov = 40;

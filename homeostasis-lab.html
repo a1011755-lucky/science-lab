@@ -119,6 +119,7 @@
   .tag.org { background: #d08a2e; color: #fff; }
   .tag.ins { background: #1e88e5; color: #fff; } .tag.glc { background: #d9453f; color: #fff; }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -219,8 +220,8 @@ const TAU = Math.PI * 2;
 /* =========================================================
    溫暖無印風場景：米白背景、木紋桌、柔和光影
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -638,7 +639,7 @@ const HO = (() => {
   const group = new THREE.Group(); scene.add(group);
   const B = makeBody(group, 0, 0.3);
   const R = B.root;
-  // 肝臟：深紅色、右葉厚左葉薄的楔形（不是圓球）；存肝醣時會微微膨脹
+  // 肝臟：深紅色、右葉厚左葉薄的楔形（不是圓球）；存肝糖時會微微膨脹
   const liverGeo = new THREE.SphereGeometry(1, 44, 30); {
     const p = liverGeo.attributes.position;
     for (let i = 0; i < p.count; i++) { let x = p.getX(i), y = p.getY(i), z = p.getZ(i); y *= 0.55 + 0.45 * (0.5 - x * 0.5); if (y > 0) y *= 1 - 0.25 * (x + 1) / 2; p.setXYZ(i, x * 0.5, y * 0.27, z * 0.3); }
@@ -657,7 +658,7 @@ const HO = (() => {
   const pancHead = shadowed(sphere(0.1, pancMat, 20)); pancHead.position.set(-0.05, 2.97, 0.1); pancHead.scale.set(1, 0.85, 0.8); R.add(pancHead);
   const PANC = V3(0.2, 3.03, 0.12);
   const pancGlow = new THREE.PointLight(0x5b8fd9, 0, 1.2, 1.5); pancGlow.position.set(0.2, 3.05, 0.4); R.add(pancGlow);
-  // 肝醣顆粒：數量 ∝ 肝醣存量
+  // 肝糖顆粒：數量 ∝ 肝糖存量
   const NGL = 50, glyMesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.018, 0), new THREE.MeshStandardMaterial({ color: 0xffe9a8, emissive: 0xb88a20, emissiveIntensity: 0.5 }), NGL);
   R.add(glyMesh);
   const glySpots = Array.from({ length: NGL }, () => { const a = rnd() * TAU, h = rnd() * 1.5 - 0.6; return V3(Math.cos(a) * 0.42, h * 0.11, Math.abs(Math.sin(a)) * 0.26 + 0.01); });
@@ -745,7 +746,7 @@ const HO = (() => {
       }
       prevN = n;
       gluP.forEach((d, i) => { d.visible = i < n; d.position.copy(vessel.getPoint((d.userData.k + wall * 0.05) % 1)); d.rotation.set(Math.PI / 2, wall + i, 0); });
-      // 肝臟：存肝醣時膨脹、分解時縮小；激素抵達時微微發亮
+      // 肝臟：存肝糖時膨脹、分解時縮小；激素抵達時微微發亮
       liver.scale.setScalar(0.88 + 0.24 * st.gly);
       liverMat.emissive.setRGB((ins > 0.1 || glc > 0.1 ? 0.2 : 0) * pulse, (ins > 0.1 || glc > 0.1 ? 0.08 : 0) * pulse, 0.02);
       const ng = Math.round(st.gly * NGL);
@@ -864,7 +865,7 @@ $('collapse').addEventListener('click', () => { const c = $('panel').classList.t
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   if (!w || !h) return;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(w, h);
   camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
 }

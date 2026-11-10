@@ -104,8 +104,7 @@
   .fab:active { transform: scale(.94); }
   @media (max-width: 767px) {
     .panel { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 58vh; max-height: 58dvh; border-radius: 24px 24px 0 0;
-      padding: 22px 16px calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateY(108%); transition: transform .38s cubic-bezier(.2,.8,.2,1); }
-    .panel.open { transform: none; }
+      padding: 22px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
     .panel::before { content: ""; position: absolute; top: 8px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: rgba(93,64,55,.28); }
     .panel .collapse { display: none; }
     .sheet-close { display: block; position: absolute; top: 14px; right: 14px; border: none; cursor: pointer; width: 34px; height: 34px; border-radius: 50%; font-size: 1rem; font-weight: 900; color: var(--ink); background: rgba(160,113,79,.14); }
@@ -120,6 +119,8 @@
   }
   .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
 </style>
+<script src="quality.js"></script>
+<script src="mobile.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -129,7 +130,7 @@
 }
 </script>
 </head>
-<body>
+<body data-mv-start="closed">
 
 <div id="scene"></div>
 <div class="hud glass" id="hud"></div>
@@ -156,7 +157,7 @@
         <button class="btn primary" data-act="beat">⏸ 暫停心跳</button>
         <button class="btn" data-act="slowmo">🐢 慢動作</button>
       </div>
-      <div class="legend"><span><i style="background:#d98a86"></i>充氧血</span><span><i style="background:#7f9fcc"></i>減氧血（缺氧血）</span></div>
+      <div class="legend"><span><i style="background:#d98a86"></i>充氧血</span><span><i style="background:#7f9fcc"></i>缺氧血</span></div>
       <div class="card" id="anaCard">左心室壁最厚，才能將血液打向全身！瓣膜單向開啟防止逆流！</div>
       <div class="read" id="anaRead"></div>
     </section>
@@ -170,7 +171,7 @@
         <button class="btn" data-act="slower">🐢 放慢</button>
       </div>
       <div class="read" id="circRead"></div>
-      <div class="concl">肺動脈流減氧血（藍），肺靜脈流充氧血（紅）！<br>「動脈」「靜脈」是看血液流的方向（離開心臟／回到心臟），不是看含氧量。</div>
+      <div class="concl">肺動脈流缺氧血（藍），肺靜脈流充氧血（紅）！<br>「動脈」「靜脈」是看血液流的方向（離開心臟／回到心臟），不是看含氧量。</div>
     </section>
 
     <!-- Tab 3 -->
@@ -210,8 +211,8 @@ const OXY = new THREE.Color(0xd98a86), DEOXY = new THREE.Color(0x7f9fcc);
 /* =========================================================
    場景
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -378,7 +379,7 @@ function makeHeart() {
   const backGeo = new THREE.ExtrudeGeometry(new THREE.Shape(outerPts), { depth: 0.35, bevelEnabled: true, bevelThickness: 0.16, bevelSize: 0.14, bevelSegments: 5, curveSegments: 12 });
   backGeo.translate(0, 0, -DEPTH / 2 - 0.35);
   group.add(new THREE.Mesh(backGeo, rubber(0xcf8c8a)));
-  // 腔室內膜：右側粉藍（減氧血）、左側粉紅（充氧血）
+  // 腔室內膜：右側粉藍（缺氧血）、左側粉紅（充氧血）
   const liningR = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(rPts)), rubber(0xb7c9e4)); liningR.position.z = -DEPTH / 2 + 0.01;
   const liningL = new THREE.Mesh(new THREE.ShapeGeometry(new THREE.Shape(lPts)), rubber(0xf0c0bb)); liningL.position.z = -DEPTH / 2 + 0.01;
   group.add(liningR, liningL);
@@ -444,10 +445,10 @@ function makeHeart() {
   };
   const GATE = { TRI: V3(-1.13, 0.06, 0), PULV: V3(0.55, 2.1, 0.75), MIT: V3(1.08, 0.3, 0), AOV: V3(0.14, 1.6, 0) };
   const pickables = [
-    { mesh: liningR, info: y => y > 0.08 ? '右心房：接收上、下大靜脈流回的減氧血。' : '右心室：將減氧血打入肺動脈，壁較薄（只要送到肺）。' },
+    { mesh: liningR, info: y => y > 0.08 ? '右心房：接收上、下大靜脈流回的缺氧血。' : '右心室：將缺氧血打入肺動脈，壁較薄（只要送到肺）。' },
     { mesh: liningL, info: y => y > 0.3 && y < 1.35 && arguments ? '左心房：接收肺靜脈流回的充氧血。' : '左心室：壁最厚！收縮最有力，把充氧血打入主動脈送往全身。' },
     { mesh: aorta.m, info: () => '主動脈（主動脈弓）：把充氧血從左心室送往全身。' },
-    { mesh: ptrunk.m, info: () => '肺動脈：把減氧血從右心室送到肺（動脈但是減氧血！）。' }
+    { mesh: ptrunk.m, info: () => '肺動脈：把缺氧血從右心室送到肺（動脈但是缺氧血！）。' }
   ];
   /** phase：0～1 一次心跳；回傳收縮程度 */
   let avOpen = 1, slOpen = 0;
@@ -679,7 +680,7 @@ BUILD.circ = (g) => {
   let tu = trackLoop.key.rv, tracking = false, slowK = 1;
   const gas = Array.from({ length: 30 }, () => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), rubber(0xffffff, { emissive: 0xffffff, emissiveIntensity: 0.3 })); m.visible = false; g.add(m); return { m, on: false }; });
   const lTrack = addLabel('', 'pop'); lTrack.visible = false;
-  const STAGES = [['ivc', '下大靜脈（減氧血）'], ['ra', '右心房'], ['rv', '右心室'], ['pa', '肺動脈（減氧血・藍）'], ['lung0', '肺泡微血管：吸 O₂、放 CO₂'], ['lung1', '肺靜脈（充氧血・紅）'], ['la', '左心房'], ['lv', '左心室'], ['ao', '主動脈（充氧血）'], ['body0', '組織微血管：放 O₂、吸 CO₂'], ['body1', '大靜脈（減氧血）']];
+  const STAGES = [['ivc', '下大靜脈（缺氧血）'], ['ra', '右心房'], ['rv', '右心室'], ['pa', '肺動脈（缺氧血・藍）'], ['lung0', '肺泡微血管：吸 O₂、放 CO₂'], ['lung1', '肺靜脈（充氧血・紅）'], ['la', '左心房'], ['lv', '左心室'], ['ao', '主動脈（充氧血）'], ['body0', '組織微血管：放 O₂、吸 CO₂'], ['body1', '大靜脈（缺氧血）']];
   /** 目前位置 = 最近一個「已經經過」的檢查點 */
   const stageOf = u => { const k = trackLoop.key; let best = STAGES[0][1], bd = 2; STAGES.forEach(([key, name]) => { const d = (u - k[key] + 1) % 1; if (d < bd) { bd = d; best = name; } }); return best; };
   const L = (t, p, cls) => { const l = addLabel(t, cls); l.pos.copy(p); };
@@ -731,10 +732,10 @@ BUILD.circ = (g) => {
         if (!fly) { camera.position.lerp(want, Math.min(1, dt * 2.2)); controls.target.lerp(tgt, Math.min(1, dt * 3)); }
         lTrack.visible = true; lTrack.pos.copy(pos).add(V3(0, 0.55, 0)); lTrack.el.textContent = stageOf(tu);
       }
-      $('circRead').innerHTML = `<div class="kv"><span>追蹤中的紅血球</span><b>${tracking ? '🔍 追蹤中' : '—'}</b><span>位置</span><b>${stageOf(tu)}</b><span>含氧狀態</span><b style="color:${ox > 0.5 ? '#b8433c' : '#3d63a8'}">${ox > 0.5 ? '充氧血（鮮紅）' : '減氧血（暗藍）'}</b></div>`;
+      $('circRead').innerHTML = `<div class="kv"><span>追蹤中的紅血球</span><b>${tracking ? '🔍 追蹤中' : '—'}</b><span>位置</span><b>${stageOf(tu)}</b><span>含氧狀態</span><b style="color:${ox > 0.5 ? '#b8433c' : '#3d63a8'}">${ox > 0.5 ? '充氧血（鮮紅）' : '缺氧血（暗藍）'}</b></div>`;
     },
     hud() {
-      return `<div class="big">${tracking ? '🔍 ' + stageOf(tu) : '肺循環 ＋ 體循環 ＝ 雙循環'}</div><div class="tipc">肺動脈流減氧血（藍），肺靜脈流充氧血（紅）！</div>`;
+      return `<div class="big">${tracking ? '🔍 ' + stageOf(tu) : '肺循環 ＋ 體循環 ＝ 雙循環'}</div><div class="tipc">肺動脈流缺氧血（藍），肺靜脈流充氧血（紅）！</div>`;
     },
     state: () => ({ tu, stage: stageOf(tu), oxy: oxyOf(trackLoop, tu), key: trackLoop.key, tracking })
   };
@@ -888,7 +889,7 @@ panel.addEventListener('input', e => { if (e.target.matches('input[type=range]')
 $('viewBtn').addEventListener('click', () => { if (cur.act && curKey === 'circ') cur.act('overview'); else resetView(true); });
 $('collapse').addEventListener('click', () => { const c = panel.classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; });
 const isMobile = () => window.matchMedia('(max-width: 767px)').matches;
-function setSheet(open) { panel.classList.toggle('open', open); $('fab').classList.toggle('hide', open); }
+function setSheet(open) { window.MobileView?.setClosed(!open); }
 $('fab').addEventListener('click', () => setSheet(true));
 $('sheetClose').addEventListener('click', () => setSheet(false));
 window.addEventListener('hashchange', () => { const k = location.hash.slice(1); if (BUILD[k] && k !== curKey) build(k); });
@@ -905,7 +906,7 @@ function applyViewOffset() {
   let ox = 0, oy = 0;
   const hud = $('hud'), hb = hud.innerHTML ? hud.getBoundingClientRect().bottom : 0;
   if (isMobile()) {
-    const bottom = panel.classList.contains('open') ? Math.max(0, h - panel.getBoundingClientRect().top) : 0;
+    const bottom = document.body.classList.contains('mv-closed') ? 0 : Math.max(0, h - panel.getBoundingClientRect().top);
     oy = Math.round((bottom - hb) / 2);
   } else {
     if (!panel.classList.contains('collapsed')) ox = -Math.round(panel.getBoundingClientRect().right / 2);
@@ -918,7 +919,7 @@ function applyViewOffset() {
   camera.updateProjectionMatrix();
 }
 function resize() {
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.fov = camera.aspect < 1 ? 50 : 40;
@@ -955,5 +956,6 @@ setTimeout(() => {
   if (!window.__haReady) document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
 }, 6000);
 </script>
+<script src="goals.js" defer></script>
 </body>
 </html>

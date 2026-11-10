@@ -96,6 +96,7 @@
     .tag { font-size: .62rem; padding: 2px 7px; }
   }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -142,7 +143,7 @@
 
     <!-- Tab 2 -->
     <section class="sec" data-tab="opt" hidden>
-      <div class="concept" style="--cc:#c62828"><div class="ct">司乃耳定律 n₁ sinθ₁ ＝ n₂ sinθ₂</div><div class="cd">進入玻璃（光速變慢）→ <b>偏向法線</b><br>回到空氣（光速變快）→ <b>偏離法線</b></div></div>
+      <div class="concept" style="--cc:#c62828"><div class="ct">光的折射</div><div class="cd">進入玻璃（光速變慢）→ <b>偏向法線</b><br>回到空氣（光速變快）→ <b>偏離法線</b></div></div>
       <label class="lab" for="glassSel">更換玻璃</label>
       <select id="glassSel">
         <option value="rect">▭ 長方體玻璃磚</option>
@@ -178,8 +179,8 @@ const f1 = x => x.toFixed(1);
 /* =========================================================
    溫暖無印風場景：米白背景、木紋桌、柔和光影（不使用 Bloom）
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -779,7 +780,7 @@ function updateOpt(dt) {
   if (OPT.kind === 'rect') {
     const h0 = main.hits[0];
     cap += `<span class="huge">空氣→玻璃：<span class="red">偏向法線</span>　玻璃→空氣：<span class="grn">偏離法線</span></span>`;
-    cap += h0 ? `1.00 × sin ${f1(h0.thI)}° ＝ 1.50 × sin ${f1(h0.thT ?? 0)}°　→　出射光與入射光<b>平行</b>（只是平移）` : '';
+    cap += h0 ? `光先偏向法線、再偏離法線，出來的光和進來的光<b>平行</b>（只是平移）` : '';
     note = '長方體玻璃磚兩面互相平行：進去時偏向法線、出來時偏離法線，偏折量剛好抵消，所以出射光與入射光平行。';
   } else if (OPT.kind === 'semi') {
     const hf = main.hits.find(h => h.flat);
@@ -787,24 +788,24 @@ function updateOpt(dt) {
       cap += `<span class="huge"><span class="red">全反射！</span>入射角 ${f1(hf.thI)}° ＞ 臨界角 ${f1(CRIT)}°</span>光從玻璃（慢）射向空氣（快），角度太大就完全反射回玻璃`;
     } else if (hf) {
       cap += `<span class="huge">玻璃→空氣：<span class="grn">偏離法線</span>　${f1(hf.thI)}° → ${f1(hf.thT)}°</span>` +
-        (hf.thI > CRIT - 6 ? `<b>快到臨界角 ${f1(CRIT)}° 了！</b>折射光快要貼著平面走，反射光越來越亮` : `1.50 × sin ${f1(hf.thI)}° ＝ 1.00 × sin ${f1(hf.thT)}°`);
+        (hf.thI > CRIT - 6 ? `<b>快到臨界角 ${f1(CRIT)}° 了！</b>折射光快要貼著平面走，反射光越來越亮` : `折射角比入射角大，光偏離法線`);
     }
-    note = `光沿半徑射入圓弧面時與法線重合（垂直入射）不偏折，所以真正的折射發生在<b>平直面</b>。玻璃的臨界角 ＝ sin⁻¹(1 ÷ 1.5) ≈ ${f1(CRIT)}°。`;
+    note = `光沿半徑射入圓弧面時與法線重合（垂直入射）不偏折，所以真正的折射發生在<b>平直面</b>。從玻璃射向空氣，入射角大到約 ${f1(CRIT)}° 就會全反射，這個角度叫做臨界角。`;
   } else {
     const tr = OPT.spread, out = tr.map(t => t.tr.segs[t.tr.segs.length - 1]);
     const ang = s2 => Math.atan2(s2.b.y - s2.a.y, s2.b.x - s2.a.x) / DEG;
     const spread = Math.abs(ang(out[6]) - ang(out[0]));
     const anyTir = tr.some(t => t.tr.hits.some(h => h.tir));
     cap += `<span class="huge">白光 → <span style="color:#e53935">紅</span><span style="color:#f57c00">橙</span><span style="color:#c9a000">黃</span><span style="color:#2e9d48">綠</span><span style="color:#1e7fd8">藍</span><span style="color:#3f45d9">靛</span><span style="color:#8e3fe0">紫</span>：色散</span>` +
-      (anyTir ? '入射角太小時，光在第二面發生<b>全反射</b>出不去；把入射角調大看看' : `紫光折射率最大、偏折最多；紅光偏折最少（色帶張開約 ${f1(spread)}°）`);
-    note = '不同顏色的光在玻璃中速度不同（折射率不同），偏折程度也不同，白光就被分開成彩虹色帶。單一顏色的紅色雷射不會色散，所以三稜鏡這裡改用<b>白光光源</b>。（色散程度稍微放大，方便觀察）';
+      (anyTir ? '入射角太小時，光在第二面發生<b>全反射</b>出不去；把入射角調大看看' : `紫光偏折最多、紅光偏折最少（色帶張開約 ${f1(spread)}°）`);
+    note = '不同顏色的光在玻璃裡速度不一樣，偏折程度也不同，白光就被分開成彩虹色帶。單一顏色的紅色雷射不會色散，所以三稜鏡這裡改用<b>白光光源</b>。（色散程度稍微放大，方便觀察）';
   }
   setCap(cap);
   setHTML('optNote', note);
   setHTML('optStat',
-    `入射角 θ₁ ＝ <b class="r">${f1(OPT.angShow)}°</b><br>` +
-    (first && !first.tir && first.thT !== undefined && first.thI >= 0.6 ? `折射角 θ₂ ＝ <b class="b">${f1(first.thT)}°</b>（${first.n1 < first.n2 ? '小於' : '大於'}入射角）<br>` : '') +
-    `玻璃折射率 n ＝ <b>${prism ? '1.50（紅）～ 1.56（紫）' : '1.50'}</b><br>臨界角（玻璃→空氣）＝ <b>${f1(CRIT)}°</b>`);
+    `入射角 ＝ <b class="r">${f1(OPT.angShow)}°</b><br>` +
+    (first && !first.tir && first.thT !== undefined && first.thI >= 0.6 ? `折射角 ＝ <b class="b">${f1(first.thT)}°</b>（${first.n1 < first.n2 ? '小於入射角，偏向法線' : '大於入射角，偏離法線'}）<br>` : '') +
+    `玻璃裡的光走得比空氣慢，所以偏折比較明顯${prism ? '；紫光偏最多、紅光偏最少' : ''}<br>臨界角（玻璃→空氣）＝ <b>${f1(CRIT)}°</b>`);
 }
 
 /* =========================================================
@@ -871,7 +872,7 @@ $('collapse').addEventListener('click', () => { const c = $('panel').classList.t
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   if (!w || !h) return;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(w, h);
   camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
 }

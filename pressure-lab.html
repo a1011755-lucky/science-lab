@@ -92,6 +92,7 @@
     .tag { font-size: .64rem; padding: 3px 7px; }
   }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -197,8 +198,8 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 /* =========================================================
    共用：場景、燈光、原木桌面、材質
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -555,7 +556,7 @@ function updateAtm(dt) {
   atmArrows.forEach((a, i) => { a.visible = pk > 0.01; a.userData.set(0.25 + 0.55 * pk + 0.03 * Math.sin(wall * 4 + i)); });
   lAtm.show = pk > 0.01;
   const L = LOCS[ATM.loc];
-  setHTML('atmStat', `地點：<b>${L.name}</b><br>傾斜角：<b>${ATM.tilt}°</b><br>水銀柱垂直高度：<b class="r">${H.toFixed(0)} cm</b>${ATM.tiltD > 1 && H > 0.5 ? `<br>管內水銀長度：<b>${(H / Math.cos(th)).toFixed(1)} cm</b>（＝ ${H.toFixed(0)} ÷ cos ${ATM.tilt}°）` : ''}`);
+  setHTML('atmStat', `地點：<b>${L.name}</b><br>傾斜角：<b>${ATM.tilt}°</b><br>水銀柱垂直高度：<b class="r">${H.toFixed(0)} cm</b>${ATM.tiltD > 1 && H > 0.5 ? `<br>管內水銀長度：<b>${(H / Math.cos(th)).toFixed(1)} cm</b>（管子傾斜，沿管壁量比較長；垂直高度仍是 ${H.toFixed(0)} cm）` : ''}`);
   setCap(ATM.loc === 'moon'
     ? '<small>月球沒有大氣</small><span class="mid">大氣壓力 ＝ 0 → 水銀柱掉到 0 cm</span>沒有空氣往下壓，就撐不起任何水銀'
     : `<small>${L.name}：大氣壓力 ＝ ${H.toFixed(0)} cmHg</small><span class="mid">${ATM.tilt > 0 ? `傾斜 ${ATM.tilt}°：水銀柱變長，但垂直高度仍是 ${H.toFixed(0)} cm` : `水銀柱垂直高度 ${H.toFixed(0)} cm`}</span>大氣壓力只撐得起固定的「垂直高度」，和管子傾斜、粗細無關${ATM.loc === 'jade' ? '；高山空氣稀薄，壓力變小' : ''}`);
@@ -807,7 +808,7 @@ controls.addEventListener('start', () => { camTw = null; });
 $('viewBtn').addEventListener('click', () => goView(TABS[tab].cam, true));
 $('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
 function resize() {
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.fov = 40;
