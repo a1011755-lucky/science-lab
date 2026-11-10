@@ -1,0 +1,1328 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="國三理化：圓周運動的向心力與切線軌跡。飛天鞦韆、雨傘甩水、斷繩後的慣性直線運動。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23c4956a'/%3E%3C/svg%3E">
+<title>圓周運動：向心力與切線軌跡</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.5);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: rgba(255,255,255,.5);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,.9);
+    border-radius: 12px;
+    color: #5d4037;
+    box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel {
+    position: absolute; top: 18px; left: 18px; width: 340px;
+    max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10;
+    border-radius: 12px; padding: 18px;
+  }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse {
+    position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none;
+    font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent);
+    background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px;
+  }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab {
+    border: none; cursor: pointer; font: inherit; font-size: .74rem; font-weight: 800;
+    padding: 9px 2px; border-radius: 12px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.35;
+  }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .66rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept {
+    background: rgba(255,255,255,.85); border-radius: 12px; padding: 10px 12px; margin: 2px 0 8px;
+    box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63);
+  }
+  .concept .ct { font-size: .98rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .8rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .legend { display: flex; gap: 6px; margin: 2px 0 8px; font-size: .72rem; font-weight: 800; }
+  .legend .lg { flex: 1; text-align: center; border-radius: 999px; padding: 3px 0; color: #fff; }
+  .legend .f { background: #e23b32; }
+  .legend .s { background: #1493c8; }
+  .legend .w { background: #c4503a; }
+  .legend .lg[hidden] { display: none; }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.02rem; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; touch-action: none; }
+  input.big[type=range] { height: 42px; accent-color: #5b8a72; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 12px; padding: 10px 8px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 800; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s; line-height: 1.35;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.cut { color: #fff; background: #a8483c; font-size: .98rem; padding: 12px 8px; margin-top: 10px; box-shadow: 0 8px 18px rgba(168,72,60,.28); }
+  .btn.cut:hover { background: #933c32; }
+  .btn.cut:disabled { background: #c9a09a; box-shadow: none; }
+  .stat {
+    background: rgba(255,255,255,.78); border-radius: 12px; padding: 9px 11px; margin-top: 8px;
+    font-size: .8rem; line-height: 1.7; font-variant-numeric: tabular-nums; font-weight: 700;
+  }
+  .stat b { font-weight: 900; }
+  .stat .r { color: #e23b32; } .stat .b { color: #1487b8; } .stat .g { color: var(--ok); }
+  .tip { background: #fff3c4; color: #7a5300; border: 1.5px solid #e0b000; border-radius: 12px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; font-weight: 800; line-height: 1.6; }
+  .tip.bad { background: #fde8e4; color: #8a3328; border-color: #e0a090; }
+  .dock {
+    position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9;
+    border-radius: 12px; padding: 12px 22px; text-align: center;
+    width: max-content; max-width: min(860px, calc(100vw - 400px)); min-width: 280px;
+  }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.55; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap .huge { display: block; font-size: clamp(1.02rem, 1.7vw, 1.28rem); font-weight: 900; line-height: 1.45; margin: 2px 0; }
+  .cap .sub { display: block; font-size: .78rem; font-weight: 800; color: var(--ink-soft); margin-top: 2px; }
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap;
+    text-align: center; line-height: 1.4; background: rgba(255,255,255,.9); color: var(--ink);
+    box-shadow: 0 4px 12px rgba(93,64,55,.12);
+  }
+  .tag.fc { background: #e23b32; color: #fff; }
+  .tag.vv { background: #1493c8; color: #fff; }
+  .tag.bad { background: #fff1ee; color: #a33b30; border: 1.5px dashed #e07a6a; }
+  .tag.ang { background: #fffaf2; color: #5d4037; border: 1.5px solid #e6d3bc; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; padding: 24px; }
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .92rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+</style>
+<script src="quality.js"></script>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"><small>圓周運動</small><span class="huge">方向隨時在改變</span></div></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse" type="button">收合</button>
+  <a class="back" href="index.html#g9">‹ 課程總覽</a>
+  <div class="title">圓周運動：向心力與切線軌跡</div>
+  <div class="body">
+    <div class="tabs">
+      <button class="tab on" type="button" data-tab="swing">飛天鞦韆<small>外甩角度</small></button>
+      <button class="tab" type="button" data-tab="umbrella">雨傘甩水<small>切線飛出</small></button>
+      <button class="tab" type="button" data-tab="cut">斷繩危機<small>慣性直線</small></button>
+    </div>
+    <div class="legend">
+      <span class="lg f">向心力</span>
+      <span class="lg s">切線速度</span>
+      <span class="lg w" id="lgWrong" hidden>錯：正外側</span>
+    </div>
+
+    <section class="sec" data-tab="swing">
+      <div class="concept" style="--cc:#e23b32">
+        <div class="ct">方向一直在改變</div>
+        <div class="cd">方向隨時在改變，圓周運動是一種「加速度運動」！速率大小可以維持不變，但方向一直在改，所以速度在改變。</div>
+      </div>
+      <label class="lab" for="swSpeed">【旋轉速度】<b id="swSpeedV">中等</b></label>
+      <input class="big" id="swSpeed" type="range" min="0" max="100" step="1" value="72">
+      <div class="ticks"><span>靜止</span><span>很快</span></div>
+      <div class="stat" id="swStat"></div>
+      <div class="tip">紅色箭頭水平指向圓心，藍色箭頭沿著切線。兩者中間的直角標記表示互相垂直。座位上放的是木箱，不是人。</div>
+    </section>
+
+    <section class="sec" data-tab="umbrella" hidden>
+      <div class="concept" style="--cc:#1487b8">
+        <div class="ct">沿切線飛出，不是正外側</div>
+        <div class="cd">附著力不足以提供向心力！水滴因慣性沿「切線方向」飛出，並非往正外側飛！</div>
+      </div>
+      <label class="lab" for="umSpeed">【旋轉速度】<b id="umSpeedV">慢</b></label>
+      <input class="big" id="umSpeed" type="range" min="0" max="100" step="1" value="28">
+      <div class="ticks"><span>慢，水滴還黏著</span><span>快過臨界</span></div>
+      <button class="btn" id="umRefill" type="button">🔄 重新裝水</button>
+      <button class="btn" id="umTop" type="button">俯視對照<small>從正上方看切線</small></button>
+      <div class="stat" id="umStat"></div>
+      <div class="tip bad">紅色虛線是常見的錯法：以為水滴會沿著半徑往正外側飛。藍色光跡才是真正的切線。</div>
+    </section>
+
+    <section class="sec" data-tab="cut" hidden>
+      <div class="concept" style="--cc:#4f7d5c">
+        <div class="ct">向心力消失，就改走直線</div>
+        <div class="cd">向心力消失 ➔ 物體不再做圓周運動 ➔ 維持慣性，沿切線等速度直線前進！</div>
+      </div>
+      <label class="lab" for="ctSpeed">【旋轉速度】<b id="ctSpeedV">中等</b></label>
+      <input class="big" id="ctSpeed" type="range" min="0" max="100" step="1" value="46">
+      <div class="ticks"><span>慢，方便對準</span><span>快</span></div>
+      <button class="btn cut" id="cutBtn" type="button">✂️ 剪斷繩子</button>
+      <button class="btn" id="ctReset" type="button">↩️ 重設，再繞一圈</button>
+      <div class="stat" id="ctStat"></div>
+      <div class="tip">換一個位置再剪一次。飛出去的方向永遠沿著當時的切線，虛線圓是原本的圓周。</div>
+    </section>
+
+    <button class="btn" id="viewBtn" type="button">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script>
+(function () {
+  var h = location.hash.slice(1);
+  var tab = (h === 'swing' || h === 'umbrella' || h === 'cut') ? h : 'swing';
+  document.querySelectorAll('.tab').forEach(function (b) { b.classList.toggle('on', b.dataset.tab === tab); });
+  document.querySelectorAll('.sec').forEach(function (s) { s.hidden = s.dataset.tab !== tab; });
+})();
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { mountPresets } from './presets.js';
+import { createTrail, mountTrailToggle } from './trails.js';
+import { mountSoundToggle } from './sonify.js';
+import { runAdaptive, releaseLists } from './perf.js';
+
+window.__labReady = true;
+
+/* 畫面只談方向、垂直、切線、慣性。
+   座位外甩、水滴脫離、切線速度都在這裡用向量算，不把三角函數寫給學生看。 */
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const TAU = Math.PI * 2;
+const G = 9.8;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const ARM = 1.42;
+const CHAIN = 1.28;
+const PIVOT_Y = 2.5;
+const SW_WMAX = 3.2;
+const UM_RIM = 1.26;
+const UM_APEX = 1.98;
+const UM_DROP = 0.7;
+const UM_WMAX = 4.6;
+const CT_R = 1.38;
+const CT_Y = 0.82;
+const CT_WMIN = 0.5;
+const CT_WMAX = 2.4;
+const BALL_R = 0.17;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 1.25));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.02;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), new THREE.MeshBasicMaterial({ color: 0xfffaf2 }));
+envLight.position.set(2.5, 5, 3); envLight.scale.setScalar(2.4); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+pmrem.dispose();
+
+scene.add(new THREE.HemisphereLight(0xfff8ef, 0xe7d3b8, 0.62));
+scene.add(new THREE.AmbientLight(0xfff6ea, 0.28));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.72);
+sun.position.set(-6.4, 14.2, 8.2);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8, near: 2, far: 36 });
+sun.shadow.bias = -0.00045;
+sun.shadow.normalBias = 0.02;
+sun.shadow.radius = 2;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0xfff4e6, 0.38);
+fill.position.set(8, 6, -4);
+scene.add(fill);
+
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.08, 80);
+camera.position.set(3.8, 3.2, 4.8);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 2.2;
+controls.maxDistance = 18;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.target.set(0, 1.4, 0);
+
+const wood = new THREE.MeshStandardMaterial({ color: 0xdeb887, roughness: 0.68, metalness: 0.02 });
+const woodDark = new THREE.MeshStandardMaterial({ color: 0xc4a06a, roughness: 0.74, metalness: 0.02 });
+const woodLite = new THREE.MeshStandardMaterial({ color: 0xf0d7b0, roughness: 0.6, metalness: 0.02 });
+const rodMat = new THREE.MeshStandardMaterial({ color: 0x8d7564, roughness: 0.4, metalness: 0.32 });
+const frost = new THREE.MeshPhysicalMaterial({
+  color: 0xc5e0e6, roughness: 0.28, metalness: 0, transmission: 0.28, thickness: 0.6,
+  transparent: true, opacity: 0.82, clearcoat: 0.35, clearcoatRoughness: 0.25,
+  ior: 1.45, emissive: 0x9fd0d8, emissiveIntensity: 0.35, side: THREE.DoubleSide,
+  depthWrite: false, envMapIntensity: 0.8
+});
+
+function shade(obj, cast = true) {
+  obj.traverse(o => { if (o.isMesh) { o.castShadow = cast; o.receiveShadow = true; } });
+  return obj;
+}
+const deck = shade(new THREE.Mesh(new THREE.CylinderGeometry(4.35, 4.5, 0.22, 64), woodLite), false);
+deck.position.y = 0.11;
+deck.receiveShadow = true;
+deck.castShadow = false;
+scene.add(deck);
+const deckRim = shade(new THREE.Mesh(new THREE.TorusGeometry(4.42, 0.045, 8, 80), woodDark), false);
+deckRim.rotation.x = Math.PI / 2;
+deckRim.position.y = 0.2;
+scene.add(deckRim);
+
+const YUP = V3(0, 1, 0);
+const _dir = V3();
+const _mid = V3();
+function spanTo(mesh, a, b, radius) {
+  _dir.subVectors(b, a);
+  const len = _dir.length();
+  if (len < 1e-5) { mesh.visible = false; return; }
+  mesh.visible = true;
+  _mid.copy(a).add(b).multiplyScalar(0.5);
+  mesh.position.copy(_mid);
+  _dir.multiplyScalar(1 / len);
+  mesh.quaternion.setFromUnitVectors(YUP, _dir);
+  mesh.scale.set(radius, len, radius);
+}
+
+function makeArrow(color) {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({
+    color, emissive: color, emissiveIntensity: 0.95, roughness: 0.32, metalness: 0.04, toneMapped: false
+  });
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 1, 14), mat);
+  const head = new THREE.Mesh(new THREE.ConeGeometry(0.086, 0.22, 16), mat);
+  g.add(shaft, head);
+  const dir = V3();
+  g.set = (origin, vector) => {
+    const L = vector.length();
+    g.visible = L > 0.04;
+    if (!g.visible) return;
+    dir.copy(vector).multiplyScalar(1 / L);
+    g.position.copy(origin);
+    g.quaternion.setFromUnitVectors(YUP, dir);
+    const headL = Math.min(0.22, L * 0.32);
+    const shaftL = Math.max(0.03, L - headL);
+    shaft.scale.set(1, shaftL, 1);
+    shaft.position.set(0, shaftL / 2, 0);
+    head.scale.set(1, headL / 0.22, 1);
+    head.position.set(0, shaftL + headL / 2, 0);
+  };
+  return g;
+}
+function makeCorner() {
+  const mat = new THREE.MeshBasicMaterial({ color: 0xfffaf2, toneMapped: false });
+  const a = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 8), mat);
+  const b = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 8), mat);
+  a.frustumCulled = b.frustumCulled = false;
+  const g = new THREE.Group();
+  g.add(a, b);
+  const da = V3(), db = V3(), p = V3(), q = V3(), corner = V3();
+  g.userData.corner = corner;
+  g.set = (origin, dirA, dirB, size = 0.2) => {
+    const la = dirA.length(), lb = dirB.length();
+    g.visible = la > 1e-4 && lb > 1e-4;
+    if (!g.visible) return;
+    da.copy(dirA).multiplyScalar(1 / la);
+    db.copy(dirB).multiplyScalar(1 / lb);
+    p.copy(origin).addScaledVector(da, size);
+    corner.copy(p).addScaledVector(db, size);
+    spanTo(a, p, corner, 0.012);
+    q.copy(origin).addScaledVector(db, size);
+    spanTo(b, q, corner, 0.012);
+  };
+  g.hide = () => { g.visible = false; };
+  return g;
+}
+function makeDashes(parent, max) {
+  const geo = new THREE.CylinderGeometry(1, 1, 1, 6);
+  const bag = new Map();
+  const matFor = (color, opacity) => {
+    const k = color + ':' + opacity;
+    if (!bag.has(k)) bag.set(k, new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, toneMapped: false }));
+    return bag.get(k);
+  };
+  const meshes = [];
+  for (let i = 0; i < max; i++) {
+    const m = new THREE.Mesh(geo, matFor(0xffffff, 1));
+    m.visible = false;
+    m.frustumCulled = false;
+    parent.add(m);
+    meshes.push(m);
+  }
+  let used = 0;
+  const p = V3(), q = V3(), d = V3();
+  return {
+    begin() { used = 0; },
+    end() { for (let i = used; i < meshes.length; i++) meshes[i].visible = false; },
+    dash(a, b, color, radius, on, gap, opacity) {
+      d.subVectors(b, a);
+      const L = d.length();
+      if (L < 1e-4) return;
+      d.multiplyScalar(1 / L);
+      for (let s = 0; s < L - 0.01 && used < meshes.length; s += on + gap) {
+        const len = Math.min(on, L - s);
+        p.copy(a).addScaledVector(d, s);
+        q.copy(a).addScaledVector(d, s + len);
+        const m = meshes[used++];
+        m.material = matFor(color, opacity);
+        spanTo(m, p, q, radius);
+      }
+    },
+    dispose() {
+      meshes.forEach(m => parent.remove(m));
+      geo.dispose();
+      bag.forEach(m => m.dispose());
+    }
+  };
+}
+
+function glowTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grd.addColorStop(0, 'rgba(255,255,255,0.95)');
+  grd.addColorStop(0.35, 'rgba(255,255,255,0.45)');
+  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+const GLOW = glowTexture();
+
+function makeGlowPath(parent, color, max = 150) {
+  const HOLD = 4.4;
+  const positions = new Float32Array(max * 3);
+  const alphas = new Float32Array(max);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute('alpha', new THREE.BufferAttribute(alphas, 1).setUsage(THREE.DynamicDrawUsage));
+  geo.setDrawRange(0, 0);
+  const uniforms = { uColor: { value: new THREE.Color(color) }, uPixel: { value: 1 } };
+  const pointMat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, toneMapped: false,
+    uniforms,
+    vertexShader: `
+      attribute float alpha;
+      uniform float uPixel;
+      varying float vA;
+      void main() {
+        vA = alpha;
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        gl_PointSize = clamp((0.45 + alpha) * 34.0 * uPixel * (5.2 / max(0.35, -mv.z)), 2.0, 56.0);
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      uniform vec3 uColor;
+      uniform sampler2D uMap;
+      varying float vA;
+      void main() {
+        vec4 tex = texture2D(uMap, gl_PointCoord);
+        if (tex.a * vA < 0.02) discard;
+        gl_FragColor = vec4(uColor, tex.a * vA);
+      }`
+  });
+  pointMat.uniforms.uMap = { value: GLOW };
+  const lineMat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, toneMapped: false,
+    uniforms: { uColor: { value: new THREE.Color(color) } },
+    vertexShader: `attribute float alpha; varying float vA; void main() { vA = alpha; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+    fragmentShader: `uniform vec3 uColor; varying float vA; void main() { gl_FragColor = vec4(uColor, vA); }`
+  });
+  const ptsMesh = new THREE.Points(geo, pointMat);
+  const line = new THREE.Line(geo, lineMat);
+  ptsMesh.frustumCulled = false;
+  line.frustumCulled = false;
+  ptsMesh.renderOrder = 4;
+  line.renderOrder = 3;
+  parent.add(line, ptsMesh);
+  const buf = Array.from({ length: max }, () => new THREE.Vector3());
+  const born = new Float32Array(max);
+  let head = 0, count = 0, on = true;
+  const last = new THREE.Vector3();
+  let has = false;
+  function rebuild(now) {
+    const start = (head - count + max) % max;
+    let w = 0;
+    for (let i = 0; i < count; i++) {
+      const idx = (start + i) % max;
+      const age = now - born[idx];
+      if (age < 0 || age >= HOLD) continue;
+      const p = buf[idx];
+      positions[w * 3] = p.x;
+      positions[w * 3 + 1] = p.y;
+      positions[w * 3 + 2] = p.z;
+      const k = 1 - age / HOLD;
+      alphas[w] = 0.28 + 0.7 * k * k;
+      w++;
+    }
+    geo.setDrawRange(0, w);
+    geo.attributes.position.needsUpdate = true;
+    geo.attributes.alpha.needsUpdate = true;
+    line.visible = on && w > 1;
+    ptsMesh.visible = on && w > 0;
+  }
+  return {
+    get enabled() { return on; },
+    set enabled(v) { on = !!v; line.visible = ptsMesh.visible = on && count > 0; if (!on) this.clear(); },
+    clear() {
+      count = 0; head = 0; has = false;
+      geo.setDrawRange(0, 0);
+      line.visible = false; ptsMesh.visible = false;
+    },
+    push(p, now) {
+      if (!on) return;
+      if (has && last.distanceTo(p) < 0.05) return;
+      last.copy(p); has = true;
+      buf[head].copy(p); born[head] = now;
+      head = (head + 1) % max;
+      if (count < max) count++;
+    },
+    update(now) { if (on && count) rebuild(now); pointMat.uniforms.uPixel.value = renderer.getPixelRatio(); },
+    dispose() {
+      parent.remove(line); parent.remove(ptsMesh);
+      geo.dispose(); pointMat.dispose(); lineMat.dispose();
+    }
+  };
+}
+
+const labels = [];
+const _proj = V3();
+function addTag(tabKey, cls) {
+  const el = document.createElement('div');
+  el.className = 'tag ' + cls;
+  el.style.display = 'none';
+  document.body.appendChild(el);
+  const L = { tab: tabKey, el, cls, pos: V3(), show: false, html: '' };
+  labels.push(L);
+  return L;
+}
+function setTag(L, html, show, pos) {
+  L.show = show;
+  if (pos) L.pos.copy(pos);
+  if (L.html !== html) { L.html = html; L.el.textContent = html; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    _proj.copy(L.pos).project(camera);
+    if (_proj.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((_proj.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - _proj.y) / 2 * h) + 'px';
+  }
+}
+
+function solveTheta(omega) {
+  const w2 = omega * omega;
+  if (w2 < 0.12) return 0;
+  let lo = 0, hi = 1.42;
+  for (let i = 0; i < 24; i++) {
+    const mid = (lo + hi) * 0.5;
+    const lhs = Math.tan(mid);
+    const rhs = w2 * (ARM + CHAIN * Math.sin(mid)) / G;
+    if (lhs > rhs) hi = mid; else lo = mid;
+  }
+  return (lo + hi) * 0.5;
+}
+function paceWord(t) {
+  if (t < 12) return '很慢';
+  if (t < 34) return '慢';
+  if (t < 62) return '中等';
+  if (t < 84) return '快';
+  return '很快';
+}
+function revs(omega) {
+  const n = omega / TAU;
+  if (n < 0.05) return '幾乎沒在轉';
+  return '約 ' + n.toFixed(1) + ' 圈／秒';
+}
+
+/* ---------- 飛天鞦韆 ---------- */
+const swingRoot = new THREE.Group();
+scene.add(swingRoot);
+const column = shade(new THREE.Mesh(new RoundedBoxGeometry(0.46, 2.28, 0.46, 3, 0.06), wood));
+column.position.y = 0.22 + 1.14;
+swingRoot.add(column);
+const base = shade(new THREE.Mesh(new RoundedBoxGeometry(1.2, 0.16, 1.2, 3, 0.04), woodDark));
+base.position.y = 0.3;
+swingRoot.add(base);
+const capital = shade(new THREE.Mesh(new RoundedBoxGeometry(0.78, 0.14, 0.78, 2, 0.03), wood));
+capital.position.y = 2.36;
+swingRoot.add(capital);
+const hub = shade(new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.22, 24), woodDark));
+hub.position.y = PIVOT_Y;
+swingRoot.add(hub);
+const rotor = new THREE.Group();
+swingRoot.add(rotor);
+const pivots = [];
+let watchCargo = null;
+for (let i = 0; i < 6; i++) {
+  const arm = new THREE.Group();
+  arm.rotation.y = i * TAU / 6;
+  const beam = shade(new THREE.Mesh(new RoundedBoxGeometry(1.16, 0.08, 0.11, 2, 0.02), wood));
+  beam.position.set(0.26 + 0.58, PIVOT_Y, 0);
+  arm.add(beam);
+  const pivot = new THREE.Group();
+  pivot.position.set(ARM, PIVOT_Y, 0);
+  const hinge = shade(new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.07, 0.34, 2, 0.02), woodDark));
+  pivot.add(hinge);
+  const rodGeo = new THREE.CylinderGeometry(0.016, 0.016, CHAIN, 8);
+  const rodA = shade(new THREE.Mesh(rodGeo, rodMat));
+  const rodB = shade(new THREE.Mesh(rodGeo, rodMat));
+  rodA.position.set(0, -CHAIN / 2, 0.12);
+  rodB.position.set(0, -CHAIN / 2, -0.12);
+  pivot.add(rodA, rodB);
+  const plank = shade(new THREE.Mesh(new RoundedBoxGeometry(0.52, 0.055, 0.4, 2, 0.016), i === 0 ? wood : woodLite));
+  plank.position.set(0, -CHAIN, 0);
+  pivot.add(plank);
+  const back = shade(new THREE.Mesh(new RoundedBoxGeometry(0.07, 0.2, 0.2, 2, 0.02), woodDark));
+  back.position.set(-0.18, -CHAIN + 0.12, 0);
+  pivot.add(back);
+  const cargo = shade(new THREE.Mesh(new RoundedBoxGeometry(0.2, 0.16, 0.16, 2, 0.02), i === 0 ? woodDark : wood));
+  cargo.position.set(0.06, -CHAIN + 0.025 + 0.08, 0);
+  pivot.add(cargo);
+  if (i === 0) {
+    watchCargo = cargo;
+    const plate = new THREE.Mesh(new RoundedBoxGeometry(0.16, 0.02, 0.1, 1, 0.008), new THREE.MeshStandardMaterial({
+      color: 0xe0b15a, roughness: 0.38, metalness: 0.45, emissive: 0x8a5a20, emissiveIntensity: 0.15
+    }));
+    plate.position.set(0, -CHAIN + 0.025 + 0.15 + 0.012, 0);
+    plate.castShadow = true;
+    pivot.add(plate);
+  }
+  arm.add(pivot);
+  pivots.push(pivot);
+  rotor.add(arm);
+}
+const pathRing = new THREE.Mesh(
+  new THREE.RingGeometry(0.99, 1.012, 96),
+  new THREE.MeshBasicMaterial({ color: 0xb08968, side: THREE.DoubleSide, transparent: true, opacity: 0.55, depthWrite: false, toneMapped: false })
+);
+pathRing.rotation.x = -Math.PI / 2;
+pathRing.position.y = 0.235;
+swingRoot.add(pathRing);
+const swFc = makeArrow(0xff2a2a);
+const swV = makeArrow(0x1aa4e0);
+const swCorner = makeCorner();
+swingRoot.add(swFc, swV, swCorner);
+const swTrail = createTrail(swingRoot, { color: 0xe07a32, max: 32, radius: 0.055, hold: 1.35, peak: 0.82 });
+const tagFc = addTag('swing', 'fc');
+const tagV = addTag('swing', 'vv');
+const tagAng = addTag('swing', 'ang');
+const sw = { phi: 0.35, omega: 0, theta: 0, prevV: 0, steady: false };
+sw.omega = (72 / 100) * SW_WMAX;
+sw.theta = solveTheta(sw.omega);
+
+/* ---------- 雨傘甩水 ---------- */
+const umbrellaRoot = new THREE.Group();
+umbrellaRoot.visible = false;
+scene.add(umbrellaRoot);
+const pole = shade(new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 1.55, 16), wood));
+pole.position.y = 0.22 + 0.78;
+umbrellaRoot.add(pole);
+const grip = shade(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.16, 16), woodDark));
+grip.position.y = 0.36;
+umbrellaRoot.add(grip);
+function canopyProfileY(rho) {
+  const t = clamp(rho / UM_RIM, 0, 1);
+  return UM_APEX - UM_DROP * Math.pow(t, 1.28);
+}
+const canopyPts = [new THREE.Vector2(0.001, UM_APEX)];
+for (let i = 1; i <= 28; i++) {
+  const rho = (i / 28) * UM_RIM;
+  canopyPts.push(new THREE.Vector2(rho, canopyProfileY(rho)));
+}
+const canopyMesh = new THREE.Mesh(new THREE.LatheGeometry(canopyPts, 48), frost);
+canopyMesh.castShadow = false;
+canopyMesh.receiveShadow = false;
+const spinner = new THREE.Group();
+spinner.add(canopyMesh);
+const rim = shade(new THREE.Mesh(new THREE.TorusGeometry(UM_RIM, 0.03, 8, 72), wood), false);
+rim.rotation.x = Math.PI / 2;
+rim.position.y = canopyProfileY(UM_RIM);
+spinner.add(rim);
+for (let i = 0; i < 8; i++) {
+  const rib = shade(new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 6), wood));
+  const ang = i * TAU / 8;
+  const tip = V3(Math.cos(ang) * UM_RIM, canopyProfileY(UM_RIM) - 0.03, Math.sin(ang) * UM_RIM);
+  const top = V3(0, UM_APEX - 0.04, 0);
+  spanTo(rib, top, tip, 0.012);
+  rib.castShadow = true;
+  spinner.add(rib);
+}
+umbrellaRoot.add(spinner);
+const dropMat = new THREE.MeshStandardMaterial({
+  color: 0x8fd8ff, emissive: 0x19b4ff, emissiveIntensity: 1.2, roughness: 0.2, metalness: 0.04, toneMapped: false
+});
+const dropGeo = new THREE.SphereGeometry(0.068, 18, 14);
+const dropGlowMat = new THREE.SpriteMaterial({
+  map: GLOW, color: 0x7fd4ff, transparent: true, opacity: 0.85, depthWrite: false,
+  blending: THREE.NormalBlending, toneMapped: false
+});
+const umDashes = makeDashes(umbrellaRoot, 140);
+const umFc = makeArrow(0xff2a2a);
+const umV = makeArrow(0x1aa4e0);
+const umCorner = makeCorner();
+umbrellaRoot.add(umFc, umV, umCorner);
+const drops = [];
+const rhos = [0.74, 0.86, 0.98, 1.08, 1.16, 1.22, 0.92, 1.18];
+for (let i = 0; i < 8; i++) {
+  const mesh = new THREE.Group();
+  const ball = new THREE.Mesh(dropGeo, dropMat);
+  ball.castShadow = true;
+  const glow = new THREE.Sprite(dropGlowMat);
+  glow.scale.setScalar(0.28);
+  mesh.add(ball, glow);
+  const ang = i * TAU / 8 + 0.35;
+  const rho = rhos[i];
+  const home = V3(Math.cos(ang) * rho, canopyProfileY(rho) + 0.06, Math.sin(ang) * rho);
+  mesh.position.copy(home);
+  spinner.add(mesh);
+  const path = makeGlowPath(umbrellaRoot, 0x0c86c4, 160);
+  drops.push({
+    mesh, home, rho, ang, path,
+    attached: true,
+    aMax: 7.6 * (0.94 + (i % 3) * 0.04),
+    vel: V3(),
+    release: V3(),
+    radial: V3(),
+    tangent: V3(),
+    watch: i === 3
+  });
+}
+const tagUmBad = addTag('umbrella', 'bad');
+const tagUmTan = addTag('umbrella', 'vv');
+const tagUmFc = addTag('umbrella', 'fc');
+const um = { phi: 0.4, omega: (28 / 100) * UM_WMAX, top: false, clock: 0 };
+
+/* ---------- 斷繩 ---------- */
+const cutRoot = new THREE.Group();
+cutRoot.visible = false;
+scene.add(cutRoot);
+const post = shade(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 1.05, 20), wood));
+post.position.y = 0.22 + 0.52;
+cutRoot.add(post);
+const hook = shade(new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.012, 8, 18), rodMat));
+hook.position.y = CT_Y;
+hook.rotation.y = Math.PI / 2;
+cutRoot.add(hook);
+const ballMat = new THREE.MeshStandardMaterial({ color: 0xdeb887, roughness: 0.58, metalness: 0.03 });
+const ball = shade(new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 32, 24), ballMat));
+cutRoot.add(ball);
+const stringMat = new THREE.MeshStandardMaterial({ color: 0xf4ecdf, roughness: 0.55 });
+const stringMesh = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 8), stringMat);
+stringMesh.frustumCulled = false;
+cutRoot.add(stringMesh);
+const stubMat = new THREE.MeshStandardMaterial({ color: 0xf4ecdf, roughness: 0.55 });
+const stubA = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.22, 6), stubMat);
+const stubB = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.18, 6), stubMat);
+stubA.visible = stubB.visible = false;
+cutRoot.add(stubA, stubB);
+const flashMat = new THREE.MeshBasicMaterial({
+  color: 0xfff6e8, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, toneMapped: false
+});
+const flash = new THREE.Mesh(new THREE.RingGeometry(0.03, 0.09, 28), flashMat);
+flash.rotation.x = -Math.PI / 2;
+flash.visible = false;
+cutRoot.add(flash);
+const circlePts = [];
+for (let i = 0; i <= 80; i++) {
+  const a = (i / 80) * TAU;
+  circlePts.push(new THREE.Vector3(Math.cos(a) * CT_R, CT_Y, -Math.sin(a) * CT_R));
+}
+const circleGeo = new THREE.BufferGeometry().setFromPoints(circlePts);
+const circle = new THREE.Line(circleGeo, new THREE.LineDashedMaterial({
+  color: 0x8d6e63, dashSize: 0.12, gapSize: 0.09, transparent: true, opacity: 0.85, toneMapped: false
+}));
+circle.computeLineDistances();
+cutRoot.add(circle);
+const ctDashes = makeDashes(cutRoot, 48);
+const ctFc = makeArrow(0xff2a2a);
+const ctV = makeArrow(0x1aa4e0);
+const ctCorner = makeCorner();
+cutRoot.add(ctFc, ctV, ctCorner);
+const ctTrail = createTrail(cutRoot, { color: 0x1aa4e0, max: 64, radius: 0.055, hold: 2.4, peak: 0.62 });
+const tagCtFc = addTag('cut', 'fc');
+const tagCtV = addTag('cut', 'vv');
+const tagCtAng = addTag('cut', 'ang');
+const ct = {
+  phi: -2.3,
+  omega: CT_WMIN + (46 / 100) * (CT_WMAX - CT_WMIN),
+  cut: false,
+  snap: 0,
+  pos: V3(Math.cos(-2.3) * CT_R, CT_Y, -Math.sin(-2.3) * CT_R),
+  vel: V3(),
+  cutPos: V3(),
+  cutTan: V3(),
+  cutRad: V3()
+};
+
+const _seat = V3();
+const _fc = V3();
+const _vv = V3();
+const _origin = V3();
+const _tip = V3();
+const _a = V3();
+const _b = V3();
+const _end = V3();
+const postAt = V3(0, CT_Y, 0);
+
+let tab = 'swing';
+const dbg = {
+  swing: {},
+  umbrella: { drops: [] },
+  cut: {}
+};
+
+function showArrows(arrowFc, arrowV, corner, origin, fcVec, vVec, lenFc, lenV, labels3, size) {
+  const fcL = fcVec.length(), vL = vVec.length();
+  if (fcL < 1e-4) arrowFc.visible = false;
+  else {
+    _a.copy(fcVec).multiplyScalar(lenFc / fcL);
+    arrowFc.set(origin, _a);
+  }
+  if (vL < 1e-4) arrowV.visible = false;
+  else {
+    _b.copy(vVec).multiplyScalar(lenV / vL);
+    arrowV.set(origin, _b);
+  }
+  if (arrowFc.visible && arrowV.visible) corner.set(origin, fcVec, vVec, size);
+  else corner.hide();
+  if (labels3) {
+    const [tFc, tV, tAng] = labels3;
+    setTag(tFc, '向心力', arrowFc.visible, arrowFc.visible ? _tip.copy(origin).addScaledVector(fcVec, lenFc / fcL * 0.72) : origin);
+    if (arrowFc.visible) {
+      tFc.pos.copy(origin).addScaledVector(fcVec, (lenFc / fcL) * 0.72);
+      tFc.pos.y += 0.26;
+    }
+    setTag(tV, '切線速度', arrowV.visible, origin);
+    if (arrowV.visible) {
+      tV.pos.copy(origin).addScaledVector(vVec, (lenV / vL) * 1.08);
+      tV.pos.y += 0.06;
+    }
+    if (corner.visible && corner.userData.corner) {
+      setTag(tAng, '垂直', true, corner.userData.corner);
+      tAng.pos.y += 0.32;
+    } else setTag(tAng, '', false);
+  }
+}
+
+function updateSwing(dt) {
+  const slider = Number($('swSpeed').value);
+  const target = (slider / 100) * SW_WMAX;
+  const k = 1 - Math.exp(-dt * 3.4);
+  sw.omega += (target - sw.omega) * k;
+  sw.theta += (solveTheta(sw.omega) - sw.theta) * (1 - Math.exp(-dt * 2.3));
+  sw.phi += sw.omega * dt;
+  rotor.rotation.y = sw.phi;
+  for (const p of pivots) p.rotation.z = sw.theta;
+  watchCargo.getWorldPosition(_seat);
+  const rad = Math.hypot(_seat.x, _seat.z);
+  pathRing.scale.set(rad, rad, 1);
+  _fc.set(-_seat.x, 0, -_seat.z);
+  _vv.set(sw.omega * _seat.z, 0, -sw.omega * _seat.x);
+  const speed = _vv.length();
+  sw.steady = Math.abs(speed - sw.prevV) < 0.05;
+  sw.prevV = speed;
+  _origin.copy(_seat);
+  _origin.y += 0.28;
+  const moving = sw.omega > 0.18 && rad > 0.2;
+  if (moving) {
+    showArrows(swFc, swV, swCorner, _origin, _fc, _vv, clamp(sw.omega * sw.omega * rad * 0.028, 0.55, 1.25), clamp(speed * 0.38, 0.55, 1.35), [tagFc, tagV, tagAng], 0.28);
+    swTrail.stamp(_seat);
+  } else {
+    swFc.visible = swV.visible = false;
+    swCorner.hide();
+    setTag(tagFc, '', false); setTag(tagV, '', false); setTag(tagAng, '', false);
+  }
+  swTrail.update(dt);
+  const deg = Math.round(sw.theta * 180 / Math.PI);
+  $('swSpeedV').textContent = paceWord(slider);
+  const dirNote = moving
+    ? (sw.steady ? '速率大小維持不變，方向一直在改變。' : '轉速還在變，速率大小也跟著變；方向一樣一直在改。')
+    : '還沒轉起來。轉起來之後，速率大小可以不變，方向卻一直在改。';
+  $('swStat').innerHTML = `外擺 <b>${deg}°</b><br>速率大小 <b>${speed.toFixed(1)}</b> 公尺/秒<br>${revs(sw.omega)}<br><span class="r">向心力</span>水平指向圓心，<span class="b">切線速度</span>與它垂直。<br>${dirNote}`;
+  dbg.swing = {
+    omega: sw.omega, theta: sw.theta, radius: rad, speed,
+    seat: [_seat.x, _seat.y, _seat.z],
+    fc: [_fc.x, _fc.y, _fc.z], v: [_vv.x, _vv.y, _vv.z],
+    arrows: moving && swFc.visible && swV.visible && swCorner.visible
+  };
+  return sw.omega > 0.02 || Math.abs(sw.theta - solveTheta(sw.omega)) > 0.01;
+}
+
+function watchDrop() { return drops.find(d => d.watch) || drops[0]; }
+
+function detachDrop(d) {
+  d.mesh.getWorldPosition(_a);
+  umbrellaRoot.attach(d.mesh);
+  d.attached = false;
+  d.release.copy(_a);
+  const h = Math.hypot(_a.x, _a.z) || 1;
+  d.radial.set(_a.x / h, 0, _a.z / h);
+  d.vel.set(um.omega * _a.z, 0, -um.omega * _a.x);
+  const hv = Math.hypot(d.vel.x, d.vel.z) || 1;
+  d.tangent.set(d.vel.x / hv, 0, d.vel.z / hv);
+  d.mesh.visible = true;
+}
+
+function refillDrops() {
+  for (const d of drops) {
+    d.attached = true;
+    d.vel.set(0, 0, 0);
+    spinner.add(d.mesh);
+    d.mesh.position.copy(d.home);
+    d.mesh.quaternion.identity();
+    d.mesh.visible = true;
+    d.mesh.scale.setScalar(d.watch ? 1.12 : 1);
+    d.path.clear();
+  }
+  releaseLists(renderer);
+}
+
+function updateUmbrella(dt) {
+  um.clock += dt;
+  const slider = Number($('umSpeed').value);
+  const target = (slider / 100) * UM_WMAX;
+  um.omega += (target - um.omega) * (1 - Math.exp(-dt * 3.6));
+  um.phi += um.omega * dt;
+  spinner.rotation.y = um.phi;
+  let attached = 0, flying = 0;
+  const infos = [];
+  for (const d of drops) {
+    if (d.attached && um.omega * um.omega * d.rho > d.aMax) detachDrop(d);
+    if (d.attached) {
+      attached++;
+      d.mesh.scale.setScalar(d.watch ? 1.12 : 1);
+    } else {
+      flying++;
+      d.vel.y -= 6.0 * dt;
+      d.mesh.position.addScaledVector(d.vel, dt);
+      if (d.mesh.position.y < 0.29) {
+        d.mesh.position.y = 0.29;
+        d.vel.y = 0;
+      }
+      const far = Math.hypot(d.mesh.position.x, d.mesh.position.z);
+      d.mesh.visible = far < 7.2;
+      if (d.mesh.visible) d.path.push(d.mesh.position, um.clock);
+    }
+    d.path.update(um.clock);
+    const wp = d.attached ? d.mesh.getWorldPosition(_a) : _a.copy(d.mesh.position);
+    infos.push({
+      attached: d.attached, watch: d.watch,
+      x: wp.x, y: wp.y, z: wp.z,
+      vx: d.vel.x, vy: d.vel.y, vz: d.vel.z,
+      release: [d.release.x, d.release.y, d.release.z],
+      radial: [d.radial.x, d.radial.y, d.radial.z],
+      tangent: [d.tangent.x, d.tangent.y, d.tangent.z]
+    });
+  }
+  umDashes.begin();
+  let labeled = false;
+  for (const d of drops) {
+    if (d.attached) continue;
+    _b.copy(d.release).addScaledVector(d.radial, 2.15);
+    umDashes.dash(d.release, _b, 0xc4503a, d.watch ? 0.016 : 0.01, 0.11, 0.08, d.watch ? 0.9 : 0.45);
+    if (d.watch && !labeled) {
+      labeled = true;
+      _tip.copy(d.release).addScaledVector(d.radial, 2.05);
+      _tip.y += 0.08;
+      setTag(tagUmBad, '錯：往正外側', true, _tip);
+      _tip.copy(d.release).addScaledVector(d.tangent, 0.85);
+      _tip.y += 0.16;
+      setTag(tagUmTan, '切線', true, _tip);
+    }
+  }
+  if (!labeled) { setTag(tagUmBad, '', false); setTag(tagUmTan, '', false); }
+  umDashes.end();
+
+  const w = watchDrop();
+  w.mesh.getWorldPosition(_seat);
+  if (w.attached) {
+    _origin.copy(_seat); _origin.y += 0.12;
+    _fc.set(-_seat.x, 0, -_seat.z);
+    _vv.set(um.omega * _seat.z, 0, -um.omega * _seat.x);
+    if (um.omega > 0.25) {
+      showArrows(umFc, umV, umCorner, _origin, _fc, _vv, 0.62, 0.62, null, 0.18);
+      _tip.copy(_origin).addScaledVector(_fc, (0.48 / (_fc.length() || 1)) * 0.7);
+      setTag(tagUmFc, '向心力', true, _tip);
+    } else {
+      umFc.visible = umV.visible = false; umCorner.hide(); setTag(tagUmFc, '', false);
+    }
+  } else {
+    umFc.visible = false; umCorner.hide(); setTag(tagUmFc, '', false);
+    _origin.copy(w.mesh.position); _origin.y += 0.1;
+    if (w.vel.length() > 0.05 && w.mesh.visible) {
+      const L = clamp(w.vel.length() * 0.28, 0.4, 0.9);
+      _b.copy(w.vel).setLength(L);
+      umV.set(_origin, _b);
+    } else umV.visible = false;
+  }
+  $('umSpeedV').textContent = paceWord(slider);
+  const state = flying === 0 ? '水滴還跟著傘轉，附著力夠提供向心力。' : (attached === 0 ? '水滴都沿切線飛出去了。' : '外圈先飛出，裡圈還黏著。');
+  $('umStat').innerHTML = `${revs(um.omega)}<br>還黏著 <b>${attached}</b> 顆，已飛出 <b>${flying}</b> 顆<br>${state}<br>俯視時，藍色軌跡是直線，而且沿著切線，不是沿著紅色虛線。`;
+  dbg.umbrella = { omega: um.omega, attached, flying, drops: infos };
+  return um.omega > 0.05 || flying > 0;
+}
+
+function placeBall() {
+  ball.position.copy(ct.pos);
+  if (!ct.cut) {
+    _end.copy(ct.pos).sub(postAt);
+    const len = _end.length();
+    if (len > BALL_R + 0.02) {
+      _end.multiplyScalar((len - BALL_R) / len).add(postAt);
+      spanTo(stringMesh, postAt, _end, 0.007);
+      stringMesh.visible = true;
+    }
+  } else stringMesh.visible = false;
+}
+
+function doCut() {
+  if (ct.cut) return;
+  ct.vel.set(ct.omega * ct.pos.z, 0, -ct.omega * ct.pos.x);
+  if (ct.vel.length() < 0.2) return;
+  ct.cut = true;
+  ct.snap = 0.001;
+  ct.cutPos.copy(ct.pos);
+  const hv = Math.hypot(ct.vel.x, ct.vel.z) || 1;
+  ct.cutTan.set(ct.vel.x / hv, 0, ct.vel.z / hv);
+  const hr = Math.hypot(ct.pos.x, ct.pos.z) || 1;
+  ct.cutRad.set(ct.pos.x / hr, 0, ct.pos.z / hr);
+  stringMesh.visible = false;
+  stubA.visible = stubB.visible = true;
+  stubA.position.copy(postAt).addScaledVector(ct.cutTan, 0.18);
+  stubB.position.copy(ct.pos).addScaledVector(ct.cutTan, -0.28);
+  stubA.position.y = CT_Y;
+  stubB.position.y = CT_Y;
+  flash.visible = true;
+  flash.position.copy(ct.pos).addScaledVector(ct.cutRad, -0.35);
+  flash.position.y = CT_Y;
+  flash.scale.setScalar(1);
+  flashMat.opacity = 1;
+  $('cutBtn').disabled = true;
+  $('cutBtn').textContent = '已經剪斷';
+}
+
+function resetCut() {
+  ct.cut = false;
+  ct.snap = 0;
+  ct.pos.set(Math.cos(ct.phi) * CT_R, CT_Y, -Math.sin(ct.phi) * CT_R);
+  ct.vel.set(ct.omega * ct.pos.z, 0, -ct.omega * ct.pos.x);
+  stubA.visible = stubB.visible = flash.visible = false;
+  ctTrail.clear();
+  ctDashes.begin(); ctDashes.end();
+  $('cutBtn').disabled = false;
+  $('cutBtn').textContent = '✂️ 剪斷繩子';
+  releaseLists(renderer);
+  placeBall();
+}
+
+function updateCut(dt) {
+  const slider = Number($('ctSpeed').value);
+  const target = CT_WMIN + (slider / 100) * (CT_WMAX - CT_WMIN);
+  if (!ct.cut) {
+    ct.omega += (target - ct.omega) * (1 - Math.exp(-dt * 4));
+    ct.phi += ct.omega * dt;
+    ct.pos.set(Math.cos(ct.phi) * CT_R, CT_Y, -Math.sin(ct.phi) * CT_R);
+    ct.vel.set(ct.omega * ct.pos.z, 0, -ct.omega * ct.pos.x);
+  } else {
+    ct.pos.addScaledVector(ct.vel, dt);
+    ct.snap += dt;
+    const u = clamp(ct.snap / 0.32, 0, 1);
+    flashMat.opacity = 1 - u;
+    flash.scale.setScalar(1 + u * 7);
+    flash.visible = u < 1;
+    stubA.position.y = CT_Y - ct.snap * 1.4;
+    stubB.position.y = CT_Y - ct.snap * 1.1;
+    stubA.rotation.z += dt * 6;
+    stubB.rotation.x += dt * 5;
+    stubA.visible = stubB.visible = ct.snap < 0.7;
+  }
+  placeBall();
+  _origin.copy(ct.pos); _origin.y += 0.22;
+  _vv.copy(ct.vel);
+  if (!ct.cut) {
+    _fc.set(-ct.pos.x, 0, -ct.pos.z);
+    showArrows(ctFc, ctV, ctCorner, _origin, _fc, _vv, 0.85, clamp(ct.vel.length() * 0.42, 0.55, 1.15), [tagCtFc, tagCtV, tagCtAng], 0.18);
+    ctDashes.begin(); ctDashes.end();
+  } else {
+    ctFc.visible = false;
+    ctCorner.hide();
+    setTag(tagCtFc, '', false); setTag(tagCtAng, '', false);
+    const L = clamp(ct.vel.length() * 0.42, 0.6, 1.2);
+    _b.copy(ct.vel).setLength(L);
+    ctV.set(_origin, _b);
+    _tip.copy(_origin).addScaledVector(ct.vel, (L / (ct.vel.length() || 1)) * 0.7);
+    setTag(tagCtV, '切線速度', true, _tip);
+    ctDashes.begin();
+    _a.copy(ct.cutPos);
+    _b.copy(ct.cutPos).addScaledVector(ct.cutTan, 4.8);
+    _a.y = _b.y = CT_Y;
+    ctDashes.dash(_a, _b, 0x1493c8, 0.012, 0.12, 0.1, 0.55);
+    ctDashes.end();
+  }
+  if (ct.vel.length() > 0.05) ctTrail.stamp(ct.pos);
+  ctTrail.update(dt);
+  $('ctSpeedV').textContent = ct.cut ? '已剪斷' : paceWord(slider);
+  const speed = ct.vel.length();
+  const far = Math.hypot(ct.pos.x, ct.pos.z);
+  $('ctStat').innerHTML = ct.cut
+    ? `繩子已斷，<span class="r">向心力消失</span>。<br>速率大小 <b>${speed.toFixed(1)}</b> 公尺/秒，維持不變。<br>木球沿<span class="b">切線</span>等速度直線前進。${far > 4.2 ? '<br>已經離開原來的圓。' : ''}`
+    : `還被繩子拉著做圓周運動。<br>速率大小 <b>${speed.toFixed(1)}</b> 公尺/秒<br>${revs(ct.omega)}<br><span class="r">向心力</span>指向圓心，<span class="b">速度</span>沿著切線。`;
+  dbg.cut = {
+    cut: ct.cut,
+    omega: ct.omega,
+    speed,
+    pos: [ct.pos.x, ct.pos.y, ct.pos.z],
+    vel: [ct.vel.x, ct.vel.y, ct.vel.z],
+    fcVisible: ctFc.visible,
+    tangent: [ct.cutTan.x, ct.cutTan.y, ct.cutTan.z],
+    cutPos: [ct.cutPos.x, ct.cutPos.y, ct.cutPos.z],
+    radial: [ct.cutRad.x, ct.cutRad.y, ct.cutRad.z]
+  };
+  return true;
+}
+
+const CAM = {
+  swing: () => ({ pos: [4.4, 3.35, 5.15], target: [0.35, 1.35, 0], fitW: 7.2 }),
+  umbrella: () => um.top
+    ? { pos: [0.05, 8.2, 0.28], target: [0, 1.05, 0], fitW: 6.4 }
+    : { pos: [2.85, 3.7, 3.55], target: [0, 1.2, 0], fitW: 4.6 },
+  cut: () => ({ pos: [0.15, 10.2, 0.55], target: [0.35, 0.45, -0.15], fitW: 6.4 })
+};
+const TABS = {
+  swing: { group: swingRoot, update: updateSwing, cam: CAM.swing, dock: ['飛天鞦韆', '方向隨時在改變，圓周運動是一種「加速度運動」！'] },
+  umbrella: { group: umbrellaRoot, update: updateUmbrella, cam: CAM.umbrella, dock: ['雨傘甩水', '附著力不足以提供向心力！水滴因慣性沿「切線方向」飛出，並非往正外側飛！'] },
+  cut: { group: cutRoot, update: updateCut, cam: CAM.cut, dock: ['斷繩危機', '向心力消失 ➔ 物體不再做圓周運動 ➔ 維持慣性，沿切線等速度直線前進！'] }
+};
+
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(280, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(c.pos[0], c.pos[1], c.pos[2]);
+  const tgt = V3(c.target[0], c.target[1], c.target[2]);
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return { pos, tgt };
+  const dist0 = pos.distanceTo(tgt);
+  const fov = window.MobileView?.isMobile() ? Math.min(camera.fov, 50) : camera.fov;
+  const tanH = Math.tan(fov * Math.PI / 360);
+  if (window.MobileView?.isMobile()) {
+    const need = (c.fitW || 0) * 1.12 / (2 * tanH * Math.max(camera.aspect, 0.2));
+    if (need > dist0) pos.sub(tgt).multiplyScalar(need / dist0).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  if (c.fitW) {
+    const avail = Math.max(0.38, (w - left) / w);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist0) pos.sub(tgt).multiplyScalar(need / dist0).add(tgt);
+  }
+  const dist = pos.distanceTo(tgt);
+  const visH = 2 * dist * tanH;
+  const visW = visH * camera.aspect;
+  const sx = -(left / 2) / w * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / h * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant || reduceMotion) {
+    camTw = null;
+    camera.position.copy(pos);
+    controls.target.copy(tgt);
+    controls.update();
+    return;
+  }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos.clone(), t1: tgt.clone(), k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+
+function setCap(small, huge) {
+  const html = `<small>${small}</small><span class="huge">${huge}</span>`;
+  if ($('cap').innerHTML !== html) $('cap').innerHTML = html;
+}
+function setTab(next, instant = false) {
+  if (!TABS[next]) next = 'swing';
+  tab = next;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === next));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== next; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === next;
+  $('lgWrong').hidden = next !== 'umbrella';
+  if (location.hash.slice(1) !== next) {
+    try { history.replaceState(null, '', '#' + next); } catch (e) { /* 本機檔案 */ }
+  }
+  setCap(TABS[next].dock[0], TABS[next].dock[1]);
+  releaseLists(renderer);
+  goView(TABS[next].cam(), instant);
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { if (b.dataset.tab !== tab) setTab(b.dataset.tab); }));
+window.addEventListener('hashchange', () => {
+  const h = location.hash.slice(1);
+  if (TABS[h] && h !== tab) setTab(h);
+});
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => {
+  const c = $('panel').classList.toggle('collapsed');
+  $('collapse').textContent = c ? '展開' : '收合';
+  layoutDock();
+  goView(TABS[tab].cam(), true);
+});
+$('umRefill').addEventListener('click', () => refillDrops());
+$('umTop').addEventListener('click', () => {
+  um.top = !um.top;
+  $('umTop').classList.toggle('on', um.top);
+  $('umTop').innerHTML = um.top ? '回到斜看<small>看見傘面</small>' : '俯視對照<small>從正上方看切線</small>';
+  if (tab === 'umbrella') goView(CAM.umbrella());
+});
+$('cutBtn').addEventListener('click', () => doCut());
+$('ctReset').addEventListener('click', () => resetCut());
+
+['pointerdown', 'pointermove', 'touchstart', 'touchmove', 'wheel', 'mousedown'].forEach(ev => {
+  document.querySelectorAll('#panel input, #panel button, #panel a, #dock').forEach(el => {
+    el.addEventListener(ev, e => e.stopPropagation(), { passive: true });
+  });
+});
+
+function applyQuality() {
+  const rec = window.Look && window.Look.mode === 'record';
+  renderer.setPixelRatio(window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 1.25));
+  const sh = rec ? 2048 : 1024;
+  if (sun.shadow.mapSize.x !== sh) {
+    sun.shadow.mapSize.set(sh, sh);
+    if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
+  }
+  sun.shadow.radius = rec ? 5 : 2;
+}
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  applyQuality();
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.fov = 40;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); if (TABS[tab]) goView(TABS[tab].cam(), true); });
+
+const bodyEl = document.querySelector('#panel .body');
+mountPresets(bodyEl, [
+  { label: '慢慢轉', title: '座位幾乎垂直垂下', tab: 'swing', values: { swSpeed: 8 } },
+  { label: '快速外甩', title: '轉得快，座位大幅往外', tab: 'swing', values: { swSpeed: 88 } },
+  { label: '水滴還黏著', title: '轉得慢，附著力還夠', tab: 'umbrella', values: { umSpeed: 16 } },
+  { label: '沿切線飛出', title: '超過附著力，水滴沿切線飛出', tab: 'umbrella', values: { umSpeed: 92 } },
+  { label: '剪斷看慣性', title: '剪斷繩子，沿切線直線飛出', tab: 'cut', values: { ctSpeed: 58 }, after() { resetCut(); doCut(); } }
+]);
+const toolRow = document.createElement('div');
+toolRow.className = 'lab-tools';
+bodyEl.querySelector('.lab-presets').after(toolRow);
+const trailFacade = {
+  set enabled(v) { drops.forEach(d => { d.path.enabled = v; }); },
+  get enabled() { return drops[0].path.enabled; }
+};
+mountTrailToggle(toolRow, [swTrail, ctTrail, trailFacade]);
+const synth = mountSoundToggle(toolRow);
+
+function frame(dt) {
+  dt = Math.min(dt, 0.05);
+  const busy = TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.15);
+    const s = camTw.k * camTw.k * (3 - 2 * camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  const moved = controls.update();
+  if (!window.innerWidth || !window.innerHeight) return true;
+  window.MobileView?.offset(camera);
+  placeLabels();
+  const spin = tab === 'swing' ? sw.omega / SW_WMAX : tab === 'umbrella' ? um.omega / UM_WMAX : (ct.cut ? 0.75 : ct.omega / CT_WMAX);
+  const spike = (tab === 'cut' && ct.cut && ct.snap < 0.12) || (tab === 'umbrella' && dbg.umbrella.flying > 0 && dbg.umbrella.flying < 8) ? 0.95 : spin * 0.55;
+  synth.level(spike);
+  renderer.render(scene, camera);
+  return !!(busy || camTw || moved);
+}
+const loop = runAdaptive(dt => frame(dt), { autostart: false });
+
+window.lab = {
+  frame, setTab, camera, controls, renderer, scene,
+  cut: doCut, resetCut, refill: refillDrops,
+  sample: () => ({
+    tab,
+    swing: dbg.swing,
+    umbrella: dbg.umbrella,
+    cut: dbg.cut,
+    geos: renderer.info.memory.geometries,
+    tex: renderer.info.memory.textures
+  })
+};
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'swing';
+setTab(first, true);
+loop.wake(4000);
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+<script src="goals.js" defer></script>
+</body>
+</html>

@@ -8,7 +8,7 @@ function geo(radius) {
   return geos.get(key);
 }
 
-export function createTrail(parent, { color = 0xffb15a, max = 26, radius = 0.055 } = {}) {
+export function createTrail(parent, { color = 0xffb15a, max = 26, radius = 0.055, hold = 0.95, peak = 0.42 } = {}) {
   const slots = [];
   for (let i = 0; i < max; i++) {
     const mat = new THREE.MeshBasicMaterial({
@@ -19,7 +19,7 @@ export function createTrail(parent, { color = 0xffb15a, max = 26, radius = 0.055
     mesh.renderOrder = 4;
     mesh.frustumCulled = false;
     parent.add(mesh);
-    slots.push({ mesh, life: 0, hold: 0.95 });
+    slots.push({ mesh, life: 0, hold, peak });
   }
   let on = true;
   let cursor = 0;
@@ -48,7 +48,7 @@ export function createTrail(parent, { color = 0xffb15a, max = 26, radius = 0.055
       s.mesh.position.copy(local);
       s.mesh.visible = true;
       s.life = s.hold;
-      s.mesh.material.opacity = 0.42;
+      s.mesh.material.opacity = s.peak;
       s.mesh.scale.setScalar(1);
       cursor = (cursor + 1) % slots.length;
     },
@@ -62,7 +62,7 @@ export function createTrail(parent, { color = 0xffb15a, max = 26, radius = 0.055
         if (s.life <= 0) continue;
         s.life -= dt;
         const k = Math.max(0, s.life / s.hold);
-        s.mesh.material.opacity = 0.42 * k * k;
+        s.mesh.material.opacity = s.peak * k * k;
         s.mesh.scale.setScalar(0.45 + 0.55 * k);
         if (s.life <= 0) s.mesh.visible = false;
       }
