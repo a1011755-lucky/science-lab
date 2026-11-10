@@ -20,8 +20,16 @@
   const isMobile = () => window.matchMedia(MQ).matches;
 
   let css = `
+  .panel.glass {
+    background: rgba(255,255,255,0.5);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 12px;
+    color: #5d4037;
+  }
   @media ${MQ} {
     .panel {
+      position: fixed !important;
       top: auto !important; bottom: 0 !important; left: 0 !important; right: 0 !important;
       width: auto !important; min-width: 0 !important;
       max-height: 40vh !important; max-height: 40dvh !important;
@@ -76,6 +84,7 @@
     transition: bottom .4s cubic-bezier(.2,.8,.2,1), transform .15s ease, box-shadow .2s ease;
   }
   .mv-toggle:active { transform: scale(.95); box-shadow: 0 4px 10px rgba(90,60,30,.18), inset 0 2px 4px rgba(120,90,60,.15); }
+  .fab { display: none !important; }
   .mv-toggle .ic { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; color: #fff; font-size: .8rem;
     background: radial-gradient(circle at 35% 30%, #e9a06e, #c0703f 70%); box-shadow: inset 0 -2px 3px rgba(0,0,0,.18), 0 2px 5px rgba(192,112,63,.4);
     transition: transform .4s cubic-bezier(.2,.8,.2,1); }
@@ -97,8 +106,26 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(collapseSecondary, 0));
   else setTimeout(collapseSecondary, 0);
 
+  // 面板、監測儀、說明卡上的滑動與點擊，不傳給 OrbitControls
+  function blockCamera(el) {
+    if (!el || el.dataset.mvGuard) return;
+    el.dataset.mvGuard = '1';
+    ['pointerdown', 'pointermove', 'touchstart', 'touchmove', 'wheel', 'mousedown'].forEach(t =>
+      el.addEventListener(t, e => e.stopPropagation(), { passive: true }));
+  }
+  function guardUi() {
+    document.querySelectorAll('.panel, .monitor, .concept, .hud, .dock, #side, .card').forEach(blockCamera);
+  }
+
+  let paintToggle = () => {};
+  function setClosed(closed) {
+    document.body.classList.toggle('mv-closed', !!closed);
+    paintToggle();
+  }
+
   // 懸浮收折按鈕＋觸控防誤觸
   function setupSheet() {
+    guardUi();
     const panel = document.querySelector('.panel');
     if (!panel || document.querySelector('.mv-toggle')) return;
     const btn = document.createElement('button');
@@ -110,24 +137,24 @@
       btn.setAttribute('aria-expanded', String(!closed));
       btn.setAttribute('aria-label', closed ? '展開控制面板' : '收起控制面板');
     };
+    paintToggle = paint;
     btn.addEventListener('click', () => { document.body.classList.toggle('mv-closed'); paint(); });
     if (document.body.dataset.mvStart === 'closed' && isMobile()) document.body.classList.add('mv-closed');
     paint();
+    document.body.classList.add('mv-on');
     document.body.appendChild(btn);
     // 按鈕永遠貼在抽屜上緣：用 CSS 變數記錄抽屜高度
     const sync = () => document.documentElement.style.setProperty('--mv-sheet', panel.offsetHeight + 'px');
     sync();
     if (window.ResizeObserver) new ResizeObserver(sync).observe(panel);
     window.addEventListener('resize', sync);
-    // 在面板上的手勢不往外傳，避免觸發背景 3D 的旋轉／縮放
-    ['pointerdown', 'touchstart', 'touchmove', 'wheel', 'mousedown'].forEach(t =>
-      panel.addEventListener(t, e => e.stopPropagation(), { passive: true }));
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupSheet);
   else setupSheet();
 
   window.MobileView = {
     isMobile,
+    setClosed,
 
     /** 直式螢幕：把鏡頭沿視線往後拉，讓整個場景塞得進窄螢幕 */
     frame(camera, controls, extra = 1) {      // extra：特別寬的場景可多退一點
