@@ -964,9 +964,9 @@ const CL = (() => {
   const clips = Array.from({ length: 14 }, (_, i) => { const m = shadowed(new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.016, 6, 18), clipM)); m.scale.set(1.7, 1, 1); const home = V3(2.9 + (i % 4) * 0.28 + rnd() * 0.08, 0.02, -0.5 + Math.floor(i / 4) * 0.32 + rnd() * 0.06); m.position.copy(home); m.rotation.x = -Math.PI / 2; m.rotation.z = rnd() * 3; group.add(m); return { m, home, rz: m.rotation.z }; });
 
 
-  const grip = makeGrip({ axis: 'x', orbit: 0.7, fingerColor: 0xffb300, thumbColor: 0xe53935 });
+  const grip = makeGrip({ axis: 'x', orbit: 0.78, fingerColor: 0xffb300 });
   grip.position.set(0, Y, 0);
-  grip.scale.setScalar(1.05);
+  grip.scale.setScalar(1.15);
   grip.traverse(o => o.layers.enable(HAND_LAYER));
   group.add(grip);
   const lHN = addLabel('coil', 'N 極', 'hand nP', V3(0, 0.18, 0), grip.userData.markers.thumb);

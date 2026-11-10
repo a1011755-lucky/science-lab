@@ -624,9 +624,10 @@ const curArrow = makeArrow(0xffa726, { r: 0.05, head: 0.17 }); WR.group.add(curA
 const lI = addLabel('wire', '', 'cur', V3(0.55, WH + 0.25, 0));
 const lB = addLabel('wire', '磁力線（同心圓）', 'lam', V3(2.7, 4.75, 0));
 // 實體右手握導線：拇指＝電流，四指＝磁場。光暈之後再畫一次。
-const gripHand = makeGrip({ axis: 'y', orbit: 0.2 });
+const gripHand = makeGrip({ axis: 'y', orbit: 0.32 });
 gripHand.position.set(0, HAND_Y, 0);
-gripHand.scale.setScalar(2.05);
+gripHand.scale.setScalar(1.65);
+gripHand.rotation.y = 2.55;
 gripHand.traverse(o => o.layers.enable(HAND));
 WR.group.add(gripHand);
 const lThumb = addLabel('wire', '電流 I', 'hand cur', V3(0.12, 0.16, 0), gripHand.userData.markers.thumb);
@@ -1085,7 +1086,7 @@ const glowRed = glowTexture('255,90,90'), glowBlue = glowTexture('90,150,255');
    Tab 切換、鏡頭
    ========================================================= */
 const TABS = {
-  wire: { group: WR.group, cam: () => ({ pos: [1.5, 7.2, 12.5], target: [-0.6, 2.2, 0], fitW: 11 }), update: updateWire },
+  wire: { group: WR.group, cam: () => ({ pos: [5.6, 4.15, 3.4], target: [0, 2.6, 0], fitW: 6.3 }), update: updateWire },
   motor: { group: MO.group, cam: () => ({ pos: [4.6, 6.0, 8.6], target: [0, 2.7, 0.8], fitW: 7.6 }), update: updateMotor },
   lenz: { group: LZ.group, cam: () => ({ pos: [1.6, 6.2, 12], target: [1.5, 3.0, 0], fitW: 9.5 }), update: updateLenz }
 };

@@ -1,126 +1,249 @@
-/* 實體右手。握拳的箭頭貼在指面上，並可沿彎曲方向流動。 */
+/* 可辨認的右手：圓掌、分開的拇指、四根漸細的手指，箭頭貼在皮膚上。 */
 import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
-const _p = new THREE.Vector3();
-const _t = new THREE.Vector3();
-const _n = new THREE.Vector3();
-const skinCache = { skin: null, nail: null };
-const matCache = {};
+const _a = new THREE.Vector3();
+const _b = new THREE.Vector3();
+const _c = new THREE.Vector3();
 
-function skinMaterial() {
-  if (!skinCache.skin) {
-    skinCache.skin = new THREE.MeshPhysicalMaterial({
-      color: 0xf0a888, roughness: 0.46, metalness: 0,
-      clearcoat: 0.25, clearcoatRoughness: 0.4,
-      sheen: 0.35, sheenColor: 0xffe4d4, sheenRoughness: 0.5,
-      emissive: 0x5a2a1c, emissiveIntensity: 0.08
-    });
-    skinCache.nail = new THREE.MeshPhysicalMaterial({
-      color: 0xf8e0d6, roughness: 0.28, metalness: 0.02,
-      clearcoat: 0.7, clearcoatRoughness: 0.18
-    });
-  }
-  return skinCache.skin;
+const skinMat = new THREE.MeshPhysicalMaterial({
+  color: 0xf3b497, roughness: 0.58, metalness: 0,
+  clearcoat: 0.12, clearcoatRoughness: 0.55,
+  sheen: 0.65, sheenColor: 0xffc2ae, sheenRoughness: 0.35,
+  emissive: 0x8a3d2a, emissiveIntensity: 0.07
+});
+function skinMaterial() { return skinMat; }
+const nailMat = new THREE.MeshPhysicalMaterial({
+  color: 0xffe4d8, roughness: 0.32, metalness: 0.02, clearcoat: 0.55, clearcoatRoughness: 0.25
+});
+
+function chevronTex(fill) {
+  const c = document.createElement('canvas');
+  c.width = 160; c.height = 64;
+  const g = c.getContext('2d');
+  g.clearRect(0, 0, 160, 64);
+  g.fillStyle = '#ffffff';
+  g.fillRect(0, 0, 160, 5);
+  g.fillRect(0, 59, 160, 5);
+  const draw = (color, w) => {
+    g.strokeStyle = color;
+    g.lineWidth = w;
+    g.lineJoin = 'round';
+    g.lineCap = 'round';
+    g.beginPath();
+    g.moveTo(28, 12);
+    g.lineTo(78, 32);
+    g.lineTo(28, 52);
+    g.stroke();
+  };
+  draw('#ffffff', 16);
+  draw(fill, 8);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = THREE.RepeatWrapping;
+  t.wrapT = THREE.ClampToEdgeWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.repeat.set(3.2, 1);
+  return t;
 }
-function nailMaterial() { skinMaterial(); return skinCache.nail; }
-function arrowMaterial(color) {
-  if (!matCache[color]) {
-    matCache[color] = new THREE.MeshStandardMaterial({
-      color, emissive: color, emissiveIntensity: 0.62, roughness: 0.28, metalness: 0.04
-    });
-  }
-  return matCache[color];
+const texBlue = chevronTex('#0a3d86');
+const texOrange = chevronTex('#e65100');
+
+function ribbonMat(tex) {
+  return new THREE.MeshBasicMaterial({
+    map: tex, transparent: true, alphaTest: 0.35, side: THREE.DoubleSide,
+    depthWrite: false, toneMapped: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2
+  });
 }
+
 function shade(mesh) { mesh.castShadow = mesh.receiveShadow = true; return mesh; }
 
-function capsuleBetween(a, b, r, mat) {
-  const len = a.distanceTo(b);
-  const m = shade(new THREE.Mesh(new THREE.CapsuleGeometry(r, Math.max(0.015, len - r * 0.15), 6, 12), mat));
-  m.position.copy(a).add(b).multiplyScalar(0.5);
-  m.quaternion.setFromUnitVectors(UP, _t.copy(b).sub(a).normalize());
-  return m;
-}
-function knuckle(p, r, mat) {
-  const m = shade(new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), mat));
-  m.position.copy(p);
-  return m;
-}
-function chevron(color, r, len) {
-  const m = new THREE.Mesh(new THREE.ConeGeometry(r, len, 12), arrowMaterial(color));
-  m.castShadow = true;
-  return m;
-}
-function marker(parent, x, y, z) {
-  const o = new THREE.Object3D();
-  o.position.set(x, y, z);
-  parent.add(o);
-  return o;
+function smoothTube(points, radAt, radial = 14) {
+  const n = points.length;
+  const tang = [];
+  for (let i = 0; i < n; i++) {
+    const t = new THREE.Vector3();
+    if (i === 0) t.subVectors(points[1], points[0]);
+    else if (i === n - 1) t.subVectors(points[n - 1], points[n - 2]);
+    else t.subVectors(points[i + 1], points[i - 1]);
+    if (t.lengthSq() < 1e-10) t.set(0, 1, 0);
+    tang.push(t.normalize());
+  }
+  const ref = Math.abs(tang[0].dot(UP)) > 0.85 ? new THREE.Vector3(1, 0, 0) : UP;
+  let prev = new THREE.Vector3().crossVectors(tang[0], ref).normalize();
+  const pos = [], nrm = [], uv = [], idx = [];
+  const row = radial + 1;
+  for (let i = 0; i < n; i++) {
+    const t = tang[i];
+    const p = prev.clone().addScaledVector(t, -prev.dot(t));
+    if (p.lengthSq() < 1e-8) p.crossVectors(t, ref);
+    p.normalize();
+    prev = p;
+    const b = new THREE.Vector3().crossVectors(t, p).normalize();
+    const r = radAt(i / (n - 1));
+    for (let j = 0; j <= radial; j++) {
+      const a = (j / radial) * Math.PI * 2;
+      const N = p.clone().multiplyScalar(Math.cos(a)).addScaledVector(b, Math.sin(a));
+      const P = points[i];
+      pos.push(P.x + N.x * r, P.y + N.y * r, P.z + N.z * r);
+      nrm.push(N.x, N.y, N.z);
+      uv.push(i / (n - 1), j / radial);
+    }
+  }
+  for (let i = 0; i < n - 1; i++) for (let j = 0; j < radial; j++) {
+    const a = i * row + j, c = a + row;
+    idx.push(a, c, a + 1, a + 1, c, c + 1);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.setIndex(idx);
+  return geo;
 }
 
-/** 圓心在原點、軸為 Y。角度增加時從 +X 走向 +Z。磁場（電流向上）沿角度減少的方向。 */
-function onArc(a, y, R, out) {
-  return out.set(Math.cos(a) * R, y, Math.sin(a) * R);
+function skinMesh(geo) {
+  return shade(new THREE.Mesh(geo, skinMaterial()));
 }
-function tangentTowardTip(a, out) {
-  return out.set(Math.sin(a), 0, -Math.cos(a)).normalize();
+
+/** 沿著曲線、貼在外側的箭頭帶。normalFn(i) 決定帶面朝外的方向。 */
+function makeRibbon(points, radAt, normalFn, tex) {
+  const n = points.length;
+  const pos = [], uv = [], idx = [];
+  const half = 0.034;
+  for (let i = 0; i < n; i++) {
+    const u = i / (n - 1);
+    const t = new THREE.Vector3();
+    if (i === 0) t.subVectors(points[1], points[0]);
+    else if (i === n - 1) t.subVectors(points[n - 1], points[n - 2]);
+    else t.subVectors(points[i + 1], points[i - 1]);
+    t.normalize();
+    const N = normalFn(i, t);
+    const side = new THREE.Vector3().crossVectors(t, N).normalize();
+    const c = points[i].clone().addScaledVector(N, radAt(u) + 0.012);
+    const L = c.clone().addScaledVector(side, half);
+    const R = c.clone().addScaledVector(side, -half);
+    pos.push(L.x, L.y, L.z, R.x, R.y, R.z);
+    uv.push(u * 3.2, 0, u * 3.2, 1);
+  }
+  for (let i = 0; i < n - 1; i++) {
+    const a = i * 2;
+    idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const mat = ribbonMat(tex);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.renderOrder = 4;
+  return { mesh, mat };
 }
-function outward(a, out) {
-  return out.set(Math.cos(a), 0, Math.sin(a)).normalize();
+
+function arcPoints(y, a0, arc, orbit, n = 28) {
+  const pts = [];
+  for (let i = 0; i <= n; i++) {
+    const a = a0 - arc * (i / n);
+    pts.push(new THREE.Vector3(Math.cos(a) * orbit, y, Math.sin(a) * orbit));
+  }
+  return pts;
+}
+function fingerRad(scale) {
+  return u => {
+    const taper = 0.074 * scale * (1 - u * 0.5);
+    const bump = 0.012 * scale * (Math.exp(-(((u - 0.32) / 0.07) ** 2)) + 0.85 * Math.exp(-(((u - 0.64) / 0.07) ** 2)));
+    return taper + bump;
+  };
+}
+
+function boldArrow(color, len, r) {
+  const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.28, roughness: 0.35, metalness: 0.05 });
+  const g = new THREE.Group();
+  g.userData.mat = mat;
+  const shaft = shade(new THREE.Mesh(new THREE.CylinderGeometry(r * 0.72, r, len * 0.72, 16), mat));
+  shaft.position.y = len * 0.36;
+  const head = shade(new THREE.Mesh(new THREE.ConeGeometry(r * 2.1, len * 0.34, 18), mat));
+  head.position.y = len * 0.82;
+  g.add(shaft, head);
+  return g;
+}
+
+function placeArrow(arrow, from, to) {
+  const dir = to.clone().sub(from);
+  const len = dir.length();
+  arrow.position.copy(from);
+  arrow.quaternion.setFromUnitVectors(UP, dir.normalize());
+  arrow.scale.set(1, len / 0.7, 1);
 }
 
 /**
- * 握拳，四指繞著軸心。
- * axis 'y'：拇指朝 +Y（直導線，指上箭頭＝磁場 B）。
- * axis 'x'：拇指朝 +X（螺線管，指上箭頭＝電流 I，拇指＝N 極）。
- * orbit：指心到軸的距離。
+ * 握拳。axis y＝拇指沿導線朝上；axis x＝拇指沿螺線管指向 N。
+ * 直導線的四指帶是深藍箭頭；螺線管的四指帶是橘色電流。
  */
-export function makeGrip({ axis = 'y', orbit = 0.22, fingerColor = 0x1e88e5, thumbColor = 0xffb300 } = {}) {
+export function makeGrip({ axis = 'y', orbit = 0.3, fingerColor = 0x1e88e5 } = {}) {
   const g = new THREE.Group();
-  const skin = skinMaterial(), nail = nailMaterial();
-  const fr = Math.max(0.055, Math.min(0.09, orbit * 0.42));
-  const arc = 3.5;
-  const ys = [-0.36, -0.13, 0.11, 0.34];
-  // 指根在導線左側，指尖繞過鏡頭這一側（+Z）再到右側，正面才看得到握住
-  const a0s = [3.45, 3.32, 3.18, 3.05];
-  ys.forEach((y, i) => {
-    const a0 = a0s[i];
-    const rr = fr * (1 - i * 0.07);
-    const pts = [];
-    for (let k = 0; k <= 4; k++) pts.push(onArc(a0 - arc * k / 4, y, orbit, new THREE.Vector3()));
-    pts.forEach((p, k) => g.add(knuckle(p, rr * (k === 4 ? 0.85 : 1.18), k === 4 ? nail : skin)));
-    for (let k = 0; k < 4; k++) g.add(capsuleBetween(pts[k], pts[k + 1], rr * (k === 3 ? 0.82 : 0.95), k === 3 ? nail : skin));
-  });
-  // 掌與腕在指根外側，讓「握住」看得出來
-  const palm = shade(new THREE.Mesh(new RoundedBoxGeometry(0.34, 0.88, 0.26, 4, 0.1), skin));
-  palm.position.copy(onArc(3.9, -0.02, orbit + fr + 0.16, new THREE.Vector3()));
+  const palm = shade(new THREE.Mesh(new THREE.SphereGeometry(0.34, 36, 28), skinMaterial()));
+  palm.scale.set(1.05, 1.55, 0.72);
+  palm.position.set(0.5, 0.02, 0.02);
   g.add(palm);
-  const wrist = shade(new THREE.Mesh(new THREE.CapsuleGeometry(fr * 1.5, 0.26, 5, 10), skin));
-  wrist.position.copy(palm.position).add(new THREE.Vector3(-0.02, -0.52, 0.02));
-  g.add(wrist);
-  const thumbA = onArc(2.2, 0.22, orbit + fr * 0.3, new THREE.Vector3());
-  const thumbB = onArc(1.7, 1.12, orbit + fr * 0.15, new THREE.Vector3());
-  g.add(capsuleBetween(thumbA, thumbB, fr * 1.15, skin));
-  g.add(knuckle(thumbB, fr * 1.05, nail));
+  const thenar = shade(new THREE.Mesh(new THREE.SphereGeometry(0.2, 24, 18), skinMaterial()));
+  thenar.scale.set(1, 1.15, 0.85);
+  thenar.position.set(0.46, 0.38, 0.2);
+  g.add(thenar);
 
-  const chevrons = [];
-  ys.forEach((y, i) => {
-    for (let s = 0; s < 3; s++) {
-      const mesh = chevron(fingerColor, fr * 0.55, fr * 2.5);
-      g.add(mesh);
-      chevrons.push({ mesh, y, a0: a0s[i], arc, R: orbit, lift: fr + 0.012, slot: s / 3 });
-    }
-  });
-  const thumbChevrons = [];
-  for (let s = 0; s < 3; s++) {
-    const mesh = chevron(thumbColor, fr * 0.62, fr * 2.7);
+  const fingers = [
+    { name: 'index', y: 0.3, arc: 3.15, len: 1 },
+    { name: 'middle', y: 0.1, arc: 3.55, len: 1.08 },
+    { name: 'ring', y: -0.1, arc: 3.25, len: 0.96 },
+    { name: 'pinky', y: -0.3, arc: 2.7, len: 0.82 }
+  ];
+  const ribbons = [];
+  const tex = (fingerColor === 0x1e88e5 ? texBlue : texOrange).clone();
+  tex.needsUpdate = true;
+  fingers.forEach(f => {
+    const pts = arcPoints(f.y, 2.25, f.arc, orbit);
+    const rad = fingerRad(f.len);
+    const mesh = skinMesh(smoothTube(pts, rad));
     g.add(mesh);
-    thumbChevrons.push({ mesh, slot: s / 3 });
-  }
-  const thumbMark = marker(g, thumbB.x, thumbB.y + 0.22, thumbB.z);
-  const tip = onArc(a0s[1] - arc, ys[1], orbit, new THREE.Vector3());
-  const curlMark = marker(g, tip.x, tip.y + 0.2, tip.z);
+    const tip = pts[pts.length - 1];
+    const nail = shade(new THREE.Mesh(new THREE.SphereGeometry(rad(1) * 0.95, 14, 10), nailMat));
+    nail.scale.set(1, 0.72, 1.15);
+    nail.position.copy(tip);
+    g.add(nail);
+    const rib = makeRibbon(pts, rad, (i) => {
+      const p = pts[i];
+      return _a.set(p.x, 0, p.z).normalize();
+    }, tex);
+    g.add(rib.mesh);
+    ribbons.push(rib);
+  });
+
+  const thumbPts = [
+    new THREE.Vector3(0.5, 0.42, 0.28),
+    new THREE.Vector3(0.38, 0.72, 0.34),
+    new THREE.Vector3(0.22, 1.08, 0.26),
+    new THREE.Vector3(0.14, 1.38, 0.14)
+  ];
+  const thumbRad = u => 0.095 * (1 - u * 0.42);
+  g.add(skinMesh(smoothTube(thumbPts, thumbRad, 16)));
+  const tTip = thumbPts[thumbPts.length - 1];
+  const tNail = shade(new THREE.Mesh(new THREE.SphereGeometry(0.055, 14, 10), nailMat));
+  tNail.scale.set(1.1, 0.7, 1);
+  tNail.position.copy(tTip);
+  g.add(tNail);
+
+  const thumbArrow = boldArrow(fingerColor === 0x1e88e5 ? 0xf57c00 : 0xe53935, 0.7, 0.055);
+  placeArrow(thumbArrow, thumbPts[0].clone().add(new THREE.Vector3(0.02, 0.05, 0.1)), tTip.clone().add(new THREE.Vector3(0, 0.18, 0.06)));
+  g.add(thumbArrow);
+
+  const thumbMark = new THREE.Object3D();
+  thumbMark.position.copy(tTip).add(new THREE.Vector3(0, 0.28, 0.08));
+  g.add(thumbMark);
+  const mid = fingers[1];
+  const tipArc = arcPoints(mid.y, 2.25, mid.arc, orbit);
+  const curlMark = new THREE.Object3D();
+  curlMark.position.copy(tipArc[tipArc.length - 1]).add(new THREE.Vector3(0, 0.16, 0));
+  g.add(curlMark);
 
   const twist = new THREE.Group();
   twist.add(g);
@@ -128,111 +251,82 @@ export function makeGrip({ axis = 'y', orbit = 0.22, fingerColor = 0x1e88e5, thu
   if (axis === 'x') {
     const orient = new THREE.Group();
     orient.rotation.z = -Math.PI / 2;
-    orient.rotation.x = -0.65;
+    orient.rotation.x = -0.5;
     orient.add(twist);
     root.add(orient);
   } else root.add(twist);
-  root.userData = {
-    markers: { thumb: thumbMark, curl: curlMark },
-    twist, chevrons, thumbChevrons, time: 0,
-    thumbA, thumbB, fr
-  };
+  root.userData = { markers: { thumb: thumbMark, curl: curlMark }, twist, ribbons, thumbArrow, time: 0, texHold: 0 };
   return root;
 }
 
-/** speed：沿指尖流動的角速度。0 表示斷電，箭頭停住、扭轉回到原位。手若已翻面，世界方向會跟著反轉。 */
 export function stepGrip(root, dt, speed) {
   const u = root.userData;
   if (!u || !u.twist) return;
   const moving = speed > 0.001;
   if (moving) u.time += dt * speed;
-  const want = moving ? Math.sin(u.time * 1.15) * 0.36 : 0;
-  u.twist.rotation.y += (want - u.twist.rotation.y) * (1 - Math.exp(-dt * (moving ? 6 : 4)));
-  const flow = moving ? u.time : u.time;
-  for (const c of u.chevrons) {
-    const phase = ((c.slot + flow / c.arc) % 1 + 1) % 1;
-    const a = c.a0 - phase * c.arc;
-    onArc(a, c.y, c.R, _p);
-    outward(a, _n);
-    _p.addScaledVector(_n, c.lift);
-    tangentTowardTip(a, _t);
-    c.mesh.position.copy(_p);
-    c.mesh.quaternion.setFromUnitVectors(UP, _t);
-  }
-  const A = u.thumbA, B = u.thumbB;
-  _t.copy(B).sub(A);
-  const len = _t.length() || 1;
-  _t.multiplyScalar(1 / len);
-  _n.set(0.15, 0, 1).normalize();
-  for (const c of u.thumbChevrons) {
-    const phase = ((c.slot + (moving ? u.time * 0.38 : 0)) % 1 + 1) % 1;
-    c.mesh.position.copy(A).addScaledVector(_t, phase * len * 0.92).addScaledVector(_n, u.fr * 1.15);
-    c.mesh.quaternion.setFromUnitVectors(UP, _t);
-    const pulse = moving ? 0.9 + 0.22 * Math.sin(u.time * 6 + c.slot * 4) : 0.85;
-    c.mesh.scale.setScalar(pulse);
-  }
+  else u.texHold = u.time;
+  const want = moving ? Math.sin(u.time * 1.1) * 0.3 : 0;
+  u.twist.rotation.y += (want - u.twist.rotation.y) * (1 - Math.exp(-dt * 5));
+  const shift = (moving ? u.time : u.texHold) * 0.22;
+  for (const r of u.ribbons) if (r.mat.map) r.mat.map.offset.x = -shift;
+  if (u.thumbArrow.userData.mat) u.thumbArrow.userData.mat.emissiveIntensity = moving ? 0.25 + 0.35 * (0.5 + 0.5 * Math.sin(u.time * 4)) : 0.28;
 }
 
-/** 開掌：四指 +X（磁場）、拇指 +Z（電流）、掌心 +Y（受力）。箭頭貼在皮膚上。 */
+/** 開掌：四指 +X、拇指 +Z、掌心 +Y。 */
 export function makePalm() {
   const g = new THREE.Group();
-  const skin = skinMaterial(), nail = nailMaterial();
-  const palm = shade(new THREE.Mesh(new RoundedBoxGeometry(0.78, 0.18, 0.78, 4, 0.08), skin));
-  palm.position.set(0.05, 0, 0.02);
+  const palm = shade(new THREE.Mesh(new THREE.SphereGeometry(0.36, 32, 24), skinMaterial()));
+  palm.scale.set(1.15, 0.42, 1.25);
+  palm.position.set(0.02, 0, 0.02);
   g.add(palm);
-  const wrist = shade(new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.24, 4, 10), skin));
-  wrist.rotation.z = Math.PI / 2;
-  wrist.position.set(-0.52, 0, 0);
-  g.add(wrist);
-  const zs = [-0.26, -0.09, 0.08, 0.25];
-  const fingerArrows = [];
-  zs.forEach((z, i) => {
-    const r = 0.062 - i * 0.005;
-    const pts = [0.38, 0.62, 0.86, 1.08].map((x, k) => new THREE.Vector3(x, 0.02 - k * 0.012, z));
-    pts.forEach((p, k) => g.add(knuckle(p, r * (k === 3 ? 0.9 : 1.2), k === 3 ? nail : skin)));
-    for (let k = 0; k < 3; k++) g.add(capsuleBetween(pts[k], pts[k + 1], r * (k === 2 ? 0.85 : 0.95), k === 2 ? nail : skin));
-    for (let s = 0; s < 2; s++) {
-      const mesh = chevron(0x1e88e5, 0.04, 0.2);
-      mesh.position.set(0.55 + s * 0.28, r + 0.06, z);
-      mesh.rotation.z = -Math.PI / 2;
-      g.add(mesh);
-      fingerArrows.push(mesh);
-    }
+  const specs = [
+    { z: 0.26, len: 0.78 },
+    { z: 0.09, len: 0.92 },
+    { z: -0.08, len: 0.84 },
+    { z: -0.25, len: 0.66 }
+  ];
+  const ribbons = [];
+  const tex = texBlue.clone();
+  tex.needsUpdate = true;
+  specs.forEach(s => {
+    const pts = [0, 0.35, 0.65, 1].map(u => new THREE.Vector3(0.32 + s.len * u, 0.02 - u * 0.03, s.z));
+    const rad = u => 0.062 * (1 - u * 0.4) * (s.len / 0.8);
+    g.add(skinMesh(smoothTube(pts, rad, 12)));
+    const nail = shade(new THREE.Mesh(new THREE.SphereGeometry(rad(1), 12, 8), nailMat));
+    nail.position.copy(pts[3]);
+    g.add(nail);
+    const rib = makeRibbon(pts, rad, () => _a.set(0, 1, 0), tex);
+    g.add(rib.mesh);
+    ribbons.push(rib);
   });
-  const tb = new THREE.Vector3(0.05, 0.05, 0.42);
-  const tm = new THREE.Vector3(0.08, 0.07, 0.72);
-  const tt = new THREE.Vector3(0.1, 0.08, 1.02);
-  g.add(capsuleBetween(tb, tm, 0.078, skin));
-  g.add(capsuleBetween(tm, tt, 0.062, nail));
-  g.add(knuckle(tm, 0.09, skin));
-  const thumbArrows = [];
-  for (let s = 0; s < 2; s++) {
-    const mesh = chevron(0xffb300, 0.042, 0.2);
-    mesh.position.set(0.08, 0.15, 0.55 + s * 0.24);
-    mesh.rotation.x = Math.PI / 2;
-    g.add(mesh);
-    thumbArrows.push(mesh);
-  }
-  const fArrow = chevron(0xe53935, 0.07, 0.42);
-  fArrow.position.set(0.12, 0.16, 0.02);
+  const thumbPts = [
+    new THREE.Vector3(0.02, 0.06, 0.38),
+    new THREE.Vector3(0.06, 0.08, 0.62),
+    new THREE.Vector3(0.1, 0.1, 0.92)
+  ];
+  g.add(skinMesh(smoothTube(thumbPts, u => 0.078 * (1 - u * 0.35), 12)));
+  const iArrow = boldArrow(0xf57c00, 0.7, 0.048);
+  placeArrow(iArrow, thumbPts[0].clone().add(new THREE.Vector3(0, 0.08, 0)), thumbPts[2].clone().add(new THREE.Vector3(0, 0.08, 0.12)));
+  g.add(iArrow);
+  const fArrow = boldArrow(0xe53935, 0.7, 0.06);
+  fArrow.position.set(0.08, 0.2, 0.02);
   g.add(fArrow);
-  g.userData = {
-    markers: {
-      I: marker(g, 0.12, 0.22, 1.2),
-      B: marker(g, 1.28, 0.2, 0.08),
-      F: marker(g, 0.12, 0.62, 0.02)
-    },
-    fArrow, time: 0
-  };
+  const mI = new THREE.Object3D(); mI.position.set(0.12, 0.22, 1.12);
+  const mB = new THREE.Object3D(); mB.position.set(1.2, 0.2, 0.08);
+  const mF = new THREE.Object3D(); mF.position.set(0.08, 0.7, 0.02);
+  g.add(mI, mB, mF);
+  g.userData = { markers: { I: mI, B: mB, F: mF }, fArrow, ribbons, time: 0 };
   return g;
 }
 
-/** 通電時受力箭頭輕輕起伏；斷電就停。 */
 export function stepPalm(g, dt, powered) {
   const u = g.userData;
   if (!u || !u.fArrow) return;
   u.time += dt;
-  const pulse = powered ? 1 + 0.18 * Math.sin(u.time * 5.5) : 1;
-  u.fArrow.scale.set(pulse, 0.75 + pulse * 0.35, pulse);
-  u.fArrow.position.y = 0.16 + (powered ? 0.03 * Math.sin(u.time * 5.5) : 0);
+  const pulse = powered ? 1 + 0.16 * Math.sin(u.time * 5.2) : 1;
+  u.fArrow.scale.set(pulse, pulse, pulse);
+  if (u.ribbons) {
+    const shift = powered ? u.time * 0.15 : 0;
+    for (const r of u.ribbons) if (r.mat.map) r.mat.map.offset.x = powered ? -shift : r.mat.map.offset.x;
+  }
 }
