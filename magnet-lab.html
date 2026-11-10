@@ -212,6 +212,11 @@
       <div class="tip" id="clTip" hidden></div>
     </section>
 
+    <label class="lab">畫質</label>
+    <div class="row2">
+      <button class="btn" id="qClass" type="button">課堂<small>平板順暢</small></button>
+      <button class="btn" id="qRecord" type="button">錄影<small>較細、適合錄影</small></button>
+    </div>
     <button class="btn" id="viewBtn">🎥 重設視角</button>
   </div>
 </aside>
@@ -219,6 +224,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { enhanceLiquid } from './liquid.js';
+import { mountLook, lacquer, poleBadge, enamelCopper, brushedSteel, softIron, pvc, strengthTube, strengthNorm } from './look.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -249,20 +255,8 @@ $('scene').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xf5f1e7);
-const pmrem = new THREE.PMREMGenerator(renderer);
-const envScene = new THREE.Scene();
-envScene.background = new THREE.Color(0xf6efe2);
-const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
-scene.environment = pmrem.fromScene(envScene, 0.04).texture;
-scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
-const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
-sun.position.set(-7, 16, 10);
-sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
-sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
-scene.add(sun);
+const look = mountLook(renderer, scene);
+const sun = look.sun;
 const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -291,7 +285,7 @@ const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
 table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
 
 const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
-const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => new THREE.MeshPhysicalMaterial({ color, metalness: 0.96, roughness: 0.2, clearcoat: 0.4, clearcoatRoughness: 0.2, envMapIntensity: 1.4, ...o });
 const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
 const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
 
@@ -512,28 +506,52 @@ function polyAt(P, u, out) {
 /** 發光磁力線（細管）＋沿線流動的光點粒子 */
 function FieldViz(parent, color, nFlow = 420) {
   const g = new THREE.Group(); parent.add(g);
-  const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, toneMapped: false, depthWrite: false });
+  const mat = new THREE.MeshBasicMaterial({ color, vertexColors: true, transparent: true, opacity: 0.92, toneMapped: false, depthWrite: false, side: THREE.DoubleSide });
+  const headMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.92, toneMapped: false, depthWrite: false });
   const pos = new Float32Array(nFlow * 3), pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const pm = new THREE.PointsMaterial({ map: glowTexture('255,240,200'), color: 0xfff2c4, size: 0.2, transparent: true, depthWrite: false, toneMapped: false });
+  const pm = new THREE.PointsMaterial({ map: glowTexture('255,240,200'), color: 0xfff2c4, size: 0.18, transparent: true, depthWrite: false, toneMapped: false });
   const pts = new THREE.Points(pg, pm); pts.frustumCulled = false; glowLayer(pts); g.add(pts);
   const flow = Array.from({ length: nFlow }, (_, i) => ({ li: i, u: rnd() }));
   // 磁場方向箭頭：沿磁力線每隔一段放一個圓錐，尖端指向磁場方向（N → S）
   const headGeo = new THREE.ConeGeometry(0.075, 0.22, 12);
-  const heads = new THREE.InstancedMesh(headGeo, mat, 900); heads.count = 0; heads.frustumCulled = false; glowLayer(heads); g.add(heads);
-  let P = [], tubes = [];
+  const heads = new THREE.InstancedMesh(headGeo, headMat, 900); heads.count = 0; heads.frustumCulled = false; glowLayer(heads); g.add(heads);
+  let P = [], tubes = [], normFn = () => 0.6;
   const tmp = V3(0, 0, 0);
+  const magAt = (L, u) => {
+    const m = L.mags; if (!m || m.length < 2) return 1;
+    const d = u * (m.length - 1), i = Math.floor(d), k = d - i;
+    return m[i] + (m[Math.min(m.length - 1, i + 1)] - m[i]) * k;
+  };
   return {
     g, mat, pm,
-    set(lines, r = 0.014) {
+    set(lines, r = 0.015, Q = null) {
       tubes.forEach(t => { t.geometry.dispose(); g.remove(t); }); tubes = [];
-      P = lines.map(poly);
-      lines.forEach(L => { const step = Math.max(1, Math.floor(L.length / 90)), sp = L.filter((_, i) => i % step === 0 || i === L.length - 1); const t = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(sp), Math.min(160, sp.length * 2), r, 6), mat); glowLayer(t); g.add(t); tubes.push(t); });
+      const samples = [];
+      lines.forEach(L => {
+        const step = Math.max(1, Math.floor(L.length / 72));
+        const sp = [], mg = [];
+        L.forEach((p, i) => {
+          if (i % step !== 0 && i !== L.length - 1) return;
+          sp.push(p);
+          if (Q) { fieldAt(p, Q, tB); mg.push(tB.length()); } else mg.push(1);
+        });
+        if (sp.length >= 2) samples.push({ sp, mg });
+      });
+      normFn = strengthNorm(samples.flatMap(s => s.mg));
+      P = samples.map(s => { const item = poly(s.sp); item.mags = s.mg; return item; });
+      samples.forEach(s => {
+        const weights = s.mg.map(normFn);
+        const t = new THREE.Mesh(strengthTube(s.sp, weights, r, 6), mat);
+        t.frustumCulled = false;
+        glowLayer(t); g.add(t); tubes.push(t);
+      });
       flow.forEach((f, i) => { f.li = P.length ? i % P.length : 0; });
       let hc = 0; const a = V3(0, 0, 0), b = V3(0, 0, 0), c = V3(0, 0, 0), q = new THREE.Quaternion(), one = V3(1, 1, 1), m4 = new THREE.Matrix4();
-      for (const L of P) { const n = Math.max(1, Math.round(L.len / 1.25)); for (let k = 0; k < n && hc < 900; k++) { const u = (k + 0.5) / n; polyAt(L, u, c); polyAt(L, Math.max(0, u - 0.01), a); polyAt(L, Math.min(1, u + 0.01), b); b.sub(a); if (b.lengthSq() < 1e-10) continue; q.setFromUnitVectors(V3(0, 1, 0), b.normalize()); m4.compose(c, q, one); heads.setMatrixAt(hc++, m4); } }
+      for (const L of P) { const n = Math.max(1, Math.round(L.len / 1.25)); for (let k = 0; k < n && hc < 900; k++) { const u = (k + 0.5) / n; polyAt(L, u, c); polyAt(L, Math.max(0, u - 0.01), a); polyAt(L, Math.min(1, u + 0.01), b); b.sub(a); if (b.lengthSq() < 1e-10) continue; const sc = 0.7 + 0.95 * normFn(magAt(L, u)); q.setFromUnitVectors(V3(0, 1, 0), b.normalize()); one.set(sc, sc, sc); m4.compose(c, q, one); heads.setMatrixAt(hc++, m4); } }
       heads.count = hc; heads.instanceMatrix.needsUpdate = true;
     },
     update(dt, speed = 1, active = 1) {
+      headMat.opacity = mat.opacity; headMat.color.copy(mat.color);
       const n = P.length ? Math.round(nFlow * active) : 0;
       for (let i = 0; i < nFlow; i++) {
         const f = flow[i];
@@ -566,16 +584,22 @@ const FD = (() => {
   const ring = new THREE.Mesh(new THREE.RingGeometry(1.2, 1.9, 48), new THREE.MeshBasicMaterial({ color: 0xd8c3a0, transparent: true, opacity: 0.35, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.012; group.add(ring);
   // 棒狀磁鐵
   const bar = new THREE.Group(); center.add(bar);
-  const bN = shadowed(rbox(1.5, 0.6, 0.6, clay(RED), 0.06)); bN.position.x = -0.75; bar.add(bN);
-  const bS = shadowed(rbox(1.5, 0.6, 0.6, clay(BLU), 0.06)); bS.position.x = 0.75; bar.add(bS);
+  const bN = shadowed(rbox(1.5, 0.6, 0.6, lacquer(RED), 0.06)); bN.position.x = -0.75; bar.add(bN);
+  const bS = shadowed(rbox(1.5, 0.6, 0.6, lacquer(BLU), 0.06)); bS.position.x = 0.75; bar.add(bS);
+  const mark = (parent, letter, hex, x, y, z, ry, rad = 0.16) => { const b = poleBadge(letter, hex, rad); b.position.set(x, y, z); b.rotation.y = ry; parent.add(b); return b; };
+  mark(bN, 'N', RED, -0.77, 0, 0, -Math.PI / 2, 0.2); mark(bN, 'N', RED, 0, 0.02, 0.31, 0);
+  mark(bS, 'S', BLU, 0.77, 0, 0, Math.PI / 2, 0.2); mark(bS, 'S', BLU, 0, 0.02, 0.31, 0);
   const lBN = addLabel('field', 'N', 'big nP', V3(-1.85, Y0 + 0.05, 0)), lBS = addLabel('field', 'S', 'big sP', V3(1.85, Y0 + 0.05, 0));
   const Q_BAR = [{ p: V3(-1.25, 0, 0), q: 1 }, { p: V3(1.25, 0, 0), q: -1 }];
   const inBar = p => Math.abs(p.x) < 1.52 && Math.abs(p.y) < 0.31 && Math.abs(p.z) < 0.31;
   // U 型磁鐵（開口朝上）
   const U = new THREE.Group(); center.add(U);
-  const uL = shadowed(rbox(0.46, 1.6, 0.46, clay(RED), 0.06)); uL.position.set(-0.65, 0.1, 0); U.add(uL);
-  const uR = shadowed(rbox(0.46, 1.6, 0.46, clay(BLU), 0.06)); uR.position.set(0.65, 0.1, 0); U.add(uR);
-  const uArc = shadowed(new THREE.Mesh(new THREE.TorusGeometry(0.65, 0.23, 16, 32, Math.PI), clay(0xb9bcc2))); uArc.rotation.z = Math.PI; uArc.position.y = -0.7; U.add(uArc);
+  const uL = shadowed(rbox(0.46, 1.6, 0.46, lacquer(RED), 0.06)); uL.position.set(-0.65, 0.1, 0); U.add(uL);
+  const uR = shadowed(rbox(0.46, 1.6, 0.46, lacquer(BLU), 0.06)); uR.position.set(0.65, 0.1, 0); U.add(uR);
+  const uArc = shadowed(new THREE.Mesh(new THREE.TorusGeometry(0.65, 0.23, 16, 40, Math.PI), brushedSteel())); uArc.rotation.z = Math.PI; uArc.position.y = -0.7; U.add(uArc);
+  const upole = (parent, letter, hex, y, rx, rad = 0.13) => { const b = poleBadge(letter, hex, rad); b.position.set(0, y, 0); b.rotation.x = rx; parent.add(b); };
+  upole(uL, 'N', RED, 0.82, -Math.PI / 2); upole(uR, 'S', BLU, 0.82, -Math.PI / 2);
+  mark(uL, 'N', RED, 0, 0.25, 0.24, 0, 0.13); mark(uR, 'S', BLU, 0, 0.25, 0.24, 0, 0.13);
   const lUN = addLabel('field', 'N', 'big nP', V3(-0.65, Y0 + 1.25, 0)), lUS = addLabel('field', 'S', 'big sP', V3(0.65, Y0 + 1.25, 0));
   const Q_U = [{ p: V3(-0.65, 0.72, 0), q: 1 }, { p: V3(0.65, 0.72, 0), q: -1 }];
   const inU = p => (Math.abs(Math.abs(p.x) - 0.65) < 0.24 && p.y > -0.72 && p.y < 0.91 && Math.abs(p.z) < 0.24) || (p.y < -0.6 && Math.abs(Math.hypot(p.x, p.y + 0.7) - 0.65) < 0.24 && Math.abs(p.z) < 0.24);
@@ -593,8 +617,9 @@ const FD = (() => {
   const globe = new THREE.Mesh(new THREE.SphereGeometry(ER, 48, 32), new THREE.MeshPhysicalMaterial({ map: eTex, transparent: true, opacity: 0.4, roughness: 0.5, clearcoat: 0.6, depthWrite: false, side: THREE.DoubleSide })); globe.renderOrder = 3; earth.add(globe);
   const axis = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, ER * 2.6, 6), basic(0x5d4037, 0.6)); earth.add(axis);
   const mag = new THREE.Group(); mag.rotation.z = TILT; earth.add(mag);
-  const mS = shadowed(rbox(0.36, 1.1, 0.36, clay(BLU), 0.05)); mS.position.y = 0.55; mag.add(mS);
-  const mN = shadowed(rbox(0.36, 1.1, 0.36, clay(RED), 0.05)); mN.position.y = -0.55; mag.add(mN);
+  const mS = shadowed(rbox(0.36, 1.1, 0.36, lacquer(BLU), 0.05)); mS.position.y = 0.55; mag.add(mS);
+  const mN = shadowed(rbox(0.36, 1.1, 0.36, lacquer(RED), 0.05)); mN.position.y = -0.55; mag.add(mN);
+  upole(mS, 'S', BLU, 0.57, -Math.PI / 2, 0.11); upole(mN, 'N', RED, -0.57, Math.PI / 2, 0.11);
   const ax = V3(-Math.sin(TILT), Math.cos(TILT), 0);
   const Q_E = [{ p: ax.clone().multiplyScalar(-0.85), q: 1 }, { p: ax.clone().multiplyScalar(0.85), q: -1 }];
   const inE = p => { const a = p.dot(ax), perp = p.clone().addScaledVector(ax, -a).length(); return Math.abs(a) < 1.12 && perp < 0.2; };
@@ -628,7 +653,8 @@ const FD = (() => {
     else if (t === 'u') lines = traceAll(Q_U, 240, { seedR: 0.3, inside: inU, keep: d => d.y > -0.6, bound: 2.4, minY: -2.4 });
     else lines = traceAll(Q_E, 46, { seedR: 0.3, inside: inE, bound: 4.2 });
     if (t === 'earth') { viz.g.parent !== earth && earth.add(viz.g); } else if (viz.g.parent !== center) center.add(viz.g);
-    viz.set(t === 'earth' ? lines : lines.filter((_, i) => i % 3 === 0));
+    const Q = t === 'bar' ? Q_BAR : t === 'u' ? Q_U : Q_E;
+    viz.set(t === 'earth' ? lines : lines.filter((_, i) => i % 3 === 0), 0.016, Q);
     clearDust(); st.lines = lines;
     $('fdDust').disabled = t === 'earth';
   }
@@ -683,8 +709,10 @@ const DM = (() => {
     const g = new THREE.Group(); g.position.set(0, Y, 0); group.add(g);
     const box = new THREE.Mesh(new RoundedBoxGeometry(L / 2 - 0.02, W, W, 3, 0.06), glass(s < 0 ? 0xff9c9c : 0x9cc4ff)); box.position.x = s * L / 4; box.renderOrder = 4; g.add(box);
     const edges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(L / 2 - 0.02, W, W)), new THREE.LineBasicMaterial({ color: s < 0 ? 0xc62828 : 0x1e6aa8, transparent: true, opacity: 0.45 })); edges.position.x = s * L / 4; g.add(edges);
-    const outer = new THREE.Mesh(new THREE.BoxGeometry(0.04, W * 0.98, W * 0.98), clay(s < 0 ? RED : BLU)); outer.position.x = s * (L / 2 - 0.02); g.add(outer);
-    const inner = new THREE.Mesh(new THREE.BoxGeometry(0.04, W * 0.98, W * 0.98), clay(s < 0 ? BLU : RED)); inner.position.x = s * 0.03; inner.visible = false; g.add(inner);
+    const outer = new THREE.Mesh(new THREE.BoxGeometry(0.04, W * 0.98, W * 0.98), lacquer(s < 0 ? RED : BLU)); outer.position.x = s * (L / 2 - 0.02); outer.castShadow = true; g.add(outer);
+    const oBadge = poleBadge(s < 0 ? 'N' : 'S', s < 0 ? RED : BLU, 0.22); oBadge.position.x = s < 0 ? -0.03 : 0.03; oBadge.rotation.y = s < 0 ? -Math.PI / 2 : Math.PI / 2; outer.add(oBadge);
+    const inner = new THREE.Mesh(new THREE.BoxGeometry(0.04, W * 0.98, W * 0.98), lacquer(s < 0 ? BLU : RED)); inner.position.x = s * 0.03; inner.visible = false; g.add(inner);
+    const iBadge = poleBadge(s < 0 ? 'S' : 'N', s < 0 ? BLU : RED, 0.2); iBadge.position.x = s < 0 ? 0.03 : -0.03; iBadge.rotation.y = s < 0 ? Math.PI / 2 : -Math.PI / 2; inner.add(iBadge);
     return { g, s, inner };
   });
   const lN = addLabel('domain', 'N', 'big nP', V3(-L / 2 - 0.35, Y, 0)), lS = addLabel('domain', 'S', 'big sP', V3(L / 2 + 0.35, Y, 0));
@@ -701,7 +729,7 @@ const DM = (() => {
   function setLines(sep) {
     const d = sep, Q = d < 0.01 ? [{ p: V3(-1.95, 0, 0), q: 1 }, { p: V3(1.95, 0, 0), q: -1 }] : [{ p: V3(-1.95 - d, 0, 0), q: 1 }, { p: V3(-0.25 - d, 0, 0), q: -1 }, { p: V3(0.25 + d, 0, 0), q: 1 }, { p: V3(1.95 + d, 0, 0), q: -1 }];
     const boxes = d < 0.01 ? [[-L / 2, L / 2]] : [[-L / 2 - d, -d], [d, L / 2 + d]];
-    viz.set(traceAll(Q, 80, { seedR: 0.56, inside: insideAny(boxes), keep: dd => Math.abs(dd.x) < 0.95 || dd.x < 0, bound: 3.4, minY: -2.3 }));
+    viz.set(traceAll(Q, 80, { seedR: 0.56, inside: insideAny(boxes), keep: dd => Math.abs(dd.x) < 0.95 || dd.x < 0, bound: 3.4, minY: -2.3 }), 0.015, Q);
   }
   const lamp = alcoholLamp(); lamp.position.set(0, 0, 0.1); lamp.scale.setScalar(1.15); group.add(lamp);
   const st = { broken: false, sep: 0, heat: false, h: 0, linesFor: -1, tip: '' };
@@ -754,7 +782,7 @@ const CL = (() => {
   const group = new THREE.Group(); scene.add(group);
   const Y = 2.2, R = 0.56, X0 = -1.6, X1 = 1.6;
   // 軟鐵釘（半透明）
-  const nailM = new THREE.MeshPhysicalMaterial({ color: 0xb8bcc4, metalness: 0.4, roughness: 0.3, transparent: true, opacity: 0.32, depthWrite: false, clearcoat: 1 });
+  const nailM = softIron({ transparent: true, opacity: 0.46, depthWrite: false });
   const nail = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 4.3, 32), nailM); nail.rotation.z = Math.PI / 2; nail.position.set(0, Y, 0); nail.renderOrder = 4; group.add(nail);
   const head = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.12, 32), nailM); head.rotation.z = Math.PI / 2; head.position.set(-2.2, Y, 0); group.add(head);
   const tipC = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.45, 32), nailM); tipC.rotation.z = -Math.PI / 2; tipC.position.set(2.37, Y, 0); group.add(tipC);
@@ -777,12 +805,12 @@ const CL = (() => {
   const cradle = shadowed(rbox(1.5, 0.12, 0.62, clay(0xc8a27a), 0.05)); cradle.position.set(0, 0.06, BZ); group.add(cradle);
   const lPos = addLabel('coil', '＋ 正極', 'small nP', V3(0, 0, 0)), lNeg = addLabel('coil', '－ 負極', 'small neg', V3(0, 0, 0));
   // 導線（左線接電池左端、右線接右端）
-  const wireM = clay(0xb71c1c);
+  const wireM = pvc(0xb71c1c);
   const W1 = [V3(X0, Y + R, 0), V3(X0 - 0.25, Y + R, 0), V3(X0 - 0.25, 0.06, 0.2), V3(X0 - 0.25, 0.06, BZ), V3(-0.95, 0.06, BZ), V3(-0.95, BY, BZ), V3(-0.71, BY, BZ)];
   const W2 = [V3(X1, Y + R, 0), V3(X1 + 0.25, Y + R, 0), V3(X1 + 0.25, 0.06, 0.2), V3(X1 + 0.25, 0.06, BZ), V3(0.95, 0.06, BZ), V3(0.95, BY, BZ), V3(0.6, BY, BZ)];
   [W1, W2].forEach(P => { for (let i = 0; i < P.length - 1; i++) { const s = shadowed(new THREE.Mesh(UNIT_CYL, wireM)); placeSeg(s, P[i], P[i + 1], 0.035); group.add(s); } });
   // 線圈（依匝數重建）＋整個電路路徑：左電池端 → 左導線 → 線圈 → 右導線 → 右電池端
-  const copper = metal(0xc77b3d, { roughness: 0.3 });
+  const copper = enamelCopper();
   let coil = null, circuit = null;
   class Helix extends THREE.Curve { constructor(n) { super(); this.n = n; } getPoint(t, o = new THREE.Vector3()) { const a = t * this.n * TAU; return o.set(lerp(X0, X1, t), Y + R * Math.cos(a), R * Math.sin(a)); } }
   function buildCoil(n) {
@@ -806,7 +834,7 @@ const CL = (() => {
   const viz = FieldViz(group, 0xffa040, 480);
   const lR = addLabel('coil', 'N', 'big nP', V3(2.95, Y, 0)), lL = addLabel('coil', 'S', 'big sP', V3(-2.75, Y, 0));
   // 迴紋針
-  const clipM = metal(0xd5d8de, { roughness: 0.25 });
+  const clipM = brushedSteel({ color: 0xe7ebf1, roughness: 0.16, envMapIntensity: 1.55 });
   const clips = Array.from({ length: 14 }, (_, i) => { const m = shadowed(new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.016, 6, 18), clipM)); m.scale.set(1.7, 1, 1); const home = V3(2.9 + (i % 4) * 0.28 + rnd() * 0.08, 0.02, -0.5 + Math.floor(i / 4) * 0.32 + rnd() * 0.06); m.position.copy(home); m.rotation.x = -Math.PI / 2; m.rotation.z = rnd() * 3; group.add(m); return { m, home, rz: m.rotation.z }; });
 
 
@@ -827,7 +855,7 @@ const CL = (() => {
     bat.updateMatrixWorld(); lPos.pos.copy(bat.localToWorld(V3(-0.68, 0.42, 0))); lNeg.pos.copy(bat.localToWorld(V3(0.6, 0.42, 0))); lPos.off.copy(lPos.pos); lNeg.off.copy(lNeg.pos);
     // 磁力線（N 端隨電流方向改變）
     const key = st.on ? `${Math.round(s * 10)}|${dir}` : '';
-    if (key !== st.level) { st.level = key; if (key) { const n = Math.round(24 + 70 * s); viz.set(traceAll([{ p: V3(2.05 * dir, 0, 0), q: 1 }, { p: V3(-2.05 * dir, 0, 0), q: -1 }], n, { seedR: 0.36, inside: p => Math.abs(p.x) < 2.3 && Math.hypot(p.y, p.z) < 0.3, bound: 3.6, minY: -2.1 }).map(L => L.map(p => p.add(V3(0, Y, 0))))); } }
+    if (key !== st.level) { st.level = key; if (key) { const n = Math.round(24 + 70 * s); const Qs = [{ p: V3(2.05 * dir, Y, 0), q: 1 }, { p: V3(-2.05 * dir, Y, 0), q: -1 }]; viz.set(traceAll([{ p: V3(2.05 * dir, 0, 0), q: 1 }, { p: V3(-2.05 * dir, 0, 0), q: -1 }], n, { seedR: 0.36, inside: p => Math.abs(p.x) < 2.3 && Math.hypot(p.y, p.z) < 0.3, bound: 3.6, minY: -2.1 }).map(L => L.map(p => p.add(V3(0, Y, 0)))), 0.015, Qs); } }
     viz.g.visible = st.k > 0.02 && !!st.level;
     viz.mat.opacity = st.k * (0.35 + 0.6 * s); viz.pm.opacity = st.k; viz.pm.size = 0.14 + 0.14 * s;
     viz.mat.color.setHex(s > 0.6 ? 0xffd27a : 0xffa040);
@@ -939,11 +967,23 @@ $('collapse').addEventListener('click', () => { const c = $('panel').classList.t
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   if (!w || !h) return;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const { dpr, rec } = look.apply();
   renderer.setSize(w, h);
-  bloomComposer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); bloomComposer.setSize(w, h);
+  bloom.strength = rec ? 0.62 : 0.38;
+  bloom.radius = rec ? 0.4 : 0.24;
+  overlay.material.uniforms.uGain.value = rec ? 0.8 : 0.52;
+  bloomComposer.setPixelRatio(rec ? dpr : Math.min(dpr, 1));
+  bloomComposer.setSize(w, h);
   camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
 }
+function syncQuality() {
+  const rec = look.tier() === 'record';
+  $('qClass').classList.toggle('on', !rec);
+  $('qRecord').classList.toggle('on', rec);
+}
+$('qClass').addEventListener('click', () => { look.setTier('class'); resize(); syncQuality(); });
+$('qRecord').addEventListener('click', () => { look.setTier('record'); resize(); syncQuality(); });
+syncQuality();
 window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
 
 const clock = new THREE.Clock();
