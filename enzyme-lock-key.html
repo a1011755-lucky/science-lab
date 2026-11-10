@@ -114,7 +114,7 @@
   }
 </style>
 </head>
-<body>
+<body data-mv-start="closed">
 <div class="wrap">
 
   <header class="top">
@@ -127,7 +127,7 @@
   </header>
 
   <!-- 控制面板 -->
-  <section class="panel" aria-label="控制面板">
+  <section class="panel glass" aria-label="控制面板">
     <div class="ctrl">
       <label for="tempRange">溫度 <output id="tempVal">37 °C</output></label>
       <input type="range" id="tempRange" min="0" max="80" step="1" value="37">
@@ -688,6 +688,7 @@ window.addEventListener('load', () => {
   }
 });
 </script>
+<script src="mobile.js"></script>
 <script src="goals.js" defer></script>
 </body>
 </html>

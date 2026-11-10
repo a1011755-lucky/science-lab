@@ -370,6 +370,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 
 </section>
 
+<script src="look.js"></script>
 <script type="importmap">
 { "imports": {
   "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
@@ -415,8 +416,8 @@ const $ = s => ROOT.querySelector(s);
 
 /* ===== 渲染器、場景、相機 ===== */
 function makeRenderer(canvas) {
-  const r = new THREE.WebGLRenderer({ canvas, antialias: true });
-  r.setPixelRatio(Math.min(devicePixelRatio, 2));
+  const r = new THREE.WebGLRenderer({ alpha: true, canvas, antialias: true });
+  r.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   r.toneMapping = THREE.ACESFilmicToneMapping;
   r.toneMappingExposure = 1.15;
   return r;
@@ -566,7 +567,13 @@ function hourWord(h) {
 /* ===== 光：太陽在 +X 方向很遠的地方 ===== */
 const sunLight = new THREE.DirectionalLight(0xfff3e0, 3.6);
 sunLight.position.set(300, 0, 0);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(1024, 1024);
+Object.assign(sunLight.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22, near: 250, far: 370 });
+sunLight.shadow.bias = -0.002;
 scene.add(sunLight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 scene.add(new THREE.AmbientLight(0x6070a0, 0.06)); // 一點點「地球照」，讓暗面隱約可見
 
 function glowTexture(stops) {
@@ -665,6 +672,7 @@ function cloudTexture() {
 const earthGroup = new THREE.Group(); scene.add(earthGroup);
 const earth = new THREE.Mesh(new THREE.SphereGeometry(EARTH_R, 96, 64), new THREE.MeshPhongMaterial({ map: earthTexture(), shininess: 22, specular: new THREE.Color(0x335577) }));
 earth.rotation.y = -2.2;
+earth.receiveShadow = true;
 const clouds = new THREE.Mesh(new THREE.SphereGeometry(EARTH_R * 1.015, 64, 48), new THREE.MeshLambertMaterial({ map: cloudTexture(), transparent: true, depthWrite: false }));
 const atmo = new THREE.Mesh(new THREE.SphereGeometry(EARTH_R * 1.12, 64, 48), new THREE.ShaderMaterial({
   transparent: true, depthWrite: false, side: THREE.BackSide, blending: THREE.AdditiveBlending,
@@ -721,6 +729,7 @@ const moonMap = canvasTex(moonCanvas);
 const moonBump = new THREE.CanvasTexture(moonCanvas);
 const moon = new THREE.Mesh(new THREE.SphereGeometry(MOON_R, 96, 64),
   new THREE.MeshStandardMaterial({ map: moonMap, bumpMap: moonBump, bumpScale: 2.5, roughness: 1, metalness: 0 }));
+moon.castShadow = true;
 scene.add(moon); // 圖層 0：主畫面與「從地球看」視窗都看得到
 const moonLabel = makeLabel('月亮', '#f3e7c4', 1.4); scene.add(moonLabel);
 
@@ -1044,8 +1053,8 @@ function dirWord(az) {
 const azOf = v => Math.atan2(v.x, -v.z) / DEG;
 
 /* ===== 渲染器 ===== */
-const renderer = new THREE.WebGLRenderer({ canvas: $('#c'), antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, canvas: $('#c'), antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 const scene = new THREE.Scene();
 scene.background = new THREE.Color();
 const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 500);
@@ -1074,13 +1083,19 @@ function makeLabel(text, color = '#e6edf8', h = 0.6) {
 /* ===== 光 ===== */
 const hemi = new THREE.HemisphereLight(0xcfe6ff, 0x30402a, 1);
 const sunLight = new THREE.DirectionalLight(0xfff1d6, 2);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(1024, 1024);
+Object.assign(sunLight.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 0.4, far: 40 });
+sunLight.shadow.bias = -0.001;
 scene.add(hemi, sunLight, sunLight.target);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 /* ===== 地面 ===== */
 const outerGround = new THREE.Mesh(new THREE.CircleGeometry(24, 96), new THREE.MeshLambertMaterial({ color: 0x2f4a2a }));
-outerGround.rotation.x = -Math.PI / 2; outerGround.position.y = -0.02; scene.add(outerGround);
+outerGround.rotation.x = -Math.PI / 2; outerGround.position.y = -0.02; outerGround.receiveShadow = true; scene.add(outerGround);
 const ground = new THREE.Mesh(new THREE.CircleGeometry(DOME, 96), new THREE.MeshLambertMaterial({ color: 0x5f8f4c }));
-ground.rotation.x = -Math.PI / 2; scene.add(ground);
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
 {
   const m = new THREE.LineBasicMaterial({ color: 0xe8f2ff, transparent: true, opacity: .45 });
   scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, .02, -DOME), new THREE.Vector3(0, .02, DOME)]), m));
@@ -1114,9 +1129,9 @@ const gridMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true
 const poleGroup = new THREE.Group(); scene.add(poleGroup);
 {
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(.06, .06, POLE_H, 12), new THREE.MeshLambertMaterial({ color: 0xf2e2c0 }));
-  pole.position.y = POLE_H / 2; poleGroup.add(pole);
+  pole.position.y = POLE_H / 2; pole.castShadow = true; poleGroup.add(pole);
   const base = new THREE.Mesh(new THREE.CylinderGeometry(.25, .25, .05, 24), new THREE.MeshLambertMaterial({ color: 0x8a7a60 }));
-  base.position.y = .025; poleGroup.add(base);
+  base.position.y = .025; base.castShadow = true; base.receiveShadow = true; poleGroup.add(base);
   const l = makeLabel('立竿（嘉義）', '#fff6dc', .62); l.position.set(0, POLE_H + .45, 0); poleGroup.add(l); poleGroup.userData.label = l;
 }
 const shadowGeo = new THREE.PlaneGeometry(1, .16); shadowGeo.translate(.5, 0, 0); shadowGeo.rotateX(-Math.PI / 2);

@@ -140,6 +140,7 @@
   .half .res.pos { background: #e3f1e6; color: #1f5f32; } .half .res.neg { background: #fde5e2; color: #a5311f; } .half .res.zero { background: #efe9df; color: #7a6a5a; }
   .zbtn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; color: #5d4037; }
 </style>
+<script src="look.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -169,7 +170,7 @@
 
     <!-- Tab 1 -->
     <section class="sec" data-tab="car">
-      <div class="concept" style="--cc:#e64a19"><div class="ct">W ＝ F × S × cosθ</div><div class="cd">力與位移<b>同向（0°）</b>→ 正功；<br>力與位移<b>反向（180°）</b>→ 負功</div></div>
+      <div class="concept" style="--cc:#e64a19"><div class="ct">功 ＝ 平行力 × 位移</div><div class="cd">力與位移<b>同向</b>→ 正功（力全部是平行力）；<br>力與位移<b>反向</b>→ 負功</div></div>
       <div class="row2">
         <button class="btn primary" id="caGas">🦶 踩油門</button>
         <button class="btn primary" id="caBrake">🛑 急煞車</button>
@@ -195,7 +196,7 @@
 
     <!-- Tab 3 -->
     <section class="sec" data-tab="zero" hidden>
-      <div class="concept" style="--cc:#455a64"><div class="ct">作功為零的兩種情況</div><div class="cd">① 沒有位移（S ＝ 0）<br>② 力與位移<b>垂直（90°）</b></div></div>
+      <div class="concept" style="--cc:#455a64"><div class="ct">作功為零的兩種情況</div><div class="cd">① 沒有位移（S ＝ 0）<br>② 力是<b>垂直力</b>（和位移垂直）</div></div>
       <div class="row2">
         <button class="btn zbtn on" data-z="rock">🪨 推不動的巨石</button>
         <button class="btn zbtn" data-z="walk">💼 提重物走路</button>
@@ -227,8 +228,8 @@ const TAU = Math.PI * 2;
 /* =========================================================
    溫暖無印風場景：米白背景、木紋桌、柔和光影
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -551,7 +552,7 @@ const CA = (() => {
     else if (st.phase === 'brake') { tip.hidden = false; tip.className = 'tip bad'; tip.textContent = '⛔ 摩擦力與位移反向（180 度）➔ 摩擦力作負功，車子動能減少！'; }
     else tip.hidden = true;
     const ph = st.mode === 'gas' ? '踩油門加速' : st.mode === 'coast' ? '放開油門，等速滑行' : st.mode === 'brake' ? '急煞車減速' + auto : st.mode === 'stop' ? '停下來了' : '靜止在起點';
-    setHTML('caStat', `狀態：<b>${ph}</b><br>速度 <b class="b">${st.v.toFixed(2)} m/s</b>　動能 ½mv² ＝ <b class="o">${KE.toFixed(1)} J</b>（m ＝ ${M} kg）<br>${st.phase === 'gas' ? `施力 F ＝ ${FG} N，位移 S ＝ ${s.toFixed(2)} m<br>W ＝ F × S × cos0° ＝ <b class="g">+${Math.abs(st.W).toFixed(1)} J</b>` : st.phase === 'brake' ? `摩擦力 f ＝ ${FB} N，位移 S ＝ ${s.toFixed(2)} m<br>W ＝ f × S × cos180° ＝ <b class="r">−${Math.abs(st.W).toFixed(1)} J</b>` : '按「踩油門」讓車子動起來'}`);
+    setHTML('caStat', `狀態：<b>${ph}</b><br>速度 <b class="b">${st.v.toFixed(2)} m/s</b>　動能 ½mv² ＝ <b class="o">${KE.toFixed(1)} J</b>（m ＝ ${M} kg）<br>${st.phase === 'gas' ? `平行力 F ＝ ${FG} N（與位移同向），位移 S ＝ ${s.toFixed(2)} m<br>功 ＝ 平行力 × S ＝ <b class="g">+${Math.abs(st.W).toFixed(1)} J</b>` : st.phase === 'brake' ? `平行力 f ＝ ${FB} N（與位移反向），位移 S ＝ ${s.toFixed(2)} m<br>功 ＝ 平行力 × S ＝ <b class="r">−${Math.abs(st.W).toFixed(1)} J</b>` : '按「踩油門」讓車子動起來'}`);
     setCap(st.mode === 'gas' ? `<small>踩油門</small><b class="red">施力 F →</b>　<b class="blu">位移 S →</b>　同向（0°）<span class="huge grn">正功：動能增加 ↑ ${KE.toFixed(1)} J</span>`
       : st.phase === 'brake' ? `<small>急煞車</small><b class="red">← 摩擦力 f</b>　<b class="blu">位移 S →</b>　反向（180°）<span class="huge red">負功：動能減少 ↓ ${KE.toFixed(1)} J</span>`
         : st.mode === 'coast' ? `<small>等速滑行</small>沒有沿運動方向的施力（忽略阻力）<span class="huge org">動能不變：${KE.toFixed(1)} J</span>`
@@ -667,9 +668,9 @@ const ZE = (() => {
       right.position.copy(o).add(V3(0, 0, 0.02)); right.visible = VSb.visible && VFb.visible;
       lRight.show = right.visible; lRight.pos.copy(o).add(V3(0.48, 0.48, 0)); lRight.off.copy(lRight.pos);
       VFa.target = 0; VFa.tickL(dt);
-      $('zeTip').hidden = !(st.go || dist > 0.05); $('zeTip').className = 'tip'; $('zeTip').textContent = '💼 W ＝ F × S × cos(90°) ＝ 0 焦耳！施力與位移垂直，不管走多遠都不作功！';
-      setHTML('zeStat', `提公事包的力 F ＝ <b class="r">50 N（向上）</b><br>水平走了 S ＝ <b class="b">${(dist / 2).toFixed(2)} m</b>　夾角 θ ＝ <b>90°</b><br>W ＝ F × S × cos90° ＝ 50 × ${(dist / 2).toFixed(2)} × 0 ＝ <b>0 J</b><br><small>向上的力只負責「不讓公事包掉下去」，在水平方向沒有幫忙移動。</small>`);
-      setCap(dist > 0.05 ? `<small>提重物水平走路</small><b class="red">提力 F ↑</b> 與 <b class="blu">位移 S →</b> 互相垂直（90°）<span class="huge">W ＝ F × S × cos90° ＝ 0 焦耳</span>` : `<small>情境 B：提重物走路</small>按「向前走」<span class="huge org">提著重物走路，手有作功嗎？</span>`);
+      $('zeTip').hidden = !(st.go || dist > 0.05); $('zeTip').className = 'tip'; $('zeTip').textContent = '💼 提力是垂直力，和水平位移垂直，不管走多遠都不作功，功是 0 焦耳！';
+      setHTML('zeStat', `提公事包的力 F ＝ <b class="r">50 N（向上，垂直力）</b><br>水平走了 S ＝ <b class="b">${(dist / 2).toFixed(2)} m</b><br>沿位移方向的平行力 ＝ <b>0 N</b><br>功 ＝ 平行力 × S ＝ 0 × ${(dist / 2).toFixed(2)} ＝ <b>0 J</b><br><small>向上的力只負責「不讓公事包掉下去」，在水平方向沒有幫忙移動。</small>`);
+      setCap(dist > 0.05 ? `<small>提重物水平走路</small><b class="red">提力 F ↑</b> 與 <b class="blu">位移 S →</b> 互相垂直<span class="huge">垂直力不作功，功 ＝ 0 焦耳</span>` : `<small>情境 B：提重物走路</small>按「向前走」<span class="huge org">提著重物走路，手有作功嗎？</span>`);
     }
   }
   return { group, update, st, VFa, VFb, VSb };
@@ -737,7 +738,7 @@ $('collapse').addEventListener('click', () => { const c = $('panel').classList.t
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   if (!w || !h) return;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(w, h);
   camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
 }

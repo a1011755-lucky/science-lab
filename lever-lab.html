@@ -145,6 +145,7 @@
   .stat b.g { color: #2e7d32; } .stat b.r { color: #e53935; }
   .zbtn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; }
 </style>
+<script src="look.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -232,8 +233,8 @@ const TAU = Math.PI * 2;
 /* =========================================================
    溫暖無印風場景：米白背景、木紋桌、柔和光影
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -535,7 +536,7 @@ const DR = (() => {
     if (st.push && best) { tip.hidden = false; tip.className = 'tip ok'; tip.textContent = '🏆 力臂最長，產生最大力矩！這就是門把裝在邊緣的原因。'; }
     else if (st.push && zero) { tip.hidden = false; tip.className = 'tip bad'; tip.textContent = '🚫 施力通過支點或與門板平行，力臂為 0 ➔ 力矩為 0，門絕對推不動！'; }
     else tip.hidden = true;
-    setHTML('drStat', `<div class="formula">L ＝ F × d ＝ ${F} × ${d.toFixed(2)} ＝ <b>${L.toFixed(1)}</b> N·m</div>施力位置：離轉軸 <b>${st.r.toFixed(1)} m</b>　施力角度：<b>${st.phi}°</b><br>力臂 d ＝ ${st.r.toFixed(1)} × sin ${st.phi}° ＝ <b class="b">${d.toFixed(2)} m</b><br>門的轉速：<b class="o">${(st.w * 60 / TAU).toFixed(1)} 轉／分</b><br><small>力臂是「支點到施力延長線的垂直距離」，不是支點到施力點的距離。</small>`);
+    setHTML('drStat', `<div class="formula">力矩 L ＝ 力 × 力臂 ＝ ${F} × ${d.toFixed(2)} ＝ <b>${L.toFixed(1)}</b> N·m</div>施力位置：離轉軸 <b>${st.r.toFixed(1)} m</b>　施力方向和門板的夾角：<b>${st.phi}°</b><br>力臂（支點到施力延長線的垂直距離）＝ <b class="b">${d.toFixed(2)} m</b><br>門的轉速：<b class="o">${(st.w * 60 / TAU).toFixed(1)} 轉／分</b><br><small>力臂不是支點到施力點的直線距離。施力越接近垂直於門板，力臂越接近施力點到轉軸的距離。</small>`);
     setCap(!st.push ? `<small>旋轉門</small>沒有施力 ➔ 沒有力矩<span class="huge">門靠摩擦力慢慢停下</span>`
       : zero ? `<small>力臂 ＝ 0</small>${st.r < 0.05 ? '推在轉軸上' : '順著門板方向推'}<span class="huge red">力矩 ＝ 0，門推不動！</span>`
         : best ? `<small>推在門的邊緣、垂直推</small><b class="blu">藍色虛線＝力臂</b> 最長<span class="huge org">最大力矩 ${L.toFixed(1)} N·m！</span>`
@@ -776,7 +777,7 @@ $('collapse').addEventListener('click', () => { const c = $('panel').classList.t
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   if (!w || !h) return;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(w, h);
   camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
 }

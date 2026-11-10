@@ -97,6 +97,7 @@
     .tabs { grid-template-columns: repeat(4, 1fr) !important; }
   }
 </style>
+<script src="look.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -211,8 +212,8 @@ const lerp = THREE.MathUtils.lerp;
 /* =========================================================
    場景：溫暖莫蘭迪 Soft 3D
    ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -485,7 +486,7 @@ const M1 = (() => {
   // 液面－時間小圖
   const spark = $('m1Spark'), sctx = spark.getContext('2d');
   function drawSpark() {
-    const dpr = Math.min(devicePixelRatio, 2), W = spark.clientWidth, H = spark.clientHeight;
+    const dpr = (window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)), W = spark.clientWidth, H = spark.clientHeight;
     if (!W) return;
     if (spark.width !== Math.round(W * dpr)) { spark.width = Math.round(W * dpr); spark.height = Math.round(H * dpr); }
     sctx.setTransform(dpr, 0, 0, dpr, 0, 0); sctx.clearRect(0, 0, W, H);
@@ -1069,7 +1070,7 @@ const M4 = (() => {
   const cv = $('chart'), ctx = cv.getContext('2d');
   const niceMax = v => [20, 40, 60, 80, 100, 120, 160, 200].find(n => n >= v) || Math.ceil(v / 50) * 50;
   function drawChart() {
-    const dpr = Math.min(devicePixelRatio, 2), W = cv.clientWidth, H = cv.clientHeight;
+    const dpr = (window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)), W = cv.clientWidth, H = cv.clientHeight;
     if (!W || !H) return;
     if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
@@ -1226,7 +1227,7 @@ $('collapse').addEventListener('click', () => { const c = $('panel').classList.t
 
 function resize() {
   if (!window.innerWidth || !window.innerHeight) return;   // 視窗被縮到 0 時不要算出 NaN 的鏡頭
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.fov = 40;

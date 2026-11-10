@@ -107,6 +107,7 @@
     .hint { display: none; }
   }
 </style>
+<script src="look.js"></script>
 <script src="mobile.js"></script>
 <script type="importmap">
 {
@@ -184,8 +185,8 @@ const lerp = THREE.MathUtils.lerp;
 const clay = (color, extra = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0.1, clearcoat: 0.3, ...extra });
 const C = { blue: 0x6aa0f5, pink: 0xf28bb0, mint: 0xcdeee2, lavender: 0xe4dcf7, land: 0x9fd9a0, pole: 0xd9dee5, red: 0xff6b6b };
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -690,7 +691,7 @@ $('collapse').addEventListener('click', () => {
 
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
   renderer.setSize(w, h);
   camera.aspect = w / h;
   camera.fov = w < h ? 68 : 40;
