@@ -152,7 +152,7 @@
         <div class="cd">車子都往前走。施力也往前 → 正功；摩擦力往後 → 負功。</div>
       </div>
       <button class="btn on" id="sgPos" type="button" data-sign="pos">正功模式（推車）</button>
-      <button class="btn" id="sgNeg" type="button" data-sign="neg">負功模式（煉車／摩擦力）</button>
+      <button class="btn" id="sgNeg" type="button" data-sign="neg">負功模式（煞車／摩擦力）</button>
       <label class="lab" for="sgGo">時間／位移進度<b id="sgGoV">0%</b></label>
       <input class="big" id="sgGo" type="range" min="0" max="100" step="1" value="0">
       <div class="ticks"><span>還沒動</span><span>往右拖才前進</span></div>
@@ -201,7 +201,20 @@ const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
 const clamp = THREE.MathUtils.clamp;
 const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 const lerp = (a, b, k) => a + (b - a) * k;
-const num = x => { const v = Math.round(x * 10) / 10; return Math.abs(v) < 0.05 ? '0' : v.toFixed(1); };
+/** 畫面用的一位小數。作功一律用「學生看到的兩個數」相乘，不再各自四捨五入。 */
+function tenth(x) {
+  const v = Math.round((Math.abs(x) + 1e-8) * 10) / 10;
+  return v < 0.05 ? 0 : v * Math.sign(x || 1);
+}
+const num = x => { const v = tenth(x); return v === 0 ? '0' : v.toFixed(1); };
+function product(a, b) {
+  return (Math.round(tenth(a) * 10) * Math.round(tenth(b) * 10)) / 100;
+}
+function numProd(p) {
+  const cents = Math.round(Math.abs(p) * 100);
+  if (cents === 0) return '0';
+  return (cents % 10 === 0 ? (cents / 100).toFixed(1) : (cents / 100).toFixed(2));
+}
 /* 幾何投影：水平分量佔全力的比例。0 = 水平，1 = 垂直。畫面不出現三角函數。 */
 function alongFloor(tilt01) {
   const t = clamp(tilt01, 0, 1);
@@ -504,7 +517,7 @@ const SB = (() => {
     const up = Math.sqrt(Math.max(0, 1 - along * along));
     st.fPar = st.F * along;
     st.sNow = st.shown * st.S;
-    st.work = st.fPar * st.sNow;
+    st.work = product(st.fPar, st.sNow);
     crate.position.set(HOME + st.sNow * SSCALE, 0, 0);
     attach.copy(localA);
     crate.localToWorld(attach);
@@ -537,7 +550,7 @@ const SB = (() => {
     $('sbSV').textContent = `${num(st.S)} 公尺`;
     $('sbDirV').textContent = tiltWord(st.tilt);
     $('sbGoV').textContent = `${Math.round(st.shown * 100)}%`;
-    const joule = `${num(st.work)} 焦耳`;
+    const joule = `${numProd(st.work)} 焦耳`;
     setHTML('sbEq', `<div class="name">作功 = (與位移平行的力) × 位移</div>
       <div class="nums"><span class="o">${num(st.fPar)} 牛頓</span> × <span class="b">${num(st.sNow)} 公尺</span> ＝ <b>${joule}</b></div>
       <div class="sub">${st.tilt > 0.98 ? '拉繩垂直，跟位移平行的力是 0。' : st.tilt < 0.08 ? '拉繩水平，施力全部都跟位移平行。' : '拉繩傾斜：只有沿著地面的橘色這一段在作功。'}　目前移動 ${num(st.sNow)} 公尺（全程 ${num(st.S)} 公尺）</div>`);
@@ -547,7 +560,7 @@ const SB = (() => {
     else if (st.sNow < 0.05) { tip.hidden = false; tip.textContent = '還沒有位移。把【推動物件】往右拉，藍色位移箭頭才會變長。'; }
     else tip.hidden = true;
     const verb = st.tilt > 0.98 ? '拉繩垂直，平行的力是 0' : st.tilt < 0.08 ? '拉繩水平，施力全部平行' : '拉繩越斜，橘色箭頭越短';
-    setCap(`<small>作功沙盒</small>${verb}<span class="huge"><span class="org">${num(st.fPar)} 牛頓</span> × <span class="blu">${num(st.sNow)} 公尺</span> ＝ ${Math.abs(st.work) < 0.05 ? '<span class="grn">0 焦耳</span>' : st.work.toFixed(1) + ' 焦耳'}</span>`);
+    setCap(`<small>作功沙盒</small>${verb}<span class="huge"><span class="org">${num(st.fPar)} 牛頓</span> × <span class="blu">${num(st.sNow)} 公尺</span> ＝ ${st.work === 0 ? '<span class="grn">0 焦耳</span>' : numProd(st.work) + ' 焦耳'}</span>`);
   }
   group.visible = false;
   return { group, update, read, cam: () => ({ pos: [1.15, 2.85, 6.5], target: [0.15, 0.62, 0.15], fitW: 8.6 }) };
@@ -640,7 +653,7 @@ const SG = (() => {
     st.shown = Math.abs(st.shown - target) < 0.0015 ? target : lerp(st.shown, target, 1 - Math.exp(-dt * 8));
     st.sNow = st.shown * SMAX;
     const pos = st.mode === 'pos';
-    st.work = (pos ? 1 : -1) * FORCE * st.sNow;
+    st.work = (pos ? 1 : -1) * product(FORCE, st.sNow);
     barrow.position.set(HOME + st.sNow * SSCALE, 0, 0);
     wheel.rotation.z = -(barrow.position.x - HOME) / 0.30;
     pushA.set(origin.set(barrow.position.x - 0.95, 1.12, 0), vec.set(1.25, 0, 0));
@@ -659,7 +672,7 @@ const SG = (() => {
     setLabel(lSign, pos ? '正功' : '負功', pos ? 'pos' : 'neg');
     lForce.pos.set(pos ? barrow.position.x - 0.3 : barrow.position.x - 0.9, pos ? 1.28 : 1.08, pos ? 0 : 0.78);
     lForce.show = true;
-    setLabel(lForce, pos ? `施力 ${FORCE} 牛頓　向前` : `摩擦力 ${FORCE} 牛頓　向後`);
+    setLabel(lForce, pos ? `施力 ${num(FORCE)} 牛頓　向前` : `摩擦力 ${num(FORCE)} 牛頓　向後`);
     lS.pos.set(HOME + (barrow.position.x - HOME) * 0.5, 0.42, 0.98);
     lS.show = sA.visible;
     setLabel(lS, `位移 ${num(st.sNow)} 公尺　向前`);
@@ -669,16 +682,18 @@ const SG = (() => {
     $('sgSign').textContent = pos ? '正功' : '負功';
     $('sgSign').className = 'signbig ' + (pos ? 'pos' : 'neg');
     const sign = pos ? '＋' : '−';
-    const idle = st.sNow < 0.05;
+    const idle = tenth(st.sNow) === 0;
+    const wText = numProd(Math.abs(st.work));
+    const eq = `${num(FORCE)} 牛頓 × ${num(st.sNow)} 公尺 ＝ ${idle ? '0' : sign + ' ' + wText} 焦耳`;
     setHTML('sgStat', `<div class="name">${pos ? '施力與位移同向 → 正功' : '摩擦力與位移反向 → 負功'}</div>
       <div class="nums">${pos ? '<span class="r">施力向前</span>' : '<span class="r">摩擦力向後</span>'}　<span class="b">位移向前</span></div>
-      <div class="nums">${idle ? '0 焦耳' : sign + ' ' + num(Math.abs(st.work)) + ' 焦耳'}</div>
+      <div class="nums">${eq}</div>
       <div class="sub">${idle ? '把「時間／位移進度」往右拖，車子才會前進（不會自己走）。' : pos ? '動能增加：綠色光點不斷流進推車。同向為正。' : '動能減少，轉換為熱能：紅色光點不斷散到空氣裡。反向為負。'}</div>`);
     setCap(idle
-      ? `<small>${pos ? '正功模式（推車）' : '負功模式（煉車／摩擦力）'}</small>${pos ? '施力向前' : '摩擦力向後'}，還沒有位移<span class="huge org">往右拖，車子才前進</span>`
+      ? `<small>${pos ? '正功模式（推車）' : '負功模式（煞車／摩擦力）'}</small>${pos ? '施力向前' : '摩擦力向後'}，還沒有位移<span class="huge org">往右拖，車子才前進</span>`
       : pos
-        ? `<small>正功模式（推車）</small>施力向前、位移向前，同向為正<span class="huge grn">正功　${sign} ${num(Math.abs(st.work))} 焦耳</span>`
-        : `<small>負功模式（煉車／摩擦力）</small>摩擦力向後、位移向前，反向為負<span class="huge red">負功　${sign} ${num(Math.abs(st.work))} 焦耳</span>`);
+        ? `<small>正功模式（推車）</small>施力向前、位移向前，同向為正<span class="huge grn">${num(FORCE)} 牛頓 × ${num(st.sNow)} 公尺 ＝ ＋ ${wText} 焦耳</span>`
+        : `<small>負功模式（煞車／摩擦力）</small>摩擦力向後、位移向前，反向為負<span class="huge red">${num(FORCE)} 牛頓 × ${num(st.sNow)} 公尺 ＝ − ${wText} 焦耳</span>`);
   }
   $('sgPos').addEventListener('click', () => { st.mode = 'pos'; });
   $('sgNeg').addEventListener('click', () => { st.mode = 'neg'; });
@@ -773,7 +788,7 @@ const ZE = (() => {
     setLabel(lS, `位移 ${num(st.sNow)} 公尺　向前`);
     $('zeGoV').textContent = `${Math.round(st.shown * 100)}%`;
     setHTML('zeStat', `<div class="name">提力向上，位移向前</div>
-      <div class="nums"><span class="r">平行的力 0 牛頓</span> × <span class="b">${num(st.sNow)} 公尺</span> ＝ <b>0 焦耳</b></div>
+      <div class="nums"><span class="r">平行的力 ${num(0)} 牛頓</span> × <span class="b">${num(st.sNow)} 公尺</span> ＝ <b>${numProd(product(0, st.sNow))} 焦耳</b></div>
       <div class="sub">提力 50 牛頓只是把公事包托住（平衡重力），沒有上下的位移。</div>`);
     $('zeCard').textContent = st.sNow > 0.08
       ? '施力（向上）與位移（向前）互相垂直！平行的力為 0 → 完全不作功（0 焦耳）！（手酸但物理上沒作功）'
