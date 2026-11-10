@@ -204,6 +204,9 @@ import * as THREE from 'three';
 import { enhanceLiquid } from './liquid.js';
 import { mountLook, lacquer, lacquerSolid, poleBadge, bareCopper, enamelCopper, brushedSteel, pvc } from './look.js';
 import { makeGrip, makePalm, stepGrip, stepPalm } from './hand.js';
+import { mountPresets } from './presets.js';
+import { mountSoundToggle } from './sonify.js';
+import { runAdaptive } from './perf.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -1163,6 +1166,18 @@ $('qRecord').addEventListener('click', () => { look.setTier('record'); resize();
 syncQuality();
 window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
 
+const bodyEl = document.querySelector('#panel .body');
+mountPresets(bodyEl, [
+  { label: '電流向上', title: '從上往下看，磁力線逆時針', tab: 'wire', clicks: ['.dbtn[data-d="1"]'], after() { if (!WR.on) $('wPow').click(); } },
+  { label: '電流向下', title: '電流反向，磁場也反向', tab: 'wire', clicks: ['.dbtn[data-d="-1"]'], after() { if (!WR.on) $('wPow').click(); } },
+  { label: '電動機全速', title: '電壓拉到 12 V', tab: 'motor', values: { volt: 12 } },
+  { label: '磁鐵插入線圈', title: '冷次定律：感應電流抵抗靠近', tab: 'lenz', clicks: ['#lIn'] }
+]);
+const toolRow = document.createElement('div');
+toolRow.className = 'lab-tools';
+bodyEl.querySelector('.lab-presets').after(toolRow);
+const synth = mountSoundToggle(toolRow);
+
 const clock = new THREE.Clock();
 function frame(dt) {
   wall += dt;
@@ -1178,9 +1193,11 @@ function frame(dt) {
   if (!window.innerWidth || !window.innerHeight) return;
   placeLabels();
   window.MobileView?.offset(camera);
+  const amt = tab === 'motor' ? Number($('volt').value) / 12 : (tab === 'wire' && WR.on ? 0.55 : 0);
+  synth.level(amt);
   renderAll(dt);
 }
-function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+const loop = runAdaptive(dt => { frame(Math.min(dt, 0.05)); return false; }, { always: true, autostart: false });
 
 window.lab = { frame, setTab, WR, MO, LZ, setWirePower, bloom, camera, controls };
 
@@ -1191,7 +1208,7 @@ for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
 document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
 document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
 goView(TABS[first].cam(), true);
-animate();
+loop.wake();
 </script>
 
 <script>

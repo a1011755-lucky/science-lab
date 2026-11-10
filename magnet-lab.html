@@ -232,6 +232,9 @@
 import * as THREE from 'three';
 import { enhanceLiquid } from './liquid.js';
 import { mountLook, lacquer, poleBadge, enamelCopper, brushedSteel, softIron, pvc, strengthTube, strengthNorm } from './look.js';
+import { mountPresets } from './presets.js';
+import { mountSoundToggle } from './sonify.js';
+import { runAdaptive } from './perf.js';
 import { makeGrip, stepGrip } from './hand.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
@@ -1132,6 +1135,18 @@ $('qRecord').addEventListener('click', () => { look.setTier('record'); resize();
 syncQuality();
 window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
 
+const bodyEl = document.querySelector('#panel .body');
+mountPresets(bodyEl, [
+  { label: '棒狀磁鐵', title: '磁力線從 N 到 S', tab: 'field', values: { fdType: 'bar' } },
+  { label: '地理北極是地磁 S', title: '指北針的 N 被地磁 S 吸住', tab: 'field', values: { fdType: 'earth' } },
+  { label: '折斷仍有兩極', title: '每一段都還有 N 和 S', tab: 'domain', clicks: ['#dmBreak'] },
+  { label: '匝數多、電流大', title: '電磁鐵磁力最強的一組', tab: 'coil', values: { clTurns: 20, clI: 3 }, after() { if (!CL.st.on) $('clPower').click(); } }
+]);
+const toolRow = document.createElement('div');
+toolRow.className = 'lab-tools';
+bodyEl.querySelector('.lab-presets').after(toolRow);
+const synth = mountSoundToggle(toolRow);
+
 const clock = new THREE.Clock();
 function frame(dt) {
   wall += dt;
@@ -1147,9 +1162,10 @@ function frame(dt) {
   if (!window.innerWidth || !window.innerHeight) return;
   placeLabels();
   window.MobileView?.offset(camera);
+  synth.level(tab === 'coil' && CL.st.on ? Math.min(1, CL.st.I / 3) : 0);
   renderAll(dt);
 }
-function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+const loop = runAdaptive(dt => { frame(Math.min(dt, 0.05)); return false; }, { always: true, autostart: false });
 
 window.lab = { frame, setTab, FD, DM, CL, bloom, camera, controls, renderer, scene, placeLabels };
 
@@ -1160,7 +1176,7 @@ for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
 document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
 document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
 goView(TABS[first].cam(), true);
-animate();
+loop.wake();
 </script>
 
 <script>

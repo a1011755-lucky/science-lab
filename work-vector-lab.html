@@ -192,6 +192,10 @@
 <script type="module">
 import * as THREE from 'three';
 import { mountLook } from './look.js';
+import { mountPresets } from './presets.js';
+import { createTrail, mountTrailToggle } from './trails.js';
+import { mountSoundToggle } from './sonify.js';
+import { runAdaptive } from './perf.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
@@ -497,6 +501,7 @@ const SB = (() => {
   const dash = Dashed(0x7ec8f2);
   group.add(red, orange, blue, dash);
   const lF = addLabel('sandbox', 'vF'), lP = addLabel('sandbox', 'vP'), lS = addLabel('sandbox', 'vS');
+  const trail = createTrail(group, { color: 0xffb15a, radius: 0.07 });
   const FSCALE = 0.058, SSCALE = 0.72, HOME = -1.85, ROPE = 1.48;
   const st = { shown: 0.6, F: 20, S: 3, tilt: 0, fPar: 20, sNow: 1.8, work: 36 };
   const localA = V3(0.62, 0.42, 0);
@@ -519,6 +524,9 @@ const SB = (() => {
     st.sNow = st.shown * st.S;
     st.work = product(st.fPar, st.sNow);
     crate.position.set(HOME + st.sNow * SSCALE, 0, 0);
+    trail.stamp(crate.position.clone().setY(0.28));
+    trail.update(dt);
+    st.busy = Math.abs(st.shown - target) > 0.006 || trail.alive();
     attach.copy(localA);
     crate.localToWorld(attach);
     unit.set(along, up, 0);
@@ -563,7 +571,7 @@ const SB = (() => {
     setCap(`<small>作功沙盒</small>${verb}<span class="huge"><span class="org">${num(st.fPar)} 牛頓</span> × <span class="blu">${num(st.sNow)} 公尺</span> ＝ ${st.work === 0 ? '<span class="grn">0 焦耳</span>' : numProd(st.work) + ' 焦耳'}</span>`);
   }
   group.visible = false;
-  return { group, update, read, cam: () => ({ pos: [1.15, 2.85, 6.5], target: [0.15, 0.62, 0.15], fitW: 8.6 }) };
+  return { group, update, read, trail, busy: () => st.busy, cam: () => ({ pos: [1.15, 2.85, 6.5], target: [0.15, 0.62, 0.15], fitW: 8.6 }) };
 })();
 
 /* =========================================================
@@ -637,6 +645,7 @@ const SG = (() => {
   const pushA = Arrow(0xff2a2a), fricA = Arrow(0xff2a2a), sA = Arrow(0x2eb6e6);
   group.add(pushA, fricA, sA);
   const lSign = addLabel('sign', 'pos'), lForce = addLabel('sign', 'vF'), lS = addLabel('sign', 'vS');
+  const trail = createTrail(group, { color: 0x7dcea0, radius: 0.06 });
   const SSCALE = 0.82, HOME = -1.55, SMAX = 4, FORCE = 25;
   const st = { shown: 0, mode: 'pos', work: 0, sNow: 0 };
   const origin = V3(), vec = V3();
@@ -655,6 +664,9 @@ const SG = (() => {
     const pos = st.mode === 'pos';
     st.work = (pos ? 1 : -1) * product(FORCE, st.sNow);
     barrow.position.set(HOME + st.sNow * SSCALE, 0, 0);
+    trail.stamp(barrow.position.clone().setY(0.42));
+    trail.update(dt);
+    st.busy = Math.abs(st.shown - target) > 0.006 || trail.alive();
     wheel.rotation.z = -(barrow.position.x - HOME) / 0.30;
     pushA.set(origin.set(barrow.position.x - 0.95, 1.12, 0), vec.set(1.25, 0, 0));
     pushA.visible = pos;
@@ -698,7 +710,7 @@ const SG = (() => {
   $('sgPos').addEventListener('click', () => { st.mode = 'pos'; });
   $('sgNeg').addEventListener('click', () => { st.mode = 'neg'; });
   group.visible = false;
-  return { group, update, read, cam: () => ({ pos: [0.15, 2.55, 6.35], target: [-0.15, 0.7, 0], fitW: 8.8 }) };
+  return { group, update, read, trail, busy: () => st.busy, cam: () => ({ pos: [0.15, 2.55, 6.35], target: [-0.15, 0.7, 0], fitW: 8.8 }) };
 })();
 
 /* =========================================================
@@ -731,6 +743,7 @@ const ZE = (() => {
   grip.position.set(0, 0.47, 0);
   brief.add(grip);
   shade(brief);
+  const trail = createTrail(group, { color: 0x8ec8f0, radius: 0.05 });
   const lift = Arrow(0xff2a2a);
   lift.set(V3(0, 0.56, 0), V3(0, 1.35, 0));
   brief.add(lift);
@@ -772,6 +785,9 @@ const ZE = (() => {
     st.shown = Math.abs(st.shown - target) < 0.0015 ? target : lerp(st.shown, target, 1 - Math.exp(-dt * 8));
     st.sNow = st.shown * SMAX;
     brief.position.x = HOME + st.sNow * SSCALE;
+    trail.stamp(brief.position);
+    trail.update(dt);
+    st.busy = Math.abs(st.shown - target) > 0.006 || trail.alive();
     brief.updateMatrixWorld(true);
     now.copy(handleLocal);
     brief.localToWorld(now);
@@ -798,7 +814,7 @@ const ZE = (() => {
       : `<small>零功陷阱</small>提著公事包，還沒有水平移動<span class="huge org">往右拉，看會不會作功</span>`);
   }
   group.visible = false;
-  return { group, update, read, cam: () => ({ pos: [0.35, 2.15, 5.7], target: [0.05, 1.35, 0], fitW: 6.8 }) };
+  return { group, update, read, trail, busy: () => st.busy, cam: () => ({ pos: [0.35, 2.15, 5.7], target: [0.05, 1.35, 0], fitW: 6.8 }) };
 })();
 
 const TABS = { sandbox: SB, sign: SG, zero: ZE };
@@ -898,6 +914,20 @@ $('qClass').addEventListener('click', () => { look.setTier('class'); resize(); }
 $('qRecord').addEventListener('click', () => { look.setTier('record'); resize(); });
 window.addEventListener('resize', () => { resize(); if (TABS[tab]) goView(TABS[tab].cam(), true); });
 
+const body = document.querySelector('#panel .body');
+mountPresets(body, [
+  { label: '水平全力作功', title: '拉繩水平，施力全部跟位移平行', tab: 'sandbox', values: { sbDir: 0, sbF: 40, sbS: 6, sbGo: 100 } },
+  { label: '會考：零功陷阱', title: '拉繩垂直，跟位移平行的力是 0', tab: 'sandbox', values: { sbDir: 100, sbF: 30, sbS: 4, sbGo: 100 } },
+  { label: '正功：推車', title: '施力與位移同向', tab: 'sign', values: { sgGo: 85 }, clicks: ['#sgPos'] },
+  { label: '負功：煞車', title: '摩擦力與位移反向', tab: 'sign', values: { sgGo: 85 }, clicks: ['#sgNeg'] },
+  { label: '提著走不作功', title: '提力向上、人水平往前', tab: 'zero', values: { zeGo: 100 } }
+]);
+const toolRow = document.createElement('div');
+toolRow.className = 'lab-tools';
+body.querySelector('.lab-presets').after(toolRow);
+mountTrailToggle(toolRow, [SB.trail, SG.trail, ZE.trail]);
+const synth = mountSoundToggle(toolRow);
+
 const clock = new THREE.Clock();
 function frame(dt) {
   TABS[tab].update(dt);
@@ -908,13 +938,18 @@ function frame(dt) {
     controls.target.lerpVectors(camTw.t0, camTw.t1, s);
     if (camTw.k >= 1) camTw = null;
   }
-  controls.update();
-  if (!window.innerWidth || !window.innerHeight) return;
+  const moved = controls.update();
+  if (!window.innerWidth || !window.innerHeight) return true;
   window.MobileView?.offset(camera);
   placeLabels();
+  const read = TABS[tab].read();
+  const amount = tab === 'sandbox' ? Math.min(1, (read.fPar || 0) / 40)
+    : tab === 'sign' ? (read.sNow > 0.08 ? 0.7 : 0) : 0;
+  synth.level(amount);
   renderer.render(scene, camera);
+  return !!(camTw || moved || TABS[tab].busy?.());
 }
-function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+const loop = runAdaptive(dt => frame(Math.min(dt, 0.05)), { autostart: false });
 
 window.lab = {
   frame, setTab, camera, controls, renderer, scene,
@@ -924,7 +959,7 @@ window.lab = {
 resize();
 const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'sandbox';
 setTab(first, true);
-animate();
+loop.wake();
 </script>
 
 <script>
