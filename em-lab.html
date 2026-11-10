@@ -189,6 +189,11 @@
       <div class="stat" id="lenzStat"></div>
     </section>
 
+    <label class="lab">畫質</label>
+    <div class="row2">
+      <button class="btn" id="qClass" type="button">課堂<small>平板順暢</small></button>
+      <button class="btn" id="qRecord" type="button">錄影<small>較細、適合錄影</small></button>
+    </div>
     <button class="btn" id="viewBtn">🎥 重設視角</button>
   </div>
 </aside>
@@ -196,6 +201,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { enhanceLiquid } from './liquid.js';
+import { mountLook, lacquer, lacquerSolid, poleBadge, bareCopper, enamelCopper, brushedSteel, pvc } from './look.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -225,20 +231,8 @@ $('scene').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xf5f1e7);
-const pmrem = new THREE.PMREMGenerator(renderer);
-const envScene = new THREE.Scene();
-envScene.background = new THREE.Color(0xf6efe2);
-const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
-scene.environment = pmrem.fromScene(envScene, 0.04).texture;
-scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
-const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
-sun.position.set(-7, 16, 10);
-sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
-sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
-scene.add(sun);
+const look = mountLook(renderer, scene);
+const sun = look.sun;
 const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -297,7 +291,7 @@ const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
 table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
 
 const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
-const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => new THREE.MeshPhysicalMaterial({ color, metalness: 0.96, roughness: 0.2, clearcoat: 0.4, clearcoatRoughness: 0.2, envMapIntensity: 1.4, ...o });
 const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
 const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
 
@@ -449,7 +443,7 @@ function blobShadow(group, x, z, r, a = 0.26) {
   const m = new THREE.Mesh(new THREE.PlaneGeometry(r * 2, r * 2), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
   m.rotation.x = -Math.PI / 2; m.position.set(x, 0.012, z); group.add(m); return m;
 }
-const copper = (o = {}) => metal(0xd08a4e, { roughness: 0.3, ...o });
+const copper = (o = {}) => bareCopper(o);
 const skinMat = () => new THREE.MeshPhysicalMaterial({ color: 0xeb9a70, transparent: true, opacity: 0.82, roughness: 0.45, clearcoat: 0.4 });
 /** 手的描邊：背面稍微外推的深色輪廓，米色背景上才看得清楚 */
 const outlineM = new THREE.MeshBasicMaterial({ color: 0x8a4b2c, side: THREE.BackSide, transparent: true, opacity: 0.85 });
@@ -543,7 +537,7 @@ const WH = 5.2, HAND_Y = 2.55;
 add(WR.group, new THREE.Mesh(new THREE.CylinderGeometry(3.7, 3.75, 0.12, 64), clay(0xfbf8f1, { clearcoat: 0.8, roughness: 0.3 })), 0, 0.06, 0).receiveShadow = true;
 add(WR.group, new THREE.Mesh(new THREE.TorusGeometry(3.72, 0.04, 8, 80), clay(0xd8c4a8)), 0, 0.12, 0).rotation.x = Math.PI / 2;
 // 粗銅線
-const wireMat = copper({ emissive: 0xff7a1a, emissiveIntensity: 0 });
+const wireMat = copper({ emissive: 0xff7a1a, emissiveIntensity: 0, roughness: 0.16 });
 const wire = add(WR.group, new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, WH, 32), wireMat), 0, WH / 2, 0);
 wire.castShadow = true;
 add(WR.group, new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.36, 0.12, 32), metal(0x9aa0a8)), 0, 0.18, 0);
@@ -554,7 +548,7 @@ add(psu, new THREE.Mesh(new RoundedBoxGeometry(1.2, 0.5, 0.06, 2, 0.04), clay(0x
 const psuLed = add(psu, glowLayer(new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 12), glowMat(0x777777))), 0.75, 0.95, 0.67);
 add(psu, new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.16, 16), clay(0xd32f2f)), -0.55, 0.4, 0.68).rotation.x = Math.PI / 2;
 add(psu, new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.16, 16), clay(0x333333)), 0.55, 0.4, 0.68).rotation.x = Math.PI / 2;
-const leadM = clay(0xc62828, { roughness: 0.5 }), leadK = clay(0x37474f, { roughness: 0.5 });
+const leadM = pvc(0xc62828), leadK = pvc(0x37474f);
 const leadTop = tube([V3(-5.85, 0.4, -0.5), V3(-5.6, 1.6, 0), V3(-3.5, WH + 0.6, -0.2), V3(-0.7, WH + 0.35, 0), V3(0, WH - 0.05, 0)], 0.06, leadM);
 const leadBot = tube([V3(-4.75, 0.4, -0.5), V3(-4.0, 0.25, 0.3), V3(-2.0, 0.2, 0.6), V3(-0.4, 0.22, 0.2), V3(0, 0.25, 0)], 0.06, leadK);
 WR.group.add(shadowed(leadTop), shadowed(leadBot));
@@ -582,18 +576,26 @@ const compasses = [];
 addLabel('wire', '北 ↑', 'small', V3(0, 0.2, -4.05));
 // 同心圓磁力線：發光粒子＋淡淡的圓環＋方向箭頭
 const RINGS = [];
-const ringPtsMat = new THREE.PointsMaterial({ color: 0x5ec8ff, size: 0.15, map: glowTexture('255,255,255'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false });
-const ringLineM = glowMat(0x7fd4ff, 0.35);
+const ringPointMats = [];
 const ringArrowM = glowMat(0x29b6f6, 0.95);
 const ringArrows = glowLayer(new THREE.InstancedMesh(CONE, ringArrowM, 60));
 ringArrows.frustumCulled = false; WR.group.add(ringArrows);
 let nRing = 0;
 for (const y of [0.85, 1.85, 3.25, 4.35]) for (const R of [0.65, 1.15, 1.75, 2.45, 3.2]) {
+  const k = Math.pow(0.65 / R, 0.9);
   const n = Math.round(18 * R + 8), pos = new Float32Array(n * 3);
   const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const pts = glowLayer(new THREE.Points(geo, ringPtsMat)); pts.frustumCulled = false; WR.group.add(pts);
-  const torus = glowLayer(new THREE.Mesh(new THREE.TorusGeometry(R, 0.012, 6, 96), ringLineM)); torus.rotation.x = Math.PI / 2; torus.position.y = y; WR.group.add(torus);
-  RINGS.push({ y, R, n, pos, geo, pts, torus, ph: Math.random() * TAU, k: nRing++ });
+  let pm = ringPointMats.find(m => m.userData.R === R);
+  if (!pm) {
+    pm = new THREE.PointsMaterial({ color: new THREE.Color().setRGB(0.5 + 0.8 * k, 0.78 + 0.35 * k, 1.15 + 0.4 * k), size: 0.08 + 0.18 * k, map: glowTexture('220,240,255'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false });
+    pm.userData.R = R; ringPointMats.push(pm);
+  }
+  const pts = glowLayer(new THREE.Points(geo, pm)); pts.frustumCulled = false; WR.group.add(pts);
+  const lineM = glowMat(0xffffff, 0.22 + 0.5 * k);
+  lineM.color.setRGB(0.48 + 0.45 * k, 0.76 + 0.22 * k, 1.2);
+  const torus = glowLayer(new THREE.Mesh(new THREE.TorusGeometry(R, 0.012 + 0.028 * k, 8, 96), lineM));
+  torus.rotation.x = Math.PI / 2; torus.position.y = y; WR.group.add(torus);
+  RINGS.push({ y, R, n, pos, geo, pts, torus, baseOp: lineM.opacity, ph: Math.random() * TAU, k: nRing++ });
 }
 // 導線上的電流（發光小點往電流方向流動）
 const curDots = glowLayer(new THREE.InstancedMesh(SPH, glowMat(0xffc04d), 18)); curDots.frustumCulled = false; WR.group.add(curDots);
@@ -650,12 +652,13 @@ function updateWire(dt) {
       tmpA.set(Math.cos(ph) * rr, R.y, Math.sin(ph) * rr);
       tmpB.set(Math.sin(ph) * d, 0, -Math.cos(ph) * d);   // B ∝ I × r̂
       dummyM.position.copy(tmpA); dummyM.quaternion.setFromUnitVectors(UP, tmpB);
-      dummyM.scale.setScalar(0.075 * pw * (R.R < 1 ? 1.15 : 1)); dummyM.updateMatrix();
+      dummyM.scale.setScalar((0.05 + 0.07 * Math.pow(0.65 / R.R, 0.85)) * pw); dummyM.updateMatrix();
       ringArrows.setMatrixAt(ai, dummyM.matrix);
     }
   }
   ringArrows.count = ai; ringArrows.visible = pw > 0.02; ringArrows.instanceMatrix.needsUpdate = true;
-  ringPtsMat.opacity = pw; ringLineM.opacity = 0.35 * pw;
+  for (const m of ringPointMats) m.opacity = pw;
+  for (const R of RINGS) R.torus.material.opacity = R.baseOp * pw;
   // 導線上的電流
   for (let i = 0; i < 18; i++) {
     let y = ((i / 18) + (wall * 0.35 * d)) % 1; if (y < 0) y += 1;
@@ -707,18 +710,23 @@ function uHalf(sgn, color) {
   s.lineTo(-1.5 * sgn, 4.0); s.lineTo(-2.45 * sgn, 4.0);
   const g = new THREE.ExtrudeGeometry(s, { depth: 1.4, bevelEnabled: true, bevelThickness: 0.08, bevelSize: 0.08, bevelSegments: 3, curveSegments: 40 });
   g.translate(0, 0, -0.7);
-  return shadowed(new THREE.Mesh(g, clay(color, { clearcoat: 0.7, roughness: 0.35 })));
+  return shadowed(new THREE.Mesh(g, lacquerSolid(color)));
 }
-MO.group.add(uHalf(1, 0xe25b4f), uHalf(-1, 0x4f7fd8));
+MO.group.add(uHalf(1, 0xd32f2f), uHalf(-1, 0x1e5fbf));
+for (const [x, letter] of [[-1.98, 'N'], [1.98, 'S']]) {
+  const b = poleBadge(letter, letter === 'N' ? 0xd32f2f : 0x1e5fbf, 0.26);
+  b.position.set(x, 4.03, 0); b.rotation.x = -Math.PI / 2; MO.group.add(b);
+}
 addLabel('motor', 'N 極', 'poleN', V3(-1.98, 4.35, 0)); addLabel('motor', 'S 極', 'poleS', V3(1.98, 4.35, 0));
 // 磁場（N → S）：發光虛線＋流動粒子
 const fieldPts = [];
 const fpos = new Float32Array(9 * 14 * 3), fgeo = new THREE.BufferGeometry(); fgeo.setAttribute('position', new THREE.BufferAttribute(fpos, 3));
-const fMat = new THREE.PointsMaterial({ color: 0x64b5f6, size: 0.13, map: glowTexture('255,255,255'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false });
+const fMat = new THREE.PointsMaterial({ color: new THREE.Color().setRGB(0.7, 0.9, 1.35), size: 0.16, map: glowTexture('255,255,255'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false });
 const fPoints = glowLayer(new THREE.Points(fgeo, fMat)); fPoints.frustumCulled = false; MO.group.add(fPoints);
 for (const y of [AY - 0.75, AY, AY + 0.75]) for (const z of [-0.5, 0, 0.5]) {
   fieldPts.push({ y, z });
-  const l = glowLayer(new THREE.Mesh(UNIT_CYL, glowMat(0x90caf9, 0.28))); placeSeg(l, V3(-1.48, y, z), V3(1.48, y, z), 0.012); MO.group.add(l);
+  const lm = glowMat(0xffffff, 0.5); lm.color.setRGB(0.58, 0.84, 1.3);
+  const l = glowLayer(new THREE.Mesh(UNIT_CYL, lm)); placeSeg(l, V3(-1.48, y, z), V3(1.48, y, z), 0.02); MO.group.add(l);
 }
 const bArrow = makeArrow(0x42a5f5, { r: 0.045, head: 0.15 }); setArrow(bArrow, V3(-0.5, AY + 1.45, 1.35), V3(1, 0, 0), 1.0); MO.group.add(bArrow);
 addLabel('motor', 'B 磁場 N → S', 'lam small', V3(0, AY + 1.75, 1.35));
@@ -731,7 +739,7 @@ for (const z of [-2.0]) {
 }
 // 旋轉的電樞：線圈＋集電環（換向器）
 const rotor = new THREE.Group(); rotor.position.set(0, AY, 0); MO.group.add(rotor);
-const coilM = copper({ color: 0xc8743a });
+const coilM = enamelCopper({ color: 0xc8743a });
 for (let t = 0; t < 3; t++) {
   const o = (t - 1) * 0.07;
   const pts = [V3(0.22, o, CZL + 0.35), V3(CW + o, o, CZL), V3(CW + o, o, -CZL), V3(-CW - o, o, -CZL), V3(-CW - o, o, CZL), V3(-0.22, o, CZL + 0.35)];
@@ -753,9 +761,9 @@ const brushes = [1, -1].map(s => {
 });
 // 電池與導線（右側電刷接正極）
 const batt = new THREE.Group(); batt.position.set(0, 0.36, 3.85); MO.group.add(batt);
-const bb = add(batt, shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 1.5, 32), clay(0x37474f))), 0, 0, 0); bb.rotation.z = Math.PI / 2;
-const bc = add(batt, new THREE.Mesh(new THREE.CylinderGeometry(0.345, 0.345, 0.5, 32), clay(0xd84315)), 0.55, 0, 0); bc.rotation.z = Math.PI / 2;
-add(batt, new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.1, 16), metal()), 0.8, 0, 0).rotation.z = Math.PI / 2;
+const bb = add(batt, shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 1.5, 32), pvc(0x2e3840, { clearcoat: 0.35 }))), 0, 0, 0); bb.rotation.z = Math.PI / 2;
+const bc = add(batt, new THREE.Mesh(new THREE.CylinderGeometry(0.345, 0.345, 0.5, 32), lacquerSolid(0xd84315)), 0.55, 0, 0); bc.rotation.z = Math.PI / 2;
+add(batt, new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.1, 16), brushedSteel({ color: 0xf2f4f6, roughness: 0.12 })), 0.8, 0, 0).rotation.z = Math.PI / 2;
 addLabel('motor', '＋', 'poleN small', V3(1.15, 0.85, 3.85)); addLabel('motor', '－', 'small', V3(-1.15, 0.85, 3.85));
 MO.group.add(shadowed(tube([V3(1.1, AY, CZ), V3(1.35, AY - 0.4, CZ + 0.2), V3(1.3, 1.0, 3.0), V3(0.95, 0.38, 3.85), V3(0.83, 0.36, 3.85)], 0.045, leadM)));
 MO.group.add(shadowed(tube([V3(-1.1, AY, CZ), V3(-1.35, AY - 0.4, CZ + 0.2), V3(-1.3, 1.0, 3.0), V3(-0.95, 0.38, 3.85), V3(-0.78, 0.36, 3.85)], 0.045, leadK)));
@@ -883,7 +891,7 @@ class Helix extends THREE.Curve {
   getPoint(t, tg = V3(0, 0, 0)) { const a = t * TURNS * TAU; return tg.set(Math.cos(a) * COIL_R, lerp(COIL_Y0, COIL_Y1, t), Math.sin(a) * COIL_R); }
 }
 const helix = new Helix();
-LZ.group.add(shadowed(new THREE.Mesh(new THREE.TubeGeometry(helix, 600, 0.07, 10, false), clay(0xb4532a, { metalness: 0.35, roughness: 0.3, clearcoat: 1 }))));
+LZ.group.add(shadowed(new THREE.Mesh(new THREE.TubeGeometry(helix, 600, 0.07, 10, false), enamelCopper())));
 // 線圈頂端的發光環（顯示感應磁極）
 const topRingM = glowMat(0xff4d4d, 0);
 const topRing = glowLayer(new THREE.Mesh(new THREE.TorusGeometry(COIL_R + 0.02, 0.09, 12, 64), topRingM)); topRing.rotation.x = Math.PI / 2; topRing.position.y = COIL_Y1 + 0.05; LZ.group.add(topRing);
@@ -927,8 +935,10 @@ addLabel('lenz', '漆包線線圈', 'small', V3(1.55, 1.5, 0.6));
 // 棒狀磁鐵（紅 N、藍 S），可拖曳
 const magnet = new THREE.Group(); LZ.group.add(magnet);
 const halfG = new RoundedBoxGeometry(0.6, MAG_L / 2, 0.6, 4, 0.08);
-const magN = new THREE.Mesh(halfG, clay(0xe53935, { clearcoat: 0.8 })), magS = new THREE.Mesh(halfG, clay(0x3f74c9, { clearcoat: 0.8 }));
+const magN = new THREE.Mesh(halfG, lacquer(0xd32f2f)), magS = new THREE.Mesh(halfG, lacquer(0x2a6bc4));
 magN.castShadow = magS.castShadow = true; magnet.add(magN, magS);
+const endN = poleBadge('N', 0xd32f2f, 0.18), endS = poleBadge('S', 0x2a6bc4, 0.18);
+magN.add(endN); magS.add(endS);
 const capN = letterSprite('N', '#ffffff', null, 0.5), capS = letterSprite('S', '#ffffff', null, 0.5);
 capN.material.map = letterTex('N', '#b71c1c', null); capS.material.map = letterTex('S', '#0d47a1', null);
 capN.material.depthTest = capS.material.depthTest = true;
@@ -940,6 +950,8 @@ const lHint = addLabel('lenz', '👆 拖曳我', 'yel small', V3(0, 0, 0), magne
 function layoutMagnet() {
   const n = LZ.nDown;
   magN.position.y = n ? -MAG_L / 4 : MAG_L / 4; magS.position.y = -magN.position.y;
+  const placeEnd = (badge, sign) => { badge.position.set(0, sign * (MAG_L / 4 + 0.012), 0); badge.rotation.x = sign > 0 ? -Math.PI / 2 : Math.PI / 2; };
+  placeEnd(endN, n ? -1 : 1); placeEnd(endS, n ? 1 : -1);
   capN.position.set(0, magN.position.y, 0.32); capS.position.set(0, magS.position.y, 0.32);
   $('lFlip').textContent = n ? '🔃 翻轉磁鐵（換 S 極朝下）' : '🔃 翻轉磁鐵（換 N 極朝下）';
 }
@@ -1105,11 +1117,23 @@ $('collapse').addEventListener('click', () => { const c = $('panel').classList.t
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   if (!w || !h) return;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const { dpr, rec } = look.apply();
   renderer.setSize(w, h);
-  bloomComposer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); bloomComposer.setSize(w, h);
+  bloom.strength = rec ? 0.9 : 0.48;
+  bloom.radius = rec ? 0.45 : 0.26;
+  overlay.material.uniforms.uGain.value = rec ? 0.95 : 0.58;
+  bloomComposer.setPixelRatio(rec ? dpr : Math.min(dpr, 1));
+  bloomComposer.setSize(w, h);
   camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
 }
+function syncQuality() {
+  const rec = look.tier() === 'record';
+  $('qClass').classList.toggle('on', !rec);
+  $('qRecord').classList.toggle('on', rec);
+}
+$('qClass').addEventListener('click', () => { look.setTier('class'); resize(); syncQuality(); });
+$('qRecord').addEventListener('click', () => { look.setTier('record'); resize(); syncQuality(); });
+syncQuality();
 window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
 
 const clock = new THREE.Clock();

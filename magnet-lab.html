@@ -178,6 +178,11 @@
         <button class="btn primary" id="fdDust">🧂 撒下鐵粉</button>
         <button class="btn" id="fdClear">🧹 清除鐵粉</button>
       </div>
+      <label class="lab">觀察方式</label>
+      <div class="row2">
+        <button class="btn on" id="fdMode3d" type="button">🧊 立體空間</button>
+        <button class="btn" id="fdModePlate" type="button">🪟 玻璃板俯視</button>
+      </div>
       <label class="chk"><input type="checkbox" id="fdLines" checked> 顯示發光磁力線</label>
       <div class="stat" id="fdStat"></div>
       <div class="tip" id="fdTip" hidden>⚠️ 注意陷阱：指北針的 N 極會被地磁的 S 極吸引，所以地理北極其實是地磁南極！</div>
@@ -212,6 +217,11 @@
       <div class="tip" id="clTip" hidden></div>
     </section>
 
+    <label class="lab">畫質</label>
+    <div class="row2">
+      <button class="btn" id="qClass" type="button">課堂<small>平板順暢</small></button>
+      <button class="btn" id="qRecord" type="button">錄影<small>較細、適合錄影</small></button>
+    </div>
     <button class="btn" id="viewBtn">🎥 重設視角</button>
   </div>
 </aside>
@@ -219,6 +229,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { enhanceLiquid } from './liquid.js';
+import { mountLook, lacquer, poleBadge, enamelCopper, brushedSteel, softIron, pvc, strengthTube, strengthNorm } from './look.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -249,20 +260,8 @@ $('scene').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xf5f1e7);
-const pmrem = new THREE.PMREMGenerator(renderer);
-const envScene = new THREE.Scene();
-envScene.background = new THREE.Color(0xf6efe2);
-const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
-scene.environment = pmrem.fromScene(envScene, 0.04).texture;
-scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
-const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
-sun.position.set(-7, 16, 10);
-sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
-sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
-scene.add(sun);
+const look = mountLook(renderer, scene);
+const sun = look.sun;
 const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -291,7 +290,7 @@ const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
 table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
 
 const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
-const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => new THREE.MeshPhysicalMaterial({ color, metalness: 0.96, roughness: 0.2, clearcoat: 0.4, clearcoatRoughness: 0.2, envMapIntensity: 1.4, ...o });
 const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
 const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
 
@@ -512,28 +511,52 @@ function polyAt(P, u, out) {
 /** 發光磁力線（細管）＋沿線流動的光點粒子 */
 function FieldViz(parent, color, nFlow = 420) {
   const g = new THREE.Group(); parent.add(g);
-  const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, toneMapped: false, depthWrite: false });
+  const mat = new THREE.MeshBasicMaterial({ color, vertexColors: true, transparent: true, opacity: 0.92, toneMapped: false, depthWrite: false, side: THREE.DoubleSide });
+  const headMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.92, toneMapped: false, depthWrite: false });
   const pos = new Float32Array(nFlow * 3), pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const pm = new THREE.PointsMaterial({ map: glowTexture('255,240,200'), color: 0xfff2c4, size: 0.2, transparent: true, depthWrite: false, toneMapped: false });
+  const pm = new THREE.PointsMaterial({ map: glowTexture('255,240,200'), color: 0xfff2c4, size: 0.18, transparent: true, depthWrite: false, toneMapped: false });
   const pts = new THREE.Points(pg, pm); pts.frustumCulled = false; glowLayer(pts); g.add(pts);
   const flow = Array.from({ length: nFlow }, (_, i) => ({ li: i, u: rnd() }));
   // 磁場方向箭頭：沿磁力線每隔一段放一個圓錐，尖端指向磁場方向（N → S）
   const headGeo = new THREE.ConeGeometry(0.075, 0.22, 12);
-  const heads = new THREE.InstancedMesh(headGeo, mat, 900); heads.count = 0; heads.frustumCulled = false; glowLayer(heads); g.add(heads);
-  let P = [], tubes = [];
+  const heads = new THREE.InstancedMesh(headGeo, headMat, 900); heads.count = 0; heads.frustumCulled = false; glowLayer(heads); g.add(heads);
+  let P = [], tubes = [], normFn = () => 0.6;
   const tmp = V3(0, 0, 0);
+  const magAt = (L, u) => {
+    const m = L.mags; if (!m || m.length < 2) return 1;
+    const d = u * (m.length - 1), i = Math.floor(d), k = d - i;
+    return m[i] + (m[Math.min(m.length - 1, i + 1)] - m[i]) * k;
+  };
   return {
     g, mat, pm,
-    set(lines, r = 0.014) {
+    set(lines, r = 0.015, Q = null) {
       tubes.forEach(t => { t.geometry.dispose(); g.remove(t); }); tubes = [];
-      P = lines.map(poly);
-      lines.forEach(L => { const step = Math.max(1, Math.floor(L.length / 90)), sp = L.filter((_, i) => i % step === 0 || i === L.length - 1); const t = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(sp), Math.min(160, sp.length * 2), r, 6), mat); glowLayer(t); g.add(t); tubes.push(t); });
+      const samples = [];
+      lines.forEach(L => {
+        const step = Math.max(1, Math.floor(L.length / 72));
+        const sp = [], mg = [];
+        L.forEach((p, i) => {
+          if (i % step !== 0 && i !== L.length - 1) return;
+          sp.push(p);
+          if (Q) { fieldAt(p, Q, tB); mg.push(tB.length()); } else mg.push(1);
+        });
+        if (sp.length >= 2) samples.push({ sp, mg });
+      });
+      normFn = strengthNorm(samples.flatMap(s => s.mg));
+      P = samples.map(s => { const item = poly(s.sp); item.mags = s.mg; return item; });
+      samples.forEach(s => {
+        const weights = s.mg.map(normFn);
+        const t = new THREE.Mesh(strengthTube(s.sp, weights, r, 6), mat);
+        t.frustumCulled = false;
+        glowLayer(t); g.add(t); tubes.push(t);
+      });
       flow.forEach((f, i) => { f.li = P.length ? i % P.length : 0; });
       let hc = 0; const a = V3(0, 0, 0), b = V3(0, 0, 0), c = V3(0, 0, 0), q = new THREE.Quaternion(), one = V3(1, 1, 1), m4 = new THREE.Matrix4();
-      for (const L of P) { const n = Math.max(1, Math.round(L.len / 1.25)); for (let k = 0; k < n && hc < 900; k++) { const u = (k + 0.5) / n; polyAt(L, u, c); polyAt(L, Math.max(0, u - 0.01), a); polyAt(L, Math.min(1, u + 0.01), b); b.sub(a); if (b.lengthSq() < 1e-10) continue; q.setFromUnitVectors(V3(0, 1, 0), b.normalize()); m4.compose(c, q, one); heads.setMatrixAt(hc++, m4); } }
+      for (const L of P) { const n = Math.max(1, Math.round(L.len / 1.25)); for (let k = 0; k < n && hc < 900; k++) { const u = (k + 0.5) / n; polyAt(L, u, c); polyAt(L, Math.max(0, u - 0.01), a); polyAt(L, Math.min(1, u + 0.01), b); b.sub(a); if (b.lengthSq() < 1e-10) continue; const sc = 0.7 + 0.95 * normFn(magAt(L, u)); q.setFromUnitVectors(V3(0, 1, 0), b.normalize()); one.set(sc, sc, sc); m4.compose(c, q, one); heads.setMatrixAt(hc++, m4); } }
       heads.count = hc; heads.instanceMatrix.needsUpdate = true;
     },
     update(dt, speed = 1, active = 1) {
+      headMat.opacity = mat.opacity; headMat.color.copy(mat.color);
       const n = P.length ? Math.round(nFlow * active) : 0;
       for (let i = 0; i < nFlow; i++) {
         const f = flow[i];
@@ -566,16 +589,22 @@ const FD = (() => {
   const ring = new THREE.Mesh(new THREE.RingGeometry(1.2, 1.9, 48), new THREE.MeshBasicMaterial({ color: 0xd8c3a0, transparent: true, opacity: 0.35, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.y = 0.012; group.add(ring);
   // 棒狀磁鐵
   const bar = new THREE.Group(); center.add(bar);
-  const bN = shadowed(rbox(1.5, 0.6, 0.6, clay(RED), 0.06)); bN.position.x = -0.75; bar.add(bN);
-  const bS = shadowed(rbox(1.5, 0.6, 0.6, clay(BLU), 0.06)); bS.position.x = 0.75; bar.add(bS);
+  const bN = shadowed(rbox(1.5, 0.6, 0.6, lacquer(RED), 0.06)); bN.position.x = -0.75; bar.add(bN);
+  const bS = shadowed(rbox(1.5, 0.6, 0.6, lacquer(BLU), 0.06)); bS.position.x = 0.75; bar.add(bS);
+  const mark = (parent, letter, hex, x, y, z, ry, rad = 0.16) => { const b = poleBadge(letter, hex, rad); b.position.set(x, y, z); b.rotation.y = ry; parent.add(b); return b; };
+  mark(bN, 'N', RED, -0.77, 0, 0, -Math.PI / 2, 0.2); mark(bN, 'N', RED, 0, 0.02, 0.31, 0);
+  mark(bS, 'S', BLU, 0.77, 0, 0, Math.PI / 2, 0.2); mark(bS, 'S', BLU, 0, 0.02, 0.31, 0);
   const lBN = addLabel('field', 'N', 'big nP', V3(-1.85, Y0 + 0.05, 0)), lBS = addLabel('field', 'S', 'big sP', V3(1.85, Y0 + 0.05, 0));
   const Q_BAR = [{ p: V3(-1.25, 0, 0), q: 1 }, { p: V3(1.25, 0, 0), q: -1 }];
   const inBar = p => Math.abs(p.x) < 1.52 && Math.abs(p.y) < 0.31 && Math.abs(p.z) < 0.31;
   // U 型磁鐵（開口朝上）
   const U = new THREE.Group(); center.add(U);
-  const uL = shadowed(rbox(0.46, 1.6, 0.46, clay(RED), 0.06)); uL.position.set(-0.65, 0.1, 0); U.add(uL);
-  const uR = shadowed(rbox(0.46, 1.6, 0.46, clay(BLU), 0.06)); uR.position.set(0.65, 0.1, 0); U.add(uR);
-  const uArc = shadowed(new THREE.Mesh(new THREE.TorusGeometry(0.65, 0.23, 16, 32, Math.PI), clay(0xb9bcc2))); uArc.rotation.z = Math.PI; uArc.position.y = -0.7; U.add(uArc);
+  const uL = shadowed(rbox(0.46, 1.6, 0.46, lacquer(RED), 0.06)); uL.position.set(-0.65, 0.1, 0); U.add(uL);
+  const uR = shadowed(rbox(0.46, 1.6, 0.46, lacquer(BLU), 0.06)); uR.position.set(0.65, 0.1, 0); U.add(uR);
+  const uArc = shadowed(new THREE.Mesh(new THREE.TorusGeometry(0.65, 0.23, 16, 40, Math.PI), brushedSteel())); uArc.rotation.z = Math.PI; uArc.position.y = -0.7; U.add(uArc);
+  const upole = (parent, letter, hex, y, rx, rad = 0.13) => { const b = poleBadge(letter, hex, rad); b.position.set(0, y, 0); b.rotation.x = rx; parent.add(b); };
+  upole(uL, 'N', RED, 0.82, -Math.PI / 2); upole(uR, 'S', BLU, 0.82, -Math.PI / 2);
+  mark(uL, 'N', RED, 0, 0.25, 0.24, 0, 0.13); mark(uR, 'S', BLU, 0, 0.25, 0.24, 0, 0.13);
   const lUN = addLabel('field', 'N', 'big nP', V3(-0.65, Y0 + 1.25, 0)), lUS = addLabel('field', 'S', 'big sP', V3(0.65, Y0 + 1.25, 0));
   const Q_U = [{ p: V3(-0.65, 0.72, 0), q: 1 }, { p: V3(0.65, 0.72, 0), q: -1 }];
   const inU = p => (Math.abs(Math.abs(p.x) - 0.65) < 0.24 && p.y > -0.72 && p.y < 0.91 && Math.abs(p.z) < 0.24) || (p.y < -0.6 && Math.abs(Math.hypot(p.x, p.y + 0.7) - 0.65) < 0.24 && Math.abs(p.z) < 0.24);
@@ -593,8 +622,9 @@ const FD = (() => {
   const globe = new THREE.Mesh(new THREE.SphereGeometry(ER, 48, 32), new THREE.MeshPhysicalMaterial({ map: eTex, transparent: true, opacity: 0.4, roughness: 0.5, clearcoat: 0.6, depthWrite: false, side: THREE.DoubleSide })); globe.renderOrder = 3; earth.add(globe);
   const axis = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, ER * 2.6, 6), basic(0x5d4037, 0.6)); earth.add(axis);
   const mag = new THREE.Group(); mag.rotation.z = TILT; earth.add(mag);
-  const mS = shadowed(rbox(0.36, 1.1, 0.36, clay(BLU), 0.05)); mS.position.y = 0.55; mag.add(mS);
-  const mN = shadowed(rbox(0.36, 1.1, 0.36, clay(RED), 0.05)); mN.position.y = -0.55; mag.add(mN);
+  const mS = shadowed(rbox(0.36, 1.1, 0.36, lacquer(BLU), 0.05)); mS.position.y = 0.55; mag.add(mS);
+  const mN = shadowed(rbox(0.36, 1.1, 0.36, lacquer(RED), 0.05)); mN.position.y = -0.55; mag.add(mN);
+  upole(mS, 'S', BLU, 0.57, -Math.PI / 2, 0.11); upole(mN, 'N', RED, -0.57, Math.PI / 2, 0.11);
   const ax = V3(-Math.sin(TILT), Math.cos(TILT), 0);
   const Q_E = [{ p: ax.clone().multiplyScalar(-0.85), q: 1 }, { p: ax.clone().multiplyScalar(0.85), q: -1 }];
   const inE = p => { const a = p.dot(ax), perp = p.clone().addScaledVector(ax, -a).length(); return Math.abs(a) < 1.12 && perp < 0.2; };
@@ -618,32 +648,136 @@ const FD = (() => {
   const viz = FieldViz(center, 0xffb74d);
   const filM = metal(0x3d3f44, { roughness: 0.5 });
   let fil = null, filData = [], filT = 0;
-  const st = { type: 'bar', dust: false };
+  const st = { type: 'bar', dust: false, plate: false };
+  const plate = new THREE.Group(); center.add(plate);
+  const plateGlass = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.04, 64), new THREE.MeshPhysicalMaterial({ color: 0xe7f4f7, roughness: 0.04, metalness: 0, transparent: true, opacity: 0.28, clearcoat: 1, clearcoatRoughness: 0.04, side: THREE.DoubleSide, depthWrite: false }));
+  const plateRim = new THREE.Mesh(new THREE.RingGeometry(0.985, 1.02, 72), metal(0xd5dbe2, { roughness: 0.22 }));
+  plateRim.rotation.x = -Math.PI / 2; plateRim.position.y = 0.02; plate.add(plateGlass, plateRim);
+  const plateSpec = t => t === 'u' ? { y: 1.08, r: 2.75 } : { y: 0.5, r: 3.35 };
+  const SPOTS = {
+    bar: [[-2.55, 0, 1.2], [-2.55, 0, -1.2], [-1.1, 0, 1.7], [1.15, 0, 1.7], [0, 0, -1.9], [2.55, 0, 1.2], [2.55, 0, -1.2], [-1.15, 0, -1.7]],
+    u: [[-1.9, 0.95, 1.05], [0, 1.2, 1.3], [1.9, 0.95, 1.05], [-1.9, 0.95, -1.05], [0, 1.2, -1.3], [1.9, 0.95, -1.05], [-2.4, 0.35, 0], [2.4, 0.35, 0]]
+  };
+  const needles = Array.from({ length: 8 }, () => {
+    const c = new THREE.Group(); center.add(c);
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.045, 20), clay(0xfffaf2));
+    disc.castShadow = disc.receiveShadow = true; c.add(disc);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.018, 6, 22), metal(0xc9a46a));
+    rim.rotation.x = Math.PI / 2; rim.position.y = 0.028; c.add(rim);
+    const needle = new THREE.Group(); needle.position.y = 0.055; c.add(needle);
+    const nN = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 8), clay(RED, { emissive: 0x7a0000, emissiveIntensity: 0.35 }));
+    nN.rotation.z = -Math.PI / 2; nN.position.x = 0.08; nN.scale.z = 0.45; needle.add(nN);
+    const nS = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 8), clay(0xf5f7f8));
+    nS.rotation.z = Math.PI / 2; nS.position.x = -0.08; nS.scale.z = 0.45; needle.add(nS);
+    return { c, needle, ang: 0.8, vel: 0 };
+  });
+  function syncModes() {
+    const earth = st.type === 'earth';
+    $('fdModePlate').disabled = earth;
+    $('fdMode3d').classList.toggle('on', !st.plate);
+    $('fdModePlate').classList.toggle('on', st.plate && !earth);
+  }
+  function layoutPlate() {
+    const s = plateSpec(st.type);
+    plate.position.y = s.y;
+    plateGlass.scale.set(s.r, 1, s.r);
+    plateRim.scale.set(s.r, s.r, 1);
+    plate.visible = st.plate && st.type !== 'earth';
+  }
+  function layoutNeedles() {
+    const spots = SPOTS[st.type] || [];
+    const Q = st.type === 'u' ? Q_U : Q_BAR;
+    const py = plateSpec(st.type).y;
+    needles.forEach((C, i) => {
+      const show = st.type !== 'earth' && i < spots.length;
+      C.c.visible = show;
+      if (!show) return;
+      const s = spots[i];
+      C.c.position.set(s[0], st.plate ? py + 0.07 : s[1], s[2]);
+      fieldAt(C.c.position, Q, tB);
+      C.ang = -Math.atan2(tB.z, tB.x) + 0.65;
+      C.vel = 0;
+    });
+  }
+  function tracePlateLines(t) {
+    const Q = t === 'u' ? Q_U : Q_BAR;
+    const { y, r } = plateSpec(t);
+    const yy = y + 0.03;
+    const stop = t === 'u' ? (x, z) => Math.hypot(x - 0.65, z) < 0.26 : (x, z) => Math.hypot(x - 1.25, z) < 0.32 && x > 0.15;
+    const seeds = [];
+    const nRing = t === 'u' ? 28 : 36;
+    const origin = t === 'u' ? [-0.65, 0.36] : [-1.25, 0.58];
+    for (let i = 0; i < nRing; i++) { const a = i / nRing * TAU; seeds.push([origin[0] + Math.cos(a) * origin[1], Math.sin(a) * origin[1]]); }
+    if (t === 'u') { for (let z = -0.55; z <= 0.55; z += 0.14) seeds.push([-0.15, z]); }
+    else [-1.5, -1.05, -0.7, 0.7, 1.05, 1.5].forEach(z => seeds.push([-0.3, z]));
+    const lines = [], B = V3();
+    for (const [x0, z0] of seeds) {
+      let x = x0, z = z0; const pts = [];
+      for (let i = 0; i < 420; i++) {
+        fieldAt(V3(x, y, z), Q, B);
+        const h = Math.hypot(B.x, B.z); if (h < 1e-5) break;
+        x += B.x / h * 0.05; z += B.z / h * 0.05;
+        pts.push(V3(x, yy, z));
+        if (x * x + z * z > r * r || stop(x, z)) break;
+      }
+      if (pts.length > 8) lines.push(pts);
+    }
+    return lines;
+  }
   function build() {
     const t = st.type;
+    if (t === 'earth') st.plate = false;
     bar.visible = t === 'bar'; U.visible = t === 'u'; earth.visible = t === 'earth';
     [lBN, lBS].forEach(l => { l.show = t === 'bar'; }); [lUN, lUS].forEach(l => { l.show = t === 'u'; }); [lGN, lGS].forEach(l => { l.show = t === 'earth'; });
     let lines;
-    if (t === 'bar') lines = traceAll(Q_BAR, 240, { seedR: 0.36, inside: inBar, keep: d => d.x < 0.55, bound: 2.45, minY: -2.4 });
+    if (st.plate && t !== 'earth') lines = tracePlateLines(t);
+    else if (t === 'bar') lines = traceAll(Q_BAR, 240, { seedR: 0.36, inside: inBar, keep: d => d.x < 0.55, bound: 2.45, minY: -2.4 });
     else if (t === 'u') lines = traceAll(Q_U, 240, { seedR: 0.3, inside: inU, keep: d => d.y > -0.6, bound: 2.4, minY: -2.4 });
     else lines = traceAll(Q_E, 46, { seedR: 0.3, inside: inE, bound: 4.2 });
     if (t === 'earth') { viz.g.parent !== earth && earth.add(viz.g); } else if (viz.g.parent !== center) center.add(viz.g);
-    viz.set(t === 'earth' ? lines : lines.filter((_, i) => i % 3 === 0));
-    clearDust(); st.lines = lines;
+    const Q = t === 'bar' ? Q_BAR : t === 'u' ? Q_U : Q_E;
+    viz.set(st.plate ? lines : (t === 'earth' ? lines : lines.filter((_, i) => i % 3 === 0)), st.plate ? 0.011 : 0.016, Q);
+    st.lines = lines;
+    clearDust();
+    layoutPlate(); layoutNeedles(); syncModes();
     $('fdDust').disabled = t === 'earth';
+    if (st.plate && t !== 'earth') dust();
   }
   function clearDust() { if (fil) { center.remove(fil); fil.geometry.dispose(); fil.dispose(); fil = null; } filData = []; st.dust = false; }
   function dust() {
-    clearDust(); if (st.type === 'earth') return;
+    clearDust(); if (st.type === 'earth' || !st.lines) return;
+    const Q = st.type === 'bar' ? Q_BAR : Q_U;
     const tmp = V3(0, 0, 0), D = V3(0, 0, 0), pick = [];
-    st.lines.forEach(L => { const P = poly(L); for (let s = 0.06 + rnd() * 0.08; s < P.len; s += 0.15) { polyAt(P, s / P.len, tmp); const q = tmp.clone().add(V3((rnd() - 0.5) * 0.09, (rnd() - 0.5) * 0.09, (rnd() - 0.5) * 0.09)); fieldAt(q, st.type === 'bar' ? Q_BAR : Q_U, D); pick.push({ p: q, d: D.clone().normalize() }); } });
-    const n = Math.min(3200, pick.length);
+    const py = plateSpec(st.type).y + 0.055;
+    st.lines.forEach(L => {
+      const P = poly(L);
+      const step = st.plate ? 0.1 : 0.15;
+      for (let s = 0.05 + rnd() * 0.06; s < P.len; s += step) {
+        polyAt(P, s / P.len, tmp);
+        fieldAt(tmp, Q, D);
+        if (st.plate) {
+          const h = Math.hypot(D.x, D.z); if (h < 1e-5) continue;
+          const px = -D.z / h, pz = D.x / h, j = (rnd() - 0.5) * 0.06;
+          pick.push({ p: V3(tmp.x + px * j, py, tmp.z + pz * j), d: V3(D.x / h, 0, D.z / h), from: py + 1.4 + rnd() * 1.3 });
+        } else {
+          const q = tmp.clone().add(V3((rnd() - 0.5) * 0.09, (rnd() - 0.5) * 0.09, (rnd() - 0.5) * 0.09));
+          fieldAt(q, Q, D); pick.push({ p: q, d: D.clone().normalize(), from: 4.5 + rnd() * 2.5 });
+        }
+      }
+    });
+    const n = Math.min(st.plate ? 2600 : 3200, pick.length); if (!n) return;
     for (let i = pick.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [pick[i], pick[j]] = [pick[j], pick[i]]; }
-    fil = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.014, 0.07, 2, 6).rotateZ(-Math.PI / 2), filM, n); fil.castShadow = true; center.add(fil);
-    for (let i = 0; i < n; i++) { const k = pick[i]; filData.push({ t: k.p, q: Xq(k.d), s: V3(k.p.x + (rnd() - 0.5) * 2.4, 4.5 + rnd() * 2.5, k.p.z + (rnd() - 0.5) * 2.4), r: randQ(), delay: rnd() * 1.8 }); }
+    fil = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.012, st.plate ? 0.055 : 0.07, 2, 6).rotateZ(-Math.PI / 2), filM, n);
+    fil.castShadow = !st.plate; center.add(fil);
+    for (let i = 0; i < n; i++) { const k = pick[i]; filData.push({ t: k.p, q: Xq(k.d), s: V3(k.p.x + (st.plate ? 0 : (rnd() - 0.5) * 2.4), k.from, k.p.z + (st.plate ? 0 : (rnd() - 0.5) * 2.4)), r: randQ(), delay: rnd() * (st.plate ? 0.7 : 1.8) }); }
     filT = 0; st.dust = true;
   }
-  $('fdType').addEventListener('change', () => { st.type = $('fdType').value; build(); });
+  $('fdType').addEventListener('change', () => {
+    const was = st.plate; st.type = $('fdType').value; if (st.type === 'earth') st.plate = false; build();
+    if (was !== st.plate || st.plate) goView(TABS.field.cam());
+  });
+  $('fdMode3d').addEventListener('click', () => { if (!st.plate) return; st.plate = false; build(); goView(TABS.field.cam()); });
+  $('fdModePlate').addEventListener('click', () => { if (st.type === 'earth' || st.plate) return; st.plate = true; build(); goView(TABS.field.cam()); });
   $('fdDust').addEventListener('click', dust);
   $('fdClear').addEventListener('click', clearDust);
   function update(dt) {
@@ -651,6 +785,18 @@ const FD = (() => {
     viz.g.visible = $('fdLines').checked;
     viz.update(dt, 1.1, 1);
     if (st.type === 'earth') earth.rotation.y += dt * 0.25;
+    else {
+      const Q = st.type === 'bar' ? Q_BAR : Q_U;
+      for (const C of needles) {
+        if (!C.c.visible) continue;
+        fieldAt(C.c.position, Q, tB);
+        if (tB.x * tB.x + tB.z * tB.z < 1e-8) continue;
+        const target = -Math.atan2(tB.z, tB.x);
+        let diff = target - C.ang; diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+        C.vel += diff * 55 * dt; C.vel *= Math.exp(-dt * 5.2); C.ang += C.vel * dt;
+        C.needle.rotation.y = C.ang;
+      }
+    }
     if (fil && filT < 4) {
       filT += dt;
       filData.forEach((f, i) => {
@@ -664,9 +810,12 @@ const FD = (() => {
     const name = { bar: '棒狀磁鐵', u: 'U 型磁鐵', earth: '地球' }[st.type];
     setHTML('fdStat', st.type === 'earth'
       ? `地球內部就像一根<b>傾斜的大磁鐵</b>：<br>・<b class="b">上方（地理北極附近）＝ 地磁 S 極</b><br>・<b class="r">下方（地理南極附近）＝ 地磁 N 極</b><br>地表 ${compasses.length} 個小羅盤的<b class="r">紅色 N 針</b>都指向地理北極，和磁力線上<b class="o">箭頭（磁場方向）</b>一致。<br><small>地磁軸與自轉軸約夾 11°，所以磁北極和地理北極不在同一點。</small>`
-      : `目前：<b>${name}</b>　磁力線 <b class="o">${viz.count()}</b> 條${st.dust ? `　鐵粉 <b>${filData.length}</b> 粒` : ''}<br>・磁力線在磁鐵外部由 <b class="r">N 極</b>出發，回到 <b class="b">S 極</b><br>・線上的<b class="o">箭頭 ＝ 磁場方向</b>（指北針 N 極所指的方向）<br>・兩極附近磁力線最密，磁力最強<br>・磁力線<b>不會相交</b>，在空間中是立體的<br><small>按「撒下鐵粉」，鐵粉會沿著磁力線排列。拖曳畫面可以從各個角度看。</small>`);
+      : st.plate
+        ? `目前：<b>${name}</b>　玻璃板上的鐵粉 <b>${filData.length}</b> 粒，指北針 <b class="r">${needles.length}</b> 個<br>・鐵粉沿著<b>水平磁場</b>排成教科書上的平面圖<br>・越靠近磁極，鐵粉越密、發光磁力線越粗<br>・紅針指向磁場方向（由 <b class="r">N</b> 到 <b class="b">S</b>）<br><small>這就是把玻璃板放在磁鐵上、撒下鐵粉的經典實驗。</small>`
+        : `目前：<b>${name}</b>　磁力線 <b class="o">${viz.count()}</b> 條${st.dust ? `　鐵粉 <b>${filData.length}</b> 粒` : ''}<br>・磁力線在磁鐵外部由 <b class="r">N 極</b>出發，回到 <b class="b">S 極</b><br>・線上的<b class="o">箭頭 ＝ 磁場方向</b>（指北針 N 極所指的方向）<br>・兩極附近磁力線最密、也最粗，磁力最強<br>・周圍的小指北針會順著磁場偏轉<br><small>按「撒下鐵粉」，或切到「玻璃板俯視」看平面圖。</small>`);
     setCap(st.type === 'earth' ? `<small>透視地磁儀</small>指北針的 <b class="red">N 極</b>指向地理北極<span class="huge red">地理北極 ＝ 地磁 S 極！</span>`
-      : `<small>立體磁力線・${name}</small>磁力線由 <b class="red">N</b> 出發、繞到外側回到 <b class="blu">S</b>，是<b>立體的封閉曲線</b><span class="huge org">${st.dust ? '鐵粉排出了立體的磁力線！' : '按「撒下鐵粉」看看'}</span>`);
+      : st.plate ? `<small>玻璃板上的鐵粉・${name}</small>鐵粉躺在玻璃上，排出平面的磁力線<span class="huge org">兩極附近最密，磁場最強</span>`
+        : `<small>立體磁力線・${name}</small>磁力線由 <b class="red">N</b> 出發、繞到外側回到 <b class="blu">S</b>，是<b>立體的封閉曲線</b><span class="huge org">${st.dust ? '鐵粉排出了立體的磁力線！' : '按「撒下鐵粉」看看'}</span>`);
   }
   build();
   return { group, update, st, build, dust, viz };
@@ -683,8 +832,10 @@ const DM = (() => {
     const g = new THREE.Group(); g.position.set(0, Y, 0); group.add(g);
     const box = new THREE.Mesh(new RoundedBoxGeometry(L / 2 - 0.02, W, W, 3, 0.06), glass(s < 0 ? 0xff9c9c : 0x9cc4ff)); box.position.x = s * L / 4; box.renderOrder = 4; g.add(box);
     const edges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(L / 2 - 0.02, W, W)), new THREE.LineBasicMaterial({ color: s < 0 ? 0xc62828 : 0x1e6aa8, transparent: true, opacity: 0.45 })); edges.position.x = s * L / 4; g.add(edges);
-    const outer = new THREE.Mesh(new THREE.BoxGeometry(0.04, W * 0.98, W * 0.98), clay(s < 0 ? RED : BLU)); outer.position.x = s * (L / 2 - 0.02); g.add(outer);
-    const inner = new THREE.Mesh(new THREE.BoxGeometry(0.04, W * 0.98, W * 0.98), clay(s < 0 ? BLU : RED)); inner.position.x = s * 0.03; inner.visible = false; g.add(inner);
+    const outer = new THREE.Mesh(new THREE.BoxGeometry(0.04, W * 0.98, W * 0.98), lacquer(s < 0 ? RED : BLU)); outer.position.x = s * (L / 2 - 0.02); outer.castShadow = true; g.add(outer);
+    const oBadge = poleBadge(s < 0 ? 'N' : 'S', s < 0 ? RED : BLU, 0.22); oBadge.position.x = s < 0 ? -0.03 : 0.03; oBadge.rotation.y = s < 0 ? -Math.PI / 2 : Math.PI / 2; outer.add(oBadge);
+    const inner = new THREE.Mesh(new THREE.BoxGeometry(0.04, W * 0.98, W * 0.98), lacquer(s < 0 ? BLU : RED)); inner.position.x = s * 0.03; inner.visible = false; g.add(inner);
+    const iBadge = poleBadge(s < 0 ? 'S' : 'N', s < 0 ? BLU : RED, 0.2); iBadge.position.x = s < 0 ? 0.03 : -0.03; iBadge.rotation.y = s < 0 ? Math.PI / 2 : -Math.PI / 2; inner.add(iBadge);
     return { g, s, inner };
   });
   const lN = addLabel('domain', 'N', 'big nP', V3(-L / 2 - 0.35, Y, 0)), lS = addLabel('domain', 'S', 'big sP', V3(L / 2 + 0.35, Y, 0));
@@ -701,7 +852,7 @@ const DM = (() => {
   function setLines(sep) {
     const d = sep, Q = d < 0.01 ? [{ p: V3(-1.95, 0, 0), q: 1 }, { p: V3(1.95, 0, 0), q: -1 }] : [{ p: V3(-1.95 - d, 0, 0), q: 1 }, { p: V3(-0.25 - d, 0, 0), q: -1 }, { p: V3(0.25 + d, 0, 0), q: 1 }, { p: V3(1.95 + d, 0, 0), q: -1 }];
     const boxes = d < 0.01 ? [[-L / 2, L / 2]] : [[-L / 2 - d, -d], [d, L / 2 + d]];
-    viz.set(traceAll(Q, 80, { seedR: 0.56, inside: insideAny(boxes), keep: dd => Math.abs(dd.x) < 0.95 || dd.x < 0, bound: 3.4, minY: -2.3 }));
+    viz.set(traceAll(Q, 80, { seedR: 0.56, inside: insideAny(boxes), keep: dd => Math.abs(dd.x) < 0.95 || dd.x < 0, bound: 3.4, minY: -2.3 }), 0.015, Q);
   }
   const lamp = alcoholLamp(); lamp.position.set(0, 0, 0.1); lamp.scale.setScalar(1.15); group.add(lamp);
   const st = { broken: false, sep: 0, heat: false, h: 0, linesFor: -1, tip: '' };
@@ -754,7 +905,7 @@ const CL = (() => {
   const group = new THREE.Group(); scene.add(group);
   const Y = 2.2, R = 0.56, X0 = -1.6, X1 = 1.6;
   // 軟鐵釘（半透明）
-  const nailM = new THREE.MeshPhysicalMaterial({ color: 0xb8bcc4, metalness: 0.4, roughness: 0.3, transparent: true, opacity: 0.32, depthWrite: false, clearcoat: 1 });
+  const nailM = softIron({ transparent: true, opacity: 0.46, depthWrite: false });
   const nail = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 4.3, 32), nailM); nail.rotation.z = Math.PI / 2; nail.position.set(0, Y, 0); nail.renderOrder = 4; group.add(nail);
   const head = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.12, 32), nailM); head.rotation.z = Math.PI / 2; head.position.set(-2.2, Y, 0); group.add(head);
   const tipC = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.45, 32), nailM); tipC.rotation.z = -Math.PI / 2; tipC.position.set(2.37, Y, 0); group.add(tipC);
@@ -777,12 +928,12 @@ const CL = (() => {
   const cradle = shadowed(rbox(1.5, 0.12, 0.62, clay(0xc8a27a), 0.05)); cradle.position.set(0, 0.06, BZ); group.add(cradle);
   const lPos = addLabel('coil', '＋ 正極', 'small nP', V3(0, 0, 0)), lNeg = addLabel('coil', '－ 負極', 'small neg', V3(0, 0, 0));
   // 導線（左線接電池左端、右線接右端）
-  const wireM = clay(0xb71c1c);
+  const wireM = pvc(0xb71c1c);
   const W1 = [V3(X0, Y + R, 0), V3(X0 - 0.25, Y + R, 0), V3(X0 - 0.25, 0.06, 0.2), V3(X0 - 0.25, 0.06, BZ), V3(-0.95, 0.06, BZ), V3(-0.95, BY, BZ), V3(-0.71, BY, BZ)];
   const W2 = [V3(X1, Y + R, 0), V3(X1 + 0.25, Y + R, 0), V3(X1 + 0.25, 0.06, 0.2), V3(X1 + 0.25, 0.06, BZ), V3(0.95, 0.06, BZ), V3(0.95, BY, BZ), V3(0.6, BY, BZ)];
   [W1, W2].forEach(P => { for (let i = 0; i < P.length - 1; i++) { const s = shadowed(new THREE.Mesh(UNIT_CYL, wireM)); placeSeg(s, P[i], P[i + 1], 0.035); group.add(s); } });
   // 線圈（依匝數重建）＋整個電路路徑：左電池端 → 左導線 → 線圈 → 右導線 → 右電池端
-  const copper = metal(0xc77b3d, { roughness: 0.3 });
+  const copper = enamelCopper();
   let coil = null, circuit = null;
   class Helix extends THREE.Curve { constructor(n) { super(); this.n = n; } getPoint(t, o = new THREE.Vector3()) { const a = t * this.n * TAU; return o.set(lerp(X0, X1, t), Y + R * Math.cos(a), R * Math.sin(a)); } }
   function buildCoil(n) {
@@ -806,7 +957,7 @@ const CL = (() => {
   const viz = FieldViz(group, 0xffa040, 480);
   const lR = addLabel('coil', 'N', 'big nP', V3(2.95, Y, 0)), lL = addLabel('coil', 'S', 'big sP', V3(-2.75, Y, 0));
   // 迴紋針
-  const clipM = metal(0xd5d8de, { roughness: 0.25 });
+  const clipM = brushedSteel({ color: 0xe7ebf1, roughness: 0.16, envMapIntensity: 1.55 });
   const clips = Array.from({ length: 14 }, (_, i) => { const m = shadowed(new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.016, 6, 18), clipM)); m.scale.set(1.7, 1, 1); const home = V3(2.9 + (i % 4) * 0.28 + rnd() * 0.08, 0.02, -0.5 + Math.floor(i / 4) * 0.32 + rnd() * 0.06); m.position.copy(home); m.rotation.x = -Math.PI / 2; m.rotation.z = rnd() * 3; group.add(m); return { m, home, rz: m.rotation.z }; });
 
 
@@ -827,7 +978,7 @@ const CL = (() => {
     bat.updateMatrixWorld(); lPos.pos.copy(bat.localToWorld(V3(-0.68, 0.42, 0))); lNeg.pos.copy(bat.localToWorld(V3(0.6, 0.42, 0))); lPos.off.copy(lPos.pos); lNeg.off.copy(lNeg.pos);
     // 磁力線（N 端隨電流方向改變）
     const key = st.on ? `${Math.round(s * 10)}|${dir}` : '';
-    if (key !== st.level) { st.level = key; if (key) { const n = Math.round(24 + 70 * s); viz.set(traceAll([{ p: V3(2.05 * dir, 0, 0), q: 1 }, { p: V3(-2.05 * dir, 0, 0), q: -1 }], n, { seedR: 0.36, inside: p => Math.abs(p.x) < 2.3 && Math.hypot(p.y, p.z) < 0.3, bound: 3.6, minY: -2.1 }).map(L => L.map(p => p.add(V3(0, Y, 0))))); } }
+    if (key !== st.level) { st.level = key; if (key) { const n = Math.round(24 + 70 * s); const Qs = [{ p: V3(2.05 * dir, Y, 0), q: 1 }, { p: V3(-2.05 * dir, Y, 0), q: -1 }]; viz.set(traceAll([{ p: V3(2.05 * dir, 0, 0), q: 1 }, { p: V3(-2.05 * dir, 0, 0), q: -1 }], n, { seedR: 0.36, inside: p => Math.abs(p.x) < 2.3 && Math.hypot(p.y, p.z) < 0.3, bound: 3.6, minY: -2.1 }).map(L => L.map(p => p.add(V3(0, Y, 0)))), 0.015, Qs); } }
     viz.g.visible = st.k > 0.02 && !!st.level;
     viz.mat.opacity = st.k * (0.35 + 0.6 * s); viz.pm.opacity = st.k; viz.pm.size = 0.14 + 0.14 * s;
     viz.mat.color.setHex(s > 0.6 ? 0xffd27a : 0xffa040);
@@ -882,7 +1033,7 @@ onTabChange = t => { bloomOn = false; handOn = false; };
    Tab 切換、鏡頭
    ========================================================= */
 const TABS = {
-  field: { group: FD.group, cam: () => ({ pos: [0, 4.3, 10], target: [0, 2.6, 0], fitW: window.innerWidth < window.innerHeight ? 7 : 8.2 }), update: FD.update },
+  field: { group: FD.group, cam: () => FD.st.plate ? ({ pos: [0.2, 11.6, 3.1], target: [0, 2.7, 0], fitW: window.innerWidth < window.innerHeight ? 8.4 : 8.6 }) : ({ pos: [0, 4.3, 10], target: [0, 2.6, 0], fitW: window.innerWidth < window.innerHeight ? 7 : 8.2 }), update: FD.update },
   domain: { group: DM.group, cam: () => ({ pos: [0, 3.9, 8.6], target: [0, 2.3, 0], fitW: window.innerWidth < window.innerHeight ? 6.6 : 7.6 }), update: DM.update },
   coil: { group: CL.group, cam: () => ({ pos: [0.4, 4.4, 9.4], target: [0.6, 2.0, 0], fitW: window.innerWidth < window.innerHeight ? 8.6 : 8.2 }), update: CL.update }
 };
@@ -939,11 +1090,23 @@ $('collapse').addEventListener('click', () => { const c = $('panel').classList.t
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   if (!w || !h) return;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const { dpr, rec } = look.apply();
   renderer.setSize(w, h);
-  bloomComposer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); bloomComposer.setSize(w, h);
+  bloom.strength = rec ? 0.62 : 0.38;
+  bloom.radius = rec ? 0.4 : 0.24;
+  overlay.material.uniforms.uGain.value = rec ? 0.8 : 0.52;
+  bloomComposer.setPixelRatio(rec ? dpr : Math.min(dpr, 1));
+  bloomComposer.setSize(w, h);
   camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
 }
+function syncQuality() {
+  const rec = look.tier() === 'record';
+  $('qClass').classList.toggle('on', !rec);
+  $('qRecord').classList.toggle('on', rec);
+}
+$('qClass').addEventListener('click', () => { look.setTier('class'); resize(); syncQuality(); });
+$('qRecord').addEventListener('click', () => { look.setTier('record'); resize(); syncQuality(); });
+syncQuality();
 window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
 
 const clock = new THREE.Clock();
