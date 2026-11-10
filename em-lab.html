@@ -91,6 +91,7 @@
   .tag.lam { background: #1e6aa8; color: #fff; }
   .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
   .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .tag.hand { z-index: 8; font-size: .84rem; padding: 5px 10px; border: 2px solid rgba(255,255,255,.95); box-shadow: 0 6px 16px rgba(40,24,16,.28); }
   .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
 
   @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
@@ -158,7 +159,7 @@
         <button class="btn dbtn on" data-d="1">⬆ 向上</button>
         <button class="btn dbtn" data-d="-1">⬇ 向下</button>
       </div>
-      <label class="chk"><input type="checkbox" id="wHand" checked> 顯示安培右手</label>
+      <button class="btn on" id="wHand" type="button">✋ 顯示右手<small>目前顯示</small></button>
       <div class="stat" id="wireStat"></div>
     </section>
 
@@ -172,7 +173,7 @@
         <button class="btn" id="mSlow">🐢 慢動作</button>
         <button class="btn" id="mStep">⏭ 轉到換向瞬間</button>
       </div>
-      <label class="chk"><input type="checkbox" id="mHand" checked> 顯示右手開掌</label>
+      <button class="btn on" id="mHand" type="button">✋ 顯示右手<small>目前顯示</small></button>
       <div class="stat" id="motorStat"></div>
       <p class="desc">集電環（換向器）每轉半圈就把線圈的電流<b>反向</b>，所以線圈永遠朝同一個方向轉。</p>
     </section>
@@ -202,6 +203,7 @@
 import * as THREE from 'three';
 import { enhanceLiquid } from './liquid.js';
 import { mountLook, lacquer, lacquerSolid, poleBadge, bareCopper, enamelCopper, brushedSteel, pvc } from './look.js';
+import { makeGrip, makePalm, stepGrip, stepPalm } from './hand.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -254,6 +256,14 @@ const overlay = new FullScreenQuad(new THREE.ShaderMaterial({
   blending: THREE.NormalBlending, depthTest: false, depthWrite: false, transparent: true
 }));
 const BLACK = new THREE.Color(0x000000);
+const HAND = 2;
+scene.traverse(o => { if (o.isLight) o.layers.enable(HAND); });
+let handOn = false;
+function paintHandBtn(id, on) {
+  const b = $(id);
+  b.classList.toggle('on', on);
+  b.innerHTML = on ? '✋ 顯示右手<small>目前顯示</small>' : '✋ 顯示右手<small>目前隱藏</small>';
+}
 function renderAll(dt) {
   if (bloom.enabled) {
     const bg = scene.background, env = scene.environment;
@@ -266,6 +276,17 @@ function renderAll(dt) {
   renderer.setRenderTarget(null);
   renderer.render(scene, camera);
   if (bloom.enabled) { renderer.autoClear = false; overlay.render(renderer); renderer.autoClear = true; }
+  // 右手在光暈之後再畫一次，實體膚色不會被磁力線洗掉；不透明的導線仍會擋住手
+  if (handOn) {
+    const bg = scene.background;
+    scene.background = null;
+    renderer.autoClear = false;
+    camera.layers.set(HAND);
+    renderer.render(scene, camera);
+    camera.layers.set(0);
+    renderer.autoClear = true;
+    scene.background = bg;
+  }
 }
 
 
@@ -602,20 +623,15 @@ const curDots = glowLayer(new THREE.InstancedMesh(SPH, glowMat(0xffc04d), 18)); 
 const curArrow = makeArrow(0xffa726, { r: 0.05, head: 0.17 }); WR.group.add(curArrow);
 const lI = addLabel('wire', '', 'cur', V3(0.55, WH + 0.25, 0));
 const lB = addLabel('wire', '磁力線（同心圓）', 'lam', V3(2.7, 4.75, 0));
-// 全息毛玻璃右手（美學規範 B）：握住導線，拇指＝電流、四指＝磁場
-const gripHand = new THREE.Group(); gripHand.position.set(0, HAND_Y, 0); WR.group.add(gripHand);
-{
-  const S = 0.95, rot = (x, y) => V3(-y * S, x * S, 0);             // 比讚輪廓轉 90°：大拇指朝上（沿導線）
-  const off = rot(-0.28, -0.12).negate();                             // 讓拳頭中心套在導線上
-  const icon = holoPiece(thumbsUpShape, 0.12, 0.06, holoMat(0.4, 0xffc39a), holoEdgeMat(0xff9a5a, 0.9));
-  icon.rotation.z = Math.PI / 2; icon.scale.setScalar(S); icon.position.copy(off); gripHand.add(icon);
-  icon.add(holoOutline(thumbsUpShape, 0xff8a3d, 0.024, 0.075));
-  const thumbArrow = makeArrow(0xffa726, { r: 0.04, head: 0.13 }); setArrow(thumbArrow, rot(1.42, 0.47).add(off), UP, 0.55); gripHand.add(thumbArrow);
-  const fArrow = makeArrow(0x29b6f6, { r: 0.04, head: 0.13 });
-  setArrow(fArrow, V3(-0.05, 0.42, 0.42), V3(-1, 0, -0.05), 0.4); gripHand.add(fArrow);
-}
-const lThumb = addLabel('wire', '大拇指＝電流', 'cur small', V3(0.95, 1.5, 0.2), gripHand);
-const lFing = addLabel('wire', '四指彎曲＝磁場方向', 'lam small', V3(-0.95, 0.4, 0.6), gripHand);
+// 實體右手握導線：拇指＝電流，四指＝磁場。光暈之後再畫一次。
+const gripHand = makeGrip({ axis: 'y', orbit: 0.32 });
+gripHand.position.set(0, HAND_Y, 0);
+gripHand.scale.setScalar(1.65);
+gripHand.rotation.y = 2.55;
+gripHand.traverse(o => o.layers.enable(HAND));
+WR.group.add(gripHand);
+const lThumb = addLabel('wire', '電流 I', 'hand cur', V3(0.12, 0.16, 0), gripHand.userData.markers.thumb);
+const lFing = addLabel('wire', '磁場 B', 'hand lam', V3(0, 0.16, 0), gripHand.userData.markers.curl);
 const dummyM = new THREE.Object3D();
 function setWirePower(on) {
   WR.on = on; if (on) WR.t0 = wall;
@@ -627,7 +643,7 @@ document.querySelectorAll('.dbtn').forEach(b => b.addEventListener('click', () =
   WR.dir = +b.dataset.d; WR.t0 = wall;
   document.querySelectorAll('.dbtn').forEach(x => x.classList.toggle('on', x === b));
 }));
-$('wHand').addEventListener('change', e => { WR.hand = e.target.checked; });
+$('wHand').addEventListener('click', () => { WR.hand = !WR.hand; paintHandBtn('wHand', WR.hand); });
 function updateWire(dt) {
   WR.pw += ((WR.on ? 1 : 0) - WR.pw) * (1 - Math.exp(-dt * 6));
   const pw = WR.pw, d = WR.dir, since = wall - WR.t0;
@@ -657,8 +673,11 @@ function updateWire(dt) {
     }
   }
   ringArrows.count = ai; ringArrows.visible = pw > 0.02; ringArrows.instanceMatrix.needsUpdate = true;
-  for (const m of ringPointMats) m.opacity = pw;
-  for (const R of RINGS) R.torus.material.opacity = R.baseOp * pw;
+  for (const m of ringPointMats) m.opacity = pw * (WR.hand ? 0.72 : 1);
+  for (const R of RINGS) {
+    const near = WR.hand && Math.abs(R.y - HAND_Y) < 1.45;
+    R.torus.material.opacity = R.baseOp * pw * (near ? 0.2 : 1);
+  }
   // 導線上的電流
   for (let i = 0; i < 18; i++) {
     let y = ((i / 18) + (wall * 0.35 * d)) % 1; if (y < 0) y += 1;
@@ -679,14 +698,16 @@ function updateWire(dt) {
     if (since > C.lag || !WR.on) { C.vel += diff * 60 * dt; C.vel *= Math.exp(-dt * 5.5); C.ang += C.vel * dt; }
     C.needle.rotation.y = C.ang;
   }
-  // 右手：電流反向時翻轉 180 度
+  // 右手：電流反向時整隻手翻轉，拇指跟著電流
   const tgtRot = d > 0 ? 0 : Math.PI;
   WR.rot += (tgtRot - WR.rot) * (1 - Math.exp(-dt * 5));
   gripHand.rotation.x = WR.rot;
-  const hv = WR.hand && pw > 0.3;
-  gripHand.visible = hv; lThumb.show = lFing.show = hv && Math.abs(WR.rot - tgtRot) < 0.2;
-  const sc = hv ? easeOutBack(clamp((since - 0.4) / 0.6, 0, 1)) : 0;
-  gripHand.scale.setScalar(Math.max(0.001, sc) * 1.3);
+  // 指上箭頭的角速度對齊內圈磁力線粒子（約 1.25 rad/s）；斷電就停
+  stepGrip(gripHand, dt, WR.on ? 1.25 : 0);
+  const hv = WR.hand;
+  gripHand.visible = hv;
+  lThumb.show = lFing.show = hv;
+  handOn = hv;
   const dirTxt = d > 0 ? '向上' : '向下', rot = d > 0 ? '逆時針' : '順時針';
   setHTML('wireStat', WR.on ? `電流：<b class="o">${dirTxt}</b><br>從上往下看，磁力線是<b class="b">${rot}</b>的同心圓<br>指南針 N 極（紅）順著磁力線排成一圈<hr>越靠近導線，磁場越強（粒子跑得越快）` :
     '電源關閉：指南針的 N 極（紅）都指向<b>北方</b>（地磁）。');
@@ -788,15 +809,16 @@ const openHandShape = (() => {
   return s;
 })();
 function makeOpenHand() {
-  const g = new THREE.Group();
-  const icon = holoPiece(openHandShape, 0.12, 0.05, holoMat(0.4, 0xffc39a), holoEdgeMat(0xff9a5a, 0.9));
-  icon.rotation.x = Math.PI / 2; g.add(icon);                          // 輪廓的 y（拇指）→ +Z，厚度沿 Y
-  icon.add(holoOutline(openHandShape, 0xff8a3d, 0.022, 0.07));
-  const F = makeArrow(0xe53935, { r: 0.06, head: 0.2 }); setArrow(F, V3(0.1, 0.12, 0), UP, 1.15); g.add(F);
-  const I = makeArrow(0xffa726, { r: 0.035, head: 0.12 }); setArrow(I, V3(0.2, 0.05, 1.0), V3(0, 0, 1), 0.38); g.add(I);
-  const B = makeArrow(0x42a5f5, { r: 0.035, head: 0.12 }); setArrow(B, V3(1.25, 0.05, 0), V3(1, 0, 0), 0.38); g.add(B);
-  g.scale.setScalar(0.62); MO.group.add(g);
-  return { g, F, pop: 0 };
+  const g = makePalm();
+  g.traverse(o => o.layers.enable(HAND));
+  g.scale.setScalar(0.78);
+  MO.group.add(g);
+  const labels = [
+    addLabel('motor', '電流 I', 'hand cur', V3(0, 0.06, 0), g.userData.markers.I),
+    addLabel('motor', '磁場 B', 'hand lam', V3(0, 0.06, 0), g.userData.markers.B),
+    addLabel('motor', '受力 F', 'hand force', V3(0, 0.06, 0), g.userData.markers.F)
+  ];
+  return { g, pop: 0, labels };
 }
 const hands = [makeOpenHand(), makeOpenHand()];
 const forceArrows = [0, 1].map(() => { const a = makeArrow(0xe53935, { r: 0.07, head: 0.22 }); MO.group.add(a); return a; });
@@ -811,7 +833,7 @@ $('mStep').addEventListener('click', () => {
   const k = Math.round((MO.th - Math.PI / 2) / Math.PI);
   MO.th = Math.PI / 2 + k * Math.PI + 0.42; MO.w = 3 * 0.9;
 });
-$('mHand').addEventListener('change', e => { MO.hand = e.target.checked; });
+$('mHand').addEventListener('click', () => { MO.hand = !MO.hand; paintHandBtn('mHand', MO.hand); });
 const Xdir = V3(1, 0, 0);
 function updateMotor(dt) {
   const target = MO.V * 0.95;
@@ -860,12 +882,16 @@ function updateMotor(dt) {
     lF[j].show = on; lF[j].pos.copy(P).addScaledVector(F, 0.95 + 0.06 * MO.V);
     const H = hands[j];
     H.pop = Math.max(0, H.pop - dt * 3);
-    H.g.visible = on && MO.hand;
+    const showH = MO.hand;
+    H.g.visible = showH;
+    H.labels.forEach(L => { L.show = showH; });
     const Y = F.clone(), Z = I.clone(), X = Xdir.clone();
     H.g.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, Y, Z));
-    H.g.position.copy(P).addScaledVector(F, -0.55).add(V3(-0.3, 0, 1.45));
-    H.g.scale.setScalar(0.6 * (1 + Math.sin(H.pop * Math.PI) * 0.25));
+    H.g.position.copy(P).addScaledVector(F, -0.35).add(V3(-0.15, 0, 1.15));
+    H.g.scale.setScalar(1.02 * (1 + Math.sin(H.pop * Math.PI) * 0.12));
+    stepPalm(H.g, dt, on);
   }
+  handOn = MO.hand;
   lVolt.show = true; setLabel(lVolt, `${MO.V.toFixed(1)} V`, 'cur small');
   $('voltV').textContent = MO.V.toFixed(1);
   const rpm = Math.round(Math.abs(sp) / TAU * 60);
@@ -1060,7 +1086,7 @@ const glowRed = glowTexture('255,90,90'), glowBlue = glowTexture('90,150,255');
    Tab 切換、鏡頭
    ========================================================= */
 const TABS = {
-  wire: { group: WR.group, cam: () => ({ pos: [1.5, 7.2, 12.5], target: [-0.6, 2.2, 0], fitW: 11 }), update: updateWire },
+  wire: { group: WR.group, cam: () => ({ pos: [5.6, 4.15, 3.4], target: [0, 2.6, 0], fitW: 6.3 }), update: updateWire },
   motor: { group: MO.group, cam: () => ({ pos: [4.6, 6.0, 8.6], target: [0, 2.7, 0.8], fitW: 7.6 }), update: updateMotor },
   lenz: { group: LZ.group, cam: () => ({ pos: [1.6, 6.2, 12], target: [1.5, 3.0, 0], fitW: 9.5 }), update: updateLenz }
 };
@@ -1070,6 +1096,7 @@ function setTab(t) {
   document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
   for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
   setRule('', false); $('cap').classList.remove('alarm');
+  handOn = false;
   renderer.domElement.style.cursor = '';
   goView(TABS[t].cam());
   try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
