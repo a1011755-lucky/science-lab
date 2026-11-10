@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>力矩與槓桿：原木機械沙盒</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+  .tabs.three .tab { font-size: .72rem; padding: 9px 2px; }
+  .objs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .objs.three { grid-template-columns: repeat(3, 1fr); }
+  .objs .btn { padding: 8px 4px; font-size: .78rem; margin-top: 0; }
+  .objs .btn.yes { background: #e3f1e6; color: #2e6b3f; } .objs .btn.no { background: #fde5e2; color: #a5311f; }
+  .orgcard { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin-top: 8px; font-size: .8rem; line-height: 1.65; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
+  .orgcard:empty { display: none; }
+  .orgcard h4 { font-size: .98rem; font-weight: 900; margin-bottom: 2px; }
+  .orgcard .pill { display: inline-block; font-size: .72rem; font-weight: 800; color: #fff; background: #7b5ea7; border-radius: 999px; padding: 1px 9px; margin: 2px 4px 2px 0; }
+  .orgcard i.sci { font-family: Georgia, serif; }
+  .orgcard table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .orgcard td, .orgcard th { padding: 2px 4px; border-bottom: 1px solid #efe6d8; font-size: .74rem; text-align: left; }
+  .orgcard tr.same { background: #e3f1e6; } .orgcard tr.diff td { color: #a8998a; }
+  .tag.big { font-size: .86rem; }
+  .stat table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: .74rem; }
+  .stat td, .stat th { padding: 3px 3px; border-bottom: 1px solid #efe6d8; text-align: left; white-space: nowrap; }
+  .stat tr.same { background: #e3f1e6; }
+  .tip { background: #fff3c4; color: #7a5300; border: 1.5px solid #e0b000; border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .82rem; font-weight: 800; line-height: 1.6; animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  .tip[hidden], .mapbox[hidden], .btn[hidden] { display: none; }
+  .ticks span:first-child { text-align: left; } .ticks span:last-child { text-align: right; }
+  .meter { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: .74rem; font-weight: 800; color: var(--ink-soft); }
+  .meter i { flex: 1; height: 16px; border-radius: 999px; background: linear-gradient(90deg, #f7efe6, #8b2e0f); position: relative; }
+  .meter i::after { content: ''; position: absolute; top: -4px; width: 6px; height: 24px; border-radius: 3px; background: var(--ink); left: var(--v, 50%); transform: translateX(-50%); transition: left .2s; }
+  .cap .eq { display: inline-flex; align-items: center; gap: 6px; font-size: 1.05em; font-weight: 900; }
+  .cap .arrs { display: inline-flex; flex-direction: column; line-height: .9; font-size: 1.1em; }
+  .cap .arrs span { opacity: .28; transition: opacity .3s, color .3s, transform .3s; }
+  .cap .arrs span.on { opacity: 1; color: #c62828; transform: scale(1.35); }
+  .cap .brown { color: #8b2e0f; }
+  .legend { display: flex; gap: 6px; margin: 8px 0 2px; font-size: .72rem; font-weight: 800; }
+  .legend .lg { flex: 1; text-align: center; border-radius: 999px; padding: 3px 0; color: #fff; }
+  .legend .f { background: #ff2d2d; } .legend .a { background: #22c55e; } .legend .w { background: #424242; } .legend .n { background: #29b6f6; }
+  .tag.vA { background: #16a34a; color: #fff; font-weight: 900; } .tag.vN { background: #29b6f6; color: #fff; font-weight: 900; }
+  .formula { font-size: 1.02rem; font-weight: 900; background: #fff1c9; border-radius: 10px; padding: 5px 8px; margin-bottom: 4px; text-align: center; } .bbtn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; color: #5d4037; }
+  .tag.vF { background: #ff2d2d; color: #fff; font-weight: 900; } .tag.vS { background: #29b6f6; color: #fff; font-weight: 900; } .tag.vW { background: #424242; color: #fff; font-weight: 900; } .tag.org { background: #ef6c00; color: #fff; font-weight: 900; }
+  .tip.ok { background: #e3f1e6; color: #1f5f32; border-color: #3f9a57; } .tip.bad { background: #fde5e2; color: #a5311f; border-color: #e53935; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+  .half { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px 9px; font-size: .76rem; line-height: 1.6; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
+  .half h4 { font-size: .86rem; font-weight: 900; margin-bottom: 2px; }
+  .half .res { margin-top: 4px; font-weight: 900; font-size: .9rem; border-radius: 10px; padding: 3px 6px; text-align: center; }
+  .half .res.pos { background: #e3f1e6; color: #1f5f32; } .half .res.neg { background: #fde5e2; color: #a5311f; } .half .res.zero { background: #efe9df; color: #7a6a5a; }
+  .legend .piv { background: #e0b800; } .legend .tq { background: #ff8a1f; }
+  .lvbtn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; color: #5d4037; }
+  .stat b.g { color: #2e7d32; } .stat b.r { color: #e53935; }
+  .zbtn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; }
+</style>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g9">‹ 課程總覽</a>
+  <div class="title">力矩與槓桿：原木機械沙盒</div>
+  <div class="body">
+    <div class="tabs three">
+      <button class="tab on" data-tab="door">🚪 旋轉門<small>L ＝ F × d</small></button>
+      <button class="tab" data-tab="seesaw">⚖️ 蹺蹺板<small>轉動平衡</small></button>
+      <button class="tab" data-tab="lever">🛠️ 槓桿三兄弟<small>省力・省時</small></button>
+    </div>
+    <div class="legend"><span class="lg f">施力 F</span><span class="lg n">力臂 d</span><span class="lg piv">支點</span><span class="lg tq">力矩</span></div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="door">
+      <div class="concept" style="--cc:#ef6c00"><div class="ct">力矩 L ＝ F × d</div><div class="cd"><b>力臂 d</b>是「支點到<b>施力延長線</b>的垂直距離」；<br>力矩越大，物體越容易轉動</div></div>
+      <label class="lab" for="drR">📍 施力位置（離轉軸）<b><span id="drRV">1.2</span> m</b></label>
+      <input class="big" type="range" id="drR" min="0" max="1.2" step="0.1" value="1.2">
+      <div class="ticks"><span>轉軸</span><span>門的邊緣</span></div>
+      <label class="lab" for="drA">📐 施力角度（與門板的夾角）<b><span id="drAV">90</span>°</b></label>
+      <input class="big" type="range" id="drA" min="0" max="90" step="5" value="90">
+      <div class="ticks"><span>0° 平行推</span><span>90° 垂直推</span></div>
+      <div class="row2">
+        <button class="btn primary" id="drPush">✋ 放手（停止施力）</button>
+        <button class="btn" id="drReset">↩️ 門回正</button>
+      </div>
+      <div class="stat" id="drStat"></div>
+      <div class="tip" id="drTip" hidden></div>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="seesaw" hidden>
+      <div class="concept" style="--cc:#2e7d32"><div class="ct">順時針力矩 ＝ 逆時針力矩</div><div class="cd">合力矩為 0 時，物體<b>不會轉動</b>（轉動平衡）</div></div>
+      <div class="desc">左邊：<b>2 kg</b> 砝碼固定放在 <b>3 m</b> 處</div>
+      <label class="lab" for="ssX">🟦 右邊 3 kg 砝碼的位置<b><span id="ssXV">3.5</span> m</b></label>
+      <input class="big" type="range" id="ssX" min="0.5" max="4" step="0.5" value="3.5">
+      <div class="ticks"><span>0.5 m</span><span>4 m</span></div>
+      <div class="stat" id="ssStat"></div>
+      <div class="tip ok" id="ssTip" hidden>🎉 達成轉動平衡！合力矩 ＝ 0（2 kg × 3 m ＝ 3 kg × 2 m）</div>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="sec" data-tab="lever" hidden>
+      <div class="concept" style="--cc:#1e6aa8"><div class="ct">施力 × 施力臂 ＝ 抗力 × 抗力臂</div><div class="cd">改變<b>支點、施力點、抗力點</b>的位置，<br>就能省力，或是省時</div></div>
+      <div class="row2">
+        <button class="btn lvbtn on" data-m="wb">🛞 單輪推車</button>
+        <button class="btn lvbtn" data-m="tg">🥖 麵包夾</button>
+      </div>
+      <div class="stat" id="lvStat"></div>
+      <div class="tip" id="lvTip"></div>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'door', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+/* =========================================================
+   共用小工具
+   ========================================================= */
+const lerp = (a, b, k) => a + (b - a) * k;
+const sphere = (r, mat, seg = 24) => new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg * 0.6 | 0)), mat);
+const cyl = (r1, r2, h, mat, seg = 32, open = false) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg, 1, open), mat);
+const rbox = (w, h, d, mat, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001)), mat);
+const glassM = (op = 0.16) => new THREE.MeshPhysicalMaterial({ color: 0xd8ecf4, emissive: 0x9fb8c4, emissiveIntensity: 0.12, sheen: 1, sheenColor: 0xffffff, transparent: true, opacity: op, roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0.05, side: THREE.DoubleSide, depthWrite: false });
+const shellM = (c, op) => new THREE.MeshPhysicalMaterial({ color: c, transparent: true, opacity: op, roughness: 0.2, clearcoat: 0.6, side: THREE.DoubleSide, depthWrite: false });
+let rs = 4242;
+const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+const glowSprite = (rgb, s = 0.5) => { const g = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(rgb), transparent: true, depthWrite: false })); g.scale.setScalar(s); return g; };
+const ease = k => 1 - Math.exp(-k);
+function makeArrow(color) {
+  const g = new THREE.Group(); const m = clay(color, { emissive: color, emissiveIntensity: 0.25 });
+  const shaft = cyl(0.07, 0.07, 1, m, 16); const head = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.34, 20), m);
+  g.add(shaft, head); shadowed(g);
+  g.setLen = L => { L = Math.max(0.05, L); shaft.scale.y = L; shaft.position.y = L / 2; head.position.y = L + 0.17; };
+  g.setLen(1); return g;
+}
+/** 畫布貼圖面板（碼錶螢幕等） */
+function canvasPanel(w, h, pxW = 512) {
+  const c = document.createElement('canvas'); c.width = pxW; c.height = Math.round(pxW * h / w);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t, toneMapped: false }));
+  return { c, g: c.getContext('2d'), t, m };
+}
+let onTabChange = () => {};
+
+/* =========================================================
+   美學規範：教具＝原木工藝品（模式 A）；向量＝全息發光（模式 B）
+   ========================================================= */
+const AX_Y = new THREE.Vector3(0, 1, 0);
+const WOOD = (c = 0xdeb887) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, metalness: 0 });
+const holo = (c, op = 0.9, ei = 0.6) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: ei, transparent: true, opacity: op, roughness: 0.3, depthWrite: false });
+const C_FORCE = 0xff2d2d, C_ARM = 0x2f8dff, C_LOAD = 0x29c6f6, C_CW = 0xff8a1f, C_CCW = 0x2fe86a, C_PIV = 0xffe23a;
+function stickBetween(mesh, p, q) { const d = q.clone().sub(p), L = d.length(); mesh.visible = L > 0.002; if (!mesh.visible) return; mesh.position.copy(p).add(q).multiplyScalar(0.5); mesh.quaternion.setFromUnitVectors(AX_Y, d.normalize()); mesh.scale.set(1, L, 1); }
+/** 發光 3D 箭頭：setFT(起點, 終點) */
+function Arrow(color, r = 0.07) {
+  const g = new THREE.Group(), m = holo(color, 0.95, 0.45);
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, 18), m), HL = r * 4.4;
+  const head = new THREE.Mesh(new THREE.ConeGeometry(r * 2.4, HL, 24), m);
+  g.add(shaft, head); g.mat = m; g.renderOrder = 7; shaft.renderOrder = head.renderOrder = 7;
+  g.setFT = (from, to) => {
+    const d = to.clone().sub(from), L = d.length(); g.visible = L > 0.04; if (!g.visible) return;
+    g.position.copy(from); g.quaternion.setFromUnitVectors(AX_Y, d.normalize());
+    const hl = Math.min(HL, L * 0.5), sl = Math.max(0.001, L - hl);
+    shaft.scale.y = sl; shaft.position.y = sl / 2; head.scale.set(1, hl / HL, 1); head.position.y = sl + hl / 2;
+  };
+  return g;
+}
+/** 發光虛線：set(a, b) */
+function DashLine(color, r = 0.028, op = 0.95, max = 80, dash = 0.15, gap = 0.09) {
+  const g = new THREE.Group(), m = holo(color, op, 0.95), geo = new THREE.CylinderGeometry(r, r, 1, 8);
+  const segs = Array.from({ length: max }, () => { const s = new THREE.Mesh(geo, m); s.visible = false; s.renderOrder = 7; g.add(s); return s; });
+  g.mat = m;
+  g.set = (a, b) => {
+    const d = b.clone().sub(a), L = d.length(), dir = d.clone().normalize();
+    const n = L < 0.02 ? 0 : Math.min(max, Math.ceil(L / (dash + gap))), q = new THREE.Quaternion().setFromUnitVectors(AX_Y, dir);
+    segs.forEach((s, i) => {
+      const t0 = i * (dash + gap), t1 = Math.min(L, t0 + dash);
+      if (i >= n || t1 <= t0) { s.visible = false; return; }
+      s.visible = true; s.quaternion.copy(q); s.scale.set(1, t1 - t0, 1); s.position.copy(a).addScaledVector(dir, (t0 + t1) / 2);
+    });
+  };
+  return g;
+}
+/** 直角符號：在 Q 點、沿 u1、u2 兩個方向畫 L 形 */
+function RightMark(color, s = 0.24) {
+  const g = new THREE.Group(), m = holo(color, 1, 0.9), geo = new THREE.CylinderGeometry(0.022, 0.022, 1, 6);
+  const a = new THREE.Mesh(geo, m), b = new THREE.Mesh(geo, m); g.add(a, b);
+  g.set = (Q, u1, u2) => { const p1 = Q.clone().addScaledVector(u1, s), p2 = Q.clone().addScaledVector(u2, s), c = p1.clone().addScaledVector(u2, s); stickBetween(a, p1, c); stickBetween(b, p2, c); };
+  return g;
+}
+/** 圓弧箭頭（在自身 xy 平面上、從角度 0 逆時針畫到 arc；要順時針就把 scale.x 設成 −1） */
+function ArcArrow(color, R = 1, tube = 0.07, arc = Math.PI * 1.1) {
+  const g = new THREE.Group(), m = holo(color, 0.9, 0.75);
+  const torus = new THREE.Mesh(new THREE.TorusGeometry(R, tube, 12, 72, arc), m);
+  const head = new THREE.Mesh(new THREE.ConeGeometry(tube * 2.9, tube * 6.5, 24), m);
+  head.position.set(R * Math.cos(arc), R * Math.sin(arc), 0); head.rotation.z = arc;
+  torus.renderOrder = head.renderOrder = 8;
+  g.add(torus, head); g.mat = m; return g;
+}
+/** 支點：螢光黃三角錐 */
+function Pivot(r = 0.28, h = 0.5) { const m = new THREE.Mesh(new THREE.ConeGeometry(r, h, 3), holo(C_PIV, 0.85, 0.85)); m.renderOrder = 7; return m; }
+/** 金屬砝碼（車床造型） */
+function weightGeo(r, h) {
+  const p = [[0.001, 0], [r * 0.96, 0], [r, h * 0.06], [r, h * 0.78], [r * 0.82, h * 0.86], [r * 0.32, h * 0.88], [r * 0.3, h * 0.97], [r * 0.42, h], [r * 0.001, h * 1.12]];
+  return new THREE.LatheGeometry(p.map(([x, y]) => new THREE.Vector2(x, y)), 40);
+}
+
+/* =========================================================
+   Tab 1：旋轉門與門把（L ＝ F × d）
+   ========================================================= */
+const DR = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const K = 2, WL = 1.2 * K, H = 1.7, FY = 0.85, F = 10, VY = H + 0.22;   // 向量畫在門板上方的平面，俯視時不會被門擋住
+  // 地面：淺色木圓盤＋外圈
+  const disc = shadowed(cyl(2.85, 2.85, 0.05, WOOD(0xe8cfa6), 72)); disc.position.y = 0.025; group.add(disc);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(2.85, 0.05, 10, 96), WOOD(0xb88a5a)); ring.rotation.x = Math.PI / 2; ring.position.y = 0.06; group.add(ring);
+  // 原木旋轉門（兩片門板＋中軸）
+  const door = new THREE.Group(); door.position.y = 0.05; group.add(door);
+  const slab = shadowed(rbox(WL * 2, H, 0.12, WOOD(), 0.05)); slab.position.y = H / 2 + 0.05; door.add(slab);
+  for (let i = -3; i <= 3; i++) { if (!i) continue; const g = new THREE.Mesh(new THREE.BoxGeometry(0.02, H - 0.25, 0.125), WOOD(0xc9a070)); g.position.set(i * WL / 3.6, H / 2 + 0.05, 0); door.add(g); }
+  const handle = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(0.035, 0.36, 6, 12), metal(0xc9ccd2))); handle.position.set(WL - 0.18, FY, 0.11); door.add(handle);
+  const handleB = handle.clone(); handleB.position.z = -0.11; door.add(handleB);
+  const post = shadowed(cyl(0.09, 0.09, H + 0.5, metal(0xb0b4ba), 20)); post.position.y = (H + 0.5) / 2; group.add(post);
+  const piv = Pivot(0.26, 0.42); piv.rotation.x = Math.PI; piv.position.y = H + 0.95; group.add(piv);
+  const pivDot = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.02, 3), holo(C_PIV, 0.9, 1)); pivDot.position.y = VY; group.add(pivDot);
+  // 向量
+  const VF = Arrow(C_FORCE, 0.075), LOA = DashLine(C_FORCE, 0.016, 0.45, 90, 0.12, 0.1), ARM = DashLine(C_ARM, 0.034), RM = RightMark(C_ARM);
+  const ARC = ArcArrow(C_CW, 1.5, 0.09, Math.PI * 1.25); ARC.rotation.x = -Math.PI / 2; ARC.position.y = H + 0.6;
+  group.add(VF, LOA, ARM, RM, ARC);
+  const lF = addLabel('door', '', 'small vF', V3(0, 0, 0)), lD = addLabel('door', '', 'small vS', V3(0, 0, 0)), lL = addLabel('door', '', 'small org', V3(0, 0, 0)), lP = addLabel('door', '支點（轉軸）', 'small', V3(0, H + 1.4, 0));
+  const st = { r: 1.2, phi: 90, th: 0, w: 0, push: true };
+  $('drR').addEventListener('input', () => { st.r = +$('drR').value; });
+  $('drA').addEventListener('input', () => { st.phi = +$('drA').value; });
+  $('drPush').addEventListener('click', () => { st.push = !st.push; });
+  $('drReset').addEventListener('click', () => { st.th = 0; st.w = 0; });
+  const O = V3(0, VY, 0);
+  function update(dt) {
+    const phi = st.phi * Math.PI / 180, d = st.r * Math.sin(phi), L = st.push ? F * d : 0;
+    // 轉動物理：I·α ＝ 力矩 − 阻力（轉速越快阻力越大）
+    const I = 6, c = L < 1e-6 ? 30 : 8;                   // 沒有力矩時，門軸摩擦讓門很快停住
+    st.w += ((L - c * st.w - (Math.abs(st.w) > 0.01 ? 0.4 * Math.sign(st.w) : 0)) / I) * dt;
+    if (L < 1e-6 && Math.abs(st.w) < 0.02) st.w = 0;
+    st.th += st.w * dt; door.rotation.y = st.th;
+    const u = V3(Math.cos(st.th), 0, -Math.sin(st.th)), n = V3(-Math.sin(st.th), 0, -Math.cos(st.th));
+    const f = u.clone().multiplyScalar(-Math.cos(phi)).addScaledVector(n, Math.sin(phi)).normalize();
+    const P = O.clone().addScaledVector(u, st.r * K);
+    const ALEN = 1.5;
+    VF.setFT(P.clone().addScaledVector(f, -ALEN - 0.1), P.clone().addScaledVector(f, -0.1)); VF.visible = st.push;
+    LOA.set(P.clone().addScaledVector(f, -4.2), P.clone().addScaledVector(f, 4.2)); LOA.visible = st.push;
+    const Q = P.clone().addScaledVector(f, O.clone().sub(P).dot(f));   // 支點到施力延長線的垂足
+    const dd = Q.distanceTo(O);
+    ARM.set(O, Q); ARM.visible = d > 0.005 && st.push;
+    RM.visible = dd > 0.12 && st.push; if (RM.visible) RM.set(Q, O.clone().sub(Q).normalize(), f.clone().dot(O.clone().sub(P)) > 0 ? f.clone().negate() : f.clone());
+    const k = clamp(L / (F * 1.2), 0, 1);
+    ARC.visible = k > 0.02; ARC.scale.setScalar(0.55 + 0.6 * k); ARC.mat.opacity = 0.3 + 0.5 * k; ARC.rotation.z = -st.th * 0 + wall * 1.2 * k;
+    setLabel(lF, `F ＝ ${F} N`); lF.pos.copy(P).addScaledVector(f, -ALEN - 0.25).add(V3(0, 0.35, 0)); lF.off.copy(lF.pos); lF.show = st.push;
+    setLabel(lD, `力臂 d ＝ ${d.toFixed(2)} m`); lD.pos.copy(O).add(Q).multiplyScalar(0.5).add(V3(0, 0.45, 0)); lD.off.copy(lD.pos); lD.show = dd > 0.25;
+    setLabel(lL, `力矩 L ＝ ${L.toFixed(1)} N·m（逆時針）`); lL.pos.set(0, H + 0.55, -1.9 * (0.55 + 0.6 * k)); lL.off.copy(lL.pos); lL.show = k > 0.02;
+    $('drRV').textContent = st.r.toFixed(1); $('drAV').textContent = st.phi; $('drPush').textContent = st.push ? '✋ 放手（停止施力）' : '👉 繼續推門';
+    const best = st.r >= 1.19 && st.phi >= 89, zero = d < 0.005;
+    const tip = $('drTip');
+    if (st.push && best) { tip.hidden = false; tip.className = 'tip ok'; tip.textContent = '🏆 力臂最長，產生最大力矩！這就是門把裝在邊緣的原因。'; }
+    else if (st.push && zero) { tip.hidden = false; tip.className = 'tip bad'; tip.textContent = '🚫 施力通過支點或與門板平行，力臂為 0 ➔ 力矩為 0，門絕對推不動！'; }
+    else tip.hidden = true;
+    setHTML('drStat', `<div class="formula">L ＝ F × d ＝ ${F} × ${d.toFixed(2)} ＝ <b>${L.toFixed(1)}</b> N·m</div>施力位置：離轉軸 <b>${st.r.toFixed(1)} m</b>　施力角度：<b>${st.phi}°</b><br>力臂 d ＝ ${st.r.toFixed(1)} × sin ${st.phi}° ＝ <b class="b">${d.toFixed(2)} m</b><br>門的轉速：<b class="o">${(st.w * 60 / TAU).toFixed(1)} 轉／分</b><br><small>力臂是「支點到施力延長線的垂直距離」，不是支點到施力點的距離。</small>`);
+    setCap(!st.push ? `<small>旋轉門</small>沒有施力 ➔ 沒有力矩<span class="huge">門靠摩擦力慢慢停下</span>`
+      : zero ? `<small>力臂 ＝ 0</small>${st.r < 0.05 ? '推在轉軸上' : '順著門板方向推'}<span class="huge red">力矩 ＝ 0，門推不動！</span>`
+        : best ? `<small>推在門的邊緣、垂直推</small><b class="blu">藍色虛線＝力臂</b> 最長<span class="huge org">最大力矩 ${L.toFixed(1)} N·m！</span>`
+          : `<small>旋轉門・L ＝ F × d</small><b class="blu">藍色虛線＝力臂</b>：支點到<b class="red">施力延長線</b>的垂直距離<span class="huge org">L ＝ ${F} × ${d.toFixed(2)} ＝ ${L.toFixed(1)} N·m</span>`);
+  }
+  return { group, update, st };
+})();
+
+/* =========================================================
+   Tab 2：蹺蹺板力矩大挑戰（轉動平衡）
+   ========================================================= */
+const SS = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const S = 0.85, PY = 1.0, HALF = 4.1 * S, TMAX = Math.asin((PY - 0.12) / HALF);
+  const piv = shadowed(Pivot(0.62, PY)); piv.position.y = PY / 2; group.add(piv);
+  const base = shadowed(rbox(1.5, 0.08, 1.1, WOOD(0xb88a5a), 0.04)); base.position.y = 0.04; group.add(base);
+  const plank = new THREE.Group(); plank.position.y = PY; group.add(plank);
+  const board = shadowed(rbox(HALF * 2, 0.14, 0.8, WOOD(), 0.05)); board.position.y = 0.07; plank.add(board);
+  for (let m = -4; m <= 4; m += 0.5) { if (!m) continue; const t = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.006, Number.isInteger(m) ? 0.8 : 0.4), WOOD(0x8d6e4a)); t.position.set(m * S, 0.143, 0); plank.add(t); }
+  const brass = metal(0xc9a24b);
+  const mL = shadowed(new THREE.Mesh(weightGeo(0.27, 0.42), brass)), mR = shadowed(new THREE.Mesh(weightGeo(0.32, 0.5), metal(0x9aa3ad)));
+  mL.position.set(-3 * S, 0.14, 0); plank.add(mL, mR);
+  const WL_ = Arrow(C_FORCE, 0.065), WR_ = Arrow(C_FORCE, 0.065);
+  const gL = DashLine(C_FORCE, 0.014, 0.5), gR = DashLine(C_FORCE, 0.014, 0.5), aL = DashLine(C_ARM, 0.032), aR = DashLine(C_ARM, 0.032), rL = RightMark(C_ARM, 0.2), rR = RightMark(C_ARM, 0.2);
+  const arcL = ArcArrow(C_CCW, 1.05, 0.08, Math.PI * 0.55), arcR = ArcArrow(C_CW, 1.05, 0.08, Math.PI * 0.55);
+  arcL.position.set(0, PY + 0.2, 0.55); arcR.position.copy(arcL.position);
+  group.add(WL_, WR_, gL, gR, aL, aR, rL, rR, arcL, arcR);
+  const burst = glowSprite('255,226,90', 4); burst.position.set(0, PY + 0.9, 0.3); burst.material.opacity = 0; group.add(burst);
+  const labL = addLabel('seesaw', '', 'small vF', V3(0, 0, 0)), labR = addLabel('seesaw', '', 'small vF', V3(0, 0, 0));
+  const dL = addLabel('seesaw', '', 'small vS', V3(0, 0, 0)), dR = addLabel('seesaw', '', 'small vS', V3(0, 0, 0));
+  const tL = addLabel('seesaw', '', 'small vA', V3(-1.6, PY + 1.55, 0.5)), tR = addLabel('seesaw', '', 'small org', V3(1.6, PY + 1.55, 0.5));
+  const st = { x: 3.5, th: 0, w: 0 };
+  $('ssX').addEventListener('input', () => { st.x = +$('ssX').value; });
+  const tmp = V3();
+  function update(dt) {
+    mR.position.set(st.x * S, 0.14, 0);
+    const tauL = 2 * 3, tauR = 3 * st.x, diff = tauR - tauL, bal = Math.abs(diff) < 1e-6;
+    // 依力矩差決定目標傾角，再用「彈簧＋阻尼」平滑轉過去（略帶回彈，像真的木板）
+    const target = -TMAX * Math.tanh(diff / 2.2);
+    st.w += (26 * (target - st.th) - 6.5 * st.w) * dt; st.th += st.w * dt;
+    plank.rotation.z = st.th; plank.updateMatrixWorld(true);
+    const O = V3(0, PY, 0.45);
+    const draw = (mesh, m, W, g, a, rm, lab, dl, side) => {
+      const c = mesh.localToWorld(V3(0, 0.28, 0)); c.z = 0.45;
+      W.setFT(c, c.clone().add(V3(0, -0.3 * m - 0.25, 0)));
+      const foot = V3(c.x, PY, 0.45);
+      g.set(c, foot); a.set(O, foot);
+      rm.set(foot, V3(-side, 0, 0), V3(0, c.y > PY ? 1 : -1, 0)); rm.visible = Math.abs(c.y - PY) > 0.25;
+      setLabel(lab, `${m} kgw`); lab.pos.copy(c).add(V3(0, 0.55, 0)); lab.off.copy(lab.pos);
+      const arm = Math.abs(c.x) / S;
+      setLabel(dl, `力臂 ${arm.toFixed(2)} m`); dl.pos.set(c.x / 2, PY - 0.32, 0.6); dl.off.copy(dl.pos);
+      return arm;
+    };
+    const armL = draw(mL, 2, WL_, gL, aL, rL, labL, dL, -1), armR = draw(mR, 3, WR_, gR, aR, rR, labR, dR, 1);
+    const TL = 2 * armL, TR = 3 * armR;
+    // 圓弧箭頭：左邊逆時針（綠）、右邊順時針（橘）；力矩相等時互相抵消、縮小消失
+    const fade = bal ? clamp(1 - Math.abs(st.th) / 0.03, 0, 1) : 0;
+    const sc = (T) => (0.45 + 0.09 * T) * (1 - fade);
+    arcL.rotation.z = Math.PI * 0.62; arcL.scale.setScalar(Math.max(0.001, sc(TL))); arcL.visible = sc(TL) > 0.02;
+    arcR.rotation.z = -Math.PI * 0.62; arcR.scale.set(-Math.max(0.001, sc(TR)), Math.max(0.001, sc(TR)), 1); arcR.visible = sc(TR) > 0.02;
+    arcL.mat.opacity = arcR.mat.opacity = 0.9 * (1 - fade) + 0.05;
+    setLabel(tL, `逆時針力矩 2 × ${armL.toFixed(2)} ＝ ${TL.toFixed(2)}`); setLabel(tR, `順時針力矩 3 × ${armR.toFixed(2)} ＝ ${TR.toFixed(2)}`);
+    tL.show = tR.show = fade < 0.9;
+    burst.material.opacity = fade * (0.55 + 0.25 * Math.sin(wall * 5)); burst.scale.setScalar(3.5 + fade * Math.sin(wall * 3) * 0.6);
+    $('ssXV').textContent = st.x.toFixed(1);
+    $('ssTip').hidden = !(bal && fade > 0.6);
+    const deg = -st.th * 180 / Math.PI;
+    setHTML('ssStat', `<div class="formula">2 kg × 3 m ${bal ? '＝' : diff > 0 ? '＜' : '＞'} 3 kg × ${st.x.toFixed(1)} m</div>左（逆時針）：2 × 3 ＝ <b class="g">${tauL.toFixed(1)}</b> kgw·m<br>右（順時針）：3 × ${st.x.toFixed(1)} ＝ <b class="o">${tauR.toFixed(1)}</b> kgw·m<br>蹺蹺板傾斜：<b>${Math.abs(deg) < 0.3 ? '水平' : (deg > 0 ? '右邊下沉 ' : '左邊下沉 ') + Math.abs(deg).toFixed(1) + '°'}</b><br><small>傾斜時，真正的力臂是「支點到重力延長線的水平距離」，會比木板上的刻度短。</small>`);
+    setCap(bal ? `<small>3 kg 放在 2 m</small>順時針力矩 ＝ 逆時針力矩<span class="huge grn">達成轉動平衡！合力矩 ＝ 0</span>`
+      : `<small>蹺蹺板・轉動平衡</small><b class="grn">逆時針 ${tauL.toFixed(1)}</b> ${diff > 0 ? '＜' : '＞'} <b class="org">順時針 ${tauR.toFixed(1)}</b><span class="huge ${diff > 0 ? 'org' : 'grn'}">${diff > 0 ? '右邊下沉（順時針轉）' : '左邊下沉（逆時針轉）'}</span>`);
+  }
+  return { group, update, st };
+})();
+
+/* =========================================================
+   Tab 3：槓桿三兄弟（單輪推車・麵包夾）
+   ========================================================= */
+const LV = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const U = 0.4;                                // 1 單位 ＝ 0.4 m
+  /* ----- 單輪推車（第二類槓桿：抗力點在中間） ----- */
+  const WB = new THREE.Group(); group.add(WB);
+  const AXLE = V3(1.7, 0.36, 0);
+  const tilt = new THREE.Group(); tilt.position.copy(AXLE); WB.add(tilt);   // 以輪軸為支點轉動
+  const wheel = new THREE.Group(); WB.add(wheel); wheel.position.copy(AXLE);
+  const tire = shadowed(new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.07, 14, 40), clay(0x4e4a46))); wheel.add(tire);
+  const hub = shadowed(cyl(0.24, 0.24, 0.1, WOOD(0xc49a6c), 32)); hub.rotation.x = Math.PI / 2; wheel.add(hub);
+  for (let i = 0; i < 6; i++) { const sp = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.46, 0.04), WOOD(0x9c7448)); sp.rotation.z = i * Math.PI / 6; sp.position.z = 0.06; wheel.add(sp); }
+  const axleM = cyl(0.04, 0.04, 0.6, metal(0xb0b4ba), 12); axleM.rotation.x = Math.PI / 2; wheel.add(axleM);
+  // 木製車斗：梯形木箱
+  const trayShape = new THREE.Shape(); trayShape.moveTo(-1.0, 0); trayShape.lineTo(0.55, 0); trayShape.lineTo(0.85, 0.55); trayShape.lineTo(-1.25, 0.55); trayShape.closePath();
+  const trayG = new THREE.ExtrudeGeometry(trayShape, { depth: 0.9, bevelEnabled: true, bevelThickness: 0.03, bevelSize: 0.03, bevelSegments: 3 }); trayG.translate(0, 0, -0.45);
+  const tray = shadowed(new THREE.Mesh(trayG, WOOD())); tray.position.set(-1.2, 0.08, 0); tilt.add(tray);
+  const sand = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.62, 32, 16, 0, TAU, 0, Math.PI / 2), clay(0xb8916a, { roughness: 1 }))); sand.scale.set(1.35, 0.42, 0.62); sand.position.set(-1.38, 0.6, 0); tilt.add(sand);
+  [-1, 1].forEach(s => {
+    const h = shadowed(rbox(3.5, 0.08, 0.08, WOOD(0xb88a5a), 0.03)); h.position.set(-1.75, 0.04, s * 0.38); tilt.add(h);
+    const grip = shadowed(cyl(0.055, 0.055, 0.32, WOOD(0x8d6e4a), 14)); grip.rotation.z = Math.PI / 2; grip.position.set(-3.45, 0.04, s * 0.38); tilt.add(grip);
+    const leg = shadowed(rbox(0.07, 0.42, 0.07, WOOD(0xb88a5a), 0.02)); leg.position.set(-2.05, -0.17, s * 0.38); tilt.add(leg);
+  });
+  const LOADP = V3(-1.38 + 0, 0.6, 0), GRIPP = V3(-3.45, 0.04, 0);   // tilt 座標
+  /* ----- 麵包夾（第三類槓桿：施力點在中間） ----- */
+  const TG = new THREE.Group(); group.add(TG);
+  const HINGE = V3(-2.4, 1.05, 0), ARML = 4.2, EFF = 1.55;      // 施力點離鉸鏈 1.55、夾頭離鉸鏈 4.2
+  const steel = metal(0xd5d8de);
+  const mkArm = s => {
+    const g = new THREE.Group(); g.position.copy(HINGE); TG.add(g);
+    const bar = shadowed(rbox(ARML, 0.07, 0.34, steel, 0.03)); bar.position.x = ARML / 2; g.add(bar);
+    const pad = shadowed(rbox(1.2, 0.09, 0.4, WOOD(), 0.04)); pad.position.set(EFF, s * 0.07, 0); g.add(pad);
+    const jaw = shadowed(rbox(0.5, 0.06, 0.46, steel, 0.02)); jaw.position.set(ARML - 0.2, -s * 0.05, 0); jaw.rotation.z = s * 0.12; g.add(jaw);
+    return g;
+  };
+  const armT = mkArm(1), armB = mkArm(-1);
+  const hingeM = shadowed(cyl(0.14, 0.14, 0.42, metal(0xb0b4ba), 24)); hingeM.rotation.x = Math.PI / 2; hingeM.position.copy(HINGE); TG.add(hingeM);
+  const bread = shadowed(new THREE.Mesh(new RoundedBoxGeometry(0.85, 0.5, 0.62, 6, 0.2), clay(0xd99a4e, { roughness: 0.85 }))); bread.position.set(HINGE.x + ARML - 0.25, HINGE.y, 0); TG.add(bread);
+  const crumb = new THREE.Mesh(new RoundedBoxGeometry(0.7, 0.36, 0.64, 4, 0.12), clay(0xf6e3b8, { roughness: 0.95 })); crumb.position.copy(bread.position); TG.add(crumb);
+  /* ----- 共用向量與輔助線 ----- */
+  const piv = Pivot(0.2, 0.34); group.add(piv);
+  const E1 = Arrow(C_FORCE, 0.07), E2 = Arrow(C_FORCE, 0.07), R1 = Arrow(C_LOAD, 0.07), R2 = Arrow(C_LOAD, 0.07);
+  const barE = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 1, 10), holo(C_FORCE, 0.95, 0.7)), barR = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 1, 10), holo(C_LOAD, 0.95, 0.7));
+  const caps = Array.from({ length: 4 }, (_, i) => new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.26, 8), holo(i < 2 ? C_FORCE : C_LOAD, 1, 0.8)));
+  const guE = DashLine(C_FORCE, 0.012, 0.4, 30, 0.08, 0.08), guR = DashLine(C_LOAD, 0.012, 0.4, 30, 0.08, 0.08), guP = DashLine(C_PIV, 0.012, 0.6, 30, 0.08, 0.08);
+  group.add(E1, E2, R1, R2, barE, barR, ...caps, guE, guR, guP);
+  const lE = addLabel('lever', '', 'small vF', V3(0, 0, 0)), lR = addLabel('lever', '', 'small vS', V3(0, 0, 0)), lP = addLabel('lever', '支點', 'small', V3(0, 0, 0));
+  const lEA = addLabel('lever', '', 'small vF', V3(0, 0, 0)), lRA = addLabel('lever', '', 'small vS', V3(0, 0, 0));
+  const st = { m: 'wb', t: 0 };
+  document.querySelectorAll('.lvbtn').forEach(b => b.addEventListener('click', () => { st.m = b.dataset.m; document.querySelectorAll('.lvbtn').forEach(x => x.classList.toggle('on', x === b)); }));
+  const GY = 0.03, GZ = 1.05;
+  function guide(xP, xE, xR, yLine) {
+    const y1 = GY + 0.02, y2 = GY + 0.32;
+    stickBetween(barE, V3(Math.min(xP, xE), y2, GZ), V3(Math.max(xP, xE), y2, GZ)); 
+    stickBetween(barR, V3(Math.min(xP, xR), y1, GZ), V3(Math.max(xP, xR), y1, GZ));
+    [[xP, y2], [xE, y2], [xP, y1], [xR, y1]].forEach(([x, y], i) => caps[i].position.set(x, y, GZ));
+    guP.set(V3(xP, yLine.p, GZ), V3(xP, GY, GZ)); guE.set(V3(xE, yLine.e, GZ), V3(xE, y2, GZ)); guR.set(V3(xR, yLine.r, GZ), V3(xR, y1, GZ));
+    setLabel(lEA, `施力臂 ${(Math.abs(xE - xP) * U).toFixed(2)} m`); lEA.pos.set((xP + xE) / 2, y2 + 0.28, GZ); lEA.off.copy(lEA.pos);
+    setLabel(lRA, `抗力臂 ${(Math.abs(xR - xP) * U).toFixed(2)} m`); lRA.pos.set((xP + xR) / 2, y1 - 0.3, GZ); lRA.off.copy(lRA.pos);
+    return [Math.abs(xE - xP) * U, Math.abs(xR - xP) * U];
+  }
+  function update(dt) {
+    st.t += dt;
+    const wb = st.m === 'wb'; WB.visible = wb; TG.visible = !wb;
+    let dE, dR, W, move;
+    if (wb) {
+      const a = 0.16 + 0.07 * Math.sin(st.t * 1.6);                 // 把手抬起的角度
+      tilt.rotation.z = -a; tilt.updateMatrixWorld(true);
+      wheel.rotation.z = 0;
+      const load = tilt.localToWorld(LOADP.clone()), grip = tilt.localToWorld(GRIPP.clone());
+      piv.position.set(AXLE.x, AXLE.y, 0.42); piv.rotation.set(0, 0, 0); piv.position.y = AXLE.y - 0.02; piv.scale.setScalar(1);
+      E1.setFT(V3(grip.x, grip.y + 0.05, 0.55), V3(grip.x, grip.y + 1.25, 0.55)); E2.visible = false;
+      R1.setFT(V3(load.x, load.y + 0.05, 0.55), V3(load.x, load.y - 1.0, 0.55)); R2.visible = false;
+      [dE, dR] = guide(AXLE.x, grip.x, load.x, { p: AXLE.y, e: grip.y, r: load.y - 1.0 });
+      W = 40; move = 'handle';
+      setLabel(lE, `施力 ${(W * dR / dE).toFixed(0)} kgw`); lE.pos.set(grip.x, grip.y + 1.5, 0.55);
+      setLabel(lR, `抗力（重物）${W} kgw`); lR.pos.set(load.x, load.y + 0.4, 0.55);
+      lP.pos.set(AXLE.x + 0.2, AXLE.y + 0.55, 0.42);
+    } else {
+      const open = 0.13 - 0.045 * (0.5 + 0.5 * Math.sin(st.t * 1.8));   // 夾起來的張角
+      armT.rotation.z = open; armB.rotation.z = -open;
+      TG.updateMatrixWorld(true);
+      const eT = armT.localToWorld(V3(EFF, 0.12, 0)), eB = armB.localToWorld(V3(EFF, -0.12, 0)), jT = armT.localToWorld(V3(ARML - 0.25, 0.06, 0)), jB = armB.localToWorld(V3(ARML - 0.25, -0.06, 0));
+      piv.position.set(HINGE.x, HINGE.y + 0.25, 0.4); piv.rotation.set(0, 0, Math.PI); piv.scale.setScalar(0.9);
+      E1.setFT(V3(eT.x, eT.y + 0.95, 0.4), V3(eT.x, eT.y + 0.02, 0.4)); E2.setFT(V3(eB.x, eB.y - 0.95, 0.4), V3(eB.x, eB.y - 0.02, 0.4));
+      R1.setFT(V3(jT.x, jT.y + 0.02, 0.4), V3(jT.x, jT.y + 0.75, 0.4)); R2.setFT(V3(jB.x, jB.y - 0.02, 0.4), V3(jB.x, jB.y - 0.75, 0.4));
+      [dE, dR] = guide(HINGE.x, eT.x, jT.x, { p: HINGE.y - 0.15, e: eB.y - 0.95, r: jB.y - 0.75 });
+      W = 0.2; move = 'tip';
+      setLabel(lE, `施力 ${(W * dR / dE).toFixed(2)} kgw`); lE.pos.set(eT.x, eT.y + 1.2, 0.4);
+      setLabel(lR, `抗力（夾住麵包）${W} kgw`); lR.pos.set(jT.x + 0.3, jT.y + 1.0, 0.4);
+      lP.pos.set(HINGE.x, HINGE.y + 0.75, 0.4);
+    }
+    [lE, lR, lP].forEach(l => l.off.copy(l.pos));
+    const save = dE > dR;
+    setHTML('lvStat', `<div class="formula">施力 × 施力臂 ＝ 抗力 × 抗力臂</div>${wb ? '單輪推車：<b>第二類槓桿</b>（抗力點在中間）' : '麵包夾：<b>第三類槓桿</b>（施力點在中間）'}<br>施力臂 <b class="r">${dE.toFixed(2)} m</b>　抗力臂 <b class="b">${dR.toFixed(2)} m</b><br>施力 ＝ ${W} × ${dR.toFixed(2)} ÷ ${dE.toFixed(2)} ＝ <b>${(W * dR / dE).toFixed(wb ? 0 : 2)} kgw</b><br><small>${save ? '施力臂較長：用較小的力就能抬起重物，但手要移動較長的距離。' : '施力臂較短：要用較大的力，但夾頭移動得又快又遠。'}</small>`);
+    const tip = $('lvTip'); tip.className = 'tip ' + (save ? 'ok' : 'bad');
+    tip.textContent = save ? '💪 施力臂 ＞ 抗力臂 ➔ 省力費時' : '⚡ 施力臂 ＜ 抗力臂 ➔ 費力省時';
+    setCap(save ? `<small>單輪推車・第二類槓桿</small><b class="red">施力臂 ${dE.toFixed(2)} m</b> ＞ <b class="blu">抗力臂 ${dR.toFixed(2)} m</b><span class="huge grn">省力費時</span>`
+      : `<small>麵包夾・第三類槓桿</small><b class="red">施力臂 ${dE.toFixed(2)} m</b> ＜ <b class="blu">抗力臂 ${dR.toFixed(2)} m</b><span class="huge red">費力省時</span>`);
+  }
+  return { group, update, st };
+})();
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  door: { group: DR.group, cam: () => ({ pos: [0, 8.2, 6.4], target: [0, 0.6, 0], fitW: window.innerWidth < window.innerHeight ? 6.4 : 7.2 }), update: DR.update },
+  seesaw: { group: SS.group, cam: () => ({ pos: [0, 2.7, 9.2], target: [0, 1.2, 0], fitW: window.innerWidth < window.innerHeight ? 7.6 : 8.4 }), update: SS.update },
+  lever: { group: LV.group, cam: () => ({ pos: [-0.3, 2.4, 8.2], target: [-0.3, 0.9, 0], fitW: window.innerWidth < window.innerHeight ? 7.0 : 7.8 }), update: LV.update }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  onTabChange(t);
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, DR, SS, LV, camera, controls, renderer, scene, placeLabels };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'door';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+<script src="goals.js" defer></script>
+</body>
+</html>
