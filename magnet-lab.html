@@ -178,6 +178,11 @@
         <button class="btn primary" id="fdDust">🧂 撒下鐵粉</button>
         <button class="btn" id="fdClear">🧹 清除鐵粉</button>
       </div>
+      <label class="lab">觀察方式</label>
+      <div class="row2">
+        <button class="btn on" id="fdMode3d" type="button">🧊 立體空間</button>
+        <button class="btn" id="fdModePlate" type="button">🪟 玻璃板俯視</button>
+      </div>
       <label class="chk"><input type="checkbox" id="fdLines" checked> 顯示發光磁力線</label>
       <div class="stat" id="fdStat"></div>
       <div class="tip" id="fdTip" hidden>⚠️ 注意陷阱：指北針的 N 極會被地磁的 S 極吸引，所以地理北極其實是地磁南極！</div>
@@ -643,33 +648,136 @@ const FD = (() => {
   const viz = FieldViz(center, 0xffb74d);
   const filM = metal(0x3d3f44, { roughness: 0.5 });
   let fil = null, filData = [], filT = 0;
-  const st = { type: 'bar', dust: false };
+  const st = { type: 'bar', dust: false, plate: false };
+  const plate = new THREE.Group(); center.add(plate);
+  const plateGlass = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.04, 64), new THREE.MeshPhysicalMaterial({ color: 0xe7f4f7, roughness: 0.04, metalness: 0, transparent: true, opacity: 0.28, clearcoat: 1, clearcoatRoughness: 0.04, side: THREE.DoubleSide, depthWrite: false }));
+  const plateRim = new THREE.Mesh(new THREE.RingGeometry(0.985, 1.02, 72), metal(0xd5dbe2, { roughness: 0.22 }));
+  plateRim.rotation.x = -Math.PI / 2; plateRim.position.y = 0.02; plate.add(plateGlass, plateRim);
+  const plateSpec = t => t === 'u' ? { y: 1.08, r: 2.75 } : { y: 0.5, r: 3.35 };
+  const SPOTS = {
+    bar: [[-2.55, 0, 1.2], [-2.55, 0, -1.2], [-1.1, 0, 1.7], [1.15, 0, 1.7], [0, 0, -1.9], [2.55, 0, 1.2], [2.55, 0, -1.2], [-1.15, 0, -1.7]],
+    u: [[-1.9, 0.95, 1.05], [0, 1.2, 1.3], [1.9, 0.95, 1.05], [-1.9, 0.95, -1.05], [0, 1.2, -1.3], [1.9, 0.95, -1.05], [-2.4, 0.35, 0], [2.4, 0.35, 0]]
+  };
+  const needles = Array.from({ length: 8 }, () => {
+    const c = new THREE.Group(); center.add(c);
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.045, 20), clay(0xfffaf2));
+    disc.castShadow = disc.receiveShadow = true; c.add(disc);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.018, 6, 22), metal(0xc9a46a));
+    rim.rotation.x = Math.PI / 2; rim.position.y = 0.028; c.add(rim);
+    const needle = new THREE.Group(); needle.position.y = 0.055; c.add(needle);
+    const nN = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 8), clay(RED, { emissive: 0x7a0000, emissiveIntensity: 0.35 }));
+    nN.rotation.z = -Math.PI / 2; nN.position.x = 0.08; nN.scale.z = 0.45; needle.add(nN);
+    const nS = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.16, 8), clay(0xf5f7f8));
+    nS.rotation.z = Math.PI / 2; nS.position.x = -0.08; nS.scale.z = 0.45; needle.add(nS);
+    return { c, needle, ang: 0.8, vel: 0 };
+  });
+  function syncModes() {
+    const earth = st.type === 'earth';
+    $('fdModePlate').disabled = earth;
+    $('fdMode3d').classList.toggle('on', !st.plate);
+    $('fdModePlate').classList.toggle('on', st.plate && !earth);
+  }
+  function layoutPlate() {
+    const s = plateSpec(st.type);
+    plate.position.y = s.y;
+    plateGlass.scale.set(s.r, 1, s.r);
+    plateRim.scale.set(s.r, s.r, 1);
+    plate.visible = st.plate && st.type !== 'earth';
+  }
+  function layoutNeedles() {
+    const spots = SPOTS[st.type] || [];
+    const Q = st.type === 'u' ? Q_U : Q_BAR;
+    const py = plateSpec(st.type).y;
+    needles.forEach((C, i) => {
+      const show = st.type !== 'earth' && i < spots.length;
+      C.c.visible = show;
+      if (!show) return;
+      const s = spots[i];
+      C.c.position.set(s[0], st.plate ? py + 0.07 : s[1], s[2]);
+      fieldAt(C.c.position, Q, tB);
+      C.ang = -Math.atan2(tB.z, tB.x) + 0.65;
+      C.vel = 0;
+    });
+  }
+  function tracePlateLines(t) {
+    const Q = t === 'u' ? Q_U : Q_BAR;
+    const { y, r } = plateSpec(t);
+    const yy = y + 0.03;
+    const stop = t === 'u' ? (x, z) => Math.hypot(x - 0.65, z) < 0.26 : (x, z) => Math.hypot(x - 1.25, z) < 0.32 && x > 0.15;
+    const seeds = [];
+    const nRing = t === 'u' ? 28 : 36;
+    const origin = t === 'u' ? [-0.65, 0.36] : [-1.25, 0.58];
+    for (let i = 0; i < nRing; i++) { const a = i / nRing * TAU; seeds.push([origin[0] + Math.cos(a) * origin[1], Math.sin(a) * origin[1]]); }
+    if (t === 'u') { for (let z = -0.55; z <= 0.55; z += 0.14) seeds.push([-0.15, z]); }
+    else [-1.5, -1.05, -0.7, 0.7, 1.05, 1.5].forEach(z => seeds.push([-0.3, z]));
+    const lines = [], B = V3();
+    for (const [x0, z0] of seeds) {
+      let x = x0, z = z0; const pts = [];
+      for (let i = 0; i < 420; i++) {
+        fieldAt(V3(x, y, z), Q, B);
+        const h = Math.hypot(B.x, B.z); if (h < 1e-5) break;
+        x += B.x / h * 0.05; z += B.z / h * 0.05;
+        pts.push(V3(x, yy, z));
+        if (x * x + z * z > r * r || stop(x, z)) break;
+      }
+      if (pts.length > 8) lines.push(pts);
+    }
+    return lines;
+  }
   function build() {
     const t = st.type;
+    if (t === 'earth') st.plate = false;
     bar.visible = t === 'bar'; U.visible = t === 'u'; earth.visible = t === 'earth';
     [lBN, lBS].forEach(l => { l.show = t === 'bar'; }); [lUN, lUS].forEach(l => { l.show = t === 'u'; }); [lGN, lGS].forEach(l => { l.show = t === 'earth'; });
     let lines;
-    if (t === 'bar') lines = traceAll(Q_BAR, 240, { seedR: 0.36, inside: inBar, keep: d => d.x < 0.55, bound: 2.45, minY: -2.4 });
+    if (st.plate && t !== 'earth') lines = tracePlateLines(t);
+    else if (t === 'bar') lines = traceAll(Q_BAR, 240, { seedR: 0.36, inside: inBar, keep: d => d.x < 0.55, bound: 2.45, minY: -2.4 });
     else if (t === 'u') lines = traceAll(Q_U, 240, { seedR: 0.3, inside: inU, keep: d => d.y > -0.6, bound: 2.4, minY: -2.4 });
     else lines = traceAll(Q_E, 46, { seedR: 0.3, inside: inE, bound: 4.2 });
     if (t === 'earth') { viz.g.parent !== earth && earth.add(viz.g); } else if (viz.g.parent !== center) center.add(viz.g);
     const Q = t === 'bar' ? Q_BAR : t === 'u' ? Q_U : Q_E;
-    viz.set(t === 'earth' ? lines : lines.filter((_, i) => i % 3 === 0), 0.016, Q);
-    clearDust(); st.lines = lines;
+    viz.set(st.plate ? lines : (t === 'earth' ? lines : lines.filter((_, i) => i % 3 === 0)), st.plate ? 0.011 : 0.016, Q);
+    st.lines = lines;
+    clearDust();
+    layoutPlate(); layoutNeedles(); syncModes();
     $('fdDust').disabled = t === 'earth';
+    if (st.plate && t !== 'earth') dust();
   }
   function clearDust() { if (fil) { center.remove(fil); fil.geometry.dispose(); fil.dispose(); fil = null; } filData = []; st.dust = false; }
   function dust() {
-    clearDust(); if (st.type === 'earth') return;
+    clearDust(); if (st.type === 'earth' || !st.lines) return;
+    const Q = st.type === 'bar' ? Q_BAR : Q_U;
     const tmp = V3(0, 0, 0), D = V3(0, 0, 0), pick = [];
-    st.lines.forEach(L => { const P = poly(L); for (let s = 0.06 + rnd() * 0.08; s < P.len; s += 0.15) { polyAt(P, s / P.len, tmp); const q = tmp.clone().add(V3((rnd() - 0.5) * 0.09, (rnd() - 0.5) * 0.09, (rnd() - 0.5) * 0.09)); fieldAt(q, st.type === 'bar' ? Q_BAR : Q_U, D); pick.push({ p: q, d: D.clone().normalize() }); } });
-    const n = Math.min(3200, pick.length);
+    const py = plateSpec(st.type).y + 0.055;
+    st.lines.forEach(L => {
+      const P = poly(L);
+      const step = st.plate ? 0.1 : 0.15;
+      for (let s = 0.05 + rnd() * 0.06; s < P.len; s += step) {
+        polyAt(P, s / P.len, tmp);
+        fieldAt(tmp, Q, D);
+        if (st.plate) {
+          const h = Math.hypot(D.x, D.z); if (h < 1e-5) continue;
+          const px = -D.z / h, pz = D.x / h, j = (rnd() - 0.5) * 0.06;
+          pick.push({ p: V3(tmp.x + px * j, py, tmp.z + pz * j), d: V3(D.x / h, 0, D.z / h), from: py + 1.4 + rnd() * 1.3 });
+        } else {
+          const q = tmp.clone().add(V3((rnd() - 0.5) * 0.09, (rnd() - 0.5) * 0.09, (rnd() - 0.5) * 0.09));
+          fieldAt(q, Q, D); pick.push({ p: q, d: D.clone().normalize(), from: 4.5 + rnd() * 2.5 });
+        }
+      }
+    });
+    const n = Math.min(st.plate ? 2600 : 3200, pick.length); if (!n) return;
     for (let i = pick.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [pick[i], pick[j]] = [pick[j], pick[i]]; }
-    fil = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.014, 0.07, 2, 6).rotateZ(-Math.PI / 2), filM, n); fil.castShadow = true; center.add(fil);
-    for (let i = 0; i < n; i++) { const k = pick[i]; filData.push({ t: k.p, q: Xq(k.d), s: V3(k.p.x + (rnd() - 0.5) * 2.4, 4.5 + rnd() * 2.5, k.p.z + (rnd() - 0.5) * 2.4), r: randQ(), delay: rnd() * 1.8 }); }
+    fil = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.012, st.plate ? 0.055 : 0.07, 2, 6).rotateZ(-Math.PI / 2), filM, n);
+    fil.castShadow = !st.plate; center.add(fil);
+    for (let i = 0; i < n; i++) { const k = pick[i]; filData.push({ t: k.p, q: Xq(k.d), s: V3(k.p.x + (st.plate ? 0 : (rnd() - 0.5) * 2.4), k.from, k.p.z + (st.plate ? 0 : (rnd() - 0.5) * 2.4)), r: randQ(), delay: rnd() * (st.plate ? 0.7 : 1.8) }); }
     filT = 0; st.dust = true;
   }
-  $('fdType').addEventListener('change', () => { st.type = $('fdType').value; build(); });
+  $('fdType').addEventListener('change', () => {
+    const was = st.plate; st.type = $('fdType').value; if (st.type === 'earth') st.plate = false; build();
+    if (was !== st.plate || st.plate) goView(TABS.field.cam());
+  });
+  $('fdMode3d').addEventListener('click', () => { if (!st.plate) return; st.plate = false; build(); goView(TABS.field.cam()); });
+  $('fdModePlate').addEventListener('click', () => { if (st.type === 'earth' || st.plate) return; st.plate = true; build(); goView(TABS.field.cam()); });
   $('fdDust').addEventListener('click', dust);
   $('fdClear').addEventListener('click', clearDust);
   function update(dt) {
@@ -677,6 +785,18 @@ const FD = (() => {
     viz.g.visible = $('fdLines').checked;
     viz.update(dt, 1.1, 1);
     if (st.type === 'earth') earth.rotation.y += dt * 0.25;
+    else {
+      const Q = st.type === 'bar' ? Q_BAR : Q_U;
+      for (const C of needles) {
+        if (!C.c.visible) continue;
+        fieldAt(C.c.position, Q, tB);
+        if (tB.x * tB.x + tB.z * tB.z < 1e-8) continue;
+        const target = -Math.atan2(tB.z, tB.x);
+        let diff = target - C.ang; diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+        C.vel += diff * 55 * dt; C.vel *= Math.exp(-dt * 5.2); C.ang += C.vel * dt;
+        C.needle.rotation.y = C.ang;
+      }
+    }
     if (fil && filT < 4) {
       filT += dt;
       filData.forEach((f, i) => {
@@ -690,9 +810,12 @@ const FD = (() => {
     const name = { bar: '棒狀磁鐵', u: 'U 型磁鐵', earth: '地球' }[st.type];
     setHTML('fdStat', st.type === 'earth'
       ? `地球內部就像一根<b>傾斜的大磁鐵</b>：<br>・<b class="b">上方（地理北極附近）＝ 地磁 S 極</b><br>・<b class="r">下方（地理南極附近）＝ 地磁 N 極</b><br>地表 ${compasses.length} 個小羅盤的<b class="r">紅色 N 針</b>都指向地理北極，和磁力線上<b class="o">箭頭（磁場方向）</b>一致。<br><small>地磁軸與自轉軸約夾 11°，所以磁北極和地理北極不在同一點。</small>`
-      : `目前：<b>${name}</b>　磁力線 <b class="o">${viz.count()}</b> 條${st.dust ? `　鐵粉 <b>${filData.length}</b> 粒` : ''}<br>・磁力線在磁鐵外部由 <b class="r">N 極</b>出發，回到 <b class="b">S 極</b><br>・線上的<b class="o">箭頭 ＝ 磁場方向</b>（指北針 N 極所指的方向）<br>・兩極附近磁力線最密，磁力最強<br>・磁力線<b>不會相交</b>，在空間中是立體的<br><small>按「撒下鐵粉」，鐵粉會沿著磁力線排列。拖曳畫面可以從各個角度看。</small>`);
+      : st.plate
+        ? `目前：<b>${name}</b>　玻璃板上的鐵粉 <b>${filData.length}</b> 粒，指北針 <b class="r">${needles.length}</b> 個<br>・鐵粉沿著<b>水平磁場</b>排成教科書上的平面圖<br>・越靠近磁極，鐵粉越密、發光磁力線越粗<br>・紅針指向磁場方向（由 <b class="r">N</b> 到 <b class="b">S</b>）<br><small>這就是把玻璃板放在磁鐵上、撒下鐵粉的經典實驗。</small>`
+        : `目前：<b>${name}</b>　磁力線 <b class="o">${viz.count()}</b> 條${st.dust ? `　鐵粉 <b>${filData.length}</b> 粒` : ''}<br>・磁力線在磁鐵外部由 <b class="r">N 極</b>出發，回到 <b class="b">S 極</b><br>・線上的<b class="o">箭頭 ＝ 磁場方向</b>（指北針 N 極所指的方向）<br>・兩極附近磁力線最密、也最粗，磁力最強<br>・周圍的小指北針會順著磁場偏轉<br><small>按「撒下鐵粉」，或切到「玻璃板俯視」看平面圖。</small>`);
     setCap(st.type === 'earth' ? `<small>透視地磁儀</small>指北針的 <b class="red">N 極</b>指向地理北極<span class="huge red">地理北極 ＝ 地磁 S 極！</span>`
-      : `<small>立體磁力線・${name}</small>磁力線由 <b class="red">N</b> 出發、繞到外側回到 <b class="blu">S</b>，是<b>立體的封閉曲線</b><span class="huge org">${st.dust ? '鐵粉排出了立體的磁力線！' : '按「撒下鐵粉」看看'}</span>`);
+      : st.plate ? `<small>玻璃板上的鐵粉・${name}</small>鐵粉躺在玻璃上，排出平面的磁力線<span class="huge org">兩極附近最密，磁場最強</span>`
+        : `<small>立體磁力線・${name}</small>磁力線由 <b class="red">N</b> 出發、繞到外側回到 <b class="blu">S</b>，是<b>立體的封閉曲線</b><span class="huge org">${st.dust ? '鐵粉排出了立體的磁力線！' : '按「撒下鐵粉」看看'}</span>`);
   }
   build();
   return { group, update, st, build, dust, viz };
@@ -910,7 +1033,7 @@ onTabChange = t => { bloomOn = false; handOn = false; };
    Tab 切換、鏡頭
    ========================================================= */
 const TABS = {
-  field: { group: FD.group, cam: () => ({ pos: [0, 4.3, 10], target: [0, 2.6, 0], fitW: window.innerWidth < window.innerHeight ? 7 : 8.2 }), update: FD.update },
+  field: { group: FD.group, cam: () => FD.st.plate ? ({ pos: [0.2, 11.6, 3.1], target: [0, 2.7, 0], fitW: window.innerWidth < window.innerHeight ? 8.4 : 8.6 }) : ({ pos: [0, 4.3, 10], target: [0, 2.6, 0], fitW: window.innerWidth < window.innerHeight ? 7 : 8.2 }), update: FD.update },
   domain: { group: DM.group, cam: () => ({ pos: [0, 3.9, 8.6], target: [0, 2.3, 0], fitW: window.innerWidth < window.innerHeight ? 6.6 : 7.6 }), update: DM.update },
   coil: { group: CL.group, cam: () => ({ pos: [0.4, 4.4, 9.4], target: [0.6, 2.0, 0], fitW: window.innerWidth < window.innerHeight ? 8.6 : 8.2 }), update: CL.update }
 };
