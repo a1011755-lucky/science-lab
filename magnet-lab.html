@@ -91,6 +91,7 @@
   .tag.lam { background: #1e6aa8; color: #fff; }
   .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
   .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .tag.hand { z-index: 8; font-size: .84rem; padding: 5px 10px; border: 2px solid rgba(255,255,255,.95); box-shadow: 0 6px 16px rgba(40,24,16,.28); }
   .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
 
   @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
@@ -207,6 +208,7 @@
         <button class="btn primary" id="clPower">⚡ 接通電源</button>
         <button class="btn" id="clRev">🔄 反轉電池正負極</button>
       </div>
+      <button class="btn on" id="clHand" type="button">✋ 顯示右手<small>目前顯示</small></button>
       <label class="lab" for="clTurns">🌀 線圈匝數<b><span id="clTurnsV">10</span> 匝</b></label>
       <input class="big" type="range" id="clTurns" min="5" max="20" step="1" value="10">
       <div class="ticks"><span>疏（5 匝）</span><span></span><span>密（20 匝）</span></div>
@@ -230,6 +232,7 @@
 import * as THREE from 'three';
 import { enhanceLiquid } from './liquid.js';
 import { mountLook, lacquer, poleBadge, enamelCopper, brushedSteel, softIron, pvc, strengthTube, strengthNorm } from './look.js';
+import { makeGrip } from './hand.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -466,7 +469,7 @@ function renderAll(dt) {
   renderer.setRenderTarget(null); renderer.render(scene, camera);
   if (bloomOn) { renderer.autoClear = false; overlay.render(renderer); renderer.autoClear = true; }
   // 安培右手最後畫、浮在磁力線光暈之上
-  if (handOn) { const bg = scene.background; scene.background = null; renderer.autoClear = false; renderer.clearDepth(); camera.layers.set(HAND_LAYER); renderer.render(scene, camera); camera.layers.set(0); renderer.autoClear = true; scene.background = bg; }
+  if (handOn) { const bg = scene.background; scene.background = null; renderer.autoClear = false; camera.layers.set(HAND_LAYER); renderer.render(scene, camera); camera.layers.set(0); renderer.autoClear = true; scene.background = bg; }
 }
 
 /* =========================================================
@@ -961,8 +964,21 @@ const CL = (() => {
   const clips = Array.from({ length: 14 }, (_, i) => { const m = shadowed(new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.016, 6, 18), clipM)); m.scale.set(1.7, 1, 1); const home = V3(2.9 + (i % 4) * 0.28 + rnd() * 0.08, 0.02, -0.5 + Math.floor(i / 4) * 0.32 + rnd() * 0.06); m.position.copy(home); m.rotation.x = -Math.PI / 2; m.rotation.z = rnd() * 3; group.add(m); return { m, home, rz: m.rotation.z }; });
 
 
-  const st = { on: false, turns: 10, I: 1, k: 0, level: '', rev: false, batRot: 0, flash: 0 };
+  const grip = makeGrip('x');
+  grip.position.set(0, Y, 0);
+  grip.scale.setScalar(1.15);
+  grip.traverse(o => o.layers.enable(HAND_LAYER));
+  group.add(grip);
+  const lHN = addLabel('coil', 'N 極', 'hand nP', V3(0, 0.18, 0), grip.userData.markers.thumb);
+  const lHI = addLabel('coil', '電流 I', 'hand cur', V3(0, 0.16, 0), grip.userData.markers.curl);
+  const st = { on: false, turns: 10, I: 1, k: 0, level: '', rev: false, batRot: 0, flash: 0, hand: true, handRot: 0 };
   $('clPower').addEventListener('click', () => { st.on = !st.on; });
+  $('clHand').addEventListener('click', () => {
+    st.hand = !st.hand;
+    const b = $('clHand');
+    b.classList.toggle('on', st.hand);
+    b.innerHTML = st.hand ? '✋ 顯示右手<small>目前顯示</small>' : '✋ 顯示右手<small>目前隱藏</small>';
+  });
   $('clTurns').addEventListener('input', () => { st.turns = +$('clTurns').value; buildCoil(st.turns); });
   $('clI').addEventListener('input', () => { st.I = +$('clI').value; });
   $('clRev').addEventListener('click', () => { st.rev = !st.rev; st.flash = 4; });
@@ -973,6 +989,12 @@ const CL = (() => {
     st.k = lerp(st.k, st.on ? 1 : 0, ease(dt * (st.on ? 10 : 3)));
     st.flash = Math.max(0, st.flash - dt);
     bloomOn = st.k > 0.02;
+    st.handRot = lerp(st.handRot, st.rev ? Math.PI : 0, ease(dt * 8));
+    grip.rotation.y = st.handRot;
+    const showH = st.hand && st.k > 0.4;
+    grip.visible = showH;
+    lHN.show = lHI.show = showH;
+    handOn = showH;
     // 電池瞬間轉 180°（平滑）
     st.batRot = lerp(st.batRot, st.rev ? Math.PI : 0, ease(dt * 9)); bat.rotation.y = st.batRot;
     bat.updateMatrixWorld(); lPos.pos.copy(bat.localToWorld(V3(-0.68, 0.42, 0))); lNeg.pos.copy(bat.localToWorld(V3(0.6, 0.42, 0))); lPos.off.copy(lPos.pos); lNeg.off.copy(lNeg.pos);
@@ -980,7 +1002,7 @@ const CL = (() => {
     const key = st.on ? `${Math.round(s * 10)}|${dir}` : '';
     if (key !== st.level) { st.level = key; if (key) { const n = Math.round(24 + 70 * s); const Qs = [{ p: V3(2.05 * dir, Y, 0), q: 1 }, { p: V3(-2.05 * dir, Y, 0), q: -1 }]; viz.set(traceAll([{ p: V3(2.05 * dir, 0, 0), q: 1 }, { p: V3(-2.05 * dir, 0, 0), q: -1 }], n, { seedR: 0.36, inside: p => Math.abs(p.x) < 2.3 && Math.hypot(p.y, p.z) < 0.3, bound: 3.6, minY: -2.1 }).map(L => L.map(p => p.add(V3(0, Y, 0)))), 0.015, Qs); } }
     viz.g.visible = st.k > 0.02 && !!st.level;
-    viz.mat.opacity = st.k * (0.35 + 0.6 * s); viz.pm.opacity = st.k; viz.pm.size = 0.14 + 0.14 * s;
+    viz.mat.opacity = st.k * (0.35 + 0.6 * s) * (showH ? 0.45 : 1); viz.pm.opacity = st.k * (showH ? 0.55 : 1); viz.pm.size = 0.14 + 0.14 * s;
     viz.mat.color.setHex(s > 0.6 ? 0xffd27a : 0xffa040);
     viz.update(dt, 0.6 + 1.4 * s, st.on ? 0.3 + 0.7 * s : 0);
     // 磁域對齊（方向跟著 N 極）
