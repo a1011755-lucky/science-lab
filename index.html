@@ -488,7 +488,7 @@ const COURSES = [
             k: ['地球內部構造', '板塊運動', '地震與火山', '褶皺與斷層', '地層與化石'] },
           { title: '宇宙中的天體', sum: '月相、周日運動、天球與太陽的視運動、四季。', labs: [{ t: '月相', u: 'moon-phases.html' }, { t: '日食、月食與潮汐', u: 'eclipse-tide-lab.html' }, { t: '周日運動', u: 'daily-motion.html' }, { t: '天球與太陽視運動', u: 'celestial-lab.html' }, { t: '太陽軌跡', u: 'celestial-lab.html#sun' }, { t: '緯度時光機', u: 'celestial-lab.html#lat' }], tag: '地科',
             k: ['月相變化', '周日運動', '天球', '太陽視運動', '晝夜與四季', '日食與月食'] },
-          { title: '千變萬化的天氣', sum: '大氣分層、氣壓與風、鋒面與颱風。', labs: [{ t: '大氣分層', u: 'atmo-lab.html#layers' }, { t: '高低氣壓', u: 'atmo-lab.html#pressure' }, { t: '鋒面', u: 'atmo-lab.html#front' }, { t: '颱風風向', u: 'typhoon-wind.html' }, { t: '颱風風量', u: 'clay-sim.html#typhoon' }], tag: '地科',
+          { title: '千變萬化的天氣', sum: '大氣分層、氣壓與風、鋒面與颱風。', labs: [{ t: '大氣分層', u: 'atmo-lab.html#layers' }, { t: '高低氣壓', u: 'atmo-lab.html#pressure' }, { t: '鋒面', u: 'atmo-lab.html#front' }, { t: '天氣圖判讀與臺灣的天氣', u: 'weather-map-lab.html' }, { t: '颱風風向', u: 'typhoon-wind.html' }, { t: '颱風風量', u: 'clay-sim.html#typhoon' }], tag: '地科',
             k: ['大氣分層', '氣壓與風', '高氣壓與低氣壓', '冷鋒與暖鋒', '颱風', '天氣圖'] },
           { title: '全球氣候變遷與因應', sum: '溫室效應、全球暖化與節能減碳。', labs: [{ t: '全球氣候變遷與因應', u: 'env-lab.html' }, { t: '土石流', u: 'env-lab.html#debris' }, { t: '空氣品質', u: 'env-lab.html#aqi' }], tag: '地科',
             k: ['溫室效應', '全球暖化', '極端氣候', '節能減碳'] }
@@ -530,7 +530,7 @@ function renderStats() {
   const stats = [
     { n: ready, label: '個已上線單元' },
     { n: pages, label: '座 3D 互動實驗室' },
-    { n: '283', label: '題會考題型自我檢測' }
+    { n: '288', label: '題會考題型自我檢測' }
   ];
   document.getElementById('heroStats').innerHTML = stats.map(s => `<div class="stat"><b>${s.n}</b><span>${s.label}</span></div>`).join('');
 }
