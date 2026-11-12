@@ -313,9 +313,16 @@ function makeEnergyBar(mode) {
 }
 function setEnergyBar(bar, E, scale) {
   bar.scale = scale;
+  // 每一段的高度用「目標 → 當前」平滑追趕（跟時間綁定：任何更新率的螢幕手感都一樣）
+  const now = performance.now(), dt = Math.min(0.05, (now - (bar.last ?? now)) / 1000); bar.last = now;
+  const kk = 1 - Math.exp(-dt * 14);
+  bar.h = bar.h || { Q: 0, Ue: 0, Ug: 0, Ek: 0 };
   let y = 0;
   ['Q', 'Ue', 'Ug', 'Ek'].forEach(k => {
-    const h = Math.max(0, E[k]) * scale;
+    const target = Math.max(0, E[k]) * scale;
+    bar.h[k] += (target - bar.h[k]) * kk;
+    if (Math.abs(target - bar.h[k]) < 0.0005) bar.h[k] = target;
+    const h = bar.h[k];
     const m = bar.segs[k];
     m.visible = h > 0.004;
     m.scale.y = Math.max(h, 0.0001);
@@ -440,6 +447,8 @@ const M1 = (() => {
   // 狀態：'ready' 準備（可調 V₀）｜'run' 播放｜'pause' 暫停（可調 V₀）
   let status = 'ready', F = 40, fr = 20, V0 = 0;
   let v = 0, x = 0, dist = 0, Q = 0, WF = 0, coinAcc = 0, smokeAcc = 0;
+  // 顯示用的「當前值」：每幀平滑追上滑桿的「目標值」F、fr、v。物理計算一律用真實值，算式才對得起來
+  let Fshow = F, frShow = fr, fricShow = 0, vShow = 0;
   const $F = $('sF'), $Fr = $('sFr'), $V0 = $('sV0');
   const paint = el => el.style.setProperty('--fill', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
   [$F, $Fr, $V0].forEach(paint);
@@ -458,6 +467,7 @@ const M1 = (() => {
   }
   function reset() { applyV0(); setStatus('ready'); }
 
+  // 滑桿事件只更新「目標值」和面板文字；3D 畫面在 update() 裡平滑追趕
   $F.addEventListener('input', e => { F = Number(e.target.value); $('fVal').textContent = `${F} N`; paint(e.target); });
   $Fr.addEventListener('input', e => { fr = Number(e.target.value); $('frVal').textContent = `${fr} N`; paint(e.target); });
   $V0.addEventListener('input', e => {
@@ -494,7 +504,14 @@ const M1 = (() => {
     if (status === 'run') physics(dt);
     const Ek = 0.5 * m * v * v;
     const Ek0 = 0.5 * m * V0 * V0;
-    const t = F / 100, k = fr / 100;
+    // 平滑追趕：當前值每幀逼近目標值（帶一點阻尼的滑順感）
+    const kk = 1 - Math.exp(-dt * 10);
+    Fshow += (F - Fshow) * kk; frShow += (fr - frShow) * kk;
+    if (Math.abs(F - Fshow) < 0.05) Fshow = F;
+    if (Math.abs(fr - frShow) < 0.05) frShow = fr;
+    vShow = status === 'run' ? v : vShow + (v - vShow) * kk;       // 播放中儀表跟真實速度；調 V₀ 時指針平滑掃過去
+    if (Math.abs(v - vShow) < 0.005) vShow = v;
+    const t = Fshow / 100, k = frShow / 100;
 
     // 地面捲動 + 粗糙程度
     stripes.forEach((s, i) => { s.position.x = ((-11 + i * 1.05 - x) % 23.1 + 23.1) % 23.1 - 11.5; });
@@ -520,8 +537,8 @@ const M1 = (() => {
     });
 
     // 推力箭頭：長度、粗細、亮度都隨 F 變大
-    pushArrow.visible = F > 0;
-    if (F > 0) {
+    pushArrow.visible = Fshow > 0.3;
+    if (Fshow > 0.3) {
       setXArrow(pushArrow, pShaft, pHead, -0.75, 1, 0.7 + 2.4 * t, 0.07 + 0.17 * t, 0.62 + Math.sin(performance.now() / 140) * 0.02);
       pushMat.color.copy(PALE).lerp(BRIGHT, t);
       pushMat.emissiveIntensity = 0.1 + 0.55 * t;
@@ -531,10 +548,12 @@ const M1 = (() => {
     lPush.el.textContent = `推力 F = ${F} N`;
     // 摩擦力箭頭：有摩擦且「在動或被推」時才出現
     const fricOn = fr > 0 && (v > 0 || F > 0);
-    fricArrow.visible = fricOn;
+    const shown = fricOn ? (v > 0 ? fr : Math.min(fr, F)) : 0;   // 靜止時是靜摩擦力，大小 = 推力（不超過最大值）
+    fricShow += (shown - fricShow) * kk;
+    if (Math.abs(shown - fricShow) < 0.05) fricShow = shown;
+    fricArrow.visible = fricShow > 0.3;
+    if (fricArrow.visible) setXArrow(fricArrow, fShaft, fHead, -0.85 - 0.5 - 1.6 * fricShow / 100, -1, 0.5 + 1.6 * fricShow / 100, 0.05 + 0.08 * fricShow / 100, 0.12, 0.75);
     if (fricOn) {
-      const shown = v > 0 ? fr : Math.min(fr, F);          // 靜止時是靜摩擦力，大小 = 推力（不超過最大值）
-      setXArrow(fricArrow, fShaft, fHead, -0.85 - 0.5 - 1.6 * shown / 100, -1, 0.5 + 1.6 * shown / 100, 0.05 + 0.08 * shown / 100, 0.12, 0.75);
       lFric.visible = true;
       lFric.pos.set(-1.4, -0.15, 1.1);
       lFric.el.textContent = v > 0 ? `摩擦力 f = ${fr} N` : `靜摩擦力 = ${shown} N`;
@@ -569,17 +588,17 @@ const M1 = (() => {
     $('gAcc').textContent = `${(net / m).toFixed(2)} m/s²`;
     $('v0Ek').innerHTML = `Ek = ½mV₀² = ½ × 10 × ${V0}² = <b>${Ek0.toFixed(0)} J</b>`
       + (V0 > 0 && V0 <= 5 ? `<br>試試看：V₀ 拉到 ${V0 * 2} m/s，動能會變 <b>4 倍</b>（${(Ek0 * 4).toFixed(0)} J）` : '');
-    drawGauge(v);
+    drawGauge(vShow, v);
     showEnergy(E, `初動能 <b>${Ek0.toFixed(1)} J</b> ＋ 推力作功 <b>${WF.toFixed(1)} J</b> − 摩擦生熱 <b>${Q.toFixed(1)} J</b> ＝ 動能 <b>${Ek.toFixed(1)} J</b><br>移動距離 ${dist.toFixed(1)} m（熱能 = f × 距離）`
       + (total * 1.05 > E_REF ? `<br><span style="color:#e5484d">能量條比例尺已縮小為 1 / ${((3.2 / E_REF) / bar.scale).toFixed(1)}（能量太大，所有長條等比例縮小）</span>` : ''));
   }
 
   /** 即時速度儀表板（半圓指針）：速度沒有上限，量程自動放大 20 → 40 → 80 → … m/s */
-  function drawGauge(speed) {
+  function drawGauge(speed, real = speed) {                 // speed：指針（平滑值）；real：數字（真實值）
     const c = $('gauge'), g = c.getContext('2d');
     const W = c.width, H = c.height, cx = W / 2, cy = H - 18, R = 100;
     let GMAX = 20;
-    while (speed > GMAX) GMAX *= 2;
+    while (Math.max(speed, real) > GMAX) GMAX *= 2;
     g.clearRect(0, 0, W, H);
     g.lineCap = 'round';
     g.lineWidth = 14; g.strokeStyle = '#ece6df';
@@ -600,7 +619,7 @@ const M1 = (() => {
     g.strokeStyle = '#1d1d1f'; g.lineWidth = 5;
     g.beginPath(); g.moveTo(cx + Math.cos(a) * (R - 40), cy + Math.sin(a) * (R - 40)); g.lineTo(cx + Math.cos(a) * (R + 6), cy + Math.sin(a) * (R + 6)); g.stroke();
     g.font = '800 26px -apple-system, "PingFang TC", sans-serif';
-    g.fillText(speed.toFixed(2), cx, cy - 34);
+    g.fillText(real.toFixed(2), cx, cy - 34);
     g.font = '11px -apple-system, "PingFang TC", sans-serif'; g.fillStyle = '#6e6e73';
     g.fillText('即時速度 V（m/s）', cx, cy - 16);
   }
