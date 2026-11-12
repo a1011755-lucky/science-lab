@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>日食、月食與潮汐</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+  .tabs.three .tab { font-size: .72rem; padding: 9px 2px; }
+  .objs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .objs.three { grid-template-columns: repeat(3, 1fr); }
+  .objs .btn { padding: 8px 4px; font-size: .78rem; margin-top: 0; }
+  .objs .btn.yes { background: #e3f1e6; color: #2e6b3f; } .objs .btn.no { background: #fde5e2; color: #a5311f; }
+  .orgcard { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin-top: 8px; font-size: .8rem; line-height: 1.65; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
+  .orgcard:empty { display: none; }
+  .orgcard h4 { font-size: .98rem; font-weight: 900; margin-bottom: 2px; }
+  .orgcard .pill { display: inline-block; font-size: .72rem; font-weight: 800; color: #fff; background: #7b5ea7; border-radius: 999px; padding: 1px 9px; margin: 2px 4px 2px 0; }
+  .orgcard i.sci { font-family: Georgia, serif; }
+  .orgcard table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .orgcard td, .orgcard th { padding: 2px 4px; border-bottom: 1px solid #efe6d8; font-size: .74rem; text-align: left; }
+  .orgcard tr.same { background: #e3f1e6; } .orgcard tr.diff td { color: #a8998a; }
+  .tag.big { font-size: .86rem; }
+  .stat table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: .74rem; }
+  .stat td, .stat th { padding: 3px 3px; border-bottom: 1px solid #efe6d8; text-align: left; white-space: nowrap; }
+  .stat tr.same { background: #e3f1e6; }
+  .tip { background: #fff3c4; color: #7a5300; border: 1.5px solid #e0b000; border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .82rem; font-weight: 800; line-height: 1.6; animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  .tip[hidden], .mapbox[hidden], .btn[hidden] { display: none; }
+  .ticks span:first-child { text-align: left; } .ticks span:last-child { text-align: right; }
+  .meter { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: .74rem; font-weight: 800; color: var(--ink-soft); }
+  .meter i { flex: 1; height: 16px; border-radius: 999px; background: linear-gradient(90deg, #f7efe6, #8b2e0f); position: relative; }
+  .meter i::after { content: ''; position: absolute; top: -4px; width: 6px; height: 24px; border-radius: 3px; background: var(--ink); left: var(--v, 50%); transform: translateX(-50%); transition: left .2s; }
+  .cap .eq { display: inline-flex; align-items: center; gap: 6px; font-size: 1.05em; font-weight: 900; }
+  .cap .arrs { display: inline-flex; flex-direction: column; line-height: .9; font-size: 1.1em; }
+  .cap .arrs span { opacity: .28; transition: opacity .3s, color .3s, transform .3s; }
+  .cap .arrs span.on { opacity: 1; color: #c62828; transform: scale(1.35); }
+  .cap .brown { color: #8b2e0f; }
+  .legend { display: flex; gap: 6px; margin: 8px 0 2px; font-size: .72rem; font-weight: 800; }
+  .legend .lg { flex: 1; text-align: center; border-radius: 999px; padding: 3px 0; color: #fff; }
+  .legend .f { background: #ff2d2d; } .legend .a { background: #22c55e; } .legend .w { background: #424242; } .legend .n { background: #29b6f6; }
+  .tag.vA { background: #16a34a; color: #fff; font-weight: 900; } .tag.vN { background: #29b6f6; color: #fff; font-weight: 900; }
+  .formula { font-size: 1.02rem; font-weight: 900; background: #fff1c9; border-radius: 10px; padding: 5px 8px; margin-bottom: 4px; text-align: center; } .bbtn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; color: #5d4037; }
+  .tag.vF { background: #ff2d2d; color: #fff; font-weight: 900; } .tag.vS { background: #29b6f6; color: #fff; font-weight: 900; } .tag.vW { background: #424242; color: #fff; font-weight: 900; } .tag.org { background: #ef6c00; color: #fff; font-weight: 900; }
+  .tip.ok { background: #e3f1e6; color: #1f5f32; border-color: #3f9a57; } .tip.bad { background: #fde5e2; color: #a5311f; border-color: #e53935; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+  .half { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px 9px; font-size: .76rem; line-height: 1.6; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
+  .half h4 { font-size: .86rem; font-weight: 900; margin-bottom: 2px; }
+  .half .res { margin-top: 4px; font-weight: 900; font-size: .9rem; border-radius: 10px; padding: 3px 6px; text-align: center; }
+  .half .res.pos { background: #e3f1e6; color: #1f5f32; } .half .res.neg { background: #fde5e2; color: #a5311f; } .half .res.zero { background: #efe9df; color: #7a6a5a; }
+  .legend .piv { background: #e0b800; } .legend .tq { background: #ff8a1f; }
+  .lvbtn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; color: #5d4037; }
+  .stat b.g { color: #2e7d32; } .stat b.r { color: #e53935; }
+  /* 毛玻璃：本頁規格 */
+  .panel.glass, .dock.glass, .skyBox.glass { background: rgba(255,255,255,0.5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 12px; color: #5d4037; }
+  .scaleNote { position: fixed; right: 14px; bottom: 10px; z-index: 9; font-size: .72rem; font-weight: 700; color: #8d6e63; background: rgba(255,255,255,.5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 12px; padding: 4px 10px; }
+  .skyBox { position: fixed; right: 16px; top: 16px; z-index: 9; width: 236px; padding: 8px; }
+  .skyBox[hidden] { display: none; }
+  .skyBox canvas { width: 100%; height: auto; border-radius: 10px; display: block; margin: 5px 0; }
+  .skyT { font-size: .76rem; font-weight: 700; line-height: 1.4; }
+  .row2.mini .btn { font-size: .7rem; padding: 5px 2px; margin-top: 0; }
+  .hint { font-size: .72rem; color: #8d6e63; background: rgba(255,255,255,.55); border-radius: 10px; padding: 5px 8px; margin: 6px 0 8px; }
+  .chk { display: flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 700; margin-top: 8px; cursor: pointer; }
+  .chk input { width: 17px; height: 17px; accent-color: #8d6e63; }
+  .cards { display: grid; gap: 5px; margin-top: 8px; }
+  .cards .card { background: rgba(255,255,255,.72); border-radius: 12px; padding: 6px 9px; font-size: .78rem; line-height: 1.55; box-shadow: 0 3px 10px rgba(93,64,55,.06); }
+  .terms { margin-top: 8px; background: rgba(255,255,255,.72); border-radius: 12px; padding: 7px 9px; font-size: .76rem; line-height: 1.7; }
+  .ph4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; } .ph4 .btn { margin-top: 0; padding: 8px 2px; }
+  .tcurve { width: 100%; height: 150px; display: block; margin-top: 8px; border-radius: 10px; }
+  .tw { margin-top: 8px; background: rgba(255,255,255,.72); border-radius: 12px; padding: 6px 9px; font-size: .78rem; }
+  .tw summary { font-weight: 800; cursor: pointer; }
+  .twmap { width: 100%; height: auto; margin-top: 6px; }
+  .tip.gold { background: #fff4d6; color: #7a5300; border-color: #f0b429; } .tip.red { background: #fde5e2; color: #a5311f; border-color: #e53935; }
+  .ticks { display: flex; justify-content: space-between; }
+  .tag.sunL { background: #fff1c2; color: #8a5a00; } .tag.umb { background: #3d3d3d; color: #fff; } .tag.pen { background: #cfcfcf; color: #333; }
+  .tag.eclL { background: #ffe0b2; color: #8a4b00; } .tag.wdL { background: #d6e9ff; color: #0b4d9a; } .tag.nodeL { background: #ffd8c9; color: #b23c17; }
+  .tag.pullL { background: #ff3b30; color: #fff; } .tag.sunPullL { background: #ffd59e; color: #8a4b00; } .tag.seaL { background: #d8efff; color: #0d5ea8; } .tag.portL { background: #fff; color: #b71c1c; }
+  .tag.hiL { background: #1565c0; color: #fff; } .tag.loL { background: #ef6c00; color: #fff; } .tag.bandL { background: #dcedc8; color: #33691e; }
+  .tag.nowL { font-size: .86rem; font-weight: 900; } .tag.nowL.hi { background: #1565c0; color: #fff; } .tag.nowL.lo { background: #ef6c00; color: #fff; } .tag.nowL.up { background: #d8efff; color: #0d5ea8; } .tag.nowL.down { background: #ffe9d6; color: #a14a00; }
+  .stat b.r { color: #e53935; }
+  @media (max-width: 767px) { .skyBox { width: 160px; top: auto; bottom: 74px; right: 8px; } .skyT { font-size: .64rem; } .scaleNote { bottom: auto; top: 64px; right: 8px; font-size: .62rem; } }
+  .zbtn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; }
+</style>
+<script src="quality.js"></script>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+<div class="scaleNote" id="scaleNote">大小與距離不是真實比例</div>
+<div class="skyBox glass" id="skyBox">
+  <div class="skyT" id="seSkyT"></div>
+  <canvas id="seSky" width="300" height="190"></canvas>
+  <div class="row2 mini">
+    <button class="btn seview on" data-v="umbra" type="button">站在本影區</button>
+    <button class="btn seview" data-v="pen" type="button">站在半影區</button>
+  </div>
+</div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g9">‹ 課程總覽</a>
+  <div class="title">日食、月食與潮汐</div>
+  <div class="body">
+    <div class="tabs three">
+      <button class="tab on" data-tab="solar">🌑 日食<small>太陽→月球→地球</small></button>
+      <button class="tab" data-tab="lunar">🌕 月食<small>太陽→地球→月球</small></button>
+      <button class="tab" data-tab="tide">🌊 潮汐<small>滿潮・乾潮・大小潮</small></button>
+    </div>
+    <div class="hint">月相的盈虧請見「月相」實驗室；這裡只提醒：<b>日食在朔、月食在望</b>。</div>
+
+    <!-- Tab 1 日食 -->
+    <section class="sec" data-tab="solar">
+      <div class="concept" style="--cc:#455a64"><div class="ct">日食：太陽－月球－地球</div><div class="cd">三者排成一直線，月相是<b>朔</b>（新月）</div></div>
+      <label class="lab" for="seP">🌙 月球公轉進度<b id="sePV">朔（新月）</b></label>
+      <input class="big" type="range" id="seP" min="0" max="100" step="0.5" value="0">
+      <div class="ticks"><span>朔</span><span>上弦</span><span>望</span><span>下弦</span><span>朔</span></div>
+      <div class="lab">🛰️ 月球距離</div>
+      <div class="row2">
+        <button class="btn sedist on" data-d="near" type="button">近地點</button>
+        <button class="btn sedist" data-d="far" type="button">遠地點</button>
+      </div>
+      <label class="chk"><input type="checkbox" id="seCone" checked> 顯示影子錐（本影、半影）</label>
+      <div class="stat" id="seStat"></div>
+      <div class="tip" id="seTip" hidden></div>
+      <div class="cards">
+        <div class="card">🌑 日食：太陽—月球—地球，月相是<b>朔</b></div>
+        <div class="card">⚫ <b>本影區</b>看到日全食，<b>半影區</b>看到日偏食</div>
+        <div class="card">💍 月球較遠、看起來比太陽小 → <b>日環食</b></div>
+      </div>
+    </section>
+
+    <!-- Tab 2 月食 -->
+    <section class="sec" data-tab="lunar" hidden>
+      <div class="concept" style="--cc:#b23c17"><div class="ct">月食：太陽－地球－月球</div><div class="cd">三者排成一直線，月相是<b>望</b>（滿月）；月球進入地球本影 → 月全食（暗紅色）</div></div>
+      <label class="lab" for="leP">🌙 月球公轉進度<b id="lePV">望（滿月）</b></label>
+      <input class="big" type="range" id="leP" min="0" max="100" step="0.5" value="50">
+      <div class="ticks"><span>朔</span><span>上弦</span><span>望</span><span>下弦</span><span>朔</span></div>
+      <label class="chk"><input type="checkbox" id="leCone" checked> 顯示影子錐</label>
+      <label class="chk"><input type="checkbox" id="leTilt"> 顯示軌道面夾角（白道與黃道）</label>
+      <div id="leNodeBox" hidden>
+        <label class="lab" for="leNode">🧭 交點線的方向<b><span id="leNodeV">60</span>°</b></label>
+        <input class="big" type="range" id="leNode" min="0" max="180" step="1" value="60">
+        <div class="ticks"><span>0° 交點線對準太陽</span><span>90° 最偏</span><span>180°</span></div>
+        <div class="desc">白道與黃道實際約有 <b>5°</b> 夾角（畫面角度已放大便於觀察）。交點線對準太陽時，朔、望才會發生日食、月食。</div>
+      </div>
+      <div class="stat" id="leStat"></div>
+      <div class="tip" id="leTip" hidden></div>
+      <div class="cards">
+        <div class="card">🌕 月食：太陽—地球—月球，月相是<b>望</b></div>
+        <div class="card">📐 白道與黃道約有 <b>5°</b> 夾角 → 大多數朔、望三者沒排成一直線</div>
+        <div class="card">🚫 地球的影子比月球大很多 → <b>沒有月環食</b></div>
+      </div>
+    </section>
+
+    <!-- Tab 3 潮汐 -->
+    <section class="sec" data-tab="tide" hidden>
+      <div class="concept" style="--cc:#1565c0"><div class="ct">潮汐：海水週期性的漲落</div><div class="cd">白天海水上漲稱「<b>潮</b>」、晚上上漲稱「<b>汐</b>」，兩者都可稱為潮</div></div>
+      <label class="lab" for="tdT">🕒 時間<b id="tdTV">09:00</b></label>
+      <input class="big" type="range" id="tdT" min="0" max="26" step="0.05" value="9">
+      <div class="ticks"><span>0 時</span><span>12 時</span><span>隔天 0 時</span><span>隔天 2 時</span></div>
+      <canvas class="tcurve" id="tdCurve"></canvas>
+      <div class="lab">🌙 月相（大潮、小潮）</div>
+      <div class="ph4">
+        <button class="btn tdph on" data-p="new" type="button">朔</button>
+        <button class="btn tdph" data-p="first" type="button">上弦</button>
+        <button class="btn tdph" data-p="full" type="button">望</button>
+        <button class="btn tdph" data-p="third" type="button">下弦</button>
+      </div>
+      <div class="stat" id="tdStat"></div>
+      <div class="tip" id="tdTip"></div>
+      <div class="terms">
+        <div><b>漲潮</b>：海水上升的過程</div>
+        <div><b>滿潮</b>：最高水位</div>
+        <div><b>退潮</b>（又稱<b>落潮</b>）：海水下降的「過程」，不是最低水位</div>
+        <div><b>乾潮</b>：最低水位</div>
+        <div><b>潮差</b>：滿潮與乾潮的水位差</div>
+        <div><b>潮間帶</b>：滿潮時被淹沒、乾潮時露出的沙灘</div>
+      </div>
+      <div class="cards">
+        <div class="card">⏱️ 潮汐週期約 <b>12 小時 25 分</b>，隔天延遲約 <b>50 分鐘</b></div>
+        <div class="card">🌙 月球距離較近，<b>作用比太陽大很多</b></div>
+        <div class="card">🌊 朔、望：成一直線 → <b>大潮</b>（潮差最大）</div>
+        <div class="card">〰️ 上弦、下弦：成垂直 → <b>小潮</b>（潮差最小）</div>
+      </div>
+      <details class="tw">
+        <summary>🇹🇼 臺灣的潮汐</summary>
+        <svg viewBox="0 0 230 300" class="twmap" aria-label="臺灣潮汐示意圖">
+          <defs><marker id="ah" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#1e88e5"/></marker></defs>
+          <rect x="0" y="0" width="230" height="300" rx="12" fill="#e3f1fb"/>
+          <text x="196" y="150" font-size="11" fill="#1565c0" text-anchor="middle" writing-mode="tb">太平洋</text>
+          <text x="38" y="150" font-size="10" fill="#1565c0" text-anchor="middle" writing-mode="tb">臺灣海峽</text>
+          <path d="M150,30 L172,52 L166,92 L158,138 L150,182 L136,228 L122,262 L112,246 L94,214 L78,176 L76,140 L86,104 L104,72 L126,44 Z" fill="#cfe0b0" stroke="#7a9a5a" stroke-width="1.5"/>
+          <path d="M205,40 C190,20 150,8 120,22 C95,35 78,60 70,90" fill="none" stroke="#1e88e5" stroke-width="2.4" marker-end="url(#ah)"/>
+          <path d="M205,270 C180,292 140,290 115,276 C95,262 80,240 70,214" fill="none" stroke="#1e88e5" stroke-width="2.4" marker-end="url(#ah)"/>
+          <circle cx="88" cy="128" r="5" fill="#e53935"/>
+          <text x="96" y="122" font-size="10" fill="#b71c1c" font-weight="700">臺中港</text>
+          <text x="96" y="135" font-size="8.5" fill="#b71c1c">潮差最大</text>
+          <text x="168" y="118" font-size="9" fill="#33691e" font-weight="700">東岸：滿潮較早</text>
+          <text x="40" y="200" font-size="9" fill="#33691e" font-weight="700">中部：最晚</text>
+        </svg>
+        <div class="desc">海水由太平洋從臺灣南、北兩端湧入臺灣海峽，所以<b>東岸滿潮比西岸早</b>，兩股海水在中部會合，<b>中部滿潮最晚</b>。臺灣潮差最大在<b>臺中港</b>：平常約 4 公尺，大潮可到 6 公尺。</div>
+        <div class="desc">🦀 潮間帶觀察選<b>乾潮</b>　🎣 釣魚選<b>漲潮</b>　🚢 貨輪進港選<b>滿潮</b></div>
+      </details>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'solar', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+/* =========================================================
+   共用小工具
+   ========================================================= */
+const lerp = (a, b, k) => a + (b - a) * k;
+const sphere = (r, mat, seg = 24) => new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg * 0.6 | 0)), mat);
+const cyl = (r1, r2, h, mat, seg = 32, open = false) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg, 1, open), mat);
+const rbox = (w, h, d, mat, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001)), mat);
+const glassM = (op = 0.16) => new THREE.MeshPhysicalMaterial({ color: 0xd8ecf4, emissive: 0x9fb8c4, emissiveIntensity: 0.12, sheen: 1, sheenColor: 0xffffff, transparent: true, opacity: op, roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0.05, side: THREE.DoubleSide, depthWrite: false });
+const shellM = (c, op) => new THREE.MeshPhysicalMaterial({ color: c, transparent: true, opacity: op, roughness: 0.2, clearcoat: 0.6, side: THREE.DoubleSide, depthWrite: false });
+let rs = 4242;
+const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+const glowSprite = (rgb, s = 0.5) => { const g = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(rgb), transparent: true, depthWrite: false })); g.scale.setScalar(s); return g; };
+const ease = k => 1 - Math.exp(-k);
+function makeArrow(color) {
+  const g = new THREE.Group(); const m = clay(color, { emissive: color, emissiveIntensity: 0.25 });
+  const shaft = cyl(0.07, 0.07, 1, m, 16); const head = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.34, 20), m);
+  g.add(shaft, head); shadowed(g);
+  g.setLen = L => { L = Math.max(0.05, L); shaft.scale.y = L; shaft.position.y = L / 2; head.position.y = L + 0.17; };
+  g.setLen(1); return g;
+}
+/** 畫布貼圖面板（碼錶螢幕等） */
+function canvasPanel(w, h, pxW = 512) {
+  const c = document.createElement('canvas'); c.width = pxW; c.height = Math.round(pxW * h / w);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t, toneMapped: false }));
+  return { c, g: c.getContext('2d'), t, m };
+}
+let onTabChange = () => {};
+
+/* =========================================================
+   日食、月食與潮汐：共用工具
+   ・教具＝原木（模式 A）；向量＝發光（模式 B）
+   ・天體用球體（物品，允許）；地球、月球用自訂著色器：
+     依「從表面這一點看出去，太陽圓面被遮住多少」算出本影與半影，影子位置與大小都由幾何自動得到
+   ========================================================= */
+const WOODM = (c = 0xdeb887) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, metalness: 0 });
+const C_PULL = 0xff3b30, C_SUNPULL = 0xff9500;
+const AXY = new THREE.Vector3(0, 1, 0);
+function glowArrow(color, r = 0.06, op = 1) {
+  const g = new THREE.Group(), m = new THREE.MeshBasicMaterial({ color, transparent: op < 1, opacity: op, toneMapped: false, depthWrite: op >= 1 });
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, 16), m), HL = r * 4.6;
+  const head = new THREE.Mesh(new THREE.ConeGeometry(r * 2.5, HL, 24), m);
+  g.add(shaft, head);
+  g.set = (from, to) => {
+    const d = to.clone().sub(from), L = d.length(); g.visible = L > 0.05; if (!g.visible) return;
+    g.position.copy(from); g.quaternion.setFromUnitVectors(AXY, d.normalize());
+    const hl = Math.min(HL, L * 0.5), sl = Math.max(0.001, L - hl);
+    shaft.scale.y = sl; shaft.position.y = sl / 2; head.scale.set(1, hl / HL, 1); head.position.y = sl + hl / 2;
+  };
+  return g;
+}
+let seedE = 11;
+const rndE = () => (seedE = (seedE * 16807) % 2147483647) / 2147483647;
+/** 地球：海洋＋大陸色塊＋雲 */
+function earthTexture() {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512; const g = c.getContext('2d');
+  const sea = g.createLinearGradient(0, 0, 0, 512); sea.addColorStop(0, '#5fa8d8'); sea.addColorStop(0.5, '#2f7fc1'); sea.addColorStop(1, '#5fa8d8');
+  g.fillStyle = sea; g.fillRect(0, 0, 1024, 512);
+  const blob = (x, y, rx, ry, col) => { g.fillStyle = col; for (let i = 0; i < 26; i++) { const a = rndE() * Math.PI * 2, d = Math.sqrt(rndE()); g.beginPath(); g.ellipse(x + Math.cos(a) * rx * d, y + Math.sin(a) * ry * d, rx * (0.25 + rndE() * 0.35), ry * (0.25 + rndE() * 0.35), rndE() * 3, 0, Math.PI * 2); g.fill(); } };
+  [[200, 150, 110, 80], [250, 330, 60, 95], [520, 140, 90, 70], [560, 300, 70, 110], [760, 150, 170, 85], [850, 360, 70, 45], [690, 250, 30, 30]].forEach(([x, y, rx, ry]) => { blob(x, y, rx, ry, '#7bb36a'); blob(x + 8, y + 6, rx * 0.6, ry * 0.6, '#a9b86a'); });
+  g.fillStyle = '#f4f7fa'; g.fillRect(0, 0, 1024, 28); g.fillRect(0, 484, 1024, 28);
+  g.fillStyle = 'rgba(255,255,255,.45)';
+  for (let i = 0; i < 60; i++) { g.beginPath(); g.ellipse(rndE() * 1024, 60 + rndE() * 390, 30 + rndE() * 70, 6 + rndE() * 10, (rndE() - 0.5) * 0.4, 0, Math.PI * 2); g.fill(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+}
+/** 月球：灰色表面＋環形山 */
+function moonTexture() {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 256; const g = c.getContext('2d');
+  g.fillStyle = '#bdb8b0'; g.fillRect(0, 0, 512, 256);
+  for (let i = 0; i < 9; i++) { g.fillStyle = 'rgba(110,105,100,.35)'; g.beginPath(); g.ellipse(rndE() * 512, 40 + rndE() * 170, 25 + rndE() * 40, 18 + rndE() * 25, rndE() * 3, 0, Math.PI * 2); g.fill(); }
+  for (let i = 0; i < 70; i++) {
+    const x = rndE() * 512, y = 20 + rndE() * 216, r = 2 + Math.pow(rndE(), 2.2) * 16;
+    g.fillStyle = 'rgba(90,86,82,.45)'; g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+    g.strokeStyle = 'rgba(240,236,228,.55)'; g.lineWidth = Math.max(1, r * 0.25); g.beginPath(); g.arc(x - r * 0.12, y - r * 0.12, r, Math.PI * 0.9, Math.PI * 1.9); g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/**
+ * 天體著色器：太陽照亮的那一面亮、背面暗；
+ * occ（遮擋物）擋住太陽時，依「太陽圓面被遮住的比例」變暗 → 本影（全黑）、半影（部分變暗）自然出現。
+ * redden＝1 時，被完全遮住的部分變成暗紅色（月全食）。
+ */
+function bodyMat(map, { redden = 0, amb = 0.16 } = {}) {
+  return new THREE.ShaderMaterial({
+    uniforms: { map: { value: map }, sunPos: { value: new THREE.Vector3() }, sunR: { value: 1 }, occPos: { value: new THREE.Vector3(999, 999, 999) }, occR: { value: 0.001 }, redden: { value: redden }, amb: { value: amb } },
+    vertexShader: 'varying vec2 vUv; varying vec3 vN; varying vec3 vW; void main() { vUv = uv; vN = normalize(mat3(modelMatrix) * normal); vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+    fragmentShader: `uniform sampler2D map; uniform vec3 sunPos; uniform float sunR; uniform vec3 occPos; uniform float occR; uniform float redden; uniform float amb;
+      varying vec2 vUv; varying vec3 vN; varying vec3 vW;
+      void main() {
+        vec3 c = texture2D(map, vUv).rgb;
+        vec3 toS = sunPos - vW, toO = occPos - vW;
+        float dS = length(toS), dO = length(toO);
+        float aS = asin(clamp(sunR / dS, 0.0, 1.0)), aO = asin(clamp(occR / max(dO, occR + 1e-3), 0.0, 1.0));
+        float sep = acos(clamp(dot(toS / dS, toO / dO), -1.0, 1.0));
+        float full = min(1.0, (aO * aO) / (aS * aS));
+        float cover = 0.0;
+        if (dot(toO, toS) > 0.0 && dO < dS) {
+          if (sep <= abs(aS - aO)) cover = full;
+          else if (sep < aS + aO) cover = full * (aS + aO - sep) / (2.0 * min(aS, aO));
+        }
+        float lit = max(dot(normalize(vN), toS / dS), 0.0);
+        float light = lit * (1.0 - 0.93 * pow(cover, 0.65));
+        vec3 col = c * (amb + (1.0 - amb) * light);
+        float um = smoothstep(0.82, 1.0, cover) * redden * lit;
+        col = mix(col, c * vec3(0.62, 0.17, 0.08) * 0.9 + vec3(0.05, 0.0, 0.0), um);
+        gl_FragColor = vec4(col, 1.0);
+        #include <colorspace_fragment>
+      }`
+  });
+}
+/** 從某一點看出去：太陽與遮擋物的視半徑、兩者中心夾角 */
+function seeFrom(P, S, rs, O, ro) {
+  const toS = S.clone().sub(P), toO = O.clone().sub(P), dS = toS.length(), dO = toO.length();
+  return { aS: Math.asin(Math.min(1, rs / dS)), aO: Math.asin(Math.min(1, ro / dO)), sep: toS.angleTo(toO), front: toO.dot(toS) > 0 };
+}
+/** 影子錐（本影、半影、日環食區）：從遮擋物往背向太陽方向延伸 */
+function ShadowCones(parent) {
+  const um = new THREE.MeshBasicMaterial({ color: 0x2e2e2e, transparent: true, opacity: 0.34, depthWrite: false, side: THREE.DoubleSide });
+  const pm = new THREE.MeshBasicMaterial({ color: 0x8c8c8c, transparent: true, opacity: 0.14, depthWrite: false, side: THREE.DoubleSide });
+  const am = new THREE.MeshBasicMaterial({ color: 0xffc94a, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide });
+  const mk = m => { const x = new THREE.Mesh(new THREE.BufferGeometry(), m); x.renderOrder = 4; parent.add(x); return x; };
+  const U = mk(um), P = mk(pm), A = mk(am);
+  let key = '', hasA = false;
+  const place = (mesh, from, dir, len, r0, r1) => {
+    mesh.geometry.dispose(); mesh.geometry = new THREE.CylinderGeometry(Math.max(0.001, r0), Math.max(0.001, r1), Math.max(0.001, len), 48, 1, true);
+    mesh.position.copy(from).addScaledVector(dir, len / 2); mesh.quaternion.setFromUnitVectors(AXY, dir.clone().negate()); mesh.visible = len > 0.01;
+  };
+  return {
+    U, P, A,
+    set(S, rs, O, ro, len, show) {
+      U.visible = P.visible = show; A.visible = show && hasA; if (!show) return {};
+      const dir = O.clone().sub(S).normalize(), D = S.distanceTo(O);
+      const Lu = rs > ro ? D * ro / (rs - ro) : 1e9;                  // 本影的頂點距離
+      const k = [S.x, S.y, S.z, O.x, O.y, O.z, len].map(v => v.toFixed(3)).join();
+      if (k !== key) {
+        key = k;
+        const lu = Math.min(Lu, len);
+        place(U, O, dir, lu, ro, ro * (1 - lu / Lu));
+        place(P, O, dir, len, ro, ro + len * (rs + ro) / D);
+        hasA = Lu < len;
+        if (hasA) place(A, O.clone().addScaledVector(dir, Lu), dir, len - Lu, 0.001, ro * (len - Lu) / Lu); else A.visible = false;
+      }
+      return { Lu };
+    }
+  };
+}
+/** 太陽：暖黃色發光球＋光暈，放在木頭支架上 */
+function makeSun(parent, pos, r) {
+  const g = new THREE.Group(); g.position.copy(pos); parent.add(g);
+  g.add(new THREE.Mesh(new THREE.SphereGeometry(r, 48, 32), new THREE.MeshBasicMaterial({ color: 0xffd36b, toneMapped: false })));
+  const glow = (s, op) => { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('255,196,90'), transparent: true, opacity: op, depthWrite: false })); sp.scale.setScalar(s); g.add(sp); return sp; };
+  glow(r * 4.2, 0.85); const g2 = glow(r * 7.5, 0.35);
+  stand(parent, pos, r);
+  return { g, pulse: t => g2.scale.setScalar(r * (7.5 + 0.4 * Math.sin(t * 1.6))) };
+}
+/** 木頭支架：底座＋細柱（天體下方） */
+function stand(parent, pos, r) {
+  const h = pos.y - r - 0.05;
+  const rod = shadowed(cyl(0.05, 0.06, h, WOODM(0xc49a6c), 14)); rod.position.set(pos.x, h / 2, pos.z); parent.add(rod);
+  const base = shadowed(cyl(0.42, 0.5, 0.12, WOODM(), 36)); base.position.set(pos.x, 0.06, pos.z); parent.add(base);
+  return rod;
+}
+const PHASES = [[0, '朔（新月）'], [0.07, '眉月'], [0.2, '上弦月'], [0.3, '盈凸月'], [0.45, '望（滿月）'], [0.55, '虧凸月'], [0.7, '下弦月'], [0.8, '殘月'], [0.93, '朔（新月）']];
+const phaseName = p => { let n = PHASES[0][1]; for (const [k, s] of PHASES) if (p >= k - 1e-9) n = s; return n; };
+/** 從地球看出去的小視窗（canvas 2D）：太陽圓面與月球圓面 */
+function drawSky(cv, v, mode) {
+  const g = cv.getContext('2d'), W = cv.width, H = cv.height, cx = W / 2, cy = H / 2;
+  const k = (Math.min(W, H) * 0.3) / v.aS, rs = v.aS * k, rm = v.aO * k;
+  g.clearRect(0, 0, W, H);
+  const sky = g.createLinearGradient(0, 0, 0, H);
+  const dark = v.state === 'total' ? 1 : v.state === 'annular' ? 0.45 : v.state === 'partial' ? 0.25 : 0;
+  sky.addColorStop(0, `rgb(${Math.round(150 - 130 * dark)},${Math.round(200 - 180 * dark)},${Math.round(240 - 190 * dark)})`); sky.addColorStop(1, `rgb(${Math.round(210 - 180 * dark)},${Math.round(232 - 200 * dark)},${Math.round(250 - 200 * dark)})`);
+  g.fillStyle = sky; g.fillRect(0, 0, W, H);
+  if (v.state === 'total') { const cor = g.createRadialGradient(cx, cy, rs * 0.9, cx, cy, rs * 2.4); cor.addColorStop(0, 'rgba(255,250,230,.9)'); cor.addColorStop(1, 'rgba(255,250,230,0)'); g.fillStyle = cor; g.beginPath(); g.arc(cx, cy, rs * 2.4, 0, Math.PI * 2); g.fill(); }
+  const sun = g.createRadialGradient(cx, cy, 0, cx, cy, rs); sun.addColorStop(0, '#fff6c8'); sun.addColorStop(0.75, '#ffd34d'); sun.addColorStop(1, '#ffb02e');
+  g.fillStyle = sun; g.beginPath(); g.arc(cx, cy, rs, 0, Math.PI * 2); g.fill();
+  if (v.front && v.sep < v.aS + v.aO + 0.02) {
+    const off = v.sep * k;
+    g.fillStyle = '#2b2a33'; g.beginPath(); g.arc(cx + off * Math.cos(mode), cy - off * Math.sin(mode), rm, 0, Math.PI * 2); g.fill();
+  }
+}
+
+/* =========================================================
+   日月地模型（Tab 1 日食、Tab 2 月食共用）
+   ========================================================= */
+function makeOrrery(key, cfg) {
+  const group = new THREE.Group(); scene.add(group);
+  const Y0 = 2.5, S = V3(cfg.sunX, Y0, 0), E = V3(cfg.earthX, Y0, 0);
+  const sun = makeSun(group, S, cfg.RS);
+  const eTex = earthTexture(), mTex = moonTexture();
+  const earthM = bodyMat(eTex), moonM = bodyMat(mTex, { redden: 1, amb: 0.12 });
+  const earth = new THREE.Mesh(new THREE.SphereGeometry(cfg.RE, 64, 40), earthM); earth.position.copy(E); earth.rotation.z = 0.12; group.add(earth);
+  stand(group, E, cfg.RE);
+  const moon = new THREE.Mesh(new THREE.SphereGeometry(cfg.RM, 48, 32), moonM); group.add(moon);
+  [earthM, moonM].forEach(m => { m.uniforms.sunPos.value.copy(S); m.uniforms.sunR.value = cfg.RSeff; });
+  // 月球軌道（白道）：細環
+  const ringM = new THREE.MeshBasicMaterial({ color: 0x8d6e63, transparent: true, opacity: 0.55 });
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1, 0.012, 6, 160), ringM); ring.position.copy(E); group.add(ring);
+  const ringPos = new THREE.Group(); ringPos.position.copy(E); group.add(ringPos);
+  // 日地連線（淡虛線）
+  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([S, V3(E.x + 4.5, Y0, 0)]), new THREE.LineDashedMaterial({ color: 0xa1887f, dashSize: 0.18, gapSize: 0.12, transparent: true, opacity: 0.6 }));
+  line.computeLineDistances(); group.add(line);
+  const cones = ShadowCones(group);
+  addLabel(key, '太陽', 'small sunL', V3(S.x, Y0 + cfg.RS + 0.55, 0));
+  const lE = addLabel(key, '地球', 'small', V3(E.x, Y0 - cfg.RE - 0.45, 0.6));
+  const lM = addLabel(key, '月球', 'small', V3(0, 0, 0));
+  const lU = addLabel(key, '本影', 'small umb', V3(0, 0, 0)), lP = addLabel(key, '半影', 'small pen', V3(0, 0, 0));
+  return { group, S, E, Y0, sun, earth, moon, earthM, moonM, ring, ringPos, cones, lM, lU, lP, lE, cfg };
+}
+const moonDir = (th, node, incl) => {
+  const flat = V3(Math.cos(th), 0, -Math.sin(th));
+  if (!incl) return flat;
+  const n = V3(Math.cos(node), 0, -Math.sin(node));
+  return flat.applyQuaternion(new THREE.Quaternion().setFromAxisAngle(n, incl));
+};
+
+/* =========================================================
+   Tab 1：日食
+   ========================================================= */
+const SE = (() => {
+  const O = makeOrrery('solar', { sunX: -7.5, earthX: 3.5, RS: 1.5, RSeff: 1.5, RE: 0.95, RM: 0.34 });
+  const st = { p: 0, far: false, cones: true, view: 'umbra' };
+  $('seP').addEventListener('input', () => { st.p = +$('seP').value / 100; });
+  document.querySelectorAll('.sedist').forEach(b => b.addEventListener('click', () => { st.far = b.dataset.d === 'far'; document.querySelectorAll('.sedist').forEach(x => x.classList.toggle('on', x === b)); }));
+  $('seCone').addEventListener('change', () => { st.cones = $('seCone').checked; });
+  document.querySelectorAll('.seview').forEach(b => b.addEventListener('click', () => { st.view = b.dataset.v; document.querySelectorAll('.seview').forEach(x => x.classList.toggle('on', x === b)); }));
+  const sky = $('seSky'), skyT = $('seSkyT');
+  function update(dt) {
+    const R = st.far ? 3.4 : 2.2, th = Math.PI + st.p * Math.PI * 2;
+    const M = O.E.clone().addScaledVector(moonDir(th, 0, 0), R);
+    O.moon.position.copy(M); O.moon.rotation.y = -th;
+    O.ring.scale.setScalar(R); O.ring.rotation.x = Math.PI / 2;
+    O.earth.rotation.y += dt * 0.25;
+    O.sun.pulse(wall);
+    // 月球擋住太陽 → 地球表面出現月影
+    O.earthM.uniforms.occPos.value.copy(M); O.earthM.uniforms.occR.value = O.cfg.RM;
+    O.moonM.uniforms.occPos.value.set(999, 999, 999);
+    const r = O.cones.set(O.S, O.cfg.RSeff, M, O.cfg.RM, M.distanceTo(O.E) + O.cfg.RE + 0.6, st.cones);
+    // 影子落在地表的位置：月影軸線最靠近地心的那一點
+    const dir = M.clone().sub(O.S).normalize(), tE = O.E.clone().sub(M).dot(dir);
+    const axisP = M.clone().addScaledVector(dir, tE), miss = axisP.distanceTo(O.E);
+    const nrm = (miss < 1e-4 ? dir.clone().negate() : axisP.clone().sub(O.E).normalize());
+    const subP = O.E.clone().addScaledVector(nrm, O.cfg.RE);
+    // 觀察者：本影中心 或 旁邊的半影區
+    let viewer = subP;
+    if (st.view === 'pen') { const side = V3(0, 1, 0).cross(dir).normalize(); viewer = O.E.clone().addScaledVector(nrm.clone().addScaledVector(side, 0.5).normalize(), O.cfg.RE); }
+    const v = seeFrom(viewer, O.S, O.cfg.RSeff, M, O.cfg.RM);
+    const facing = viewer.clone().sub(O.E).dot(O.S.clone().sub(viewer)) > 0;
+    v.state = !v.front || !facing || v.sep >= v.aS + v.aO ? 'none' : v.sep <= Math.abs(v.aS - v.aO) ? (v.aO >= v.aS ? 'total' : 'annular') : 'partial';
+    v.front = v.front && facing;
+    sky.width = 300; sky.height = 190; drawSky(sky, v, 2.4);
+    const NAME = { total: '日全食', annular: '日環食', partial: '日偏食', none: '沒有日食' };
+    skyT.innerHTML = `${st.view === 'pen' ? '站在半影區' : '站在本影區（月影中心）'}看太陽：<b>${NAME[v.state]}</b>`;
+    // 標籤
+    O.lM.pos.copy(M).add(V3(0, 0.6, 0)); O.lM.off.copy(O.lM.pos);
+    const showSh = st.cones && v.front && miss < O.cfg.RE + 0.9;
+    O.lU.show = showSh && !st.far; O.lU.pos.copy(M).addScaledVector(dir, Math.min(r.Lu || 1, 0.9)).add(V3(0, 0.35, 0)); O.lU.off.copy(O.lU.pos);
+    O.lP.show = showSh; O.lP.pos.copy(M).addScaledVector(dir, 1.0).add(V3(0, -0.85, 0.3)); O.lP.off.copy(O.lP.pos);
+    const ph = phaseName(st.p), aligned = v.state !== 'none' && st.view === 'umbra';
+    $('sePV').textContent = ph;
+    const tip = $('seTip');
+    tip.hidden = !aligned; tip.className = 'tip ' + (st.far ? 'gold' : 'ok');
+    tip.textContent = st.far ? '💍 月球在遠地點，看起來比太陽小 → 擋不住整個太陽，周圍露出金色光環：日環食' : '🌑 月球在近地點，看起來比太陽大 → 本影區的人看到太陽被完全遮住：日全食';
+    setHTML('seStat', `月相：<b>${ph}</b>　月球位置：<b>${st.far ? '遠地點' : '近地點'}</b><br>從本影中心看：月球視大小是太陽的 <b class="b">${(v.aO / v.aS * 100).toFixed(0)}%</b><br><small>${v.state === 'none' ? '太陽、月球、地球沒有排成一直線 → 月影落在地球外面，沒有日食。' : '本影區（深灰）看到日全食或日環食；外圍的半影區（淺灰）看到日偏食。'}</small>`);
+    setCap(v.state === 'none' && st.view === 'umbra' ? `<small>日食</small>月相是<b>朔</b>時，太陽、月球、地球才會排成一直線<span class="huge">拖曳滑桿到「朔」</span>`
+      : `<small>日食：太陽 → 月球 → 地球</small>月相是<b>朔</b>，月球的影子落在地球上<span class="huge ${v.state === 'annular' ? 'org' : 'red'}">${NAME[v.state]}</span>`);
+  }
+  return { group: O.group, update, st, O };
+})();
+
+/* =========================================================
+   Tab 2：月食，與「為什麼不是每個月都有？」
+   ========================================================= */
+const LE = (() => {
+  const O = makeOrrery('lunar', { sunX: -7.5, earthX: 2.6, RS: 1.5, RSeff: 0.75, RE: 0.75, RM: 0.3 });
+  const R = 3.6, INCL = 25 * Math.PI / 180;                 // 實際約 5°，畫面放大成 25°
+  // 黃道面（地球繞太陽的平面，暖色）與白道面（月球軌道面，藍色）
+  const planeMat = c => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.13, side: THREE.DoubleSide, depthWrite: false });
+  const ecl = new THREE.Mesh(new THREE.CircleGeometry(R + 0.9, 96), planeMat(0xffb74d)); ecl.rotation.x = -Math.PI / 2; ecl.position.copy(O.E); ecl.renderOrder = 2; O.group.add(ecl);
+  const wd = new THREE.Group(); wd.position.copy(O.E); O.group.add(wd);
+  const wdDisc = new THREE.Mesh(new THREE.CircleGeometry(R + 0.35, 96), planeMat(0x4fa3ff)); wdDisc.rotation.x = -Math.PI / 2; wdDisc.renderOrder = 2; wd.add(wdDisc);
+  const nodeLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V3(-(R + 1), 0, 0), V3(R + 1, 0, 0)]), new THREE.LineDashedMaterial({ color: 0xd84315, dashSize: 0.16, gapSize: 0.1 }));
+  nodeLine.computeLineDistances(); O.group.add(nodeLine); nodeLine.position.copy(O.E);
+  const lEcl = addLabel('lunar', '黃道面', 'small eclL', V3(0, 0, 0)), lWd = addLabel('lunar', '白道面', 'small wdL', V3(0, 0, 0)), lNode = addLabel('lunar', '交點線', 'small nodeL', V3(0, 0, 0));
+  const lAng = addLabel('lunar', '約 5°（角度已放大便於觀察）', 'small wdL', V3(0, 0, 0));
+  const st = { p: 0.5, tilt: false, node: 60 };
+  $('leP').addEventListener('input', () => { st.p = +$('leP').value / 100; });
+  $('leTilt').addEventListener('change', () => { st.tilt = $('leTilt').checked; $('leNodeBox').hidden = !st.tilt; });
+  $('leNode').addEventListener('input', () => { st.node = +$('leNode').value; });
+  const cone2 = ShadowCones(O.group);                       // 月球的影子（看朔時有沒有日食）
+  function update(dt) {
+    const th = Math.PI + st.p * Math.PI * 2, node = st.node * Math.PI / 180, incl = st.tilt ? INCL : 0;
+    const M = O.E.clone().addScaledVector(moonDir(th, node, incl), R);
+    O.moon.position.copy(M); O.moon.rotation.y = -th;
+    // 軌道環與白道面跟著傾斜
+    const q = new THREE.Quaternion().setFromAxisAngle(V3(Math.cos(node), 0, -Math.sin(node)), incl);
+    O.ring.scale.setScalar(R); O.ring.quaternion.copy(q).multiply(new THREE.Quaternion().setFromAxisAngle(V3(1, 0, 0), Math.PI / 2));
+    wd.quaternion.copy(q); wd.visible = ecl.visible = st.tilt;
+    nodeLine.rotation.y = node; nodeLine.visible = st.tilt;
+    O.earth.rotation.y += dt * 0.25; O.sun.pulse(wall);
+    // 地球擋住太陽 → 月球進入地影；月球擋住太陽 → 地球上有月影
+    O.moonM.uniforms.occPos.value.copy(O.E); O.moonM.uniforms.occR.value = O.cfg.RE;
+    O.earthM.uniforms.occPos.value.copy(M); O.earthM.uniforms.occR.value = O.cfg.RM;
+    const full = st.p > 0.25 && st.p < 0.75;
+    O.cones.set(O.S, O.cfg.RSeff, O.E, O.cfg.RE, R + 0.9, full);
+    cone2.set(O.S, O.cfg.RSeff, M, O.cfg.RM, M.distanceTo(O.E) + 1.2, !full && $('leCone').checked);
+    O.cones.U.visible = O.cones.U.visible && $('leCone').checked; O.cones.P.visible = O.cones.P.visible && $('leCone').checked;
+    // 月球被地影遮住多少（看月心）
+    const ax = O.E.clone().sub(O.S).normalize(), along = M.clone().sub(O.E).dot(ax);
+    const dAx = M.clone().sub(O.E).addScaledVector(ax, -along).length();
+    const D = O.S.distanceTo(O.E), Lu = O.cfg.RSeff > O.cfg.RE ? D * O.cfg.RE / (O.cfg.RSeff - O.cfg.RE) : 1e9;
+    const ru = O.cfg.RE * (1 - along / Lu);                   // 月球那裡的地球本影半徑
+    const inU = along > 0 && dAx <= ru - O.cfg.RM;            // 整個月球都在本影
+    const touchU = along > 0 && dAx < ru + O.cfg.RM;
+    const state = inU ? 'total' : touchU ? 'partial' : 'none';
+    // 朔：月影有沒有落到地球
+    const dir = M.clone().sub(O.S).normalize(), axisP = M.clone().addScaledVector(dir, O.E.clone().sub(M).dot(dir));
+    const solarHit = !full && O.E.clone().sub(M).dot(dir) > 0 && axisP.distanceTo(O.E) < O.cfg.RE + 0.15;
+    O.lM.pos.copy(M).add(V3(0, 0.55, 0)); O.lM.off.copy(O.lM.pos);
+    O.lU.show = full && $('leCone').checked; O.lU.pos.copy(O.E).add(V3(R * 0.55, 0.35, 0)); O.lU.off.copy(O.lU.pos);
+    O.lP.show = full && $('leCone').checked; O.lP.pos.copy(O.E).add(V3(R * 0.62, -1.15, 0.4)); O.lP.off.copy(O.lP.pos);
+    lEcl.show = lWd.show = lNode.show = lAng.show = st.tilt;
+    lEcl.pos.copy(O.E).add(V3(-1.2, -0.25, R + 0.6)); lEcl.off.copy(lEcl.pos);
+    lWd.pos.copy(O.E).add(V3(0, 0, -(R + 0.2)).applyQuaternion(q)).add(V3(0, 0.35, 0)); lWd.off.copy(lWd.pos);
+    lNode.pos.copy(O.E).add(V3(R + 1.1, 0, 0).applyAxisAngle(V3(0, 1, 0), node)).add(V3(0, 0.25, 0)); lNode.off.copy(lNode.pos);
+    lAng.pos.copy(O.E).add(V3(0, 0, -(R + 0.2)).applyQuaternion(q)).add(V3(0, -0.15, 0)); lAng.off.copy(lAng.pos);
+    const ph = phaseName(st.p);
+    $('lePV').textContent = ph; $('leNodeV').textContent = st.node;
+    const off = M.y - O.E.y;
+    const tip = $('leTip');
+    const nearFull = Math.abs(st.p - 0.5) < 0.03, nearNew = st.p < 0.03 || st.p > 0.97;
+    if (nearFull && state === 'total') { tip.hidden = false; tip.className = 'tip red'; tip.textContent = '🌕➜🔴 月球整個進入地球本影 → 月全食：月球變成暗紅色（不會完全消失）'; }
+    else if (nearFull && state === 'partial') { tip.hidden = false; tip.className = 'tip'; tip.textContent = '🌗 月球只有一部分進入地球本影 → 月偏食'; }
+    else if ((nearFull || nearNew) && st.tilt && state === 'none' && !solarHit) { tip.hidden = false; tip.className = 'tip bad'; tip.textContent = `🚫 白道與黃道約有 5°夾角：這次${nearFull ? '望' : '朔'}的月球偏到${off > 0 ? '上方' : '下方'}，三者沒排成一直線 → 不發生${nearFull ? '月食' : '日食'}`; }
+    else tip.hidden = true;
+    const NAME = { total: '月全食', partial: '月偏食', none: '沒有月食' };
+    setHTML('leStat', `月相：<b>${ph}</b><br>${full ? `月球和地影：<b class="${state === 'total' ? 'r' : ''}">${NAME[state]}</b>` : `月影${solarHit ? '<b class="r">落在地球上 → 日食</b>' : '沒有落在地球上'}`}${st.tilt ? `<br>月球偏離黃道面：<b class="b">${off >= 0 ? '上方' : '下方'} ${Math.abs(off).toFixed(2)}</b>（交點線 ${st.node}°）` : ''}<br><small>地球的本影很大，可以把整個月球蓋住；但從月球看，地球永遠比太陽大，所以<b>沒有月環食</b>。</small>`);
+    setCap(full ? `<small>月食：太陽 → 地球 → 月球</small>月相是<b>望</b>，月球走進地球的影子<span class="huge ${state === 'total' ? 'red' : state === 'partial' ? 'org' : ''}">${NAME[state]}</span>`
+      : `<small>月食只會發生在望</small>拖曳滑桿到「望」，或打開「顯示軌道面夾角」<span class="huge">為什麼不是每個月都有？</span>`);
+  }
+  return { group: O.group, update, st, O };
+})();
+
+/* =========================================================
+   Tab 3：潮汐
+   ---------------------------------------------------------
+   ・港口的潮位＝月球與太陽的「潮汐作用」相加（太陽約為月球的 0.46）
+   ・地球每 24 小時自轉一圈，月球每天往前公轉約 12°
+     → 港口再次正對月球要 24 小時 50 分 → 潮汐週期約 12 小時 25 分
+   ========================================================= */
+const TD = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const EC = V3(-1.6, 2.5, 0), RE = 1.25, RO = 1.33, DM = 4.3, KS = 0.46, LUNAR_MONTH = 29.53 * 24;
+  const BASE = { new: Math.PI, first: -Math.PI / 2, full: 0, third: Math.PI / 2 };   // 月球的方位（0＝背向太陽；從北方往下看逆時針公轉）
+  const PNAME = { new: '朔', first: '上弦', full: '望', third: '下弦' };
+  // 太陽（很遠）：只放在左邊的光暈
+  const SUNP = V3(-9.5, 3.4, -1);
+  const sunG = new THREE.Group(); sunG.position.copy(SUNP); group.add(sunG);
+  sunG.add(new THREE.Mesh(new THREE.SphereGeometry(0.55, 32, 20), new THREE.MeshBasicMaterial({ color: 0xffd36b, toneMapped: false })));
+  const sg = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('255,196,90'), transparent: true, opacity: 0.8, depthWrite: false })); sg.scale.setScalar(3); sunG.add(sg);
+  addLabel('tide', '太陽（很遠）', 'small sunL', V3(SUNP.x, SUNP.y + 0.95, SUNP.z));
+  // 地球（固體）＋海水層
+  const eTex = earthTexture();
+  const earthM = bodyMat(eTex, { amb: 0.3 });
+  earthM.uniforms.sunPos.value.set(-60, EC.y, 0); earthM.uniforms.sunR.value = 1;
+  const spin = new THREE.Group(); spin.position.copy(EC); group.add(spin);
+  const earth = new THREE.Mesh(new THREE.SphereGeometry(RE, 64, 40), earthM); spin.add(earth);
+  stand(group, EC, RO + 0.3);
+  const oceanGeo = new THREE.SphereGeometry(RO, 96, 64), base = oceanGeo.attributes.position.array.slice();
+  const ocean = new THREE.Mesh(oceanGeo, new THREE.MeshPhysicalMaterial({ color: 0x3aa0e8, transparent: true, opacity: 0.5, roughness: 0.15, clearcoat: 1, depthWrite: false }));
+  ocean.position.copy(EC); ocean.renderOrder = 3; group.add(ocean);
+  // 港口：地表上的小木樁＋旗子（跟著地球自轉）
+  const port = new THREE.Group(); spin.add(port);
+  const post = shadowed(cyl(0.035, 0.035, 0.42, WOODM(0x8d6e4a), 10)); post.position.y = 0.21; port.add(post);
+  const flag = shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.14, 0.02), new THREE.MeshStandardMaterial({ color: 0xe53935, roughness: 0.6 }))); flag.position.set(0.11, 0.36, 0); port.add(flag);
+  const lPort = addLabel('tide', '⚓ 港口', 'small portL', V3(0, 0, 0));
+  // 月球
+  const moonM = bodyMat(moonTexture(), { amb: 0.25 });
+  moonM.uniforms.sunPos.value.set(-60, EC.y, 0); moonM.uniforms.sunR.value = 1;
+  const moon = new THREE.Mesh(new THREE.SphereGeometry(0.36, 40, 28), moonM); group.add(moon);
+  const lMoon = addLabel('tide', '月球', 'small', V3(0, 0, 0));
+  const orbit = new THREE.Mesh(new THREE.TorusGeometry(DM, 0.01, 6, 160), new THREE.MeshBasicMaterial({ color: 0x8d6e63, transparent: true, opacity: 0.45 }));
+  orbit.rotation.x = Math.PI / 2; orbit.position.copy(EC); group.add(orbit);
+  // 引力箭頭：月球（亮紅、較長）、太陽（較淡的橙色、較短）
+  const aMoon = glowArrow(C_PULL, 0.07), aSun = glowArrow(C_SUNPULL, 0.055, 0.55);
+  group.add(aMoon, aSun);
+  const lAM = addLabel('tide', '月球引力（作用較大）', 'small pullL', V3(0, 0, 0)), lAS = addLabel('tide', '太陽引力（作用較小）', 'small sunPullL', V3(0, 0, 0));
+  const lBulge = addLabel('tide', '海水隆起', 'small seaL', V3(0, 0, 0)), lBulge2 = addLabel('tide', '背向月球也隆起', 'small seaL', V3(0, 0, 0));
+  addLabel('tide', '海水隆起程度已放大', 'small', V3(EC.x, EC.y - RO - 0.75, 1.2));
+
+  /* ----- 港口潮位剖面（右側木箱模型）：沙灘斜坡＋海水＋滿潮線、乾潮線、潮間帶 ----- */
+  const DX = 4.5, DW = 4.2, DD = 1.8, LV0 = 1.45, LSC = 0.33;   // 潮位 1 單位 → 0.33（高度）
+  const box = new THREE.Group(); box.position.set(DX, 0, 0); group.add(box);
+  const tank = new THREE.Mesh(new RoundedBoxGeometry(DW, 2.9, DD, 4, 0.05), new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.16, roughness: 0.08, clearcoat: 1, depthWrite: false }));
+  tank.position.y = 1.45; tank.renderOrder = 5; box.add(tank);
+  const tBase = shadowed(new THREE.Mesh(new RoundedBoxGeometry(DW + 0.25, 0.14, DD + 0.25, 3, 0.04), WOODM())); tBase.position.y = 0.07; box.add(tBase);
+  // 沙灘：左高右低的斜坡（擠出形狀）
+  const beach = new THREE.Shape(); beach.moveTo(-DW / 2, 0.14); beach.lineTo(DW / 2, 0.14); beach.lineTo(DW / 2, 0.45); beach.bezierCurveTo(0.8, 0.9, -0.6, 1.9, -DW / 2, 2.35); beach.closePath();
+  const beachG = new THREE.ExtrudeGeometry(beach, { depth: DD - 0.04, bevelEnabled: false }); beachG.translate(0, 0, -(DD - 0.04) / 2);
+  box.add(shadowed(new THREE.Mesh(beachG, new THREE.MeshStandardMaterial({ color: 0xe9cf9b, roughness: 0.95 }))));
+  // 小木棧橋（物品）
+  for (const x of [0.5, 1.15, 1.8]) { const p = shadowed(cyl(0.05, 0.05, 2.4, WOODM(0x9c7448), 10)); p.position.set(x, 1.3, 0.55); box.add(p); }
+  const deck = shadowed(new THREE.Mesh(new RoundedBoxGeometry(2.0, 0.07, 0.5, 2, 0.02), WOODM())); deck.position.set(1.15, 2.5, 0.55); box.add(deck);
+  const water = new THREE.Mesh(new THREE.BoxGeometry(DW - 0.08, 1, DD - 0.08), new THREE.MeshPhysicalMaterial({ color: 0x3aa0e8, transparent: true, opacity: 0.55, roughness: 0.1, clearcoat: 1, depthWrite: false }));
+  water.renderOrder = 4; box.add(water);
+  const mkLine = c => { const m = new THREE.Mesh(new THREE.BoxGeometry(DW + 0.02, 0.025, 0.025), new THREE.MeshBasicMaterial({ color: c, toneMapped: false })); m.position.z = DD / 2 + 0.02; box.add(m); return m; };
+  const hiLine = mkLine(0x1565c0), loLine = mkLine(0xef6c00);
+  const band = new THREE.Mesh(new THREE.PlaneGeometry(DW, 1), new THREE.MeshBasicMaterial({ color: 0x8bc34a, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide }));
+  band.position.z = DD / 2 + 0.015; band.renderOrder = 6; box.add(band);
+  const lHi = addLabel('tide', '滿潮線', 'small hiL', V3(0, 0, 0)), lLo = addLabel('tide', '乾潮線', 'small loL', V3(0, 0, 0)), lBand = addLabel('tide', '潮間帶', 'small bandL', V3(0, 0, 0));
+  const lRange = addLabel('tide', '', 'small', V3(0, 0, 0)), lNow = addLabel('tide', '', 'big nowL', V3(DX, 3.35, 0));
+
+  const st = { t: 9, ph: 'new' };
+  $('tdT').addEventListener('input', () => { st.t = +$('tdT').value; });
+  document.querySelectorAll('.tdph').forEach(b => b.addEventListener('click', () => { st.ph = b.dataset.p; document.querySelectorAll('.tdph').forEach(x => x.classList.toggle('on', x === b)); }));
+  // 港口方位（從上往下看，0＝背向太陽）：中午 12 點時港口正對太陽
+  const portAng = t => Math.PI + (t - 12) / 24 * Math.PI * 2;
+  const moonAng = t => BASE[st.ph] + t / LUNAR_MONTH * Math.PI * 2;
+  const tideAt = (ang, t) => { const tm = Math.cos(ang - moonAng(t)), ts = Math.cos(ang - Math.PI); return (3 * tm * tm - 1) / 2 + KS * (3 * ts * ts - 1) / 2; };
+  const level = t => tideAt(portAng(t), t);
+  // 0～26 小時的潮位曲線：找出滿潮與乾潮的時刻
+  let curve = [], ext = [], curveKey = '';
+  function buildCurve() {
+    curve = []; ext = [];
+    for (let i = 0; i <= 26 * 60; i += 2) curve.push([i / 60, level(i / 60)]);
+    for (let i = 1; i < curve.length - 1; i++) {
+      const [t, h] = curve[i], a = curve[i - 1][1], b = curve[i + 1][1];
+      if (h > a && h >= b) ext.push({ t, h, hi: true }); else if (h < a && h <= b) ext.push({ t, h, hi: false });
+    }
+  }
+  const hhmm = t => { const d = t >= 24 ? '隔天 ' : ''; const m = Math.round((t % 24) * 60); return d + String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+  const toM = h => h * 1.8;                                       // 潮位換算成「公尺」（示意）
+  function drawCurve() {
+    const c = $('tdCurve'), dpr = Math.min(window.devicePixelRatio || 1, 2), W = c.clientWidth, H = c.clientHeight;
+    if (!W) return;
+    if (c.width !== W * dpr) { c.width = W * dpr; c.height = H * dpr; }
+    const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+    const L = 30, Rm = 8, T = 14, B = 22, ymax = 1.6, ymin = -1.6;
+    const X = t => L + (W - L - Rm) * t / 26, Y = h => T + (H - T - B) * (ymax - h) / (ymax - ymin);
+    g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(L, T, W - L - Rm, H - T - B);
+    // 白天／晚上底色
+    for (const [a, b] of [[0, 6], [18, 30]]) { g.fillStyle = 'rgba(70,80,140,.09)'; g.fillRect(X(a), T, X(Math.min(b, 26)) - X(a), H - T - B); }
+    g.strokeStyle = 'rgba(93,64,55,.18)'; g.lineWidth = 1; g.fillStyle = '#7a6a5a'; g.font = '10px -apple-system, "Microsoft JhengHei", sans-serif';
+    for (let h = 0; h <= 26; h += 6) { g.beginPath(); g.moveTo(X(h), T); g.lineTo(X(h), H - B); g.stroke(); g.fillText(h % 24 === 0 && h ? '隔天0時' : (h % 24) + '時', X(h) - 9, H - 7); }
+    g.strokeStyle = 'rgba(93,64,55,.35)'; g.beginPath(); g.moveTo(L, Y(0)); g.lineTo(W - Rm, Y(0)); g.stroke();
+    g.fillText('潮位', 2, T + 8);
+    g.strokeStyle = '#2b88d8'; g.lineWidth = 2.6; g.beginPath(); curve.forEach(([t, h], i) => (i ? g.lineTo : g.moveTo).call(g, X(t), Y(h))); g.stroke();
+    ext.forEach(e => { g.fillStyle = e.hi ? '#1565c0' : '#ef6c00'; g.beginPath(); g.arc(X(e.t), Y(e.h), 3.5, 0, Math.PI * 2); g.fill(); g.font = '700 9.5px -apple-system, "Microsoft JhengHei", sans-serif'; g.fillText((e.hi ? '滿 ' : '乾 ') + hhmm(e.t).replace('隔天 ', ''), Math.min(X(e.t) - 18, W - 52), e.hi ? Y(e.h) - 6 : Y(e.h) + 13); });
+    g.strokeStyle = '#d84315'; g.lineWidth = 2; g.beginPath(); g.moveTo(X(st.t), T); g.lineTo(X(st.t), H - B); g.stroke();
+    g.fillStyle = '#d84315'; g.beginPath(); g.arc(X(st.t), Y(level(st.t)), 5, 0, Math.PI * 2); g.fill();
+  }
+  function update(dt) {
+    const t = st.t, k = st.ph + '';
+    if (k !== curveKey) { curveKey = k; buildCurve(); }
+    const ma = moonAng(t), pa = portAng(t);
+    const dirOf = a => V3(Math.cos(a), 0, -Math.sin(a));         // 0＝背向太陽（+x）；π＝朝向太陽（−x）
+    // 地球自轉：港口跟著轉
+    spin.rotation.y = 0;
+    const pd = dirOf(pa);
+    port.position.copy(pd.clone().multiplyScalar(RO * 1.02)); port.quaternion.setFromUnitVectors(AXY, pd);
+    earth.rotation.y = -pa;
+    // 海水隆起：每個頂點依「朝向月球、太陽的程度」往外推
+    const md = dirOf(ma), sd = V3(-1, 0, 0), P = ocean.geometry.attributes.position, vv = V3();
+    for (let i = 0; i < P.count; i++) {
+      vv.set(base[i * 3], base[i * 3 + 1], base[i * 3 + 2]).normalize();
+      const cm = vv.dot(md), cs = vv.dot(sd);
+      const h = (3 * cm * cm - 1) / 2 + KS * (3 * cs * cs - 1) / 2;
+      vv.multiplyScalar(RO + 0.2 * h); P.setXYZ(i, vv.x, vv.y, vv.z);
+    }
+    P.needsUpdate = true; ocean.geometry.computeVertexNormals();
+    const MP = EC.clone().addScaledVector(md, DM); moon.position.copy(MP);
+    aMoon.set(EC.clone().addScaledVector(md, RO + 0.25), EC.clone().addScaledVector(md, RO + 1.95));
+    aSun.set(EC.clone().addScaledVector(sd, RO + 0.25), EC.clone().addScaledVector(sd, RO + 0.25 + 1.7 * KS));
+    lAM.pos.copy(EC).addScaledVector(md, RO + 1.2).add(V3(0, 0.45, 0)); lAM.off.copy(lAM.pos);
+    lAS.pos.copy(EC).addScaledVector(sd, RO + 0.7).add(V3(0, -0.45, 0)); lAS.off.copy(lAS.pos);
+    lMoon.pos.copy(MP).add(V3(0, 0.65, 0)); lMoon.off.copy(lMoon.pos);
+    lBulge.pos.copy(EC).addScaledVector(md, RO + 0.2).add(V3(0, -0.5, 0.4)); lBulge.off.copy(lBulge.pos);
+    lBulge2.pos.copy(EC).addScaledVector(md, -(RO + 0.25)).add(V3(0, -0.5, 0.4)); lBulge2.off.copy(lBulge2.pos);
+    lPort.pos.copy(EC).addScaledVector(pd, RO + 0.55).add(V3(0, 0.15, 0)); lPort.off.copy(lPort.pos);
+    // 港口剖面：水位、滿潮線、乾潮線、潮間帶
+    const hNow = level(t), hs = curve.map(c => c[1]), hMax = Math.max(...hs), hMin = Math.min(...hs);
+    const yOf = h => LV0 + h * LSC;
+    water.scale.y = yOf(hNow) - 0.14; water.position.y = 0.14 + water.scale.y / 2;
+    hiLine.position.y = yOf(hMax); loLine.position.y = yOf(hMin);
+    band.scale.y = yOf(hMax) - yOf(hMin); band.position.y = (yOf(hMax) + yOf(hMin)) / 2;
+    lHi.pos.set(DX - DW / 2 - 0.55, yOf(hMax), DD / 2); lLo.pos.set(DX - DW / 2 - 0.55, yOf(hMin), DD / 2);
+    lBand.pos.set(DX - 1.3, (yOf(hMax) + yOf(hMin)) / 2, DD / 2 + 0.1);
+    const range = toM(hMax - hMin);
+    setLabel(lRange, `潮差約 ${range.toFixed(1)} 公尺（示意）`); lRange.pos.set(DX + DW / 2 + 0.6, (yOf(hMax) + yOf(hMin)) / 2, DD / 2);
+    [lHi, lLo, lBand, lRange].forEach(l => l.off.copy(l.pos));
+    // 現在是漲潮、滿潮、退潮（落潮）還是乾潮？
+    const dh = level(t + 0.05) - level(t - 0.05), nearHi = ext.some(e => e.hi && Math.abs(e.t - t) < 0.35), nearLo = ext.some(e => !e.hi && Math.abs(e.t - t) < 0.35);
+    const day = (t % 24) >= 6 && (t % 24) < 18;
+    const now = nearHi ? '滿潮（最高水位）' : nearLo ? '乾潮（最低水位）' : dh > 0 ? `漲潮中（海水上升）・${day ? '白天上漲稱「潮」' : '晚上上漲稱「汐」'}` : '退潮中（又稱落潮：海水下降的過程）';
+    setLabel(lNow, now, 'big nowL ' + (nearHi ? 'hi' : nearLo ? 'lo' : dh > 0 ? 'up' : 'down'));
+    // 隔天延遲：第一次滿潮與「隔天同一次滿潮」
+    const his = ext.filter(e => e.hi), h0 = his[0], h2 = his.find(e => e.t > h0.t + 20);
+    const delay = h0 && h2 ? Math.round((h2.t - h0.t - 24) * 60) : 50;
+    const per = his.length > 1 ? his[1].t - his[0].t : 12.42;
+    $('tdTV').textContent = hhmm(t);
+    drawCurve();
+    const spring = st.ph === 'new' || st.ph === 'full';
+    $('tdTip').className = 'tip ' + (spring ? 'red' : 'ok');
+    $('tdTip').textContent = spring ? `🌊 ${PNAME[st.ph]}：太陽、地球、月球接近成一直線 → 作用疊加 → 大潮（潮差最大）：滿潮更高、乾潮更低` : `〰️ ${PNAME[st.ph]}：太陽、地球、月球成垂直 → 作用互相抵銷一部分 → 小潮（潮差最小）：滿潮最低、乾潮最高`;
+    setHTML('tdStat', `時間：<b>${hhmm(t)}</b>　月相：<b>${PNAME[st.ph]}</b><br>滿潮時刻：${his.map(e => '<b class="b">' + hhmm(e.t) + '</b>').join('、')}<br>潮汐週期平均約 <b>12 小時 25 分</b>（這次兩次滿潮相隔 ${Math.floor(per)} 小時 ${Math.round((per % 1) * 60)} 分）<br>隔天同一次滿潮延遲約 <b class="r">${delay} 分鐘</b>（不是提早）<br><small>從乾潮到滿潮約 6 小時；月球每天往前公轉，港口要多轉約 50 分鐘才會再正對月球。</small>`);
+    setCap(`<small>潮汐・${PNAME[st.ph]}・${hhmm(t)}</small>港口：<b>${now}</b><span class="huge ${spring ? 'red' : 'grn'}">${spring ? '大潮' : '小潮'}・潮差約 ${range.toFixed(1)} 公尺</span>`);
+  }
+  return { group, update, st, level, get ext() { return ext; } };
+})();
+
+/* ----- 共用：面板、按鈕、滑桿不讓事件傳到 3D 畫面；拖曳滑桿時鎖住視角 ----- */
+['panel', 'dock', 'skyBox', 'scaleNote'].forEach(id => { const el = $(id); if (!el) return; ['pointerdown', 'touchstart'].forEach(ev => el.addEventListener(ev, e => e.stopPropagation(), { passive: true })); });
+document.querySelectorAll('input[type=range]').forEach(r => {
+  ['pointerdown', 'touchstart'].forEach(ev => r.addEventListener(ev, e => { e.stopPropagation(); controls.enabled = false; }, { passive: true }));
+  ['pointerup', 'pointercancel', 'touchend', 'change'].forEach(ev => r.addEventListener(ev, () => { controls.enabled = true; }));
+});
+document.querySelectorAll('button, input[type=checkbox]').forEach(b => ['pointerdown', 'touchstart'].forEach(ev => b.addEventListener(ev, e => e.stopPropagation(), { passive: true })));
+onTabChange = t => { $('skyBox').hidden = t !== 'solar'; };
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  solar: { group: SE.group, cam: () => ({ pos: [-2.2, 4.8, 10.2], target: [0.4, 2.3, 0], fitW: window.innerWidth < window.innerHeight ? 11 : 12.5 }), update: SE.update },
+  lunar: { group: LE.group, cam: () => ({ pos: [0.6, 6.2, 11.0], target: [2.4, 2.2, 0], fitW: window.innerWidth < window.innerHeight ? 10.5 : 11.5 }), update: LE.update },
+  tide: { group: TD.group, cam: () => ({ pos: [1.0, 9.2, 9.0], target: [1.2, 1.4, 0.3], fitW: window.innerWidth < window.innerHeight ? 12 : 13.5 }), update: TD.update }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  onTabChange(t);
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, SE, LE, TD, camera, controls, renderer, scene, placeLabels };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'solar';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+<script src="goals.js" defer></script>
+</body>
+</html>
