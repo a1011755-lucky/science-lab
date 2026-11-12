@@ -185,28 +185,43 @@ function placeArrow(arrow, from, to) {
  */
 export function makeGrip({ axis = 'y', orbit = 0.3, fingerColor = 0x1e88e5 } = {}) {
   const g = new THREE.Group(), H = holoSet();
-  const palm = H.mesh(new THREE.SphereGeometry(0.34, 36, 28));
-  palm.scale.set(1.05, 1.55, 0.72);
-  palm.position.set(0.5, 0.02, 0.02);
+  /* 右手握住沿 y 軸的導線（從上往下看）：
+     手掌在 +x 側、掌心朝導線；指根在手掌的 −z 邊，四指繞過導線的另一側，指尖回到 +z 邊；
+     拇指從 +z 邊的虎口往上伸。四指彎曲方向（指根→指尖）從上往下看是逆時針 ＝ 拇指朝上的右手。 */
+  const PX = orbit + 0.13, W = Math.max(0.3, orbit * 0.98);
+  const palm = H.mesh(new THREE.SphereGeometry(1, 36, 28));
+  palm.scale.set(0.15, 0.52, W * 1.05);
+  palm.position.set(PX, 0, 0);
   g.add(palm);
-  const thenar = H.mesh(new THREE.SphereGeometry(0.2, 24, 18));
-  thenar.scale.set(1, 1.15, 0.85);
-  thenar.position.set(0.46, 0.38, 0.2);
+  const thenar = H.mesh(new THREE.SphereGeometry(0.2, 24, 18));          // 拇指根部的肉（虎口）
+  thenar.scale.set(0.8, 1.2, 0.95);
+  thenar.position.set(PX - 0.03, 0.3, W * 0.55);
   g.add(thenar);
+  // 手腕：從掌根（+z 邊）往外伸一小段，一看就知道哪邊接手臂
+  g.add(H.mesh(smoothTube([new THREE.Vector3(PX, -0.06, W * 0.55), new THREE.Vector3(PX + 0.03, -0.1, W * 0.95), new THREE.Vector3(PX + 0.08, -0.16, W + 0.5)], u => 0.2 - 0.03 * u, 18)));
 
   const fingers = [
-    { name: 'index', y: 0.3, arc: 3.15, len: 1 },
-    { name: 'middle', y: 0.1, arc: 3.55, len: 1.08 },
-    { name: 'ring', y: -0.1, arc: 3.25, len: 0.96 },
-    { name: 'pinky', y: -0.3, arc: 2.7, len: 0.82 }
+    { name: 'index', y: 0.3, arc: 3.25, len: 1 },
+    { name: 'middle', y: 0.1, arc: 3.5, len: 1.08 },
+    { name: 'ring', y: -0.1, arc: 3.3, len: 0.96 },
+    { name: 'pinky', y: -0.3, arc: 2.85, len: 0.82 }
   ];
+  const A0 = -1.15;                                                       // 四指離開手掌、開始繞導線的角度
+  const fingerPath = f => {
+    const base = [];                                                      // 指根：從手掌 −z 邊平順接到圓弧
+    for (let i = 0; i < 5; i++) { const k = i / 5; base.push(new THREE.Vector3(PX - 0.02 + (Math.cos(A0) * orbit - PX + 0.02) * k, f.y, -W * 0.9 + (Math.sin(A0) * orbit + W * 0.9) * k * k)); }
+    return base.concat(arcPoints(f.y, A0, f.arc, orbit));
+  };
   const ribbons = [];
   const tex = (fingerColor === 0x1e88e5 ? texBlue : texOrange).clone();
   tex.needsUpdate = true;
   fingers.forEach(f => {
-    const pts = arcPoints(f.y, 2.25, f.arc, orbit);
+    const pts = fingerPath(f);
     const rad = fingerRad(f.len);
     g.add(H.mesh(smoothTube(pts, rad)));
+    const knuckle = H.mesh(new THREE.SphereGeometry(rad(0) * 1.12, 14, 10));   // 指根關節
+    knuckle.position.copy(pts[0]);
+    g.add(knuckle);
     const tip = pts[pts.length - 1];
     const cap = H.mesh(new THREE.SphereGeometry(rad(1), 14, 10));      // 指尖圓頭（全息風格不畫指甲）
     cap.position.copy(tip);
@@ -220,12 +235,12 @@ export function makeGrip({ axis = 'y', orbit = 0.3, fingerColor = 0x1e88e5 } = {
   });
 
   const thumbPts = [
-    new THREE.Vector3(0.5, 0.42, 0.28),
-    new THREE.Vector3(0.38, 0.72, 0.34),
-    new THREE.Vector3(0.22, 1.08, 0.26),
-    new THREE.Vector3(0.14, 1.38, 0.14)
+    new THREE.Vector3(PX - 0.02, 0.34, W * 0.6),
+    new THREE.Vector3(PX - 0.09, 0.6, W * 0.66),
+    new THREE.Vector3(PX - 0.17, 0.86, W * 0.62),
+    new THREE.Vector3(PX - 0.23, 1.1, W * 0.55)
   ];
-  const thumbRad = u => 0.095 * (1 - u * 0.42);
+  const thumbRad = u => 0.12 * (1 - u * 0.36);
   g.add(H.mesh(smoothTube(thumbPts, thumbRad, 16)));
   const tTip = thumbPts[thumbPts.length - 1];
   const tCap = H.mesh(new THREE.SphereGeometry(thumbRad(1), 14, 10));
@@ -233,16 +248,16 @@ export function makeGrip({ axis = 'y', orbit = 0.3, fingerColor = 0x1e88e5 } = {
   g.add(tCap);
 
   const thumbArrow = boldArrow(fingerColor === 0x1e88e5 ? 0xf57c00 : 0xe53935, 0.7, 0.055);
-  placeArrow(thumbArrow, thumbPts[0].clone().add(new THREE.Vector3(0.02, 0.05, 0.1)), tTip.clone().add(new THREE.Vector3(0, 0.18, 0.06)));
+  placeArrow(thumbArrow, thumbPts[0].clone().add(new THREE.Vector3(0.12, 0.05, 0.1)), tTip.clone().add(new THREE.Vector3(0.12, 0.2, 0.06)));
   g.add(thumbArrow);
 
   const thumbMark = new THREE.Object3D();
-  thumbMark.position.copy(tTip).add(new THREE.Vector3(0, 0.28, 0.08));
+  thumbMark.position.copy(tTip).add(new THREE.Vector3(0.1, 0.3, 0.08));
   g.add(thumbMark);
   const mid = fingers[1];
-  const tipArc = arcPoints(mid.y, 2.25, mid.arc, orbit);
+  const midPts = fingerPath(mid);
   const curlMark = new THREE.Object3D();
-  curlMark.position.copy(tipArc[tipArc.length - 1]).add(new THREE.Vector3(0, 0.16, 0));
+  curlMark.position.copy(midPts[Math.floor(midPts.length * 0.5)]).multiplyScalar(1.25).add(new THREE.Vector3(0, 0.1, 0));
   g.add(curlMark);
 
   const twist = new THREE.Group();
@@ -251,7 +266,7 @@ export function makeGrip({ axis = 'y', orbit = 0.3, fingerColor = 0x1e88e5 } = {
   if (axis === 'x') {
     const orient = new THREE.Group();
     orient.rotation.z = -Math.PI / 2;
-    orient.rotation.x = -0.5;
+    orient.rotation.x = 1.3;                 // 手掌在螺線管後方、手腕朝下，四指從前面繞過來，看得最清楚
     orient.add(twist);
     root.add(orient);
   } else root.add(twist);
