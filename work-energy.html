@@ -139,7 +139,7 @@
 
     <section class="section" data-mode="m1">
       <p class="desc">方塊質量 <b>10 kg</b>。<b>推力作正功</b>給方塊能量；<b>摩擦力</b>把能量變成熱能「偷走」。</p>
-      <div class="ios" style="--c:#ff7a00">
+      <div class="ios" style="--c:#ff3b30">
         <div class="top"><span>推力大小 F</span><b id="fVal">40 N</b></div>
         <input type="range" id="sF" min="0" max="100" step="1" value="40" aria-label="推力大小">
       </div>
@@ -414,7 +414,7 @@ const M1 = (() => {
   const lathe = pts => new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), 36);
   const HEAD_GEO = lathe([[0, -0.5], [0.86, -0.5], [0.96, -0.48], [1, -0.42], [0.97, -0.34], [0.2, 0.4], [0.12, 0.46], [0, 0.5]]);   // 單位圓頭錐（尖端朝 +y）
   const SHAFT_GEO = lathe([[0, -0.5], [0.82, -0.5], [0.95, -0.49], [1, -0.475], [1, 0.475], [0.95, 0.49], [0.82, 0.5], [0, 0.5]]);   // 單位圓角軸
-  const pushMat = glassArrow(0xffd2a0, 0xff7a00);
+  const pushMat = glassArrow(0xffc2bd, 0xff3b30);
   const pushArrow = new THREE.Group();
   const pShaft = new THREE.Mesh(SHAFT_GEO, pushMat);
   pShaft.rotation.z = Math.PI / 2;
@@ -435,7 +435,7 @@ const M1 = (() => {
   const lFric = addLabel('m1', '', 'color:#6b6b70');
   const lStop = addLabel('m1', '', 'color:#6b6b70');
   const bar = makeEnergyBar('m1');
-  const PALE = new THREE.Color(0xffd2a0), BRIGHT = new THREE.Color(0xff7a00);
+  const PALE = new THREE.Color(0xffc2bd), BRIGHT = new THREE.Color(0xff3b30);
 
   /** 箭頭：沿 x 軸，tipX 為箭尖位置，dir = +1 向右 / −1 向左 */
   function setXArrow(group, shaft, head, tipX, dir, len, r, y, z = 0) {

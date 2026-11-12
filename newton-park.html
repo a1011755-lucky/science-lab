@@ -138,7 +138,7 @@
     </section>
 
     <section class="section" data-mode="m2" hidden>
-      <p class="desc">冰面<b>沒有摩擦力</b>。調整推力與質量，比較<b style="color:#e5484d">推力 F</b>和<b style="color:#22a35a">加速度 a</b>箭頭的長度。</p>
+      <p class="desc">冰面<b>沒有摩擦力</b>。調整推力與質量，比較<b style="color:#ff3b30">推力 F</b>和<b style="color:#22a35a">加速度 a</b>箭頭的長度。</p>
       <div class="ios" style="--c:#e5484d"><div class="top"><span>推力大小 F</span><b id="m2FV">10 N</b></div><input type="range" id="m2F" min="0" max="20" step="1" value="10" aria-label="推力"></div>
       <div class="ios" style="--c:#4f7fb8"><div class="top"><span>物體質量 m</span><b id="m2MV">2 kg</b></div><input type="range" id="m2M" min="1" max="10" step="0.5" value="2" aria-label="質量"></div>
       <div class="row2">
@@ -153,18 +153,18 @@
       <button class="btn primary" id="m3Go">🤲 互相推開</button>
       <button class="btn" id="m3Reset">↺ 回到原位</button>
       <div class="read" id="m3Read"></div>
-      <div class="legend"><span><i style="background:#e5484d"></i>力</span><span><i style="background:#22a35a"></i>速度</span></div>
+      <div class="legend"><span><i style="background:#ff3b30"></i>力</span><span><i style="background:#2ec5e6"></i>速度</span></div>
     </section>
 
     <section class="section" data-mode="m4" hidden>
-      <p class="desc">黃色箭頭是兩顆星球互相吸引的<b>萬有引力</b>。可以用滑桿，或直接<b>用滑鼠拖曳星球</b>改變距離。</p>
+      <p class="desc"><b style="color:#ff3b30">紅色箭頭</b>是兩顆星球互相吸引的<b>萬有引力</b>。可以用滑桿，或直接<b>用滑鼠拖曳星球</b>改變距離。</p>
       <div class="ios" style="--c:#e9a800"><div class="top"><span>A 星球質量</span><b id="m4MV">1 倍</b></div><input type="range" id="m4M" min="1" max="3" step="0.5" value="1" aria-label="A 星球質量"></div>
       <div class="ios" style="--c:#4f7fb8"><div class="top"><span>距離 r</span><b id="m4RV">8.0</b></div><input type="range" id="m4R" min="3" max="8" step="0.1" value="8" aria-label="距離"></div>
       <div class="read" id="m4Read"></div>
     </section>
 
     <section class="section" data-mode="m5" hidden>
-      <p class="desc">水球被繩子綁著做<b>等速率圓周運動</b>。<b style="color:#3f7be8">藍色 = 向心力</b>（指向圓心），<b style="color:#e5484d">紅色 = 速度</b>（沿切線）。</p>
+      <p class="desc">水球被繩子綁著做<b>等速率圓周運動</b>。<b style="color:#ff3b30">紅色 = 向心力</b>（指向圓心），<b style="color:#1a9bbd">水藍色 = 速度</b>（沿切線）。</p>
       <div class="ios" style="--c:#4f7fb8"><div class="top"><span>轉動快慢</span><b id="m5WV">每秒 0.24 圈</b></div><input type="range" id="m5W" min="0.5" max="3" step="0.1" value="1.5" aria-label="轉動快慢"></div>
       <button class="btn danger" id="m5Cut">✂ 剪斷繩子</button>
       <button class="btn" id="m5Reset">↺ 重新綁好</button>
@@ -469,9 +469,9 @@ const M2 = (() => {
   const cubeMat = new THREE.MeshPhysicalMaterial({ color: 0xbfe6ff, roughness: 0.1, transmission: 0.55, thickness: 1.2, clearcoat: 1, ior: 1.3, transparent: true });
   const cube = shadowed(new THREE.Mesh(new RoundedBoxGeometry(1, 1, 1, 6, 0.16), cubeMat));
   group.add(cube);
-  const aF = makeArrow(0xe5484d, 0.1), aA = makeArrow(0x22a35a, 0.1);
+  const aF = makeArrow(0xff3b30, 0.1), aA = makeArrow(0x22a35a, 0.1);
   group.add(aF, aA);
-  const lF = addLabel('m2', '', 'color:#e5484d'), lA = addLabel('m2', '', 'color:#22a35a'), lM = addLabel('m2', '');
+  const lF = addLabel('m2', '', 'color:#ff3b30'), lA = addLabel('m2', '', 'color:#22a35a'), lM = addLabel('m2', '');
 
   let F = 10, m = 2, x = 0, v = 0, t = 0, running = false, size = 1;
   const paint = el => el.style.setProperty('--fill', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
@@ -517,11 +517,11 @@ const M3 = (() => {
   const small = makePerson(0x4fb38a, { w: 0.75, h: 0.95 });
   small.rotation.y = Math.PI;                               // 面向左邊的大人
   group.add(big, small);
-  const fOnBig = makeArrow(0xe5484d, 0.11), fOnSmall = makeArrow(0xe5484d, 0.11);
-  const vBig = makeArrow(0x22a35a, 0.1), vSmall = makeArrow(0x22a35a, 0.1);
+  const fOnBig = makeArrow(0xff3b30, 0.11), fOnSmall = makeArrow(0xff3b30, 0.11);
+  const vBig = makeArrow(0x2ec5e6, 0.1), vSmall = makeArrow(0x2ec5e6, 0.1);
   group.add(fOnBig, fOnSmall, vBig, vSmall);
-  const lFB = addLabel('m3', '', 'color:#e5484d'), lFS = addLabel('m3', '', 'color:#e5484d');
-  const lVB = addLabel('m3', '', 'color:#22a35a'), lVS = addLabel('m3', '', 'color:#22a35a');
+  const lFB = addLabel('m3', '', 'color:#ff3b30'), lFS = addLabel('m3', '', 'color:#ff3b30');
+  const lVB = addLabel('m3', '', 'color:#1a9bbd'), lVS = addLabel('m3', '', 'color:#1a9bbd');
   const lBig = addLabel('m3', '大人 80 kg'), lSmall = addLabel('m3', '小孩 35 kg');
   const X_BIG0 = -0.95, X_SMALL0 = 0.62;
 
@@ -593,7 +593,7 @@ const M4 = (() => {
   ring.rotation.x = Math.PI / 2.4;
   planetA.add(ring);
   group.add(planetA, planetB);
-  const fA = makeArrow(0xf5c518, 0.1), fB = makeArrow(0xf5c518, 0.1);
+  const fA = makeArrow(0xff3b30, 0.1), fB = makeArrow(0xff3b30, 0.1);
   group.add(fA, fB);
   const lA = addLabel('m4', 'A'), lB = addLabel('m4', 'B'), lF = addLabel('m4', '', 'color:#a07800');
   const lR = addLabel('m4', '', 'color:#4f7fb8');
@@ -685,11 +685,11 @@ const M5 = (() => {
   const ball = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.42, 40, 28),
     new THREE.MeshPhysicalMaterial({ color: 0x7cc4f0, roughness: 0.1, transmission: 0.6, thickness: 0.8, clearcoat: 1, ior: 1.33, transparent: true })));
   group.add(ball);
-  const aFc = makeArrow(0x3f7be8, 0.08), aV = makeArrow(0xe5484d, 0.08);
+  const aFc = makeArrow(0xff3b30, 0.08), aV = makeArrow(0x2ec5e6, 0.08);
   group.add(aFc, aV);
-  const tangent = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0xe5484d, dashSize: 0.25, gapSize: 0.18, transparent: true, opacity: 0.7 }));
+  const tangent = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0x2ec5e6, dashSize: 0.25, gapSize: 0.18, transparent: true, opacity: 0.7 }));
   group.add(tangent);
-  const lFc = addLabel('m5', '', 'color:#3f7be8'), lV = addLabel('m5', '', 'color:#e5484d');
+  const lFc = addLabel('m5', '', 'color:#ff3b30'), lV = addLabel('m5', '', 'color:#1a9bbd');
 
   let w = 1.5, phi = 0, cut = false, pos = V3(R, Y, 0), vel = V3(0, 0, 0);
   const paint = el => el.style.setProperty('--fill', ((el.value - el.min) / (el.max - el.min) * 100) + '%');

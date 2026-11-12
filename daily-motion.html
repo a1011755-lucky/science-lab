@@ -144,7 +144,7 @@ ol b{color:var(--sun);font-weight:500}
       <li>原因是地球<b>由西向東自轉</b>，24 小時轉一圈。我們跟著地球轉，就看到天上的東西往反方向移動。</li>
       <li>在臺灣，太陽<b>中午</b>在南方天空最高，這時竿影最短，影子指向<b>北方</b>。</li>
       <li><b>夏至</b>太陽從東偏北升起，路徑高、白天長；<b>冬至</b>從東偏南升起，路徑低、白天短；春分、秋分正東升、正西落。</li>
-      <li>北極星幾乎不動，其他星星繞著它轉。北極星的高度角約等於當地<b>緯度</b>（嘉義約 23.5°）。</li>
+      <li>北極星幾乎不動，其他星星繞著它轉。北極星的仰角約等於當地<b>緯度</b>（嘉義約 23.5°）。</li>
       <li>月亮也是東升西落，但每天大約<b>晚 50 分鐘</b>升起，形狀（月相）也跟著改變。拖動「農曆日期」看看！</li>
     </ol>
     <p class="note">時間用「太陽時」：太陽在正南方最高時算中午 12 點。圖中大小沒有照真實比例。</p>
@@ -154,7 +154,7 @@ ol b{color:var(--sun);font-weight:500}
 <section id="info" class="card" aria-live="polite">
   <div id="clock"><span id="timeBig">上午 7:00</span><span id="state">白天</span></div>
   <dl class="kv">
-    <dt>太陽高度角</dt><dd id="alt">—</dd>
+    <dt>太陽仰角</dt><dd id="alt">—</dd>
     <dt>太陽方位</dt><dd id="az">—</dd>
   </dl>
   <p id="shadowTxt">—</p>
@@ -164,7 +164,7 @@ ol b{color:var(--sun);font-weight:500}
     <dt>日出</dt><dd id="riseTxt">—</dd>
     <dt>日落</dt><dd id="setTxt">—</dd>
     <dt>白天長度</dt><dd id="lenTxt">—</dd>
-    <dt>正午高度角</dt><dd id="noonTxt">—</dd>
+    <dt>正午仰角</dt><dd id="noonTxt">—</dd>
   </dl>
   <div id="extra" class="sep"></div>
   <div id="why">
@@ -446,7 +446,7 @@ const trailGroup = new THREE.Group(); trailGroup.visible = false; scene.add(trai
   const ax = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), poleDir.clone().multiplyScalar(DOME)]),
     new THREE.LineDashedMaterial({ color: 0xfff1b0, dashSize: .3, gapSize: .15 }));
   ax.computeLineDistances(); trailGroup.add(ax);
-  const al = makeLabel('高度角 23.5° ＝ 嘉義緯度', '#fff1b0', .45);
+  const al = makeLabel('仰角 23.5° ＝ 嘉義緯度', '#fff1b0', .45);
   al.position.copy(poleDir).multiplyScalar(DOME * .55).add(new THREE.Vector3(0, .6, 0)); trailGroup.add(al);
 }
 
@@ -593,7 +593,7 @@ function updateSky() {
   const mt = $('#moonTxt');
   mt.hidden = !moonGroup.visible;
   mt.textContent = `🌙 ${lunarName(moonDay)}・${moonPhaseName(mi.elong)}：` + (moonAlt > 0
-    ? `在${dirWord(azOf(moonMesh.position)).replace(/ \d+°/, '')}天空，高度角 ${moonAlt.toFixed(0)}°`
+    ? `在${dirWord(azOf(moonMesh.position)).replace(/ \d+°/, '')}天空，仰角 ${moonAlt.toFixed(0)}°`
     : '在地平線下，現在看不到');
   drawWhy(t);
 }

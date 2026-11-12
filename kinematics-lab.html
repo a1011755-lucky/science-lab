@@ -157,7 +157,7 @@
     </section>
 
     <section class="section" data-mode="m3" hidden>
-      <p class="desc">盯著兩個箭頭：<b style="color:#22a35a">綠色 = 速度 v</b>（會變）、<b style="color:#c99300">黃色 = 重力加速度 g</b>（永遠向下、不變）。</p>
+      <p class="desc">盯著兩個箭頭：<b style="color:#1a9bbd">水藍色 = 速度 v</b>（會變）、<b style="color:#c99300">黃色 = 重力加速度 g</b>（永遠向下、不變）。</p>
       <div class="row2">
         <button class="btn primary" id="m3Drop">⬇ 自由落體</button>
         <button class="btn primary" id="m3Throw">⬆ 鉛直上拋</button>
@@ -395,7 +395,7 @@ const M1 = (() => {
   const carB = makeCar(0x3f7be8), carR = makeCar(0xe5484d);
   group.add(carB, carR);
   // 位移向量（終點後出現）：兩車的位移都是 A → B
-  const dispArrow = makeArrow(0x8b5cf6, 0.1);
+  const dispArrow = makeArrow(0x2ec5e6, 0.1);
   group.add(dispArrow);
   dispArrow.visible = false;
   const lDisp = addLabel('m1', '位移 = 12 m（兩車相同！）', 'color:#7c3aed'); lDisp.pos.set(0, 1.9, 0.6); lDisp.visible = false;
@@ -489,9 +489,9 @@ const M2 = (() => {
   }
   const car = makeCar(0x3b8f6e);
   group.add(car);
-  const vArrow = makeArrow(0x22a35a, 0.08), aArrow = makeArrow(0xf59e0b, 0.06);
+  const vArrow = makeArrow(0x2ec5e6, 0.08), aArrow = makeArrow(0xf59e0b, 0.06);
   group.add(vArrow, aArrow);
-  const lv = addLabel('m2', '', 'color:#22a35a'), la = addLabel('m2', '', 'color:#c27c00');
+  const lv = addLabel('m2', '', 'color:#1a9bbd'), la = addLabel('m2', '', 'color:#c27c00');
   // 每 0.5 秒留下一個「頻閃」記號，看出位置間隔的變化
   const strobeMat = clay(0x3b8f6e, { transparent: true, opacity: 0.35 });
   const strobes = [];
@@ -565,7 +565,7 @@ const M2 = (() => {
     $('m2Name').textContent = M.name + `：v₀ = ${M.v0} m/s，a = ${M.a} m/s²`;
     $('m2kv').innerHTML = `<span>時間 t</span><b>${fmt(t)} s</b><span>位置 x = v₀t + ½at²</span><b>${fmt(s.x)} m</b><span>速度 v = v₀ + at</span><b>${fmt(s.v)} m/s</b>`;
     drawChart($('xt'), samples.map(p => [p[0], p[1]]), { xmax: 4, xstep: 1, ymin: 0, ymax: 12, ystep: 3, color: '#3b8f6e', ylabel: 'x (m)', xlabel: 't (s)' });
-    drawChart($('vt'), samples.map(p => [p[0], p[2]]), { xmax: 4, xstep: 1, ymin: 0, ymax: 6, ystep: 2, color: '#22a35a', ylabel: 'v (m/s)', xlabel: 't (s)' });
+    drawChart($('vt'), samples.map(p => [p[0], p[2]]), { xmax: 4, xstep: 1, ymin: 0, ymax: 6, ystep: 2, color: '#1a9bbd', ylabel: 'v (m/s)', xlabel: 't (s)' });
     // 3D 全息面板：同一份資料同步畫，並把小車和圖上的點用光線連起來
     drawChart(pXT.c, samples.map(p => [p[0], p[1]]), OXT); pXT.tex.needsUpdate = true;
     drawChart(pVT.c, samples.map(p => [p[0], p[2]]), OVT); pVT.tex.needsUpdate = true;
@@ -574,7 +574,7 @@ const M2 = (() => {
     setLink(linkX, top, pXT.at(t, s.x, OXT)); setLink(linkV, top, pVT.at(t, Math.max(0, s.v), OVT));
     $('m2tip').innerHTML = {
       uniform: '<b>等速</b>：v-t 圖是<b>水平線</b>（速度不變）；x-t 圖是<b>斜直線</b>，斜率 = 速度。',
-      accel: '<b>等加速度</b>：v-t 圖是<b>斜直線</b>（斜率 = 加速度）；x-t 圖是<b>拋物線</b>（越來越陡）。綠色速度箭頭越變越長。',
+      accel: '<b>等加速度</b>：v-t 圖是<b>斜直線</b>（斜率 = 加速度）；x-t 圖是<b>拋物線</b>（越來越陡）。水藍色速度箭頭越變越長。',
       brake: '<b>負加速度</b>：v-t 圖是<b>往下的斜直線</b>，最後 v = 0；x-t 圖越來越平。加速度箭頭（橘）和速度方向<b>相反</b>。'
     }[motion];
   }
@@ -613,10 +613,10 @@ const M3 = (() => {
   const ball = new THREE.Mesh(new THREE.SphereGeometry(R, 40, 28), clay(0xff8a5b, { emissive: 0xff6a2a, emissiveIntensity: 0.35 }));
   ball.castShadow = true;
   group.add(ball);
-  const gArrow = makeArrow(0xf2c230, 0.07), vArrow = makeArrow(0x22a35a, 0.08);
+  const gArrow = makeArrow(0xf2c230, 0.07), vArrow = makeArrow(0x2ec5e6, 0.08);
   group.add(gArrow, vArrow);
   const lg = addLabel('m3', 'g = 9.8 m/s²（向下，永遠不變）', 'color:#a07800');
-  const lv = addLabel('m3', '', 'color:#22a35a');
+  const lv = addLabel('m3', '', 'color:#1a9bbd');
   const ghostMat = clay(0xff8a5b, { transparent: true, opacity: 0.22 });
   const ghosts = [];
 
@@ -662,7 +662,7 @@ const M3 = (() => {
         let nt = t + dt * slow;
         // 上拋：剛好跨過最高點時，停在 t = v0/g（v = 0）
         if (kind === 'throw' && !peaked && vAt(nt) <= 0) { nt = v0 / G; peaked = true; peakHold = 2.2;
-          banner('最高點：<span style="color:#22a35a">v = 0</span>，但 <span style="color:#a07800">a = g = 9.8 m/s²（仍然向下）</span>！', 2600); }
+          banner('最高點：<span style="color:#1a9bbd">v = 0</span>，但 <span style="color:#a07800">a = g = 9.8 m/s²（仍然向下）</span>！', 2600); }
         t = nt;
         if (yAt(t) <= R) {                                 // 落地
           t = (v0 + Math.sqrt(v0 * v0 + 2 * G * (y0 - R))) / G;
@@ -684,7 +684,7 @@ const M3 = (() => {
     const vlen = Math.abs(v) * 0.16;
     setArrow(vArrow, V3(-0.5, ball.position.y, 0), V3(0, Math.sign(v) || 1, 0), vlen);
     lv.pos.set(-0.5, ball.position.y + Math.sign(v || 1) * (vlen + 0.35), 0);
-    lv.el.textContent = Math.abs(v) < 0.05 ? 'v = 0（綠色箭頭消失）' : `v = ${fmt(Math.abs(v), 1)} m/s ${v > 0 ? '↑' : '↓'}`;
+    lv.el.textContent = Math.abs(v) < 0.05 ? 'v = 0（速度箭頭消失）' : `v = ${fmt(Math.abs(v), 1)} m/s ${v > 0 ? '↑' : '↓'}`;
     render(y, v);
   }
   function render(y, v) {
@@ -697,7 +697,7 @@ const M3 = (() => {
     $('m3Name').textContent = kind === 'drop' ? `自由落體：從 ${DROP_H} m 靜止釋放（v₀ = 0）` : kind === 'throw' ? `鉛直上拋：v₀ = ${V0} m/s 向上` : '選擇自由落體或鉛直上拋';
     $('m3kv').innerHTML = `<span>時間 t</span><b>${fmt(t)} s</b><span>高度 y</span><b>${fmt(Math.max(0, y - R))} m</b>
       <span>速度 v = v₀ − gt</span><b>${fmt(v)} m/s</b><span>加速度 a</span><b>−9.8 m/s²（向下）</b>`;
-    drawChart($('vt3'), samples, { xmax: 2.4, xstep: 0.4, ymin: -12, ymax: 12, ystep: 6, color: '#22a35a', ylabel: 'v (m/s)', xlabel: 't (s)' });
+    drawChart($('vt3'), samples, { xmax: 2.4, xstep: 0.4, ymin: -12, ymax: 12, ystep: 6, color: '#1a9bbd', ylabel: 'v (m/s)', xlabel: 't (s)' });
   }
   $('m3Drop').addEventListener('click', () => start('drop'));
   $('m3Throw').addEventListener('click', () => start('throw'));
