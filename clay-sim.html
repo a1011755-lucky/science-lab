@@ -6,7 +6,7 @@
 <title>3D 自然科直觀模擬器</title>
 <style>
   :root {
-    --bg: #f4f7f6;
+    --bg: #f5f1e7;
     --ink: #1d1d1f;
     --ink-soft: #6e6e73;
     --line: rgba(0,0,0,.07);
@@ -197,7 +197,7 @@ renderer.toneMappingExposure = 1.1;
 $('scene').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xf4f7f6);
+scene.background = new THREE.Color(0xf5f1e7);
 scene.add(new THREE.AmbientLight(0xffffff, 0.9));
 const sun = new THREE.DirectionalLight(0xffffff, 2.4);
 sun.position.set(-7, 16, 12);

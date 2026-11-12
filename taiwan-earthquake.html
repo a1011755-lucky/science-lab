@@ -208,7 +208,7 @@ renderer.shadowMap.type = THREE.PCFShadowMap;
 $('scene').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xcfeaf7);
+scene.background = new THREE.Color(0xf5f1e7);
 const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 200);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;

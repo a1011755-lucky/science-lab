@@ -78,7 +78,7 @@
     background: rgba(255,253,248,.92); color: var(--ink); box-shadow: 0 4px 12px rgba(90,60,30,.1); font-variant-numeric: tabular-nums;
   }
   .tag small { font-size: .66rem; color: var(--ink-soft); font-weight: 700; }
-  .tag.f1 { background: #ff8a3d; color: #fff; } .tag.f2 { background: #3d8bff; color: #fff; } .tag.net { background: #2fbf71; color: #fff; }
+  .tag.f1 { background: #ff3b30; color: #fff; } .tag.f2 { background: #ff3b30; color: #fff; } .tag.net { background: #2fbf71; color: #fff; }
   .tag.fr { background: #e5484d; color: #fff; }
   .tag.hl { background: #5b8a72; color: #fff; }
   .tag.boom { background: #e5484d; color: #fff; font-size: .9rem; }
@@ -366,7 +366,7 @@ const ringMat = clay(0x8f969e, { metalness: 0.7, roughness: 0.25, clearcoat: 1, 
 const ring = shadowed(new THREE.Mesh(new THREE.TorusGeometry(RING_R, 0.08, 16, 48), ringMat)); HOOK.group.add(ring);
 const springs = [new THREE.Mesh(coilGeo, coilMat), new THREE.Mesh(coilGeo, coilMat)]; springs.forEach(m => { m.castShadow = true; HOOK.group.add(m); });
 const grips = [0, 1].map(() => { const g = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.6, 8, 20).rotateZ(Math.PI / 2), clay(0xb4865a))); HOOK.group.add(g); return g; });
-const hA1 = makeArrow(0xff8a3d), hA2 = makeArrow(0x3d8bff);
+const hA1 = makeArrow(0xff3b30), hA2 = makeArrow(0xff3b30);
 hA1.rotation.y = Math.PI; HOOK.group.add(hA1, hA2);
 const lH1 = addLabel('hook', '', 'f1', V3(0, 0, 0)), lH2 = addLabel('hook', '', 'f2', V3(0, 0, 0));
 const lHok = addLabel('hook', '', 'hl', V3(0, 0, 0), ring);

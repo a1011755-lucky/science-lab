@@ -6,7 +6,7 @@
 <title>牛頓力學遊樂園</title>
 <style>
   :root {
-    --bg: #e6edf1;
+    --bg: #f5f1e7;
     --ink: #1d1d1f;
     --ink-soft: #6e6e73;
     --card: rgba(255,255,255,.62);
@@ -207,7 +207,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 $('scene').appendChild(renderer.domElement);
 const scene = new THREE.Scene();
-const BG = { light: new THREE.Color(0xe6edf1), space: new THREE.Color(0x2c3050) };
+const BG = { light: new THREE.Color(0xf5f1e7), space: new THREE.Color(0x2c3050) };
 scene.background = BG.light.clone();
 const hemi = new THREE.HemisphereLight(0xffffff, 0xcdd6dd, 1.25);
 scene.add(hemi);
