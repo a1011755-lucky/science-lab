@@ -849,7 +849,7 @@ function updateBell(dt) {
   if (audio) audio.master.gain.setTargetAtTime(0.07 * BL.air * BL.air, audio.ctx.currentTime, 0.08);
   if (BL.air >= 0.98) setCap(`<small>鐘罩內充滿空氣</small><span class="huge org">🔔 鈴鈴鈴！聽得很清楚</span>鬧鐘振動 → 推動空氣分子 → 一個推一個，把聲波傳出來`);
   else if (BL.air > 0) setCap(`<small>抽氣中…空氣剩下 ${(BL.air * 100).toFixed(0)}%</small><span class="huge">空氣越少，聲音越小聲</span>傳遞聲音的<b>介質</b>（空氣分子）越來越少`);
-  else setCap(`<small>鐘罩內幾乎沒有空氣了</small><span class="huge red pop">🔇 真空不能傳聲！</span>鬧鐘<b>還在震動</b>，但沒有介質，聲音傳不出來`);
+  else setCap(`<small>鐘罩內幾乎沒有空氣了</small><span class="huge red pop">🔇 真空不能傳聲！</span>鬧鐘<b>還在振動</b>，但沒有介質，聲音傳不出來`);
   setHTML('bellStat', `鐘罩內空氣：<b class="b">${(BL.air * 100).toFixed(0)}%</b>（${nAir} 顆粒子）<br>氣壓：<b>${kPa.toFixed(0)} kPa</b><br>外面聽到的聲音：<b class="o">${dB > 0 ? dB + ' dB' : '聽不到'}</b><br>鬧鐘振動：<b class="g">一直在振動</b>`);
 }
 

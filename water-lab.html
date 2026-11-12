@@ -136,9 +136,9 @@
     <section class="sec" data-tab="dist">
       <div class="concept" style="--cc:#1e6aa8"><div class="ct">地球上的水，能用的很少</div><div class="cd">海水最多但太鹹；冰川難利用；<br>河湖水最容易取得</div></div>
       <p class="desc">點下面的按鈕，或直接點畫面中水滴旁的<b>立體按鈕</b>：</p>
-      <button class="btn wsel" data-w="ocean">🌊 海洋<small>約 97%</small></button>
-      <button class="btn wsel" data-w="ice">🧊 冰川<small>約 2%</small></button>
-      <button class="btn wsel" data-w="fresh">💧 地下水與河湖水<small>不到 1%</small></button>
+      <button class="btn wsel" data-w="ocean">🌊 海洋<small>約 98%</small></button>
+      <button class="btn wsel" data-w="ice">🧊 冰川<small>約 1.6%</small></button>
+      <button class="btn wsel" data-w="fresh">💧 地下水與河湖水<small>約 0.4%</small></button>
       <div class="stat" id="distStat"></div>
     </section>
 
@@ -358,7 +358,7 @@ function textTexture(lines, { w = 512, h = 256, bg = '#fffaf0', fg = '#5d4037', 
    Tab 1：水資源分布比例模型
    ---------------------------------------------------------
    水滴的體積 ＝ 地球上所有的水。由下往上依「體積」切：
-   海洋 97%（下方）、地下水與河湖水 約 1%（薄薄一層）、冰川 2%（頂端）。
+   海洋約 98%（下方）、地下水與河湖水約 0.4%（薄薄一層）、冰川約 1.6%（頂端）。
    ========================================================= */
 const DR = { group: new THREE.Group(), sel: null, R: 2.7, H: 3.3, CY: 4.0, t: 0, zoom: false };
 scene.add(DR.group);
@@ -380,7 +380,7 @@ function yAtFrac(f) {
   return DR.H;
 }
 const rAtY = y => { for (let i = 1; i < dropPts.length; i++) if (dropPts[i].y >= y) { const a = dropPts[i - 1], b = dropPts[i], k = (y - a.y) / (b.y - a.y || 1); return a.x + (b.x - a.x) * k; } return 0; };
-const Y97 = yAtFrac(0.97), Y98 = yAtFrac(0.98);
+const Y97 = yAtFrac(0.98), Y98 = yAtFrac(0.984);                           // 海洋 98%｜地下水與河湖水 0.4%｜冰川 1.6%
 function sliceLathe(y0, y1, seg = 96) {
   const pts = [V2(0, y0), V2(rAtY(y0), y0)];
   for (const p of dropPts) if (p.y > y0 && p.y < y1) pts.push(p);
@@ -413,7 +413,7 @@ lakeGlow.scale.setScalar(0.6); lake.add(lakeGlow);
 add(DR.group, shadowed(new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.9, 0.35, 48), clay(0xc49a6c))), 0, 0.18, 0);
 add(DR.group, new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.4, DR.CY - DR.H - 0.35 + 0.15, 20), clay(0xb98a5e)), 0, 0.35 + (DR.CY - DR.H - 0.2) / 2, 0);
 // 立體按鈕
-const WBTN = { ocean: ['🌊 海洋', '約 97%', '#1f5fa8'], ice: ['🧊 冰川', '約 2%', '#5b8fb0'], fresh: ['💧 地下水與河湖水', '不到 1%', '#1b9cc7'] };
+const WBTN = { ocean: ['🌊 海洋', '約 98%', '#1f5fa8'], ice: ['🧊 冰川', '約 1.6%', '#5b8fb0'], fresh: ['💧 地下水與河湖水', '約 0.4%', '#1b9cc7'] };
 const btn3 = {};
 Object.entries(WBTN).forEach(([k, [t1, t2, col]], i) => {
   const g = new THREE.Group(); g.position.set(5.6, 6.0 - i * 2.0, 0.6); DR.group.add(g);
@@ -424,14 +424,14 @@ Object.entries(WBTN).forEach(([k, [t1, t2, col]], i) => {
   box.castShadow = true; box.userData.w = k; face.userData.w = k;
   btn3[k] = { g, box, face, push: 0 };
 });
-const lbOcean = addLabel('dist', '海洋 97%', 'lam', V3(-DR.R - 0.6, DR.CY - 1.2, 0));
-const lbIce = addLabel('dist', '冰川 2%', '', V3(-0.9, DR.CY + Y98 + 0.5, 0));
-const lbFresh = addLabel('dist', '地下水與河湖水 &lt; 1%', 'yel', V3(-RF - 1.4, DR.CY + YF, 0));
+const lbOcean = addLabel('dist', '海洋約 98%', 'lam', V3(-DR.R - 0.6, DR.CY - 1.2, 0));
+const lbIce = addLabel('dist', '冰川約 1.6%', '', V3(-0.9, DR.CY + Y98 + 0.5, 0));
+const lbFresh = addLabel('dist', '地下水與河湖水約 0.4%', 'yel', V3(-RF - 1.4, DR.CY + YF, 0));
 const lbLake = addLabel('dist', '★ 河湖水（最容易取得）', 'red small', V3(0, 0.22, 0), lake);
 const TIPS_W = {
-  ocean: ['🌊 海洋', '海水佔 97%，但淡化成本太高（水費會暴增），難以直接利用！'],
-  ice: ['🧊 冰川', '冰川佔 2%，是最大的淡水庫，但距離太遠難以利用！'],
-  fresh: ['💧 地下水與河湖水', '不到 1%！其中河湖水是最容易取得、最常使用的淡水資源！']
+  ocean: ['🌊 海洋', '海水約占 98%，是鹹水，淡化成本高，難以直接利用！'],
+  ice: ['🧊 冰川', '冰川約占 1.6%，是地球上最多的淡水，但多在極地、高山，難以利用！'],
+  fresh: ['💧 地下水與河湖水', '只有約 0.4%！人類可利用的淡水主要是地下水，河湖水的量更少。']
 };
 function selectWater(k) {
   DR.sel = k; DR.zoom = k === 'fresh'; DR.t = 0;
@@ -459,9 +459,9 @@ function updateDist(dt) {
     b.g.position.z = 0.6 - 0.25 * Math.sin(Math.PI * b.push);
     b.box.material.color.setHex(s === k ? 0xffe7c2 : 0xfffaf0);
   }
-  if (!s) setCap(`<small>地球上所有的水，裝進一顆水滴</small>點選右邊的<b>立體按鈕</b>，看看每一種水佔多少`);
+  if (!s) setCap(`<small>地球上所有的水，裝進一顆水滴</small>點選右邊的<b>立體按鈕</b>，看看每一種水占多少`);
   else setCap(`<small>${TIPS_W[s][0]}</small><span class="huge pop" data-k="${s}">${TIPS_W[s][1]}</span>`);
-  setHTML('distStat', `🌊 海洋：<b class="b">約 97%</b>（鹹水）<br>🧊 冰川：<b>約 2%</b>（固態淡水）<br>💧 地下水＋河湖水：<b class="g">不到 1%</b><br><small>人類真正方便使用的淡水，少之又少！</small>`);
+  setHTML('distStat', `🌊 海洋：<b class="b">約 98%</b>（鹹水）<br>🧊 冰川：<b>約 1.6%</b>（最多的淡水）<br>💧 地下水＋河湖水：<b class="g">約 0.4%</b><br><small>可利用的淡水主要是<b>地下水</b>，少之又少！</small>`);
 }
 const ray = new THREE.Raycaster(), ndc = V2(0, 0);
 function setNdc(ev) { const r = renderer.domElement.getBoundingClientRect(); ndc.set((ev.clientX - r.left) / r.width * 2 - 1, -(ev.clientY - r.top) / r.height * 2 + 1); ray.setFromCamera(ndc, camera); }

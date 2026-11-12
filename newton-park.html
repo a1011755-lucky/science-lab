@@ -6,7 +6,7 @@
 <title>牛頓力學遊樂園</title>
 <style>
   :root {
-    --bg: #e6edf1;
+    --bg: #f5f1e7;
     --ink: #1d1d1f;
     --ink-soft: #6e6e73;
     --card: rgba(255,255,255,.62);
@@ -128,7 +128,7 @@
     <div class="mname" id="mname"></div>
 
     <section class="section" data-mode="m1">
-      <p class="desc">黏土人站在滑板車上，<b>沒有綁安全帶</b>。看看車子突然加速、急煞車時，人會怎樣？</p>
+      <p class="desc">原木人偶站在滑板車上，<b>沒有綁安全帶</b>。看看車子突然加速、急煞車時，人會怎樣？</p>
       <div class="row2">
         <button class="btn primary" id="m1Go">🚀 突然爆衝</button>
         <button class="btn danger" id="m1Brake" disabled>🛑 急煞車</button>
@@ -149,7 +149,7 @@
     </section>
 
     <section class="section" data-mode="m3" hidden>
-      <p class="desc">光滑溜冰場上，左邊大胖子 <b>80 kg</b>、右邊小瘦子 <b>35 kg</b>，兩人手貼手。</p>
+      <p class="desc">光滑溜冰場上，左邊大人 <b>80 kg</b>、右邊小孩 <b>35 kg</b>，兩人手貼手。</p>
       <button class="btn primary" id="m3Go">🤲 互相推開</button>
       <button class="btn" id="m3Reset">↺ 回到原位</button>
       <div class="read" id="m3Read"></div>
@@ -165,7 +165,7 @@
 
     <section class="section" data-mode="m5" hidden>
       <p class="desc">水球被繩子綁著做<b>等速率圓周運動</b>。<b style="color:#3f7be8">藍色 = 向心力</b>（指向圓心），<b style="color:#e5484d">紅色 = 速度</b>（沿切線）。</p>
-      <div class="ios" style="--c:#4f7fb8"><div class="top"><span>轉動快慢 ω</span><b id="m5WV">1.5 rad/s</b></div><input type="range" id="m5W" min="0.5" max="3" step="0.1" value="1.5" aria-label="角速度"></div>
+      <div class="ios" style="--c:#4f7fb8"><div class="top"><span>轉動快慢</span><b id="m5WV">每秒 0.24 圈</b></div><input type="range" id="m5W" min="0.5" max="3" step="0.1" value="1.5" aria-label="轉動快慢"></div>
       <button class="btn danger" id="m5Cut">✂ 剪斷繩子</button>
       <button class="btn" id="m5Reset">↺ 重新綁好</button>
       <div class="read" id="m5Read"></div>
@@ -207,7 +207,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 $('scene').appendChild(renderer.domElement);
 const scene = new THREE.Scene();
-const BG = { light: new THREE.Color(0xe6edf1), space: new THREE.Color(0x2c3050) };
+const BG = { light: new THREE.Color(0xf5f1e7), space: new THREE.Color(0x2c3050) };
 scene.background = BG.light.clone();
 const hemi = new THREE.HemisphereLight(0xffffff, 0xcdd6dd, 1.25);
 scene.add(hemi);
@@ -447,7 +447,7 @@ const M1 = (() => {
     wheels.forEach(w => { w.rotation.y -= carV * dt / 0.2; });
     scroll(carX);
     lMan.pos.copy(man.position).add(V3(0, manFree ? 1.1 : 2.6, 0));
-    lMan.el.textContent = manFree ? '人：保持原速往前飛' : theta > 0.15 ? '上半身向後仰' : '黏土人';
+    lMan.el.textContent = manFree ? '人：保持原速往前飛' : theta > 0.15 ? '上半身向後仰' : '原木人偶';
     lCar.pos.set(0, -0.15, 0.9);
     lCar.el.textContent = `車速 ${carV.toFixed(1)} m/s`;
     $('m1Read').innerHTML = `<div class="kv"><span>車子速度</span><b>${carV.toFixed(2)} m/s</b><span>車子加速度</span><b>${carA.toFixed(1)} m/s²</b><span>上半身傾斜</span><b>${(theta * 180 / Math.PI).toFixed(0)}°</b></div>
@@ -515,14 +515,14 @@ const M3 = (() => {
   const M_BIG = 80, M_SMALL = 35, F = 240, DT = 0.35;
   const big = makePerson(0x8f7bd6, { w: 1.9, h: 1.15 });
   const small = makePerson(0x4fb38a, { w: 0.75, h: 0.95 });
-  small.rotation.y = Math.PI;                               // 面向左邊的大胖子
+  small.rotation.y = Math.PI;                               // 面向左邊的大人
   group.add(big, small);
   const fOnBig = makeArrow(0xe5484d, 0.11), fOnSmall = makeArrow(0xe5484d, 0.11);
   const vBig = makeArrow(0x22a35a, 0.1), vSmall = makeArrow(0x22a35a, 0.1);
   group.add(fOnBig, fOnSmall, vBig, vSmall);
   const lFB = addLabel('m3', '', 'color:#e5484d'), lFS = addLabel('m3', '', 'color:#e5484d');
   const lVB = addLabel('m3', '', 'color:#22a35a'), lVS = addLabel('m3', '', 'color:#22a35a');
-  const lBig = addLabel('m3', '大胖子 80 kg'), lSmall = addLabel('m3', '小瘦子 35 kg');
+  const lBig = addLabel('m3', '大人 80 kg'), lSmall = addLabel('m3', '小孩 35 kg');
   const X_BIG0 = -0.95, X_SMALL0 = 0.62;
 
   let xb = X_BIG0, xs = X_SMALL0, vb = 0, vs = 0, t = -1;
@@ -540,7 +540,7 @@ const M3 = (() => {
         t += h;
         if (xs > 11) { vs = 0; } if (xb < -11) { vb = 0; }
       }
-      if (t > DT + 1.2) banner('力一樣大，但<b>質量小的小瘦子加速度大</b> → 往後飛得比較快（a = F ÷ m）', 0);
+      if (t > DT + 1.2) banner('力一樣大，但<b>質量小的小孩加速度大</b> → 往後飛得比較快（a = F ÷ m）', 0);
     }
     big.position.set(xb, 0, 0);
     small.position.set(xs, 0, 0);
@@ -565,9 +565,9 @@ const M3 = (() => {
     lVB.visible = Math.abs(vb) > 0.05; lVB.pos.set(xb - Math.abs(vb) * 0.55, 3.6, 0); lVB.el.textContent = `v = ${Math.abs(vb).toFixed(2)} m/s`;
     lBig.pos.set(xb, -0.35, 1.3); lSmall.pos.set(xs, -0.35, 1.0);
     $('m3Read').innerHTML = `<div class="kv"><span>推力（雙方相同）</span><b>${F} N，作用 ${DT} s</b>
-      <span>大胖子 a = F ÷ m</span><b>${(F / M_BIG).toFixed(1)} m/s²</b><span>小瘦子 a = F ÷ m</span><b>${(F / M_SMALL).toFixed(1)} m/s²</b>
-      <span>大胖子速度</span><b>${Math.abs(vb).toFixed(2)} m/s</b><span>小瘦子速度</span><b>${Math.abs(vs).toFixed(2)} m/s</b></div>
-      <div class="concl">作用力與反作用力：大小相等、方向相反、同時出現。<br>力一樣大，質量小的加速度大，所以小瘦子飛得快。</div>`;
+      <span>大人 a = F ÷ m</span><b>${(F / M_BIG).toFixed(1)} m/s²</b><span>小孩 a = F ÷ m</span><b>${(F / M_SMALL).toFixed(1)} m/s²</b>
+      <span>大人速度</span><b>${Math.abs(vb).toFixed(2)} m/s</b><span>小孩速度</span><b>${Math.abs(vs).toFixed(2)} m/s</b></div>
+      <div class="concl">作用力與反作用力：大小相等、方向相反、同時出現。<br>力一樣大，質量小的加速度大，所以小孩飛得快。</div>`;
   }
   return { group, update, enter: reset, camera: { pos: [0, 4.5, 14], target: [0, 1.6, 0] }, bg: 'light',
     push: () => $('m3Go').click(), get state() { return { vb, vs, t }; } };
@@ -693,7 +693,7 @@ const M5 = (() => {
 
   let w = 1.5, phi = 0, cut = false, pos = V3(R, Y, 0), vel = V3(0, 0, 0);
   const paint = el => el.style.setProperty('--fill', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
-  $('m5W').addEventListener('input', e => { w = Number(e.target.value); $('m5WV').textContent = `${w} rad/s`; paint(e.target); });
+  $('m5W').addEventListener('input', e => { w = Number(e.target.value); $('m5WV').textContent = `每秒 ${(w / (2 * Math.PI)).toFixed(2)} 圈`; paint(e.target); });
   paint($('m5W'));
   function reset() { cut = false; rope.visible = true; stub.visible = false; tangent.visible = false; $('m5Cut').disabled = false; hideBanner(); }
   $('m5Cut').addEventListener('click', () => {
@@ -741,7 +741,7 @@ const M5 = (() => {
     const dir = cut ? vel.clone().normalize() : V3(-Math.sin(phi), 0, -Math.cos(phi));
     lV.pos.copy(pos).addScaledVector(dir, v * 0.33 + 0.9).add(V3(0, 0.4, 0)); lV.el.textContent = `速度 v = ${v.toFixed(1)} m/s`;
     lV.visible = ball.visible;
-    $('m5Read').innerHTML = `<div class="kv"><span>半徑 R</span><b>${R} m</b><span>速率 v = ωR</span><b>${v.toFixed(2)} m/s</b>
+    $('m5Read').innerHTML = `<div class="kv"><span>半徑 R</span><b>${R} m</b><span>速率 v</span><b>${v.toFixed(2)} m/s</b>
       <span>向心力 Fc = mv²/R</span><b>${cut ? '0（繩子斷了）' : Fc.toFixed(2) + ' N'}</b></div>
       <div class="concl">速度方向永遠沿著<b>切線</b>；向心力負責把方向「拉彎」。<br>繩子一斷，水球不會往外直直飛，而是沿<b>切線</b>直線飛出。</div>`;
   }

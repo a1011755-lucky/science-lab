@@ -139,7 +139,7 @@
   <div class="body">
     <div class="tabs three">
       <button class="tab on" data-tab="div">🏝️ 生物多樣性<small>危機與保育</small></button>
-      <button class="tab" data-tab="mag">☠️ 生物放大<small>污染沿食物鏈</small></button>
+      <button class="tab" data-tab="mag">☠️ 生物放大<small>汙染沿食物鏈</small></button>
       <button class="tab" data-tab="bin">♻️ 垃圾分類<small>減量與回收</small></button>
     </div>
 
@@ -375,8 +375,8 @@ const DV = (() => {
   const inv = Array.from({ length: 12 }, () => { const s = emoji('🐌', 0.45); s.position.set(1.4 + (rnd() - 0.5) * 2, 0.6, -1.0 + (rnd() - 0.5) * 2); s.visible = false; group.add(s); return s; });
   const fence = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.04, 6, 80), clay(0x8d6e63)); fence.rotation.x = Math.PI / 2; fence.position.y = 0.55; fence.visible = false; group.add(fence);
   const st = { alive: SP.map(() => true), habitat: false, invasive: false, hunt: false, pollute: false, reserve: false };
-  const TH = [['habitat', '🪓 棲地破壞', '砍伐森林、開發土地，生物失去棲息地'], ['invasive', '🐌 外來種入侵', '福壽螺等外來種大量繁殖，排擠原生物種'], ['hunt', '🎯 過度捕獵', '濫捕野生動物，族群數量急速下降'], ['pollute', '🛢️ 環境污染', '污水、農藥污染湖泊與土壤']];
-  const CV = [['reserve', '🛡️ 設立保護區', '劃設保護區，限制開發和捕獵'], ['remove', '🧤 移除外來種', '清除外來種，讓原生種恢復'], ['plant', '🌱 植樹復育', '種回原生植物，恢復棲地'], ['clean', '🚰 減少污染', '污水處理、減少農藥使用']];
+  const TH = [['habitat', '🪓 棲地破壞', '砍伐森林、開發土地，生物失去棲息地'], ['invasive', '🐌 外來種入侵', '福壽螺等外來種大量繁殖，排擠原生物種'], ['hunt', '🎯 過度捕獵', '濫捕野生動物，族群數量急速下降'], ['pollute', '🛢️ 環境汙染', '汙水、農藥汙染湖泊與土壤']];
+  const CV = [['reserve', '🛡️ 設立保護區', '劃設保護區，限制開發和捕獵'], ['remove', '🧤 移除外來種', '清除外來種，讓原生種恢復'], ['plant', '🌱 植樹復育', '種回原生植物，恢復棲地'], ['clean', '🚰 減少汙染', '汙水處理、減少農藥使用']];
   $('thBtns').innerHTML = TH.map(t => `<button class="btn" data-k="${t[0]}">${t[1]}</button>`).join('');
   $('cvBtns').innerHTML = CV.map(t => `<button class="btn" data-k="${t[0]}">${t[1]}</button>`).join('');
   let msg = '';
@@ -453,7 +453,7 @@ const BN = (() => {
   const B = [['plastic', '塑膠類', '🧴', 0x42a5f5], ['metal', '金屬類', '🥫', 0x90a4ae], ['paper', '紙類', '📰', 0xffca28], ['glass', '玻璃類', '🍾', 0x66bb6a], ['food', '廚餘', '🍌', 0x8d6e63], ['hazard', '有害（電池、燈管）', '🔋', 0xe53935], ['trash', '一般垃圾', '🗑️', 0x616161]];
   const pos = {};
   B.forEach((b, i) => { const x = (i - 3) * 1.45; const bin = shadowed(rbox(1.2, 1.2, 1.0, clay(b[3]), 0.1)); bin.position.set(x, 0.6, 0); group.add(bin); const ic = emoji(b[2], 0.6); ic.position.set(x, 1.55, 0.2); group.add(ic); addLabel('bin', b[1], 'small', V3(x, 0.15, 0.7)); pos[b[0]] = V3(x, 1.2, 0); });
-  const ITEMS = [['寶特瓶', '🧃', 'plastic', '清洗、壓扁後回收'], ['鋁製飲料罐', '🥤', 'metal', '鋁罐屬於金屬類，可以回收再製'], ['報紙', '📰', 'paper', '乾淨的紙類可回收'], ['玻璃瓶', '🍾', 'glass', '玻璃可以回收再利用'], ['香蕉皮', '🍌', 'food', '廚餘可做堆肥或養豬'], ['電池', '🔋', 'hazard', '含重金屬，要送回收點，不可丟一般垃圾'], ['用過的衛生紙', '🧻', 'trash', '沾污的紙不能回收'], ['鐵罐', '🥫', 'metal', '金屬類回收'], ['菜葉', '🥬', 'food', '廚餘'], ['日光燈管', '💡', 'hazard', '含汞，屬於有害廢棄物'], ['塑膠袋', '🛍️', 'plastic', '乾淨的塑膠袋可回收；更好的是自備購物袋（拒絕、減量）'], ['紙箱', '📦', 'paper', '紙類回收']];
+  const ITEMS = [['寶特瓶', '🧃', 'plastic', '清洗、壓扁後回收'], ['鋁製飲料罐', '🥤', 'metal', '鋁罐屬於金屬類，可以回收再製'], ['報紙', '📰', 'paper', '乾淨的紙類可回收'], ['玻璃瓶', '🍾', 'glass', '玻璃可以回收再利用'], ['香蕉皮', '🍌', 'food', '廚餘可做堆肥或養豬'], ['電池', '🔋', 'hazard', '含重金屬，要送回收點，不可丟一般垃圾'], ['用過的衛生紙', '🧻', 'trash', '沾汙的紙不能回收'], ['鐵罐', '🥫', 'metal', '金屬類回收'], ['菜葉', '🥬', 'food', '廚餘'], ['日光燈管', '💡', 'hazard', '含汞，屬於有害廢棄物'], ['塑膠袋', '🛍️', 'plastic', '乾淨的塑膠袋可回收；更好的是自備購物袋（拒絕、減量）'], ['紙箱', '📦', 'paper', '紙類回收']];
   const cur = emoji('🧃', 1.3); cur.position.set(0, 3.2, 1); group.add(cur);
   const st = { order: ITEMS.map((_, i) => i).sort(() => rnd() - 0.5), i: 0, fly: 0, score: 0, tries: 0, wrong: null, last: null };
   function ask() { const it = ITEMS[st.order[st.i]]; if (!it) return; cur.material.map = emojiTex(it[1]); cur.material.needsUpdate = true; cur.position.set(0, 3.2, 1); cur.scale.setScalar(1.3); st.wrong = null; }

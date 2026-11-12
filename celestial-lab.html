@@ -152,7 +152,7 @@
 
     <!-- Tab 2 -->
     <section class="sec" data-tab="sun" hidden>
-      <div class="concept" style="--cc:#d35400"><div class="ct">太陽東升西落（周日運動）</div><div class="cd">地球由西向東自轉 → 太陽看起來由東向西<br>觀察地點：台灣（北緯 23.5°）</div></div>
+      <div class="concept" style="--cc:#d35400"><div class="ct">太陽東升西落（周日運動）</div><div class="cd">地球由西向東自轉 → 太陽看起來由東向西<br>觀察地點：臺灣（北緯 23.5°）</div></div>
       <div class="seasons">
         <button class="btn sz" data-dec="0">🌸 春分<small>3/20</small></button>
         <button class="btn sz" data-dec="23.5">☀️ 夏至<small>6/21</small></button>
@@ -178,7 +178,7 @@
       <div class="stat" id="sunStat"></div>
       <details class="learn"><summary>📘 學習重點</summary>
         <p>太陽和星星每天都<b>東升西落</b>，這叫做<b>周日運動</b>，原因是地球<b>由西向東自轉</b>。</p>
-        <p>在台灣，太陽<b>中午</b>在南方天空最高，這時竿影最短，影子指向<b>北方</b>。</p>
+        <p>在臺灣，太陽<b>中午</b>在南方天空最高，這時竿影最短，影子指向<b>北方</b>。</p>
         <p><b>夏至</b>從東偏北升起、路徑高、白天長；<b>冬至</b>從東偏南升起、路徑低、白天短；<b>春分、秋分</b>正東升、正西落。</p>
         <p class="tiny">時間用「太陽時」：太陽在正南方最高時算中午 12 點。圖中大小沒有照真實比例。</p>
       </details>
@@ -190,7 +190,7 @@
       <label class="lab" for="latR">🧭 觀察者緯度<b>北緯 <span id="latV">23.5</span>°</b></label>
       <input class="big" type="range" id="latR" min="0" max="90" step="0.5" value="23.5">
       <div class="quick">
-        <button class="btn" data-lat="0">赤道 0°</button><button class="btn" data-lat="23.5">台灣 23.5°</button><button class="btn" data-lat="66.5">北極圈 66.5°</button><button class="btn" data-lat="90">北極 90°</button>
+        <button class="btn" data-lat="0">赤道 0°</button><button class="btn" data-lat="23.5">臺灣 23.5°</button><button class="btn" data-lat="66.5">北極圈 66.5°</button><button class="btn" data-lat="90">北極 90°</button>
       </div>
       <button class="btn" id="playLat">⏸ 暫停</button>
       <div class="stat" id="latStat"></div>
@@ -668,7 +668,7 @@ function makeObs(tabKey) {
 }
 
 /* =========================================================
-   Tab 2：四季太陽軌跡（台灣北緯 23.5°）＋原本的周日運動
+   Tab 2：四季太陽軌跡（臺灣北緯 23.5°）＋原本的周日運動
    ========================================================= */
 const SUN = makeObs('sun');
 SUN.season = '春分';
@@ -724,7 +724,7 @@ function updateLat(dt) {
   if (lat >= 89.9) setCap(`<small>北緯 90°（北極點）・夏至</small><span class="huge red blink">永晝現象出現！太陽繞著地平線平移！</span>北極星在<b>天頂</b>（仰角 90°），太陽整天在仰角 23.5° 的高度繞圈`);
   else if (polarDay) setCap(`<small>北緯 ${lat.toFixed(1)}°（北極圈內）・夏至</small><span class="huge red">永晝：太陽整天都不會落到地平線下</span>半夜的太陽也還在北方低空（午夜太陽）`);
   else if (lat < 0.6) setCap(`<small>赤道・夏至</small><span class="huge">北極星貼在正北方的地平線上（仰角 0°）</span>太陽軌跡<b>垂直</b>地平線，直上直下；白天、晚上一樣長`);
-  else if (Math.abs(lat - 23.5) < 0.6) setCap(`<small>北緯 23.5°（台灣，北回歸線）・夏至</small><span class="huge">北極星仰角 23.5°，夏至正午太陽經過天頂</span>`);
+  else if (Math.abs(lat - 23.5) < 0.6) setCap(`<small>北緯 23.5°（臺灣，北回歸線）・夏至</small><span class="huge">北極星仰角 23.5°，夏至正午太陽經過天頂</span>`);
   else setCap(`<small>北緯 ${lat.toFixed(1)}°・夏至</small><span class="huge">北極星仰角 ＝ 觀察者緯度 ＝ <span class="blu">${lat.toFixed(1)}°</span></span>緯度越高，天球傾斜得越厲害，太陽軌跡越斜`);
   const day = 2 * r.hd;
   setHTML('latStat', `觀察者緯度：<b>北緯 ${lat.toFixed(1)}°</b><br>北極星仰角：<b class="b">${lat.toFixed(1)}°</b>（＝ 緯度）<br>夏至正午太陽仰角：<b class="r">${(90 - Math.abs(lat - 23.5)).toFixed(1)}°</b>${lat < 23.5 ? '（太陽在天頂偏北）' : ''}<br>白天長：<b>${polarDay ? '24 小時（永晝）' : Math.floor(day) + ' 小時 ' + Math.round((day % 1) * 60) + ' 分'}</b>`);

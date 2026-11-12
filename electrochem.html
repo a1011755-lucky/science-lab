@@ -6,7 +6,7 @@
 <title>電化學實驗室</title>
 <style>
   :root {
-    --bg: #eef0f4;
+    --bg: #f5f1e7;
     --ink: #1d1d1f;
     --ink-soft: #6e6e73;
     --card: rgba(255,255,255,.62);
@@ -193,7 +193,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 $('scene').appendChild(renderer.domElement);
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xeef0f4);
+scene.background = new THREE.Color(0xf5f1e7);
 const pmrem = new THREE.PMREMGenerator(renderer);
 const envScene = new THREE.Scene();
 envScene.background = new THREE.Color(0xf2f3f7);

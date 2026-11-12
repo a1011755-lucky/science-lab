@@ -159,7 +159,7 @@
 
 <aside class="panel" id="panel">
   <button class="collapse" id="collapse">收合</button>
-  <a class="back" href="index.html#g9">← 回課程總覽</a>
+  <a class="back" href="index.html#g9">‹ 課程總覽</a>
   <div class="id mono">GEO-SCAN · 地層探勘儀</div>
   <h1>地質剖面與斷層模擬器</h1>
 
@@ -171,7 +171,7 @@
 
     <!-- 斷層 -->
     <section class="section" data-mode="fault">
-      <p class="desc">岩塊沿著傾斜約 60° 的斷層面切成兩半。<b>斷層面上方</b>的岩塊叫<b>上磐</b>，<b>下方</b>的叫<b>下磐</b>。施加不同的力，看看上磐怎麼移動。</p>
+      <p class="desc">岩塊沿著傾斜約 60° 的斷層面切成兩半。<b>斷層面上方</b>的岩塊叫<b>上盤</b>，<b>下方</b>的叫<b>下盤</b>。施加不同的力，看看上盤怎麼移動。</p>
       <div class="readout">
         <div class="k mono">FAULT TYPE</div>
         <div class="v" id="faultType">— <small>尚未受力</small></div>
@@ -182,7 +182,7 @@
         <button class="btn" id="compressBtn">→← 壓力（擠壓）</button>
         <button class="btn ghost wide" id="resetBtn">復原岩塊</button>
       </div>
-      <p class="note">觀察技巧：看彩色岩層在斷層兩側「錯開」的方向，就能判斷上磐是上升還是下滑。</p>
+      <p class="note">觀察技巧：看彩色岩層在斷層兩側「錯開」的方向，就能判斷上盤是上升還是下滑。</p>
     </section>
 
     <!-- 地球內部構造 -->
@@ -330,7 +330,7 @@ function textPlane(big, small, w = 3.4) {
    ---------------------------------------------------------
    側視剖面（x 向右、y 向上），岩塊 x∈[−6,6]、y∈[−3,3]、z∈[−3,3]
    斷層線傾角 60°、向右下傾：x = −y / tan60°
-   斷層線右側（壓在斷層面上方）＝上磐；左側＝下磐
+   斷層線右側（壓在斷層面上方）＝上盤；左側＝下盤
    ========================================================= */
 const Fault = (() => {
   const group = new THREE.Group();
@@ -339,7 +339,7 @@ const Fault = (() => {
   const top = V2(-H / Math.tan(DIP), H);      // 斷層線與地表交點
   const bot = V2(H / Math.tan(DIP), -H);      // 斷層線與岩塊底部交點
   const downDip = new THREE.Vector3(bot.x - top.x, bot.y - top.y, 0).normalize();   // 沿斷層面往下
-  const faultNormal = new THREE.Vector3(-downDip.y, downDip.x, 0);                   // 指向上磐（右上）
+  const faultNormal = new THREE.Vector3(-downDip.y, downDip.x, 0);                   // 指向上盤（右上）
 
   // 兩塊的剖面多邊形（凸四邊形）
   const FOOT = [[-W, -H], [bot.x, -H], [top.x, H], [-W, H]];
@@ -409,7 +409,7 @@ const Fault = (() => {
   group.add(footwall, hanging);
 
   // 岩塊表面的 3D 文字（前後兩面都有，旋轉到背面也看得到）
-  [[hanging, '上磐', 'Hanging Wall', 3.15], [footwall, '下磐', 'Footwall', -3.6]].forEach(([blk, big, small, x]) => {
+  [[hanging, '上盤', 'Hanging Wall', 3.15], [footwall, '下盤', 'Footwall', -3.6]].forEach(([blk, big, small, x]) => {
     const front = textPlane(big, small);
     front.position.set(x, 0.55, D / 2 + 0.02);
     const back = textPlane(big, small);
@@ -443,7 +443,7 @@ const Fault = (() => {
     forceArrows.push(a);
     group.add(a);
   }
-  // 上磐移動方向的小箭頭（貼在正面）
+  // 上盤移動方向的小箭頭（貼在正面）
   const slipArrow = makeForceArrow(0xffd27a);
   slipArrow.scale.setScalar(0.45);
   hanging.add(slipArrow);
@@ -465,12 +465,12 @@ const Fault = (() => {
     forceArrows.forEach(a => a.children.forEach(m => { m.material.color.set(color); m.material.emissive.set(color); }));
     if (f === 'tension') {
       $('faultType').innerHTML = '正斷層 <small>Normal Fault</small>';
-      $('faultDesc').innerHTML = '受<b style="color:#4fc3f7">張力</b>拉扯 → 岩層被拉開<br>上磐沿斷層面<b style="color:#ffb35c">往下滑動</b>';
-      showBanner('正斷層 Normal Fault', '張力 → 上磐相對下磐「下滑」');
+      $('faultDesc').innerHTML = '受<b style="color:#4fc3f7">張力</b>拉扯 → 岩層被拉開<br>上盤沿斷層面<b style="color:#ffb35c">往下滑動</b>';
+      showBanner('正斷層 Normal Fault', '張力 → 上盤相對下盤「下滑」');
     } else if (f === 'compression') {
       $('faultType').innerHTML = '逆斷層 <small>Reverse Fault</small>';
-      $('faultDesc').innerHTML = '受<b style="color:#ff8a3d">壓力</b>擠壓 → 岩層被推擠縮短<br>上磐克服重力沿斷層面<b style="color:#ffb35c">往上抬升</b>';
-      showBanner('逆斷層 Reverse Fault', '壓力 → 上磐相對下磐「上升」');
+      $('faultDesc').innerHTML = '受<b style="color:#ff8a3d">壓力</b>擠壓 → 岩層被推擠縮短<br>上盤克服重力沿斷層面<b style="color:#ffb35c">往上抬升</b>';
+      showBanner('逆斷層 Reverse Fault', '壓力 → 上盤相對下盤「上升」');
     } else {
       $('faultType').innerHTML = '— <small>尚未受力</small>';
       $('faultDesc').textContent = '請選擇受力方式。';
@@ -495,7 +495,7 @@ const Fault = (() => {
       a.rotation.set(0, dir > 0 ? 0 : Math.PI, 0);
     });
 
-    // 上磐移動方向指示
+    // 上盤移動方向指示
     const moving = Math.abs(slipTarget - slip) > 0.02 || !!force;
     slipArrow.visible = !!force;
     if (force) {

@@ -491,7 +491,7 @@ const CR = (() => {
     for (let i = 0; i <= 4; i++) { const v = ymax * i / 4; g.beginPath(); g.moveTo(L, Y(v)); g.lineTo(W - R, Y(v)); g.stroke(); g.fillText(v.toFixed(2), L - 8, Y(v) + 7); }
     g.strokeStyle = '#5d4037'; g.lineWidth = 3; g.beginPath(); g.moveTo(L, T); g.lineTo(L, H - B); g.lineTo(W - R, H - B); g.stroke();
     g.fillStyle = '#5d4037'; g.textAlign = 'center'; g.font = '800 20px sans-serif'; g.fillText('溫度', (L + W - R) / 2, H - 8);
-    g.save(); g.translate(20, (T + H - B) / 2); g.rotate(-Math.PI / 2); g.fillText('1/t（s⁻¹）', 0, 0); g.restore();
+    g.save(); g.translate(20, (T + H - B) / 2); g.rotate(-Math.PI / 2); g.fillText('1/t（1/s）', 0, 0); g.restore();
     g.strokeStyle = '#d35400'; g.lineWidth = 4; g.beginPath(); keys.forEach((k, i) => { const x = X(k), y = Y(1 / st.rec[k]); if (i) g.lineTo(x, y); else g.moveTo(x, y); }); g.stroke();
     keys.forEach(k => { g.fillStyle = '#d35400'; g.beginPath(); g.arc(X(k), Y(1 / st.rec[k]), 8, 0, TAU); g.fill(); g.fillStyle = '#fff'; g.beginPath(); g.arc(X(k), Y(1 / st.rec[k]), 3.5, 0, TAU); g.fill(); });
   }
@@ -512,10 +512,10 @@ const CR = (() => {
     setLabel(lFlask, `錐形瓶・${st.run || st.done ? st.T : T}℃<br>硫代硫酸鈉 ＋ 鹽酸`);
     $('crGo').disabled = st.run; $('crGo').textContent = st.done ? '▶ 用新溶液再做一次' : st.run ? '⏳ 反應中…' : '▶ 開始反應';
     const recs = Object.keys(st.rec).map(Number).sort((a, b) => a - b);
-    setHTML('crStat', `碼錶時間 t：<b class="o">${tShow.toFixed(1)} s</b><br>十字可見度：<b>${Math.round((1 - turb) * 100)}%</b>${st.done ? `<br>反應速率 1/t ＝ <b class="r">${(1 / st.simT).toFixed(3)} s⁻¹</b>` : ''}` +
+    setHTML('crStat', `碼錶時間 t：<b class="o">${tShow.toFixed(1)} s</b><br>十字可見度：<b>${Math.round((1 - turb) * 100)}%</b>${st.done ? `<br>反應速率 1/t ＝ <b class="r">${(1 / st.simT).toFixed(3)} 1/s</b>` : ''}` +
       (recs.length ? `<br><small>紀錄：${recs.map(k => `${k}℃ → ${st.rec[k].toFixed(1)} s`).join('、')}</small>` : '') + `<br><small>（動畫已加速播放，碼錶顯示的是真實反應時間）</small>`);
     setCap(st.run ? `<small>反應進行中・${st.T}℃</small>Na₂S₂O₃ ＋ 2HCl → 2NaCl ＋ SO₂ ＋ H₂O ＋ <b class="org">S↓（黃色沉澱）</b>`
-      : st.done ? `<small>十字完全被遮住，碼錶停止！</small><span class="huge pop">t ＝ ${st.simT.toFixed(1)} s　→　1/t ＝ ${(1 / st.simT).toFixed(3)} s⁻¹</span>換個溫度再做一次，比較 1/t 的大小`
+      : st.done ? `<small>十字完全被遮住，碼錶停止！</small><span class="huge pop">t ＝ ${st.simT.toFixed(1)} s　→　1/t ＝ ${(1 / st.simT).toFixed(3)} 1/s</span>換個溫度再做一次，比較 1/t 的大小`
       : `<small>客觀測量反應速率</small>從瓶口<b>往下看十字</b>，記錄十字<b>完全被遮住</b>的時間 t；t 越短，反應速率（<b>1/t</b>）越大`);
   }
   drawGraph();

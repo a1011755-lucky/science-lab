@@ -536,7 +536,7 @@ const SE = (() => {
     chart();
     const soot = st.env === 'soot';
     setHTML('selCard', `<h4>第 ${st.gen} 代</h4>深色蛾 <b>${Math.round(st.dark * 100)}%</b>、淺色蛾 <b>${Math.round((1 - st.dark) * 100)}%</b><br>${soot ? '樹幹被煤煙燻黑，<b>淺色蛾</b>很顯眼、容易被鳥吃掉；深色蛾不容易被發現，存活下來繁殖。' : '樹幹顏色淺，<b>深色蛾</b>很顯眼、容易被鳥吃掉；淺色蛾比較不容易被發現。'}<br>這是<b>達爾文的天擇說</b>：變異本來就有，環境選擇了較能適應的個體。不是拉馬克的「用進廢退」。`);
-    setCap(st.anim > 0 ? '<small>鳥來覓食</small>顯眼的蛾比較容易被吃掉' : `<small>天擇・${soot ? '工業污染後' : '乾淨的環境'}</small>按「過一個世代」，看看哪一種顏色的蛾比較容易活下來`);
+    setCap(st.anim > 0 ? '<small>鳥來覓食</small>顯眼的蛾比較容易被吃掉' : `<small>天擇・${soot ? '工業汙染後' : '乾淨的環境'}</small>按「過一個世代」，看看哪一種顏色的蛾比較容易活下來`);
   }
   return { group, update, st, generation };
 })();

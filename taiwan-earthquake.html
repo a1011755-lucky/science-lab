@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>台灣逆斷層與地震模擬器</title>
+<title>臺灣逆斷層與地震模擬器</title>
 <style>
   :root {
     --ink: #1c1c1e;
@@ -133,16 +133,16 @@
 <aside class="panel glass" id="panel">
   <button class="collapse" data-target="panel">收合</button>
   <a class="back" href="index.html#g9">‹ 課程總覽</a>
-  <div class="title">台灣逆斷層與地震模擬器</div>
+  <div class="title">臺灣逆斷層與地震模擬器</div>
   <div class="sub">板塊擠壓 → 逆斷層 → 地震（規模 vs 震度）</div>
 
   <div class="body">
     <button class="btn" id="squeezeBtn">→← 模擬板塊擠壓</button>
-    <div class="msg" id="squeezeMsg">台灣主要受<b>壓力擠壓</b>，形成<b>逆斷層</b>：菲律賓海板塊（上磐）沿斷層面往上抬升，跨上歐亞板塊。</div>
+    <div class="msg" id="squeezeMsg">臺灣主要受<b>壓力擠壓</b>，形成<b>逆斷層</b>：菲律賓海板塊（上盤）沿斷層面往上抬升，跨上歐亞板塊。</div>
 
     <div class="group">
       <div class="row">
-        <div class="head"><span>地震規模 Magnitude</span><span class="mag" id="magVal">M 6.5</span></div>
+        <div class="head"><span>地震規模</span><span class="mag" id="magVal">M 6.5</span></div>
         <input type="range" id="mag" min="5" max="7" step="0.1" value="6.5" aria-label="地震規模">
         <small>規模代表震源釋放的<b>能量</b>，只改變震源能量球的大小。</small>
       </div>
@@ -186,13 +186,13 @@ const S = THREE.MathUtils.smoothstep;
    參數
    ---------------------------------------------------------
    側視剖面：x 向東、y 向上、z 向南（北 = −z）
-   斷層面向東傾斜（傾角 50°）：斷層線右側（東側）壓在斷層面上方 → 上磐
+   斷層面向東傾斜（傾角 50°）：斷層線右側（東側）壓在斷層面上方 → 上盤
    ========================================================= */
 const BLOCK = { w: 8, depth: 4, d: 5 };            // x∈[−8,8]、y∈[−4,0]、z∈[−5,5]
 const DIP = 50 * Math.PI / 180;
 const TOP = V2(0, 0);                              // 斷層線與地表交點
 const BOT = V2(BLOCK.depth / Math.tan(DIP), -BLOCK.depth);
-const UP_DIP = V3(TOP.x - BOT.x, TOP.y - BOT.y, 0).normalize();   // 沿斷層面往上（逆斷層上磐移動方向）
+const UP_DIP = V3(TOP.x - BOT.x, TOP.y - BOT.y, 0).normalize();   // 沿斷層面往上（逆斷層上盤移動方向）
 const KM_PER_UNIT = 40;                            // 地圖比例：1 單位 ≈ 40 公里
 const FOCAL_DEPTH_KM = 15;                          // 震源深度（標示用）
 
@@ -208,7 +208,7 @@ renderer.shadowMap.type = THREE.PCFShadowMap;
 $('scene').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xcfeaf7);
+scene.background = new THREE.Color(0xf5f1e7);
 const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 200);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -231,7 +231,7 @@ sun.shadow.radius = 5;
 scene.add(sun);
 
 /* =========================================================
-   地塊：依斷層切成下磐（歐亞板塊）與上磐（菲律賓海板塊）
+   地塊：依斷層切成下盤（歐亞板塊）與上盤（菲律賓海板塊）
    ========================================================= */
 const STRATA = [
   { y0: -4.0, y1: -3.0, color: 0x7b5f48 },
@@ -279,7 +279,7 @@ scene.add(footwall, hanging);
 
 // 斷層面（淺色摩擦面）
 function faultFace(sign) {
-  const n = V3(-UP_DIP.y, UP_DIP.x, 0).multiplyScalar(-0.012 * sign);   // 法線朝上磐
+  const n = V3(-UP_DIP.y, UP_DIP.x, 0).multiplyScalar(-0.012 * sign);   // 法線朝上盤
   const geo = new THREE.BufferGeometry();
   const P = (p, z) => [p.x + n.x, p.y + n.y, z];
   geo.setAttribute('position', new THREE.Float32BufferAttribute([...P(TOP, BLOCK.d), ...P(TOP, -BLOCK.d), ...P(BOT, BLOCK.d), ...P(BOT, -BLOCK.d)], 3));
@@ -290,7 +290,7 @@ function faultFace(sign) {
 footwall.add(faultFace(1));
 hanging.add(faultFace(-1));
 
-/* ----- 地表的台灣島輪廓（被斷層線切開，各自跟著板塊移動） ----- */
+/* ----- 地表的臺灣島輪廓（被斷層線切開，各自跟著板塊移動） ----- */
 const TAIWAN = [
   [121.53, 25.30], [121.75, 25.15], [121.93, 25.02], [121.85, 24.80], [121.86, 24.58], [121.70, 24.30],
   [121.62, 24.00], [121.50, 23.60], [121.42, 23.20], [121.20, 22.85], [120.98, 22.55], [120.88, 22.30],
@@ -315,7 +315,7 @@ function islandPiece(keep, cut, parent) {
 }
 islandPiece(p => p[0] <= TOP.x, atX(TOP.x), footwall);
 islandPiece(p => p[0] >= TOP.x, atX(TOP.x), hanging);
-// 中央山脈：幾座小山（在上磐，隨抬升一起升高）
+// 中央山脈：幾座小山（在上盤，隨抬升一起升高）
 [[121.35, 24.3, 0.55], [121.2, 23.9, 0.7], [121.05, 23.5, 0.75], [120.95, 23.1, 0.6], [120.9, 22.7, 0.45]].forEach(([lo, la, h]) => {
   const [x, z] = geoXZ(lo, la);
   const m = new THREE.Mesh(new THREE.ConeGeometry(0.35, h, 5), new THREE.MeshStandardMaterial({ color: 0x3f8f45, flatShading: true }));
@@ -339,10 +339,10 @@ function textPlane(big, small, w, color) {
   tex.colorSpace = THREE.SRGBColorSpace;
   return new THREE.Mesh(new THREE.PlaneGeometry(w, w * 200 / 768), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
 }
-const tFoot = textPlane('歐亞板塊', '（下磐）', 4.6, '#1d4ed8');
+const tFoot = textPlane('歐亞板塊', '（下盤）', 4.6, '#1d4ed8');
 tFoot.position.set(-4.4, -2.2, BLOCK.d + 0.02);
 footwall.add(tFoot);
-const tHang = textPlane('菲律賓海板塊', '（上磐）', 4.8, '#c2410c');
+const tHang = textPlane('菲律賓海板塊', '（上盤）', 4.8, '#c2410c');
 tHang.position.set(5.3, -2.2, BLOCK.d + 0.02);
 hanging.add(tHang);
 const faultLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V3(TOP.x, TOP.y, BLOCK.d + 0.03), V3(BOT.x, BOT.y, BLOCK.d + 0.03)]),
@@ -447,9 +447,9 @@ function addLabel(cls = '') {
   return { el, pos: V3(0, 0, 0), obj: null, visible: false };
 }
 const lHypo = addLabel('red');
-lHypo.el.innerHTML = '<b>震源 (Hypocenter / Focus)</b><small>岩層實際斷裂處 · 深約 15 公里</small>';
+lHypo.el.innerHTML = '<b>震源</b><small>岩層實際斷裂處 · 深約 15 公里</small>';
 const lEpi = addLabel('red');
-lEpi.el.innerHTML = '<b>震央 (Epicenter)</b><small>震源垂直對應的地表點</small>';
+lEpi.el.innerHTML = '<b>震央</b><small>震源垂直對應的地表點</small>';
 const labelList = [lHypo, lEpi, ...STATIONS.map(s => s.label)];
 const tmpV = V3(0, 0, 0);
 function placeLabels() {
@@ -508,7 +508,7 @@ function renderStationList() {
 
 let quake = null;   // { t0, epi, M }
 function surfaceY(x) {
-  // 震央在上磐（斷層線以東）時，地表高度跟著上磐抬升
+  // 震央在上盤（斷層線以東）時，地表高度跟著上盤抬升
   return x >= TOP.x + hanging.position.x ? hanging.position.y : 0;
 }
 $('quakeBtn').addEventListener('click', () => {
@@ -618,7 +618,7 @@ const clock = new THREE.Clock();
 function animate() {
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
-  // 擠壓：上磐沿斷層面往上、往西抬升（逆斷層）
+  // 擠壓：上盤沿斷層面往上、往西抬升（逆斷層）
   slip += ((squeezing ? SLIP_MAX : 0) - slip) * Math.min(1, dt * 1.1);
   hanging.position.copy(UP_DIP).multiplyScalar(slip);
   const pulse = 0.3 * Math.sin(t * 5);

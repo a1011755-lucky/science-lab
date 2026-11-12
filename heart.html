@@ -6,7 +6,7 @@
 <title>心臟與雙循環模擬器</title>
 <style>
   :root {
-    --bg: #eef3f7;
+    --bg: #f5f1e7;
     --ink: #1d1d1f;
     --ink-soft: #6e6e73;
     --card: rgba(255,255,255,.62);
@@ -224,7 +224,7 @@ renderer.toneMappingExposure = 1.05;
 $('scene').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xeef3f7);
+scene.background = new THREE.Color(0xf5f1e7);
 scene.add(new THREE.AmbientLight(0xffffff, 0.75));
 scene.add(new THREE.HemisphereLight(0xffffff, 0xd6dde6, 0.6));
 const sun = new THREE.DirectionalLight(0xffffff, 2.1);
@@ -603,7 +603,7 @@ addLabel('體循環', V3(5.8, -1.0, 0), 'r big');
 addLabel('肺動脈', V3(-1.75, 3.6, 0.5), 'b');
 addLabel('肺靜脈', V3(3.65, 3.6, -0.4), 'r');
 addLabel('主動脈', V3(2.1, 3.95, 0.6), 'r');
-addLabel('上、下腔靜脈', V3(-5.75, 0.3, -0.2), 'b');
+addLabel('上、下大靜脈', V3(-5.75, 0.3, -0.2), 'b');
 // 四個瓣膜的名稱（顯示開／關）
 const VL = {
   tri: addLabel('', V3(-2.35, -0.15, 1.3), 'vt'), mit: addLabel('', V3(2.35, -0.15, 1.3), 'vt'),
@@ -784,7 +784,7 @@ function stepExchange(dt) {
 const TIPS = {
   flow: {
     t: '🩸 雙循環', eq: '',
-    p: '<b style="color:#3f7be8">肺循環</b>：右心室 → 肺動脈 → 肺 → 肺靜脈 → 左心房。<br><b style="color:#e5484d">體循環</b>：左心室 → 主動脈 → 全身 → 上、下腔靜脈 → 右心房。<br>兩個循環在心臟交會，形成 8 字形。'
+    p: '<b style="color:#3f7be8">肺循環</b>：右心室 → 肺動脈 → 肺 → 肺靜脈 → 左心房。<br><b style="color:#e5484d">體循環</b>：左心室 → 主動脈 → 全身 → 上、下大靜脈 → 右心房。<br>兩個循環在心臟交會，形成 8 字形。'
   },
   gas: {
     t: '🫁 氣體交換',
