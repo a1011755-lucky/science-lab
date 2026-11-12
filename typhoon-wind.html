@@ -164,7 +164,7 @@
           <option value="north">北部登陸・西行</option>
           <option value="east">沿東岸北上</option>
           <option value="south">南部登陸・西北行</option>
-          <option value="strait">台灣海峽北上</option>
+          <option value="strait">臺灣海峽北上</option>
         </select>
       </div>
     </div>
@@ -202,7 +202,7 @@ const $ = id => document.getElementById(id);
 const S = THREE.MathUtils.smoothstep;
 const clamp = THREE.MathUtils.clamp;
 
-/* 台灣簡化海岸線（經度, 緯度），由北端順時針 */
+/* 臺灣簡化海岸線（經度, 緯度），由北端順時針 */
 const TAIWAN = [
   [121.53, 25.30], [121.75, 25.15], [121.93, 25.02], [121.85, 24.80], [121.86, 24.58], [121.70, 24.30],
   [121.62, 24.00], [121.50, 23.60], [121.42, 23.20], [121.20, 22.85], [120.98, 22.55], [120.88, 22.30],
@@ -307,7 +307,7 @@ grid.material.transparent = true; grid.material.opacity = 0.35;
 grid.position.y = 0.02;
 scene.add(grid);
 
-/* ----- 台灣立體地圖（Low-Poly） ----- */
+/* ----- 臺灣立體地圖（Low-Poly） ----- */
 const islandShape = new THREE.Shape(TAIWAN.map(([lo, la]) => { const g = geo(lo, la); return new THREE.Vector2(g.x, -g.z); }));
 const islandGeo = new THREE.ExtrudeGeometry(islandShape, { depth: 0.3, bevelEnabled: true, bevelThickness: 0.08, bevelSize: 0.1, bevelSegments: 1 });
 islandGeo.rotateX(-Math.PI / 2);

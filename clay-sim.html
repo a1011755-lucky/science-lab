@@ -444,7 +444,7 @@ const Typhoon = (() => {
   const DIR8 = ['北', '東北', '東', '東南', '南', '西南', '西', '西北'];
   const nameOf = deg => DIR8[Math.round(((deg % 360) + 360) % 360 / 45) % 8];
 
-  // 台灣陸地：巨大的圓角綠色方塊
+  // 臺灣陸地：巨大的圓角綠色方塊
   const land = new THREE.Mesh(new RoundedBoxGeometry(22, 1.2, 16, 6, 0.55), clay(C.land));
   land.position.y = 0.6;
   land.receiveShadow = true; land.castShadow = true;

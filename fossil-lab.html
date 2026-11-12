@@ -168,7 +168,7 @@
         <button class="btn" id="foReset">🔄 重新覆土</button>
       </div>
       <div class="stat" id="foStat"></div>
-      <div class="tip" id="foTip" hidden>💡 指標化石特徵：生存時間短、分佈廣、數量多！</div>
+      <div class="tip" id="foTip" hidden>💡 指標化石特徵：生存時間短、分布廣、數量多！</div>
     </section>
 
     <!-- Tab 2：馬的演化 -->
@@ -596,7 +596,7 @@ const ST = (() => {
     setHTML('foStat', `挖掘進度：<b class="o">${Math.round(P)}%</b><table><tr><th>地層</th><th>地質年代</th><th>挖到的化石</th></tr>${row(LAY[0], 0, '長毛象牙齒')}${row(LAY[1], 1, '菊石、恐龍骨')}${row(LAY[2], 2, '三葉蟲')}</table><small>${found[2] ? '三層的化石都出土了！底層的三葉蟲最古老，表層的長毛象最年輕。' : '從上往下挖：越往下挖，挖到的生物年代越古老。'}</small>`);
     const cur = P < 33.3 ? 0 : P < 66.6 ? 1 : 2, Lc = LAY[cur];
     setCap(P < 1 ? `<small>沉積岩考古坑</small>地層被土覆蓋著。拖曳<b>考古筆刷</b>，一層一層把化石刷出來<span class="huge org">越下層 → 越古老</span>`
-      : P >= 96 ? `<small>指標化石</small>三葉蟲 → <b>古生代</b>　菊石、恐龍 → <b>中生代</b>　長毛象 → <b>新生代</b><span class="huge grn pop">指標化石：生存時間短、分佈廣、數量多</span>`
+      : P >= 96 ? `<small>指標化石</small>三葉蟲 → <b>古生代</b>　菊石、恐龍 → <b>中生代</b>　長毛象 → <b>新生代</b><span class="huge grn pop">指標化石：生存時間短、分布廣、數量多</span>`
         : `<small>正在清理：${Lc.n}</small>${found[cur] ? `出土：<b>${['長毛象牙齒', '菊石與恐龍骨', '三葉蟲'][cur]}</b>` : '小心刷開覆蓋的土……'}<span class="huge ${['org', 'red', 'blu'][cur]}">${Lc.era}（${Lc.time}）</span>`);
   }
   return { group, update, st, LAY };
@@ -658,7 +658,7 @@ const HO = (() => {
   // 環境看板
   const board = chartBoard(3.0, 1.42, 640); board.position.set(0.35, 3.25, -1.2); group.add(board);
   const STG = [
-    { ma: 55, n: '始祖馬', h: 40, toe: '4 趾', tooth: '小、齒冠低、表面有尖突', food: '柔軟的嫩葉、果實', env: '溼潤的森林' },
+    { ma: 55, n: '始祖馬', h: 40, toe: '4 趾', tooth: '小、齒冠低、表面有尖突', food: '柔軟的嫩葉、果實', env: '濕潤的森林' },
     { ma: 37, n: '漸新馬', h: 60, toe: '3 趾', tooth: '稍微變大', food: '嫩葉', env: '森林變稀疏' },
     { ma: 20, n: '中新馬', h: 100, toe: '3 趾（側趾不著地）', tooth: '齒冠變高、咀嚼面變大', food: '開始吃草', env: '草原擴張' },
     { ma: 5, n: '上新馬', h: 125, toe: '單趾', tooth: '高齒冠、咀嚼面寬', food: '草', env: '草原' },

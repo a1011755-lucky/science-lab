@@ -493,7 +493,7 @@ class CoilCurve extends THREE.Curve {
 
 /* =========================================================
    Tab 1：微觀遺傳物質解剖室
-   細胞 → 細胞核 → 染色質 → X 型染色體 → DNA ＋ 蛋白質 → 基因
+   細胞 → 細胞核 → 染色質 → X 形染色體 → DNA ＋ 蛋白質 → 基因
    ========================================================= */
 /* ----- 有機形態（美學規範 D） ----- */
 function orgNoise(x, y, z, s) { return Math.sin(x * 1.7 + s) * Math.sin(y * 2.3 + s * 1.3) * Math.sin(z * 1.9 + s * 0.7) + 0.5 * Math.sin(x * 3.1 - s) * Math.sin(y * 2.9 + s * 2.1) * Math.sin(z * 3.7 + s); }
@@ -572,7 +572,7 @@ function morphTube(fromCurve, fromR, toCurve, toR, mat) {
   g0.morphAttributes.normal = [g1.attributes.normal];
   const m = new THREE.Mesh(g0, mat); m.castShadow = true; return m;
 }
-// X 型染色體：左右兩條相同的染色分體（姊妹染色分體），中間由著絲點相連
+// X 形染色體：左右兩條相同的染色分體（姊妹染色分體），中間由著絲點相連
 const ARMS = [
   [V3(-0.07, 0.06, 0), V3(-0.36, 1.12, 0.05)], [V3(-0.07, -0.06, 0), V3(-0.3, -0.98, 0.05)],
   [V3(0.07, 0.06, 0), V3(0.36, 1.12, -0.05)], [V3(0.07, -0.06, 0), V3(0.3, -0.98, -0.05)]
@@ -658,7 +658,7 @@ const DNA_S = 0.42, GENE_Y = new THREE.Color(0xffd23f);
 const lCell = addLabel('anat', '細胞', '', V3(-3.4, 8.6, 0));
 const lNuc = addLabel('anat', '細胞核（遺傳物質在這裡）', 'lam', V3(1.4, AC.y + 2.45, 0));
 const lChr = addLabel('anat', '染色質：DNA 鬆散的細絲', '', V3(0, AC.y + 1.9, 0));
-const lX = addLabel('anat', '染色體（X 型）<br><small>複製後的兩條染色分體</small>', 'lam', V3(0, AC.y + 1.5, 0));
+const lX = addLabel('anat', '染色體（X 形）<br><small>複製後的兩條染色分體</small>', 'lam', V3(0, AC.y + 1.5, 0));
 const lCen = addLabel('anat', '著絲點', 'yel small', V3(0.45, AC.y, 0));
 const lDNA = addLabel('anat', 'DNA 雙股螺旋', 'lam', V3(-1.2, AC.y + 0.55, 0));
 const lPro = addLabel('anat', '蛋白質（球狀）', 'pink', V3(1.45, AC.y - 0.5, 0));
@@ -685,7 +685,7 @@ $('zoomPlay').addEventListener('click', () => {
 const LEVEL_TXT = [
   ['細胞核', '細胞裡面的<b>細胞核</b>，就是存放遺傳物質的地方。'],
   ['染色質', '細胞核內有許多細細長長的<b>染色質</b>，由 DNA 和蛋白質組成。'],
-  ['染色體', '細胞要分裂時，染色質<b>捲曲濃縮</b>成 X 型的<b>染色體</b>。'],
+  ['染色體', '細胞要分裂時，染色質<b>捲曲濃縮</b>成 X 形的<b>染色體</b>。'],
   ['DNA', '染色體展開來看，是<b>DNA 雙股螺旋</b>纏繞在<b>球狀蛋白質</b>上。'],
   ['基因', 'DNA 上控制某一種性狀的<b>特定片段</b>，就是<b>基因</b>！']
 ];
@@ -707,7 +707,7 @@ function updateAnat(dt) {
   nucMat.opacity = 0.4 * (1 - smooth(0.55, 1.05, z)); nucM.visible = nucMat.opacity > 0.005;
   poreMat.opacity = 1 - smooth(0.5, 1.0, z); pores.visible = poreMat.opacity > 0.01;
   nucleolus.material.opacity = 1 - smooth(0.9, 1.4, z); nucleolus.visible = nucleolus.material.opacity > 0.01;
-  // 染色質 → X 型染色體（MorphTargets）
+  // 染色質 → X 形染色體（MorphTargets）
   const cond = smooth(1.05, 1.95, z);
   for (const m of chromatin) m.morphTargetInfluences[0] = cond;
   sideMat.opacity = 1 - smooth(1.35, 1.85, z);
@@ -1074,7 +1074,7 @@ function gacha(x, z, color, label, cls) {
   addLabel('pun', label, cls, V3(x, 3.2, z));
   return { g, balls };
 }
-const GE = gacha(BC.x, BC.z - 5.0, 0xe88aa8, '♀ 卵子投幣孔（Aa）', 'egg');
+const GE = gacha(BC.x, BC.z - 5.0, 0xe88aa8, '♀ 卵投幣孔（Aa）', 'egg');
 const GS = gacha(BC.x - 5.0, BC.z, 0x6fa0d8, '♂ 精子投幣孔（Aa）', 'sperm');
 // 扭蛋球（3D 球＋字母）
 function gameteBall() {

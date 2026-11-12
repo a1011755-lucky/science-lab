@@ -938,7 +938,7 @@ function updateFault(dt) {
   ftDraw.dash(V3(fTop.x, fTop.y, FD / 2 + 0.04), V3(fBot.x, fBot.y, FD / 2 + 0.04), 0xe9a23b, { r: 0.04 });
   ftDraw.end();
   if (f === 'tension') setCap(`<small>受到<span class="blu">張力</span>（拉扯）→ 岩層被拉長</small><span class="huge">正斷層：上磐相對下磐「<span class="blu">下滑</span>」</span>`);
-  else if (f === 'compression') setCap(`<small>受到<span class="red">壓力</span>（擠壓）→ 岩層被縮短</small><span class="huge">逆斷層：上磐相對下磐「<span class="red">上升</span>」</span>板塊聚合處（例如台灣）常見逆斷層`);
+  else if (f === 'compression') setCap(`<small>受到<span class="red">壓力</span>（擠壓）→ 岩層被縮短</small><span class="huge">逆斷層：上磐相對下磐「<span class="red">上升</span>」</span>板塊聚合處（例如臺灣）常見逆斷層`);
   else setCap(`<small>斷層受力模擬</small>選擇「<b>⟷ 張力</b>」或「<b>→← 壓力</b>」，觀察上磐怎麼移動`);
   setHTML('faultStat', f === 'tension' ? '斷層種類：<b class="b">正斷層</b><br>受力：張力（拉扯）<br>上磐：沿斷層面<b>往下滑</b>'
     : f === 'compression' ? '斷層種類：<b class="r">逆斷層</b><br>受力：壓力（擠壓）<br>上磐：沿斷層面<b>往上升</b>' : '斷層種類：<b>—</b>（尚未受力）');

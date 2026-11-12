@@ -687,7 +687,7 @@ const RL = (() => {
     const tOf = d => Math.sqrt(2 * d / 980);
     setHTML('rlStat', `<table class="res"><thead><tr><th>次數</th>${[1, 2, 3, 4, 5].map(i => `<th>${i}</th>`).join('')}</tr></thead><tbody><tr><th>公分</th>${[0, 1, 2, 3, 4].map(i => `<td>${st.trials[i] !== undefined ? st.trials[i].toFixed(1) : '—'}</td>`).join('')}</tr></tbody></table>
       ${n ? `平均距離：<b>${avg.toFixed(1)} 公分</b><br>你的反應時間約 <span class="big-t">${tOf(avg).toFixed(3)}</span> 秒${n < 5 ? `<br><small>再測 ${5 - n} 次，取平均才客觀</small>` : '（5 次平均）'}` : '還沒有紀錄。測 <b>5 次</b>再取平均，才能客觀代表你的反應時間。'}
-      <br><small>換算：距離 ＝ ½ × 重力加速度 × 時間²，例如 20 公分 ≈ 0.20 秒</small>`);
+      <br><small>直尺掉得越遠，代表反應時間越長（例如掉 20 公分，約 0.20 秒）</small>`);
     setCap(st.mode === 'armed' ? '<small>專心看直尺…</small>直尺隨時會掉下來！' : st.mode === 'falling' ? '<span class="huge red">快抓！</span>' : st.mode === 'early' ? '<small>太早了</small>直尺還沒掉你就抓了！再按一次「準備」' : st.mode === 'missed' ? '<small>沒接到</small>直尺掉超過 30 公分了，再試一次' : st.mode === 'caught' ? `<small>接住了！</small>直尺掉了 <b>${st.d.toFixed(1)} 公分</b>，反應時間約 <b>${st.tc.toFixed(3)} 秒</b>` : '<small>接尺實驗</small>按「準備」（或空白鍵），看到直尺掉下就立刻抓住它');
   }
   return { group, update, st, ready, catchIt };
