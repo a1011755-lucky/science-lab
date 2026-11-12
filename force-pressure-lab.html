@@ -124,13 +124,14 @@
 
     <!-- Tab 1 -->
     <section class="sec" data-tab="hook">
-      <div class="concept" style="--cc:#2f8a5b"><div class="ct">力的測量與平衡</div><div class="cd">虎克定律：彈簧伸長量 ∝ 拉力<br>兩力平衡：大小相等、方向相反、同一直線</div></div>
+      <div class="concept" style="--cc:#2f8a5b"><div class="ct">力的測量與平衡</div><div class="cd">虎克定律：在<b>彈性限度內</b>，彈簧伸長量和拉力成正比<br>兩力平衡：大小相等、方向相反、同一直線</div></div>
       <label class="lab" for="hF1">⬅️ 左側拉力<b><span id="hF1V">4</span> N</b></label>
       <input type="range" id="hF1" min="0" max="10" step="0.5" value="4">
       <label class="lab" for="hF2">➡️ 右側拉力<b><span id="hF2V">4</span> N</b></label>
       <input type="range" id="hF2" min="0" max="10" step="0.5" value="4">
       <div class="stat" id="hookStat"></div>
       <button class="btn" id="hookReset">↺ 鐵環回到中央</button>
+      <p class="desc">➕ <b>力的合成</b>：兩力<b>同向</b> → 合力 ＝ 兩力相加；兩力<b>反向</b> → 合力 ＝ 兩力相減，方向和較大的力相同；兩力夾一個角度時，合力介於「兩力之差」與「兩力之和」之間。</p>
     </section>
 
     <!-- Tab 2 -->
@@ -145,6 +146,7 @@
       <div class="stat" id="fricStat"></div>
       <button class="btn" id="fricReset">↺ 木塊回起點</button>
       <p class="desc">慢慢拉：圖表先是 <b>45° 斜線</b>，一突破臨界點就<b>往下掉</b>變水平線。加砝碼後重來，臨界點會變高。</p>
+      <p class="desc">🧱 摩擦力和<b>接觸面積大小無關</b>：同一塊木塊平放或側放，只要接觸面材質和正向力相同，拉動所需的力一樣。影響摩擦力的是<b>接觸面的性質</b>和<b>正向力</b>。</p>
     </section>
 
     <!-- Tab 3 -->
@@ -166,7 +168,8 @@
         <option value="salt">🧂 食鹽水（1.2 g/cm³）</option>
       </select>
       <div class="stat" id="jetStat"></div>
-      <p class="desc">水柱放在高台上，三個洞同時噴水：A 最深、噴得最快最遠。換液體看看：<b>壓力會變，但噴出速度不變</b>（v ＝ √2gh，和密度無關）。</p>
+      <p class="desc">水柱放在高台上，三個洞同時噴水：A 最深、壓力最大、噴得最遠。換液體看看：每個洞的<b>壓力都會改變</b>（P ＝ h × d）。</p>
+      <p class="desc">🫖 <b>連通管</b>：底部相通的容器裝同一種液體，靜止時各管<b>液面高度相同</b>，和管子的形狀、粗細無關（例：茶壺、水塔供水、U 形管）。</p>
     </section>
 
     <!-- 大氣壓力 -->
@@ -510,7 +513,7 @@ function updateFric(dt) {
    ========================================================= */
 const BRICK = { group: new THREE.Group(), face: 'mid', state: 'rest', t: 0, depth: 0, depthT: 0, y: 0, vy: 0 };
 scene.add(BRICK.group); BRICK.group.visible = false;
-const BW_N = 60;
+const BW = 1920;                                                              // 磚塊重 1920 gw（20×12×4 cm、密度約 2 g/cm³）
 const FACES = {
   big: { name: '最大面 5×3', area: 240, q: new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0)), size: [2.5, 0.5, 1.5] },
   mid: { name: '中面 5×1', area: 80, q: new THREE.Quaternion(), size: [2.5, 1.5, 0.5] },
@@ -546,7 +549,7 @@ function setFace(f) {
   BRICK.depthT = 0;
 }
 document.querySelectorAll('[data-face]').forEach(b => b.addEventListener('click', () => setFace(b.dataset.face)));
-const pOf = f => BW_N / FACES[f].area;                                      // N/cm²
+const pOf = f => BW / FACES[f].area;                                         // gw/cm²（與液體壓力同單位）
 function updateBrick(dt) {
   const F = FACES[BRICK.face], half = F.size[1] / 2;
   const restY = SPONGE_TOP - BRICK.depth + half;
@@ -560,7 +563,7 @@ function updateBrick(dt) {
     if (BRICK.t >= 1) { BRICK.state = 'drop'; BRICK.vy = 0; }
   } else if (BRICK.state === 'drop') {                                       // 重重壓下
     BRICK.vy -= 18 * dt; brick.position.y += BRICK.vy * dt;
-    if (brick.position.y <= SPONGE_TOP + half) { BRICK.state = 'press'; BRICK.depthT = pOf(BRICK.face) * 0.48; BRICK.depth = 0.05; }
+    if (brick.position.y <= SPONGE_TOP + half) { BRICK.state = 'press'; BRICK.depthT = pOf(BRICK.face) * 0.015; BRICK.depth = 0.05; }
   } else if (BRICK.state === 'press' || BRICK.state === 'rest') {
     brick.position.y = restY;
   }
@@ -573,15 +576,15 @@ function updateBrick(dt) {
   lBrick.pos.set(0, brick.position.y + half + 0.6, 0);
   setLabel(lBrick, `${F.name}：A ＝ ${F.area} cm²`);
   const resting = BRICK.state === 'rest' || BRICK.state === 'press';
-  setHTML('brickStat', `磚塊重 <b>${BW_N} N</b>（20 × 12 × 4 cm）<br>接觸面：<b>${F.name}</b>，面積 <b>${F.area} cm²</b><br>壓力 P ＝ ${BW_N} ÷ ${F.area} ＝ <b class="r">${P.toFixed(2)} N/cm²</b><br>海綿凹陷：<b>${(BRICK.depth * 10).toFixed(1)} cm</b>`);
+  setHTML('brickStat', `磚塊重 <b>${BW} gw</b>（20 × 12 × 4 cm）<br>接觸面：<b>${F.name}</b>，面積 <b>${F.area} cm²</b><br>壓力 P ＝ ${BW} ÷ ${F.area} ＝ <b class="r">${P.toFixed(0)} gw/cm²</b><br>海綿凹陷：<b>${(BRICK.depth * 10).toFixed(1)} cm</b>`);
   setCap(resting
-    ? `<small>壓力 P ＝ 重量 ÷ 接觸面積</small><span class="mid">P ＝ ${BW_N} N ÷ ${F.area} cm² ＝ ${P.toFixed(2)} N/cm²</span>同一塊磚，重量不變；<b>接觸面積越小 → 壓力越大 → 凹得越深</b>`
+    ? `<small>壓力 P ＝ 重量 ÷ 接觸面積</small><span class="mid">P ＝ ${BW} gw ÷ ${F.area} cm² ＝ ${P.toFixed(0)} gw/cm²</span>同一塊磚，重量不變；<b>接觸面積越小 → 壓力越大 → 凹得越深</b>`
     : '<small>翻轉中…</small>同一塊磚換一個面壓下去');
 }
 
 /* =========================================================
    Tab 4：液體壓力（三個洞的水壓噴射）
-   噴出速度 v ＝ √(2gh)，只跟深度有關（與液體密度無關）
+   噴出的遠近只跟深度有關（與液體密度無關）；畫面不寫公式，避免超出國中課綱
    ========================================================= */
 const JET = { group: new THREE.Group(), kind: 'water', acc: [0, 0, 0] };
 scene.add(JET.group); JET.group.visible = false;
@@ -633,10 +636,10 @@ function updateJet(dt) {
   }
   jets.instanceMatrix.needsUpdate = true;
   const PA = (J_SURF - HOLES[0].y) * CMU * d;
-  setHTML('jetStat', `液體：<b>${JLIQ[JET.kind].name}</b>（密度 ${d} g/cm³）<br>A 洞壓力最大：<b class="r">${PA.toFixed(0)} gw/cm²</b><br>噴出速度 v ＝ √(2gh)：<b>只看深度</b>`);
+  setHTML('jetStat', `液體：<b>${JLIQ[JET.kind].name}</b>（密度 ${d} g/cm³）<br>A 洞壓力最大：<b class="r">${PA.toFixed(0)} gw/cm²</b><br>越深的洞壓力越大，噴得越遠`);
   setCap(JET.kind === 'water'
     ? `<small>液體壓力 P ＝ 深度 h × 密度 d</small><span class="mid">A 洞最深 → 壓力最大、噴得最快、落點最遠</span>壓力只跟深度、密度有關，和容器形狀無關`
-    : `<small>${JLIQ[JET.kind].name}：密度 ${d} g/cm³</small><span class="mid">每個洞的壓力都${d > 1 ? '變大' : '變小'}了（P ＝ h × d）</span>但液體本身也${d > 1 ? '變重' : '變輕'}，兩者抵消 → <b>噴出速度、落點都不變</b>（v ＝ √2gh）`);
+    : `<small>${JLIQ[JET.kind].name}：密度 ${d} g/cm³</small><span class="mid">每個洞的壓力都${d > 1 ? '變大' : '變小'}了（P ＝ h × d）</span>但液體本身也${d > 1 ? '變重' : '變輕'}，兩者抵消 → <b>落點幾乎不變</b>`);
 }
 
 /* =========================================================
@@ -983,7 +986,7 @@ window.lab = { frame, setTab, HOOK, FRIC, BRICK, JET, ATM, BUOY, SHELF, dropObje
 
 resize();
 syncHook();
-BRICK.depth = BRICK.depthT = pOf('mid') * 0.48; BRICK.state = 'rest';
+BRICK.depth = BRICK.depthT = pOf('mid') * 0.015; BRICK.state = 'rest';
 setTab(TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'hook');
 animate();
 </script>
