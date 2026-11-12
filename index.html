@@ -475,7 +475,7 @@ const COURSES = [
         chapters: [
           { title: '電的應用', sum: '認識電流的熱效應、電能與電功率、直流電與交流電、節能與安全用電，再學會電池、電解與電鍍等電流的化學效應。', labs: [{ t: '亮度競技場', u: 'power-lab.html#arena' }, { t: '吹風機熱能廠', u: 'power-lab.html#dryer' }, { t: '電池、電解與電鍍', u: 'electrochem.html' }, { t: '電解硫酸銅', u: 'electrochem.html#s2' }, { t: '電鍍', u: 'electrochem.html#s3' }, { t: '電解水', u: 'electrochem.html#s4' }],
             k: ['電流的熱效應', '電能 ＝ 電功率 × 時間', '電功率 P ＝ I × V', '1 度電 ＝ 1 千瓦小時', '直流電與交流電', '節能用電', '安全用電與電器規格（短路、超載、保險絲）', '伏打電池與鋅銅電池', '常見的電池（乾電池、鉛蓄電池、鋰電池）', '電解與電鍍', '電鍍的應用'] },
-          { title: '電與磁', sum: '從磁鐵、磁力線與地磁出發，理解電流磁效應與電磁鐵，再用右手開掌定則說明電動機，最後認識電磁感應與發電機。', labs: [{ t: '安培右手', u: 'em-lab.html#wire' }, { t: '電動機', u: 'em-lab.html#motor' }, { t: '電磁感應', u: 'em-lab.html#lenz' }, { t: '立體磁力線與地磁', u: 'magnet-lab.html' }, { t: '磁域與退磁', u: 'magnet-lab.html#domain' }, { t: '螺線管電磁鐵', u: 'magnet-lab.html#coil' }],
+          { title: '電與磁', sum: '從磁鐵、磁力線與地磁出發，理解電流磁效應與電磁鐵，再用右手開掌定則說明電動機，最後認識電磁感應與發電機。', labs: [{ t: '安培右手', u: 'em-lab.html#wire' }, { t: '電動機', u: 'em-lab.html#motor' }, { t: '電磁感應', u: 'em-lab.html#lenz' }, { t: '發電機、交流電與變壓器', u: 'generator-lab.html' }, { t: '立體磁力線與地磁', u: 'magnet-lab.html' }, { t: '磁域與退磁', u: 'magnet-lab.html#domain' }, { t: '螺線管電磁鐵', u: 'magnet-lab.html#coil' }],
             k: ['磁鐵與磁性', '磁力線（N 出 S 入、越密越強）', '地球磁場', '電流磁效應（厄斯特實驗）', '安培右手定則', '電磁鐵與其應用', '磁域與退磁', '電流與磁場的交互作用', '右手開掌定則', '電動機原理（電能 → 力學能）', '電磁感應與感應電流（冷次定律）', '發電機原理（力學能 → 電能）'] }
         ]
       },
@@ -530,7 +530,7 @@ function renderStats() {
   const stats = [
     { n: ready, label: '個已上線單元' },
     { n: pages, label: '座 3D 互動實驗室' },
-    { n: '293', label: '題會考題型自我檢測' }
+    { n: '298', label: '題會考題型自我檢測' }
   ];
   document.getElementById('heroStats').innerHTML = stats.map(s => `<div class="stat"><b>${s.n}</b><span>${s.label}</span></div>`).join('');
 }
