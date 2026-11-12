@@ -242,20 +242,26 @@ board.position.y = -0.25;
 board.receiveShadow = true;
 scene.add(board);
 
-/** 圓潤小車（車頭朝 +x） */
+/** 原木材質（美學規範 A：教具＝原木工藝品） */
+const wood = (c = 0xdeb887) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, metalness: 0 });
+/** 原木積木小車（車頭朝 +x）：木頭車身＋一圈彩色木條用來分辨是哪一台 */
 function makeCar(color) {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new RoundedBoxGeometry(1.3, 0.45, 0.75, 5, 0.18), clay(color));
+  const body = new THREE.Mesh(new RoundedBoxGeometry(1.3, 0.4, 0.75, 5, 0.13), wood());
   body.position.y = 0.42;
-  const cabin = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.42, 8, 16), clay(0xffffff));
-  cabin.rotation.z = Math.PI / 2;
-  cabin.position.set(-0.08, 0.72, 0);
-  g.add(body, cabin);
+  const band = new THREE.Mesh(new RoundedBoxGeometry(1.32, 0.11, 0.77, 4, 0.05), new THREE.MeshStandardMaterial({ color, roughness: 0.6 }));
+  band.position.y = 0.36;
+  const cabin = new THREE.Mesh(new RoundedBoxGeometry(0.6, 0.34, 0.6, 5, 0.12), wood(0xecd4ad));
+  cabin.position.set(-0.12, 0.76, 0);
+  const nose = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.5, 16), wood(0xc49a6c));   // 車頭的小木栓，看得出前進方向
+  nose.rotation.x = Math.PI / 2; nose.position.set(0.5, 0.66, 0);
+  g.add(body, band, cabin, nose);
   for (const [x, z] of [[0.42, 0.38], [-0.42, 0.38], [0.42, -0.38], [-0.42, -0.38]]) {
-    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.14, 24), clay(0x3a3f44));
-    w.rotation.x = Math.PI / 2;
-    w.position.set(x, 0.18, z);
-    g.add(w);
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.14, 28), wood(0x9c7448));
+    w.rotation.x = Math.PI / 2; w.position.set(x, 0.19, z);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.16, 16), wood(0xe8cfa6));
+    hub.rotation.x = Math.PI / 2; hub.position.copy(w.position);
+    g.add(w, hub);
   }
   return shadowed(g);
 }
@@ -315,8 +321,8 @@ const hideBanner = () => $('banner').classList.remove('show');
 
 /* ----- 手刻圖表 ----- */
 function drawChart(canvas, pts, o) {
-  const dpr = (window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2));
-  const W = canvas.clientWidth, H = canvas.clientHeight;
+  const dpr = o.w ? 3 : (window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2));
+  const W = o.w || canvas.clientWidth, H = o.h || canvas.clientHeight;      // o.w／o.h：畫在 3D 全息面板用的離屏畫布
   if (!W) return;
   if (canvas.width !== W * dpr) { canvas.width = W * dpr; canvas.height = H * dpr; }
   const g = canvas.getContext('2d');
@@ -326,7 +332,7 @@ function drawChart(canvas, pts, o) {
   const X = t => L + (W - L - R) * t / o.xmax;
   const Y = v => T + (H - T - B) * (1 - (v - o.ymin) / (o.ymax - o.ymin));
   g.font = '10px -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif';
-  g.strokeStyle = '#eef1ef'; g.fillStyle = '#8a8f8c'; g.lineWidth = 1;
+  g.strokeStyle = o.w ? 'rgba(70,110,140,.28)' : '#eef1ef'; g.fillStyle = o.w ? '#3d5a6e' : '#8a8f8c'; g.lineWidth = 1;
   for (let k = 0; k * o.xstep <= o.xmax + 1e-9; k++) {
     const i = Math.round(k * o.xstep * 100) / 100;           // 避免 0.4×3 = 1.2000000002 這類浮點誤差
     g.beginPath(); g.moveTo(X(i), T); g.lineTo(X(i), H - B); g.stroke(); g.fillText(i, X(i) - 3, H - B + 13);
@@ -369,7 +375,7 @@ const M1 = (() => {
   };
   track(straight, 0x9fbdf5); track(sCurve, 0xf5a3a6);
   const trail = (cv, color) => {
-    const m = new THREE.Mesh(new THREE.TubeGeometry(cv, 300, 0.09, 10, false), clay(color, { emissive: color, emissiveIntensity: 0.35 }));
+    const m = new THREE.Mesh(new THREE.TubeGeometry(cv, 300, 0.09, 10, false), clay(color, { emissive: color, emissiveIntensity: 0.75 }));
     m.position.y = 0.08; group.add(m);
     m.geometry.setDrawRange(0, 0);
     return m;
@@ -394,19 +400,43 @@ const M1 = (() => {
   const lB = addLabel('m1', '藍車：直線', 'color:#3f7be8'); lB.pos.set(-1.5, 0.6, 0.9);
   const lR = addLabel('m1', '紅車：S 型彎路', 'color:#e5484d'); lR.pos.set(-3.0, 0.6, -3.6);
 
+  // 車尾的「筆尖」光點：像一支筆正在地上畫線
+  const pen = c => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 14), new THREE.MeshBasicMaterial({ color: c, toneMapped: false })); group.add(m); return m; };
+  const penB = pen(0x6fa0ff), penR = pen(0xff6b70);
+  // 終點後：把兩條線「拉直」並排比長短（紅＝路徑長、藍＝位移）
+  const bar = c => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 1, 16), clay(c, { emissive: c, emissiveIntensity: 0.75 })); m.rotation.z = Math.PI / 2; m.visible = false; group.add(m); return m; };
+  const barR = bar(0xe5484d), barB = bar(0x3f7be8), BX = -PATH_S / 2, BZ = 5.2;
+  const lBarR = addLabel('m1', '', 'color:#e5484d'), lBarB = addLabel('m1', '', 'color:#3f7be8');
+  lBarR.visible = lBarB.visible = false;
+  let cmp = 0;                                             // 0 → 1：比較長條伸長的進度
+  function drawBars() {
+    const k = 1 - Math.pow(1 - Math.min(1, cmp), 3), on = cmp > 0;
+    barR.visible = barB.visible = on; lBarR.visible = lBarB.visible = on && cmp >= 1;
+    if (!on) return;
+    const lr = Math.max(0.01, PATH_S * k), lb = Math.max(0.01, DISP * k);
+    barR.scale.y = lr; barR.position.set(BX + lr / 2, 0.14, BZ);
+    barB.scale.y = lb; barB.position.set(BX + lb / 2, 0.14, BZ + 0.6);
+    lBarR.pos.set(BX + PATH_S + 1.5, 0.3, BZ); lBarR.el.textContent = '紅車路徑長 ' + fmt(PATH_S, 1) + ' m';
+    lBarB.pos.set(BX + DISP + 1.3, 0.3, BZ + 0.6); lBarB.el.textContent = '位移 12 m';
+  }
+
   let t = 0, running = false;
   function place(car, cv, u) {
     const p = cv.getPointAt(Math.min(u, 1)), tg = cv.getTangentAt(Math.min(u, 0.999));
     car.position.set(p.x, 0, p.z);
     car.rotation.y = Math.atan2(-tg.z, tg.x);
   }
-  function reset() { t = 0; running = false; update(0); dispArrow.visible = lDisp.visible = false; hideBanner(); render(); }
+  function reset() { t = 0; running = false; cmp = 0; update(0); dispArrow.visible = lDisp.visible = false; hideBanner(); render(); }
   function update(dt) {
     if (running) { t = Math.min(T, t + dt); if (t >= T) { running = false; finish(); } }
     const u = t / T;                                       // 兩車都以「固定速率」前進
     place(carB, straight, u); place(carR, sCurve, u);
     trailB.geometry.setDrawRange(0, Math.floor(trailB.geometry.index.count * u / 6) * 6);
     trailR.geometry.setDrawRange(0, Math.floor(trailR.geometry.index.count * u / 6) * 6);
+    const tail = (car, p) => { p.position.set(car.position.x - Math.cos(car.rotation.y) * 0.55, 0.17, car.position.z + Math.sin(car.rotation.y) * 0.55); p.visible = t > 0 && t < T; p.scale.setScalar(1 + 0.25 * Math.sin(performance.now() / 90)); };
+    tail(carB, penB); tail(carR, penR);
+    if (t >= T && cmp < 1) cmp = Math.min(1, cmp + dt / 1.4);
+    drawBars();
   }
   function finish() {
     setArrow(dispArrow, A.clone().add(V3(0, 1.2, 0.6)), V3(1, 0, 0), DISP);
@@ -433,7 +463,7 @@ const M1 = (() => {
   }
   $('m1Go').addEventListener('click', () => { reset(); running = true; });
   $('m1Reset').addEventListener('click', reset);
-  return { group, update: dt => { const was = running; update(dt); if (was || running || dt === 0) render(); }, enter: reset, camera: { pos: [0, 10, 13.5], target: [0, 0, -0.3] }, get state() { return { t, PATH_S, DISP }; } };
+  return { group, update: dt => { const was = running; update(dt); if (was || running || dt === 0) render(); }, enter: reset, camera: { pos: [0, 11.5, 15.5], target: [0, 0, 1.0] }, get state() { return { t, PATH_S, DISP }; } };
 })();
 
 /* =========================================================
@@ -463,6 +493,33 @@ const M2 = (() => {
   // 每 0.5 秒留下一個「頻閃」記號，看出位置間隔的變化
   const strobeMat = clay(0x3b8f6e, { transparent: true, opacity: 0.35 });
   const strobes = [];
+
+  /* ----- 全息毛玻璃圖表面板（美學規範 B）：懸浮在軌道後方，跟著小車同步向右畫 ----- */
+  const CW = 300, CH = 170, PW = 4.6, PH = PW * CH / CW, PY = 2.55, PZ = -1.7;
+  const mkPanel = (cx, title, color) => {
+    const g = new THREE.Group(); g.position.set(cx, PY, PZ); g.rotation.x = -0.12; group.add(g);
+    const glass = new THREE.Mesh(new RoundedBoxGeometry(PW + 0.3, PH + 0.3, 0.05, 4, 0.02),
+      new THREE.MeshPhysicalMaterial({ color: 0xeaf6ff, transparent: true, opacity: 0.38, roughness: 0.18, clearcoat: 1, clearcoatRoughness: 0.15, depthWrite: false }));
+    glass.renderOrder = 3; g.add(glass);
+    const edge = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(PW + 0.3, PH + 0.3, 0.05)), new THREE.LineBasicMaterial({ color: 0x4aa8ff, transparent: true, opacity: 0.85 }));
+    g.add(edge);
+    const c = document.createElement('canvas'); c.width = CW * 3; c.height = CH * 3;
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(PW, PH), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false }));
+    face.position.z = 0.035; face.renderOrder = 4; g.add(face);
+    const L = addLabel('m2', title, 'font-size:.7rem;color:' + color); L.pos.set(cx, PY + PH / 2 + 0.42, PZ);
+    // 把圖上的 (t, 值) 換算成 3D 世界座標（和 drawChart 的邊界一致：左 36、右 10、上 12、下 24）
+    const at = (tt, v, o) => { const px = 36 + (CW - 46) * tt / o.xmax, py = 12 + (CH - 36) * (1 - (v - o.ymin) / (o.ymax - o.ymin)); return g.localToWorld(V3((px / CW - 0.5) * PW, (0.5 - py / CH) * PH, 0.04)); };
+    return { c, tex, at };
+  };
+  const OXT = { w: CW, h: CH, xmax: 4, xstep: 1, ymin: 0, ymax: 12, ystep: 3, color: '#2f9e6e', ylabel: 'x (m)', xlabel: 't (s)' };
+  const OVT = { w: CW, h: CH, xmax: 4, xstep: 1, ymin: 0, ymax: 6, ystep: 2, color: '#ff8a1f', ylabel: 'v (m/s)', xlabel: 't (s)' };
+  const pXT = mkPanel(-2.55, 'x-t 圖（位置 − 時間）', '#1f7a55'), pVT = mkPanel(2.55, 'v-t 圖（速度 − 時間）', '#c05a00');
+  // 小車 ↔ 圖上目前那一點的連動光線
+  const linkMat = c => new THREE.LineBasicMaterial({ color: c, transparent: true, opacity: 0.55 });
+  const mkLink = c => { const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V3(0, 0, 0), V3(0, 1, 0)]), linkMat(c)); l.frustumCulled = false; group.add(l); return l; };
+  const linkX = mkLink(0x2f9e6e), linkV = mkLink(0xff8a1f);
+  const setLink = (l, a, b) => { const p = l.geometry.attributes.position; p.setXYZ(0, a.x, a.y, a.z); p.setXYZ(1, b.x, b.y, b.z); p.needsUpdate = true; };
 
   let motion = 'accel', t = 0, running = false, samples = [], nextStrobe = 0;
   const state = tt => { const M = MOTIONS[motion]; return { x: M.v0 * tt + 0.5 * M.a * tt * tt, v: M.v0 + M.a * tt, a: M.a }; };   // S = v0t + ½at²、v = v0 + at
@@ -507,6 +564,12 @@ const M2 = (() => {
     $('m2kv').innerHTML = `<span>時間 t</span><b>${fmt(t)} s</b><span>位置 x = v₀t + ½at²</span><b>${fmt(s.x)} m</b><span>速度 v = v₀ + at</span><b>${fmt(s.v)} m/s</b>`;
     drawChart($('xt'), samples.map(p => [p[0], p[1]]), { xmax: 4, xstep: 1, ymin: 0, ymax: 12, ystep: 3, color: '#3b8f6e', ylabel: 'x (m)', xlabel: 't (s)' });
     drawChart($('vt'), samples.map(p => [p[0], p[2]]), { xmax: 4, xstep: 1, ymin: 0, ymax: 6, ystep: 2, color: '#22a35a', ylabel: 'v (m/s)', xlabel: 't (s)' });
+    // 3D 全息面板：同一份資料同步畫，並把小車和圖上的點用光線連起來
+    drawChart(pXT.c, samples.map(p => [p[0], p[1]]), OXT); pXT.tex.needsUpdate = true;
+    drawChart(pVT.c, samples.map(p => [p[0], p[2]]), OVT); pVT.tex.needsUpdate = true;
+    group.updateMatrixWorld(true);
+    const top = V3(car.position.x, 1.05, -0.2);
+    setLink(linkX, top, pXT.at(t, s.x, OXT)); setLink(linkV, top, pVT.at(t, Math.max(0, s.v), OVT));
     $('m2tip').innerHTML = {
       uniform: '<b>等速</b>：v-t 圖是<b>水平線</b>（速度不變）；x-t 圖是<b>斜直線</b>，斜率 = 速度。',
       accel: '<b>等加速度</b>：v-t 圖是<b>斜直線</b>（斜率 = 加速度）；x-t 圖是<b>拋物線</b>（越來越陡）。綠色速度箭頭越變越長。',
@@ -514,7 +577,7 @@ const M2 = (() => {
     }[motion];
   }
   document.querySelectorAll('[data-motion]').forEach(b => b.addEventListener('click', () => start(b.dataset.motion)));
-  return { group, update, enter: () => { $('dataBody').innerHTML = ''; samples = [[0, 0, MOTIONS[motion].v0]]; t = 0; running = false; clearStrobes(); render(); }, camera: { pos: [0, 5, 12], target: [0, 0.6, 0] }, state, get t() { return t; }, start };
+  return { group, update, enter: () => { $('dataBody').innerHTML = ''; samples = [[0, 0, MOTIONS[motion].v0]]; t = 0; running = false; clearStrobes(); render(); }, camera: { pos: [0, 5.4, 13.5], target: [0, 1.5, 0] }, state, get t() { return t; }, start };
 })();
 
 /* =========================================================
@@ -559,7 +622,31 @@ const M3 = (() => {
   const yAt = tt => y0 + v0 * tt - 0.5 * G * tt * tt;   // S = v0t + ½at²（a = −g）
   const vAt = tt => v0 - G * tt;                        // v = v0 + at
 
-  function clearGhosts() { ghosts.forEach(g => group.remove(g)); ghosts.length = 0; }
+  // 相鄰兩個殘影之間的距離標示（每 0.2 秒走了多遠），標籤重複使用
+  const gapLabs = Array.from({ length: 14 }, () => { const L = addLabel('m3', '', 'font-size:.64rem;padding:1px 6px;color:#b4541e;border:1px solid #ffb089'); L.visible = false; return L; });
+  const gapMat = new THREE.MeshBasicMaterial({ color: 0xff8a5b, transparent: true, opacity: 0.7 });
+  const gapBars = [];
+  function clearGhosts() {
+    ghosts.forEach(g => { group.remove(g); g.material.dispose(); }); ghosts.length = 0;
+    gapBars.forEach(b => { group.remove(b); b.geometry.dispose(); }); gapBars.length = 0;
+    gapLabs.forEach(L => { L.visible = false; });
+  }
+  function addGhost(tt) {
+    const y = yAt(tt), down = vAt(tt) < -1e-6, i = ghosts.length;
+    const m = ghostMat.clone(); m.opacity = Math.min(0.5, 0.16 + 0.03 * i);            // 越晚留下的殘影越濃，看得出先後
+    const g = new THREE.Mesh(ball.geometry, m);
+    g.position.set(kind === 'throw' && down ? 1.75 : 0.9, y, 0); g.userData.t = tt;   // 上拋：下降的殘影排在右邊一排，不會和上升的疊在一起
+    group.add(g); ghosts.push(g);
+    const prev = ghosts[i - 1];
+    if (prev && prev.position.x === g.position.x && i - 1 < gapLabs.length) {
+      const d = Math.abs(y - prev.position.y);
+      if (d > 0.12) {
+        const b = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, d - 0.1, 8), gapMat);
+        b.position.set(g.position.x + 0.5, (y + prev.position.y) / 2, 0); group.add(b); gapBars.push(b);
+        const L = gapLabs[i - 1]; L.visible = true; L.pos.set(g.position.x + 1.05, (y + prev.position.y) / 2, 0); L.el.textContent = fmt(d, 2) + ' m';
+      }
+    }
+  }
   function start(k) {
     kind = k; t = 0; peaked = false; peakHold = 0; running = true; nextGhost = 0; clearGhosts(); hideBanner();
     if (k === 'drop') { y0 = DROP_H; v0 = 0; } else { y0 = 1.1 + R; v0 = V0; }
@@ -580,8 +667,7 @@ const M3 = (() => {
           running = false;
         }
         while (t >= nextGhost - 1e-9 && nextGhost <= t) {  // 每 0.2 秒的頻閃殘影
-          const g = new THREE.Mesh(ball.geometry, ghostMat);
-          g.position.set(0.9, yAt(nextGhost), 0); group.add(g); ghosts.push(g);
+          addGhost(nextGhost);
           nextGhost += 0.2;
         }
         samples.push([t, vAt(t)]);
@@ -590,8 +676,8 @@ const M3 = (() => {
     const y = kind ? yAt(t) : DROP_H, v = kind ? vAt(t) : 0;
     ball.position.set(0, kind ? y : 1.1 + R, 0);
     // 黃色重力加速度：永遠向下、長度不變
-    setArrow(gArrow, V3(0.55, ball.position.y + 0.1, 0), V3(0, -1, 0), 1.4);
-    lg.pos.set(1.9, ball.position.y - 0.6, 0);
+    setArrow(gArrow, V3(-0.95, ball.position.y + 0.1, 0), V3(0, -1, 0), 1.4);
+    lg.pos.set(-3.6, ball.position.y - 0.6, 0);
     // 綠色速度：方向隨 v 正負，長度 ∝ |v|；v = 0 時消失
     const vlen = Math.abs(v) * 0.16;
     setArrow(vArrow, V3(-0.5, ball.position.y, 0), V3(0, Math.sign(v) || 1, 0), vlen);
@@ -646,12 +732,22 @@ const M4 = (() => {
   group.add(car);
   // 紙帶（跟著小車移動），點就打在紙帶上
   const tape = new THREE.Group();
-  const paper = new THREE.Mesh(new RoundedBoxGeometry(TAPE_LEN, 0.02, 0.5, 2, 0.008), clay(0xffffff, { transparent: true, opacity: 0.8 }));
+  const paper = new THREE.Mesh(new RoundedBoxGeometry(TAPE_LEN, 0.02, 0.5, 2, 0.008), new THREE.MeshStandardMaterial({ color: 0xf6e9bf, roughness: 0.95 }));
   paper.position.x = -TAPE_LEN / 2;
   paper.receiveShadow = true;
   tape.add(paper);
+  { // 紙面：微黃底色＋細細的紙纖維
+    const c = document.createElement('canvas'); c.width = 2048; c.height = 64;
+    const g = c.getContext('2d'); g.fillStyle = '#fbf1cc'; g.fillRect(0, 0, 2048, 64);
+    let sd = 7; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 900; i++) { g.strokeStyle = 'rgba(150,120,60,' + (0.04 + rnd() * 0.07) + ')'; g.lineWidth = 1; const x = rnd() * 2048, y = rnd() * 64; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 6 + rnd() * 22, y + (rnd() - 0.5) * 3); g.stroke(); }
+    g.fillStyle = 'rgba(160,125,60,.28)'; g.fillRect(0, 0, 2048, 2); g.fillRect(0, 62, 2048, 2);
+    const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 8;
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(TAPE_LEN, 0.5), new THREE.MeshStandardMaterial({ map: tx, roughness: 0.95 }));
+    face.rotation.x = -Math.PI / 2; face.position.set(-TAPE_LEN / 2, 0.0115, 0); face.receiveShadow = true; tape.add(face);
+  }
   group.add(tape);
-  const dotGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.03, 16), dotMat = clay(0x111111);
+  const dotGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.03, 20), dotMat = new THREE.MeshBasicMaterial({ color: 0x0b0b0b });
   const dots = [];
   // 測量尺
   const measure = new THREE.Group();
@@ -663,6 +759,45 @@ const M4 = (() => {
   tape.add(measure);
   const lMeasure = addLabel('m4', '', 'color:#c2410c;border:1.5px solid #f97316');
   lMeasure.visible = false;
+
+  /* ----- 半透明塑膠直尺（30 cm，可以用滑鼠或手指拖曳）：刻度邊緊貼黑點那一排 ----- */
+  const RULER_LEN = 3.0, RULER_W = 0.5, RULER_Z = 0.4 + 0.07 + RULER_W / 2;      // 1 單位 = 10 cm → 3.0 = 30 cm
+  const ruler = new THREE.Group();
+  const rBody = new THREE.Mesh(new RoundedBoxGeometry(RULER_LEN + 0.3, 0.035, RULER_W, 3, 0.015),
+    new THREE.MeshPhysicalMaterial({ color: 0x9fd8ff, transparent: true, opacity: 0.42, roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.1, depthWrite: false }));
+  rBody.renderOrder = 5; ruler.add(rBody);
+  { // 刻度：每 1 mm 一小格、每 5 mm 中格、每 1 cm 長格＋數字（刻度在靠近黑點的那一邊）
+    const PW = 3300, PH = 500, c = document.createElement('canvas'); c.width = PW; c.height = PH;
+    const g = c.getContext('2d'); g.clearRect(0, 0, PW, PH);
+    const X = cm => 150 + cm * 100;
+    g.strokeStyle = '#12324a'; g.fillStyle = '#12324a'; g.textAlign = 'center'; g.font = '700 86px -apple-system, "Microsoft JhengHei", sans-serif';
+    for (let mm = 0; mm <= 300; mm++) {
+      const big = mm % 10 === 0, mid = mm % 5 === 0;
+      g.lineWidth = big ? 7 : mid ? 5 : 3;
+      g.beginPath(); g.moveTo(X(mm / 10), 0); g.lineTo(X(mm / 10), big ? 150 : mid ? 105 : 62); g.stroke();
+      if (big) g.fillText(mm / 10, X(mm / 10), 250);
+    }
+    g.font = '700 70px -apple-system, "Microsoft JhengHei", sans-serif'; g.textAlign = 'left'; g.fillStyle = 'rgba(18,50,74,.75)';
+    g.fillText('cm　✋ 拖曳直尺，把 0 對準黑點', X(0) - 20, 430);
+    const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; tx.anisotropy = 16;
+    const marks = new THREE.Mesh(new THREE.PlaneGeometry(RULER_LEN + 0.3, RULER_W), new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthWrite: false, toneMapped: false }));
+    marks.rotation.x = -Math.PI / 2; marks.position.y = 0.02; marks.renderOrder = 6; ruler.add(marks);
+  }
+  ruler.position.set(2.6, TAPE_Y + 0.045, RULER_Z);
+  group.add(ruler);
+  const ZERO = -RULER_LEN / 2;                                                 // 0 刻度在直尺上的位置
+  const lRuler = addLabel('m4', '', 'color:#0b5cab;border:1.5px solid #4aa3e8;font-size:.72rem');
+  lRuler.visible = false;
+  function readRuler() {
+    const x0 = ruler.position.x + ZERO;
+    const xs = dots.map(d => tape.position.x + d.position.x).filter(x => x > x0 - 0.02 && x < x0 + RULER_LEN + 0.02).sort((p, q) => p - q);
+    const onZero = xs.length && Math.abs(xs[0] - x0) < 0.012;
+    lRuler.visible = xs.length > 0;
+    lRuler.pos.set(ruler.position.x, TAPE_Y + 0.75, RULER_Z + 0.2);
+    lRuler.el.innerHTML = !xs.length ? '' : onZero
+      ? '直尺讀數：' + xs.slice(0, 6).map(x => fmt((x - x0) * CM, 1)).join('、') + ' cm' + (xs.length > 6 ? '…' : '')
+      : '把直尺的 <b>0</b> 對準其中一個黑點';
+  }
 
   let motion = 'uniform', t = 0, running = false, paused = false, nextTick = 0, strikeT = 0, startX = TIMER_X + 1.1;
   const xAt = tt => { const M = MOTIONS[motion]; return startX + M.v0 * tt + 0.5 * M.a * tt * tt; };   // S = v0t + ½at²
@@ -683,13 +818,14 @@ const M4 = (() => {
         tape.add(d); dots.push(d);
         nextTick += TICK; strikeT = 0.12;
       }
-      if (xAt(t) > 8.2) { running = false; banner('小車到底了！按「暫停」後可以在紙帶上拖曳測量', 3000); }
+      if (xAt(t) > 8.2) { running = false; banner('小車到底了！拖曳藍色直尺，把 0 對準黑點量量看', 3500); }
     }
     strikeT = Math.max(0, strikeT - dt);
     striker.position.y = 0.75 - (strikeT > 0 ? 0.28 : 0);
     const x = xAt(t);
     car.position.set(x + 0.65, TAPE_Y - 0.25, 0.4);
     tape.position.set(x, TAPE_Y, 0.4);
+    readRuler();
     render();
   }
   function spacings() {
@@ -754,8 +890,38 @@ const M4 = (() => {
     lMeasure.pos.copy(tape.localToWorld(V3((a + b) / 2, 0.6, 0)));
     lMeasure.el.innerHTML = `${fmt(len * CM, 1)} cm${intervals ? `｜${intervals} 個間隔 = ${fmt(intervals * TICK, 1)} 秒` : ''}`;
   };
+  /* ----- 拖曳直尺（Raycaster）：沿著紙帶左右移動，0 刻度靠近黑點時自動吸附 ----- */
+  const rPlane = new THREE.Plane(V3(0, 1, 0), -(TAPE_Y + 0.045)), rHit = V3(0, 0, 0);
+  let dragRuler = false, rOff = 0;
+  const pointerRay = e => { const r = renderer.domElement.getBoundingClientRect(); ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(ndc, camera); };
+  const moveRuler = e => {
+    pointerRay(e);
+    if (!ray.ray.intersectPlane(rPlane, rHit)) return;
+    let x = Math.max(TIMER_X + 1.2 - ZERO - RULER_LEN, Math.min(9.5, rHit.x - rOff));
+    let best = null;
+    dots.forEach(d => { const dx = tape.position.x + d.position.x - (x + ZERO); if (Math.abs(dx) < 0.07 && (best === null || Math.abs(dx) < Math.abs(best))) best = dx; });
+    if (best !== null) x += best;
+    ruler.position.x = x; readRuler();
+  };
   renderer.domElement.addEventListener('pointerdown', e => {
-    if (mode !== 'm4' || (running && !paused)) return;
+    if (mode !== 'm4') return;
+    pointerRay(e);
+    if (!ray.intersectObject(rBody).length || !ray.ray.intersectPlane(rPlane, rHit)) return;
+    e.stopImmediatePropagation();
+    dragRuler = true; rOff = rHit.x - ruler.position.x; controls.enabled = false;
+    renderer.domElement.setPointerCapture(e.pointerId); renderer.domElement.style.cursor = 'grabbing';
+  }, { capture: true });
+  renderer.domElement.addEventListener('pointermove', e => {
+    if (dragRuler) { moveRuler(e); return; }
+    if (mode !== 'm4' || measuring) return;
+    pointerRay(e); renderer.domElement.style.cursor = ray.intersectObject(rBody).length ? 'grab' : '';
+  });
+  const endRuler = () => { if (dragRuler) { dragRuler = false; controls.enabled = true; renderer.domElement.style.cursor = ''; } };
+  renderer.domElement.addEventListener('pointerup', endRuler);
+  renderer.domElement.addEventListener('pointercancel', endRuler);
+
+  renderer.domElement.addEventListener('pointerdown', e => {
+    if (mode !== 'm4' || dragRuler || (running && !paused)) return;
     const x = tapeLocalX(e);
     if (x === null) return;
     e.stopImmediatePropagation();
@@ -777,11 +943,11 @@ const M4 = (() => {
     if (!running && !dots.length) return;
     paused = !paused;
     $('m4Pause').textContent = paused ? '▶ 繼續' : '⏸ 暫停';
-    if (paused) banner('已暫停：用滑鼠在紙帶上拖曳，測量兩點的距離', 3000);
+    if (paused) banner('已暫停：拖曳藍色直尺對準黑點，或直接在紙帶上拖曳測量', 3500);
   });
   $('m4Reset').addEventListener('click', reset);
   $('tapeMode').addEventListener('change', reset);
-  return { group, update, enter: () => { $('dataBody').innerHTML = ''; reset(); }, camera: { pos: [2.6, 8.5, 13], target: [2.6, 0.2, 0.4] }, spacings, start: m => { $('tapeMode').value = m; reset(); running = true; }, get dots() { return dots; } };
+  return { group, update, enter: () => { $('dataBody').innerHTML = ''; reset(); }, camera: { pos: [2.6, 8.5, 13], target: [2.6, 0.2, 0.4] }, spacings, ruler, start: m => { $('tapeMode').value = m; reset(); running = true; }, get dots() { return dots; } };
 })();
 
 /* =========================================================
