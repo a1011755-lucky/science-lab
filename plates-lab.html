@@ -197,14 +197,14 @@
 
     <!-- Tab 4 -->
     <section class="sec" data-tab="fault" hidden>
-      <div class="concept" style="--cc:#8d6e63"><div class="ct">正斷層與逆斷層</div><div class="cd">斷層面<b>上方</b>的岩塊叫<b>上磐</b>，<b>下方</b>的叫<b>下磐</b></div></div>
+      <div class="concept" style="--cc:#8d6e63"><div class="ct">正斷層與逆斷層</div><div class="cd">斷層面<b>上方</b>的岩塊叫<b>上盤</b>，<b>下方</b>的叫<b>下盤</b></div></div>
       <div class="row2">
         <button class="btn" id="tensionBtn">⟷ 張力<small>拉扯</small></button>
         <button class="btn" id="compressBtn">→← 壓力<small>擠壓</small></button>
       </div>
       <button class="btn" id="resetFault">↺ 復原岩塊</button>
       <div class="stat" id="faultStat"></div>
-      <p class="desc">觀察技巧：看彩色岩層在斷層兩側「錯開」的方向，就能判斷上磐是上升還是下滑。</p>
+      <p class="desc">觀察技巧：看彩色岩層在斷層兩側「錯開」的方向，就能判斷上盤是上升還是下滑。</p>
     </section>
 
     <button class="btn" id="viewBtn">🎥 重設視角</button>
@@ -852,7 +852,7 @@ function updateConv(dt) {
    Tab 4：斷層（從原本的「地質剖面與斷層模擬器」移植）
    ---------------------------------------------------------
    岩塊 x∈[−6,6]、y∈[−3,3]（放在桌上：整體抬高 3.3）。
-   斷層線傾角 60°，右側（壓在斷層面上方）＝上磐。
+   斷層線傾角 60°，右側（壓在斷層面上方）＝上盤。
    ========================================================= */
 const FT = { group: new THREE.Group(), force: null, slip: 0, slipT: 0, t: 0 };
 FT.group.position.y = 3.35; scene.add(FT.group);
@@ -893,7 +893,7 @@ function textPlane(big, small, w = 3.2) {
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
   return new THREE.Mesh(new THREE.PlaneGeometry(w, w / 2), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false }));
 }
-[[hanging, '上磐', 'Hanging Wall', 3.15], [footwall, '下磐', 'Footwall', -3.6]].forEach(([blk, big, small, x]) => {
+[[hanging, '上盤', 'Hanging Wall', 3.15], [footwall, '下盤', 'Footwall', -3.6]].forEach(([blk, big, small, x]) => {
   const f = textPlane(big, small); f.position.set(x, 0.55, FD / 2 + 0.02); blk.add(f);
   const b = textPlane(big, small); b.position.set(x, 0.55, -FD / 2 - 0.02); b.rotation.y = Math.PI; blk.add(b);
 });
@@ -937,11 +937,11 @@ function updateFault(dt) {
   ftDraw.begin();
   ftDraw.dash(V3(fTop.x, fTop.y, FD / 2 + 0.04), V3(fBot.x, fBot.y, FD / 2 + 0.04), 0xe9a23b, { r: 0.04 });
   ftDraw.end();
-  if (f === 'tension') setCap(`<small>受到<span class="blu">張力</span>（拉扯）→ 岩層被拉長</small><span class="huge">正斷層：上磐相對下磐「<span class="blu">下滑</span>」</span>`);
-  else if (f === 'compression') setCap(`<small>受到<span class="red">壓力</span>（擠壓）→ 岩層被縮短</small><span class="huge">逆斷層：上磐相對下磐「<span class="red">上升</span>」</span>板塊聚合處（例如臺灣）常見逆斷層`);
-  else setCap(`<small>斷層受力模擬</small>選擇「<b>⟷ 張力</b>」或「<b>→← 壓力</b>」，觀察上磐怎麼移動`);
-  setHTML('faultStat', f === 'tension' ? '斷層種類：<b class="b">正斷層</b><br>受力：張力（拉扯）<br>上磐：沿斷層面<b>往下滑</b>'
-    : f === 'compression' ? '斷層種類：<b class="r">逆斷層</b><br>受力：壓力（擠壓）<br>上磐：沿斷層面<b>往上升</b>' : '斷層種類：<b>—</b>（尚未受力）');
+  if (f === 'tension') setCap(`<small>受到<span class="blu">張力</span>（拉扯）→ 岩層被拉長</small><span class="huge">正斷層：上盤相對下盤「<span class="blu">下滑</span>」</span>`);
+  else if (f === 'compression') setCap(`<small>受到<span class="red">壓力</span>（擠壓）→ 岩層被縮短</small><span class="huge">逆斷層：上盤相對下盤「<span class="red">上升</span>」</span>板塊聚合處（例如臺灣）常見逆斷層`);
+  else setCap(`<small>斷層受力模擬</small>選擇「<b>⟷ 張力</b>」或「<b>→← 壓力</b>」，觀察上盤怎麼移動`);
+  setHTML('faultStat', f === 'tension' ? '斷層種類：<b class="b">正斷層</b><br>受力：張力（拉扯）<br>上盤：沿斷層面<b>往下滑</b>'
+    : f === 'compression' ? '斷層種類：<b class="r">逆斷層</b><br>受力：壓力（擠壓）<br>上盤：沿斷層面<b>往上升</b>' : '斷層種類：<b>—</b>（尚未受力）');
 }
 
 /* =========================================================

@@ -830,8 +830,8 @@ const M3 = (() => {
     lX.pos.set(REST - comp / 2, -0.25, 0.9);
     lX.el.textContent = `壓縮量 x = ${comp.toFixed(2)} m`;
     showEnergy(E, phase === 'fly'
-      ? `射出速度 v = x√(k/m) = <b>${v.toFixed(2)} m/s</b>（壓縮 ${compMax.toFixed(2)} m）`
-      : `壓縮量 x = <b>${comp.toFixed(2)} m</b>　彈力 F = kx = <b>${(k * comp).toFixed(1)} N</b><br>Ue = ½kx²：壓縮量變 2 倍，彈力位能變 4 倍`);
+      ? `射出速度 <b>${v.toFixed(2)} m/s</b>（壓縮 ${compMax.toFixed(2)} m）<br>彈力位能轉換成動能：壓縮越多，射得越快`
+      : `壓縮量 x = <b>${comp.toFixed(2)} m</b>　彈力 <b>${(k * comp).toFixed(1)} N</b><br>在彈性限度內，壓縮越多 → 彈力越大，儲存的<b>彈力位能</b>也越多`);
   }
 
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), plane = new THREE.Plane(V3(0, 0, 1), 0), hit = V3(0, 0, 0);
@@ -880,7 +880,7 @@ function showEnergy(E, sub) {
 const TIPS = {
   m1: { t: '💡 作功與能量', p: '推力對方塊<b>作正功</b>，把能量「給」方塊，方塊動能增加；摩擦力作負功，把動能「偷走」變成熱能。', eq: '作功 = 能量的轉移；摩擦力 = 能量的耗散' },
   m2: { t: '💡 力學能守恆', p: '沒有摩擦時，高處的重力位能（藍）滑到谷底全部變成動能（紅），<b>總長度不變</b>。有摩擦時，紅藍越來越短、灰色熱能越來越長。', eq: '力學能 = 動能 + 位能；有摩擦時力學能不守恆，但總能量守恆' },
-  m3: { t: '💡 彈力位能', p: '壓縮彈簧（改變形狀）就把能量存成彈力位能（綠），壓縮量變 2 倍、位能變 4 倍。放開後，彈力位能全部轉換成小球的動能（紅）。', eq: '位置（形變）改變 ➔ 彈力位能 ➔ 釋放轉換為動能' }
+  m3: { t: '💡 彈力位能', p: '壓縮彈簧（改變形狀）就把能量存成彈力位能（綠）；壓縮越多，存進的彈力位能越多。放開後，彈力位能全部轉換成小球的動能（紅）。', eq: '位置（形變）改變 ➔ 彈力位能 ➔ 釋放轉換為動能' }
 };
 function showTip(m) { $('tipT').textContent = TIPS[m].t; $('tipP').innerHTML = TIPS[m].p; $('tipEq').textContent = TIPS[m].eq; }
 
