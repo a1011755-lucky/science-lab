@@ -970,7 +970,7 @@ const CL = (() => {
   const grip = makeGrip({ axis: 'x', orbit: 0.78, fingerColor: 0xffb300 });
   grip.position.set(0, Y, 0);
   grip.scale.setScalar(1.15);
-  grip.traverse(o => o.layers.enable(HAND_LAYER));
+  grip.traverse(o => o.layers.set(HAND_LAYER));
   group.add(grip);
   const lHN = addLabel('coil', 'N 極', 'hand nP', V3(0, 0.18, 0), grip.userData.markers.thumb);
   const lHI = addLabel('coil', '電流 I', 'hand cur', V3(0, 0.16, 0), grip.userData.markers.curl);

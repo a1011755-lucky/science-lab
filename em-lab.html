@@ -631,7 +631,7 @@ const gripHand = makeGrip({ axis: 'y', orbit: 0.32 });
 gripHand.position.set(0, HAND_Y, 0);
 gripHand.scale.setScalar(1.65);
 gripHand.rotation.y = 2.55;
-gripHand.traverse(o => o.layers.enable(HAND));
+gripHand.traverse(o => o.layers.set(HAND));   // 全息手只在光暈之後畫一次，半透明才不會重疊變濁
 WR.group.add(gripHand);
 const lThumb = addLabel('wire', '電流 I', 'hand cur', V3(0.12, 0.16, 0), gripHand.userData.markers.thumb);
 const lFing = addLabel('wire', '磁場 B', 'hand lam', V3(0, 0.16, 0), gripHand.userData.markers.curl);
@@ -813,7 +813,7 @@ const openHandShape = (() => {
 })();
 function makeOpenHand() {
   const g = makePalm();
-  g.traverse(o => o.layers.enable(HAND));
+  g.traverse(o => o.layers.set(HAND));
   g.scale.setScalar(0.78);
   MO.group.add(g);
   const labels = [

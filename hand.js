@@ -1,4 +1,5 @@
-/* 可辨認的右手：圓掌、分開的拇指、四根漸細的手指，箭頭貼在皮膚上。 */
+/* 全息投影右手（美學規範 B）：半透明科技藍玻璃＋邊緣發光，像一張物理輔助藍圖，不擋視線。
+   手型：圓掌、分開的拇指、四根漸細的手指，箭頭帶貼在指面上。 */
 import * as THREE from 'three';
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -6,16 +7,22 @@ const _a = new THREE.Vector3();
 const _b = new THREE.Vector3();
 const _c = new THREE.Vector3();
 
-const skinMat = new THREE.MeshPhysicalMaterial({
-  color: 0xf3b497, roughness: 0.58, metalness: 0,
-  clearcoat: 0.12, clearcoatRoughness: 0.55,
-  sheen: 0.65, sheenColor: 0xffc2ae, sheenRoughness: 0.35,
-  emissive: 0x8a3d2a, emissiveIntensity: 0.07
-});
-function skinMaterial() { return skinMat; }
-const nailMat = new THREE.MeshPhysicalMaterial({
-  color: 0xffe4d8, roughness: 0.32, metalness: 0.02, clearcoat: 0.55, clearcoatRoughness: 0.25
-});
+/** 每隻手一組材質：glass＝半透明玻璃本體；rim＝越靠輪廓越亮的邊緣光（通電時更亮） */
+function holoSet() {
+  const glass = new THREE.MeshPhysicalMaterial({
+    color: 0x4fc3f7, roughness: 0.1, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.08,
+    emissive: 0x0088ff, emissiveIntensity: 0.22, transparent: true, opacity: 0.34
+  });
+  const rim = new THREE.ShaderMaterial({
+    uniforms: { uColor: { value: new THREE.Color(0x0a84ff) }, uGain: { value: 0.75 }, uPow: { value: 1.7 } },
+    vertexShader: 'varying vec3 vN; varying vec3 vV; void main() { vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position, 1.0); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
+    fragmentShader: 'uniform vec3 uColor; uniform float uGain; uniform float uPow; varying vec3 vN; varying vec3 vV; void main() { float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), uPow) * uGain; gl_FragColor = vec4(uColor, clamp(f, 0.0, 0.92)); }',
+    transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false
+  });
+  /** 玻璃本體＋同形狀的邊緣光 */
+  const mesh = geo => { const m = new THREE.Mesh(geo, glass); m.renderOrder = 2; const e = new THREE.Mesh(geo, rim); e.renderOrder = 3; m.add(e); return m; };
+  return { glass, rim, mesh };
+}
 
 function chevronTex(fill) {
   const c = document.createElement('canvas');
@@ -45,7 +52,7 @@ function chevronTex(fill) {
   t.repeat.set(3.2, 1);
   return t;
 }
-const texBlue = chevronTex('#0a3d86');
+const texBlue = chevronTex('#0b57d0');
 const texOrange = chevronTex('#e65100');
 
 function ribbonMat(tex) {
@@ -99,10 +106,6 @@ function smoothTube(points, radAt, radial = 14) {
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   geo.setIndex(idx);
   return geo;
-}
-
-function skinMesh(geo) {
-  return shade(new THREE.Mesh(geo, skinMaterial()));
 }
 
 /** 沿著曲線、貼在外側的箭頭帶。normalFn(i) 決定帶面朝外的方向。 */
@@ -181,12 +184,12 @@ function placeArrow(arrow, from, to) {
  * 直導線的四指帶是深藍箭頭；螺線管的四指帶是橘色電流。
  */
 export function makeGrip({ axis = 'y', orbit = 0.3, fingerColor = 0x1e88e5 } = {}) {
-  const g = new THREE.Group();
-  const palm = shade(new THREE.Mesh(new THREE.SphereGeometry(0.34, 36, 28), skinMaterial()));
+  const g = new THREE.Group(), H = holoSet();
+  const palm = H.mesh(new THREE.SphereGeometry(0.34, 36, 28));
   palm.scale.set(1.05, 1.55, 0.72);
   palm.position.set(0.5, 0.02, 0.02);
   g.add(palm);
-  const thenar = shade(new THREE.Mesh(new THREE.SphereGeometry(0.2, 24, 18), skinMaterial()));
+  const thenar = H.mesh(new THREE.SphereGeometry(0.2, 24, 18));
   thenar.scale.set(1, 1.15, 0.85);
   thenar.position.set(0.46, 0.38, 0.2);
   g.add(thenar);
@@ -203,13 +206,11 @@ export function makeGrip({ axis = 'y', orbit = 0.3, fingerColor = 0x1e88e5 } = {
   fingers.forEach(f => {
     const pts = arcPoints(f.y, 2.25, f.arc, orbit);
     const rad = fingerRad(f.len);
-    const mesh = skinMesh(smoothTube(pts, rad));
-    g.add(mesh);
+    g.add(H.mesh(smoothTube(pts, rad)));
     const tip = pts[pts.length - 1];
-    const nail = shade(new THREE.Mesh(new THREE.SphereGeometry(rad(1) * 0.95, 14, 10), nailMat));
-    nail.scale.set(1, 0.72, 1.15);
-    nail.position.copy(tip);
-    g.add(nail);
+    const cap = H.mesh(new THREE.SphereGeometry(rad(1), 14, 10));      // 指尖圓頭（全息風格不畫指甲）
+    cap.position.copy(tip);
+    g.add(cap);
     const rib = makeRibbon(pts, rad, (i) => {
       const p = pts[i];
       return _a.set(p.x, 0, p.z).normalize();
@@ -225,12 +226,11 @@ export function makeGrip({ axis = 'y', orbit = 0.3, fingerColor = 0x1e88e5 } = {
     new THREE.Vector3(0.14, 1.38, 0.14)
   ];
   const thumbRad = u => 0.095 * (1 - u * 0.42);
-  g.add(skinMesh(smoothTube(thumbPts, thumbRad, 16)));
+  g.add(H.mesh(smoothTube(thumbPts, thumbRad, 16)));
   const tTip = thumbPts[thumbPts.length - 1];
-  const tNail = shade(new THREE.Mesh(new THREE.SphereGeometry(0.055, 14, 10), nailMat));
-  tNail.scale.set(1.1, 0.7, 1);
-  tNail.position.copy(tTip);
-  g.add(tNail);
+  const tCap = H.mesh(new THREE.SphereGeometry(thumbRad(1), 14, 10));
+  tCap.position.copy(tTip);
+  g.add(tCap);
 
   const thumbArrow = boldArrow(fingerColor === 0x1e88e5 ? 0xf57c00 : 0xe53935, 0.7, 0.055);
   placeArrow(thumbArrow, thumbPts[0].clone().add(new THREE.Vector3(0.02, 0.05, 0.1)), tTip.clone().add(new THREE.Vector3(0, 0.18, 0.06)));
@@ -255,7 +255,7 @@ export function makeGrip({ axis = 'y', orbit = 0.3, fingerColor = 0x1e88e5 } = {
     orient.add(twist);
     root.add(orient);
   } else root.add(twist);
-  root.userData = { markers: { thumb: thumbMark, curl: curlMark }, twist, ribbons, thumbArrow, time: 0, texHold: 0 };
+  root.userData = { markers: { thumb: thumbMark, curl: curlMark }, twist, ribbons, thumbArrow, holo: H, time: 0, texHold: 0 };
   return root;
 }
 
@@ -270,12 +270,14 @@ export function stepGrip(root, dt, speed) {
   const shift = (moving ? u.time : u.texHold) * 0.22;
   for (const r of u.ribbons) if (r.mat.map) r.mat.map.offset.x = -shift;
   if (u.thumbArrow.userData.mat) u.thumbArrow.userData.mat.emissiveIntensity = moving ? 0.25 + 0.35 * (0.5 + 0.5 * Math.sin(u.time * 4)) : 0.28;
+  // 全息邊緣光：通電時變亮並輕輕脈動，斷電變暗
+  if (u.holo) { const want = moving ? 1.25 + 0.2 * Math.sin(u.time * 4) : 0.7, k = 1 - Math.exp(-dt * 6); u.holo.rim.uniforms.uGain.value += (want - u.holo.rim.uniforms.uGain.value) * k; u.holo.glass.emissiveIntensity += ((moving ? 0.4 : 0.18) - u.holo.glass.emissiveIntensity) * k; }
 }
 
 /** 開掌：四指 +X、拇指 +Z、掌心 +Y。 */
 export function makePalm() {
-  const g = new THREE.Group();
-  const palm = shade(new THREE.Mesh(new THREE.SphereGeometry(0.36, 32, 24), skinMaterial()));
+  const g = new THREE.Group(), H = holoSet();
+  const palm = H.mesh(new THREE.SphereGeometry(0.36, 32, 24));
   palm.scale.set(1.15, 0.42, 1.25);
   palm.position.set(0.02, 0, 0.02);
   g.add(palm);
@@ -291,10 +293,10 @@ export function makePalm() {
   specs.forEach(s => {
     const pts = [0, 0.35, 0.65, 1].map(u => new THREE.Vector3(0.32 + s.len * u, 0.02 - u * 0.03, s.z));
     const rad = u => 0.062 * (1 - u * 0.4) * (s.len / 0.8);
-    g.add(skinMesh(smoothTube(pts, rad, 12)));
-    const nail = shade(new THREE.Mesh(new THREE.SphereGeometry(rad(1), 12, 8), nailMat));
-    nail.position.copy(pts[3]);
-    g.add(nail);
+    g.add(H.mesh(smoothTube(pts, rad, 12)));
+    const cap = H.mesh(new THREE.SphereGeometry(rad(1), 12, 8));
+    cap.position.copy(pts[3]);
+    g.add(cap);
     const rib = makeRibbon(pts, rad, () => _a.set(0, 1, 0), tex);
     g.add(rib.mesh);
     ribbons.push(rib);
@@ -304,7 +306,8 @@ export function makePalm() {
     new THREE.Vector3(0.06, 0.08, 0.62),
     new THREE.Vector3(0.1, 0.1, 0.92)
   ];
-  g.add(skinMesh(smoothTube(thumbPts, u => 0.078 * (1 - u * 0.35), 12)));
+  g.add(H.mesh(smoothTube(thumbPts, u => 0.078 * (1 - u * 0.35), 12)));
+  { const c = H.mesh(new THREE.SphereGeometry(0.078 * 0.65, 12, 8)); c.position.copy(thumbPts[2]); g.add(c); }
   const iArrow = boldArrow(0xf57c00, 0.7, 0.048);
   placeArrow(iArrow, thumbPts[0].clone().add(new THREE.Vector3(0, 0.08, 0)), thumbPts[2].clone().add(new THREE.Vector3(0, 0.08, 0.12)));
   g.add(iArrow);
@@ -315,7 +318,7 @@ export function makePalm() {
   const mB = new THREE.Object3D(); mB.position.set(1.2, 0.2, 0.08);
   const mF = new THREE.Object3D(); mF.position.set(0.08, 0.7, 0.02);
   g.add(mI, mB, mF);
-  g.userData = { markers: { I: mI, B: mB, F: mF }, fArrow, ribbons, time: 0 };
+  g.userData = { markers: { I: mI, B: mB, F: mF }, fArrow, ribbons, holo: H, time: 0 };
   return g;
 }
 
@@ -325,6 +328,7 @@ export function stepPalm(g, dt, powered) {
   u.time += dt;
   const pulse = powered ? 1 + 0.16 * Math.sin(u.time * 5.2) : 1;
   u.fArrow.scale.set(pulse, pulse, pulse);
+  if (u.holo) { const k = 1 - Math.exp(-dt * 6); u.holo.rim.uniforms.uGain.value += ((powered ? 1.25 + 0.2 * Math.sin(u.time * 4) : 0.7) - u.holo.rim.uniforms.uGain.value) * k; u.holo.glass.emissiveIntensity += ((powered ? 0.4 : 0.18) - u.holo.glass.emissiveIntensity) * k; }
   if (u.ribbons) {
     const shift = powered ? u.time * 0.15 : 0;
     for (const r of u.ribbons) if (r.mat.map) r.mat.map.offset.x = powered ? -shift : r.mat.map.offset.x;
