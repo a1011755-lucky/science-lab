@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>發電機、交流電與變壓器</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+  .tabs.three .tab { font-size: .72rem; padding: 9px 2px; }
+  .objs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .objs.three { grid-template-columns: repeat(3, 1fr); }
+  .objs .btn { padding: 8px 4px; font-size: .78rem; margin-top: 0; }
+  .objs .btn.yes { background: #e3f1e6; color: #2e6b3f; } .objs .btn.no { background: #fde5e2; color: #a5311f; }
+  .orgcard { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin-top: 8px; font-size: .8rem; line-height: 1.65; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
+  .orgcard:empty { display: none; }
+  .orgcard h4 { font-size: .98rem; font-weight: 900; margin-bottom: 2px; }
+  .orgcard .pill { display: inline-block; font-size: .72rem; font-weight: 800; color: #fff; background: #7b5ea7; border-radius: 999px; padding: 1px 9px; margin: 2px 4px 2px 0; }
+  .orgcard i.sci { font-family: Georgia, serif; }
+  .orgcard table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .orgcard td, .orgcard th { padding: 2px 4px; border-bottom: 1px solid #efe6d8; font-size: .74rem; text-align: left; }
+  .orgcard tr.same { background: #e3f1e6; } .orgcard tr.diff td { color: #a8998a; }
+  .tag.big { font-size: .86rem; }
+  .stat table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: .74rem; }
+  .stat td, .stat th { padding: 3px 3px; border-bottom: 1px solid #efe6d8; text-align: left; white-space: nowrap; }
+  .stat tr.same { background: #e3f1e6; }
+  .tip { background: #fff3c4; color: #7a5300; border: 1.5px solid #e0b000; border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .82rem; font-weight: 800; line-height: 1.6; animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  .tip[hidden], .mapbox[hidden], .btn[hidden] { display: none; }
+  .ticks span:first-child { text-align: left; } .ticks span:last-child { text-align: right; }
+  .meter { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: .74rem; font-weight: 800; color: var(--ink-soft); }
+  .meter i { flex: 1; height: 16px; border-radius: 999px; background: linear-gradient(90deg, #f7efe6, #8b2e0f); position: relative; }
+  .meter i::after { content: ''; position: absolute; top: -4px; width: 6px; height: 24px; border-radius: 3px; background: var(--ink); left: var(--v, 50%); transform: translateX(-50%); transition: left .2s; }
+  .cap .eq { display: inline-flex; align-items: center; gap: 6px; font-size: 1.05em; font-weight: 900; }
+  .cap .arrs { display: inline-flex; flex-direction: column; line-height: .9; font-size: 1.1em; }
+  .cap .arrs span { opacity: .28; transition: opacity .3s, color .3s, transform .3s; }
+  .cap .arrs span.on { opacity: 1; color: #c62828; transform: scale(1.35); }
+  .cap .brown { color: #8b2e0f; }
+  .legend { display: flex; gap: 6px; margin: 8px 0 2px; font-size: .72rem; font-weight: 800; }
+  .legend .lg { flex: 1; text-align: center; border-radius: 999px; padding: 3px 0; color: #fff; }
+  .legend .f { background: #ff2d2d; } .legend .a { background: #22c55e; } .legend .w { background: #424242; } .legend .n { background: #29b6f6; }
+  .tag.vA { background: #16a34a; color: #fff; font-weight: 900; } .tag.vN { background: #29b6f6; color: #fff; font-weight: 900; }
+  .formula { font-size: 1.02rem; font-weight: 900; background: #fff1c9; border-radius: 10px; padding: 5px 8px; margin-bottom: 4px; text-align: center; } .bbtn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; color: #5d4037; }
+  .tag.vF { background: #ff2d2d; color: #fff; font-weight: 900; } .tag.vS { background: #29b6f6; color: #fff; font-weight: 900; } .tag.vW { background: #424242; color: #fff; font-weight: 900; } .tag.org { background: #ef6c00; color: #fff; font-weight: 900; }
+  .tip.ok { background: #e3f1e6; color: #1f5f32; border-color: #3f9a57; } .tip.bad { background: #fde5e2; color: #a5311f; border-color: #e53935; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+  .half { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px 9px; font-size: .76rem; line-height: 1.6; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
+  .half h4 { font-size: .86rem; font-weight: 900; margin-bottom: 2px; }
+  .half .res { margin-top: 4px; font-weight: 900; font-size: .9rem; border-radius: 10px; padding: 3px 6px; text-align: center; }
+  .half .res.pos { background: #e3f1e6; color: #1f5f32; } .half .res.neg { background: #fde5e2; color: #a5311f; } .half .res.zero { background: #efe9df; color: #7a6a5a; }
+  .legend .piv { background: #e0b800; } .legend .tq { background: #ff8a1f; }
+  .lvbtn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; color: #5d4037; }
+  .stat b.g { color: #2e7d32; } .stat b.r { color: #e53935; }
+  /* 毛玻璃：本頁規格 */
+  .panel.glass, .dock.glass, .skyBox.glass { background: rgba(255,255,255,0.5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 12px; color: #5d4037; }
+  .scaleNote { position: fixed; right: 14px; bottom: 10px; z-index: 9; font-size: .72rem; font-weight: 700; color: #8d6e63; background: rgba(255,255,255,.5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 12px; padding: 4px 10px; }
+  .skyBox { position: fixed; right: 16px; top: 16px; z-index: 9; width: 236px; padding: 8px; }
+  .skyBox[hidden] { display: none; }
+  .skyBox canvas { width: 100%; height: auto; border-radius: 10px; display: block; margin: 5px 0; }
+  .skyT { font-size: .76rem; font-weight: 700; line-height: 1.4; }
+  .row2.mini .btn { font-size: .7rem; padding: 5px 2px; margin-top: 0; }
+  .hint { font-size: .72rem; color: #8d6e63; background: rgba(255,255,255,.55); border-radius: 10px; padding: 5px 8px; margin: 6px 0 8px; }
+  .chk { display: flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 700; margin-top: 8px; cursor: pointer; }
+  .chk input { width: 17px; height: 17px; accent-color: #8d6e63; }
+  .cards { display: grid; gap: 5px; margin-top: 8px; }
+  .cards .card { background: rgba(255,255,255,.72); border-radius: 12px; padding: 6px 9px; font-size: .78rem; line-height: 1.55; box-shadow: 0 3px 10px rgba(93,64,55,.06); }
+  .terms { margin-top: 8px; background: rgba(255,255,255,.72); border-radius: 12px; padding: 7px 9px; font-size: .76rem; line-height: 1.7; }
+  .ph4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; } .ph4 .btn { margin-top: 0; padding: 8px 2px; }
+  .tcurve { width: 100%; height: 150px; display: block; margin-top: 8px; border-radius: 10px; }
+  .tw { margin-top: 8px; background: rgba(255,255,255,.72); border-radius: 12px; padding: 6px 9px; font-size: .78rem; }
+  .tw summary { font-weight: 800; cursor: pointer; }
+  .twmap { width: 100%; height: auto; margin-top: 6px; }
+  .tip.gold { background: #fff4d6; color: #7a5300; border-color: #f0b429; } .tip.red { background: #fde5e2; color: #a5311f; border-color: #e53935; }
+  .ticks { display: flex; justify-content: space-between; }
+  .tag.sunL { background: #fff1c2; color: #8a5a00; } .tag.umb { background: #3d3d3d; color: #fff; } .tag.pen { background: #cfcfcf; color: #333; }
+  .tag.eclL { background: #ffe0b2; color: #8a4b00; } .tag.wdL { background: #d6e9ff; color: #0b4d9a; } .tag.nodeL { background: #ffd8c9; color: #b23c17; }
+  .tag.pullL { background: #ff3b30; color: #fff; } .tag.sunPullL { background: #ffd59e; color: #8a4b00; } .tag.seaL { background: #d8efff; color: #0d5ea8; } .tag.portL { background: #fff; color: #b71c1c; }
+  .tag.hiL { background: #1565c0; color: #fff; } .tag.loL { background: #ef6c00; color: #fff; } .tag.bandL { background: #dcedc8; color: #33691e; }
+  .tag.nowL { font-size: .86rem; font-weight: 900; } .tag.nowL.hi { background: #1565c0; color: #fff; } .tag.nowL.lo { background: #ef6c00; color: #fff; } .tag.nowL.up { background: #d8efff; color: #0d5ea8; } .tag.nowL.down { background: #ffe9d6; color: #a14a00; }
+  .stat b.r { color: #e53935; }
+  .legend.gl .i, .legend.gl2 .i { background: #f57c00; } .legend.gl .b, .legend.gl2 .b { background: #1e88e5; }
+  .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; } .row3 .btn { margin-top: 0; }
+  .tchart { width: 100%; height: 120px; display: block; margin-top: 8px; border-radius: 10px; }
+  .tag.iL { background: #fff1e0; color: #b25400; border: 1.5px solid #f57c00; } .tag.bL { background: #e3f0fc; color: #0d5ea8; } .tag.tit { background: #8d6e63; color: #fff; font-size: .9rem; } .tag.vL { background: #f57c00; color: #fff; font-size: .86rem; }
+  @media (max-width: 767px) { .skyBox { width: 160px; top: auto; bottom: 74px; right: 8px; } .skyT { font-size: .64rem; } .scaleNote { bottom: auto; top: 64px; right: 8px; font-size: .62rem; } }
+  .zbtn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; }
+</style>
+<script src="quality.js"></script>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+<div class="scaleNote" id="scaleNote">動畫放慢播放；電流數值為示意</div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g9">‹ 課程總覽</a>
+  <div class="title">發電機、交流電與變壓器</div>
+  <div class="body">
+    <div class="tabs three">
+      <button class="tab on" data-tab="gen">⚙️ 手搖發電機<small>力學能 → 電能</small></button>
+      <button class="tab" data-tab="acdc">🔋 直流 vs 交流<small>方向固定・週期改變</small></button>
+      <button class="tab" data-tab="tf">🔌 變壓器<small>升壓・降壓</small></button>
+    </div>
+    <div class="legend gl"><span class="lg i">電流 I</span><span class="lg b">磁場 B</span></div>
+    <div class="hint">冷次定律、電動機請見「電與磁」實驗室。</div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="gen">
+      <button class="btn primary on" id="gnAuto" type="button">⏸ 停止自動轉動</button>
+      <label class="lab" for="gnP">🔄 手搖進度（拖曳就是用手搖）<b id="gnPV">0°</b></label>
+      <input class="big" type="range" id="gnP" min="0" max="720" step="1" value="0">
+      <label class="lab" for="gnRpm">⚡ 自動轉速<b><span id="gnRpmV">40</span> 轉／分</b></label>
+      <input class="big" type="range" id="gnRpm" min="10" max="90" step="5" value="40">
+      <div class="lab">🧵 線圈匝數</div>
+      <div class="row3">
+        <button class="btn gnN" data-n="10" type="button">10 匝</button>
+        <button class="btn gnN on" data-n="20" type="button">20 匝</button>
+        <button class="btn gnN" data-n="40" type="button">40 匝</button>
+      </div>
+      <div class="lab">🧲 磁鐵強弱</div>
+      <div class="row3">
+        <button class="btn gnB" data-b="0.5" type="button">弱</button>
+        <button class="btn gnB on" data-b="1" type="button">中</button>
+        <button class="btn gnB" data-b="1.5" type="button">強</button>
+      </div>
+      <canvas class="tchart" id="gnChart"></canvas>
+      <div class="stat" id="gnStat"></div>
+      <div class="cards">
+        <div class="card">🔄 線圈轉動 → 穿過線圈的<b>磁力線數目改變</b> → 產生感應電流</div>
+        <div class="card">⚡ <b>力學能 → 電能</b></div>
+        <div class="card">📈 法拉第定律：變化越快，感應電流越大；<b>磁場不變就沒有感應電流</b></div>
+      </div>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="acdc" hidden>
+      <canvas class="tchart" id="acChart"></canvas>
+      <div class="legend gl2"><span class="lg b">直流電（乾電池）</span><span class="lg i">交流電（發電機）</span></div>
+      <div class="cards">
+        <div class="card">🔋 <b>直流電</b>：方向固定（例如乾電池）</div>
+        <div class="card">🔌 <b>交流電</b>：方向和大小週期性改變（家用插座）</div>
+        <div class="card">⏱️ 臺灣家用電是 <b>60 Hz</b>（每秒來回 60 次），這裡放慢播放</div>
+      </div>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="sec" data-tab="tf" hidden>
+      <div class="lab">🔋 一次側接什麼電？</div>
+      <div class="row2">
+        <button class="btn tfsrc on" data-s="ac" type="button">🔌 交流電 110 V</button>
+        <button class="btn tfsrc" data-s="dc" type="button">🔋 直流電（乾電池）</button>
+      </div>
+      <label class="lab" for="tfN">🧵 二次側匝數（一次側 100 匝）<b><span id="tfNV">200</span> 匝</b></label>
+      <input class="big" type="range" id="tfN" min="25" max="400" step="25" value="200">
+      <div class="ticks"><span>降壓（較少）</span><span>升壓（較多）</span></div>
+      <div class="stat" id="tfStat"></div>
+      <div class="cards">
+        <div class="card">🔌 變壓器由<b>鐵芯</b>和兩組線圈組成，<b>只能用在交流電</b></div>
+        <div class="card">🗼 遠距離輸電用<b>高電壓、低電流</b>，以減少導線發熱損耗</div>
+        <div class="card">🧾 電費的「度」＝ 千瓦 × 小時</div>
+      </div>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'gen', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+/* =========================================================
+   共用小工具
+   ========================================================= */
+const lerp = (a, b, k) => a + (b - a) * k;
+const sphere = (r, mat, seg = 24) => new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg * 0.6 | 0)), mat);
+const cyl = (r1, r2, h, mat, seg = 32, open = false) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg, 1, open), mat);
+const rbox = (w, h, d, mat, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001)), mat);
+const glassM = (op = 0.16) => new THREE.MeshPhysicalMaterial({ color: 0xd8ecf4, emissive: 0x9fb8c4, emissiveIntensity: 0.12, sheen: 1, sheenColor: 0xffffff, transparent: true, opacity: op, roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0.05, side: THREE.DoubleSide, depthWrite: false });
+const shellM = (c, op) => new THREE.MeshPhysicalMaterial({ color: c, transparent: true, opacity: op, roughness: 0.2, clearcoat: 0.6, side: THREE.DoubleSide, depthWrite: false });
+let rs = 4242;
+const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+const glowSprite = (rgb, s = 0.5) => { const g = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(rgb), transparent: true, depthWrite: false })); g.scale.setScalar(s); return g; };
+const ease = k => 1 - Math.exp(-k);
+function makeArrow(color) {
+  const g = new THREE.Group(); const m = clay(color, { emissive: color, emissiveIntensity: 0.25 });
+  const shaft = cyl(0.07, 0.07, 1, m, 16); const head = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.34, 20), m);
+  g.add(shaft, head); shadowed(g);
+  g.setLen = L => { L = Math.max(0.05, L); shaft.scale.y = L; shaft.position.y = L / 2; head.position.y = L + 0.17; };
+  g.setLen(1); return g;
+}
+/** 畫布貼圖面板（碼錶螢幕等） */
+function canvasPanel(w, h, pxW = 512) {
+  const c = document.createElement('canvas'); c.width = pxW; c.height = Math.round(pxW * h / w);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t, toneMapped: false }));
+  return { c, g: c.getContext('2d'), t, m };
+}
+let onTabChange = () => {};
+
+/* =========================================================
+   發電機、交流電與變壓器
+   ・教具＝原木（模式 A）；沒有人手，只有木頭曲柄
+   ・電流 I＝橘 #f57c00、磁場 B＝藍 #1e88e5
+   ========================================================= */
+const WDM = (c = 0xdeb887) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, metalness: 0 });
+const COPPER = new THREE.MeshStandardMaterial({ color: 0xc8743c, metalness: 0.75, roughness: 0.32 });
+const STEEL = new THREE.MeshStandardMaterial({ color: 0x8f969c, metalness: 0.7, roughness: 0.35 });
+const C_I = 0xf57c00, C_B = 0x1e88e5;
+const UY = new THREE.Vector3(0, 1, 0);
+const fx1 = v => (Math.abs(v) < 0.05 ? 0 : v).toFixed(1);
+function glowA(color, r = 0.04, op = 1) {
+  const g = new THREE.Group(), m = new THREE.MeshBasicMaterial({ color, toneMapped: false, transparent: op < 1, opacity: op });
+  const sh = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 1, 12), m), HL = r * 4.4, hd = new THREE.Mesh(new THREE.ConeGeometry(r * 2.5, HL, 18), m);
+  g.add(sh, hd); g.mat = m;
+  g.set = (a, b) => { const d = b.clone().sub(a), L = d.length(); g.visible = L > 0.04; if (!g.visible) return; g.position.copy(a); g.quaternion.setFromUnitVectors(UY, d.normalize()); const hl = Math.min(HL, L * 0.5), sl = Math.max(0.001, L - hl); sh.scale.y = sl; sh.position.y = sl / 2; hd.scale.set(1, hl / HL, 1); hd.position.y = sl + hl / 2; };
+  return g;
+}
+/** 導線：沿路徑的銅色細管＋會流動的橘色小光點（電流） */
+function Wire(parent, pts, n = 18, r = 0.035) {
+  const curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.05);
+  const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 120, r, 8), new THREE.MeshStandardMaterial({ color: 0xb8622e, metalness: 0.5, roughness: 0.4 }));
+  tube.castShadow = true; parent.add(tube);
+  const dots = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.06, 1), new THREE.MeshBasicMaterial({ color: 0xffa53a, toneMapped: false }), n);
+  dots.frustumCulled = false; parent.add(dots);
+  const m = new THREE.Matrix4(), p = new THREE.Vector3(); let ph = 0;
+  return {
+    tube, dots,
+    /** v：流速（正負代表方向）；amp：光點大小（電流大小） */
+    flow(dt, v, amp) {
+      ph = (ph + v * dt) % 1; if (ph < 0) ph += 1;
+      for (let i = 0; i < n; i++) { curve.getPointAt(((i / n) + ph) % 1, p); const s = Math.max(0.0001, Math.min(1.2, amp)); m.compose(p, new THREE.Quaternion(), new THREE.Vector3(s, s, s)); dots.setMatrixAt(i, m); }
+      dots.instanceMatrix.needsUpdate = true; dots.visible = amp > 0.02;
+    }
+  };
+}
+/** 小燈泡：玻璃泡＋燈絲＋光暈；set(亮度 0～1) */
+function Bulb(parent, pos) {
+  const g = new THREE.Group(); g.position.copy(pos); parent.add(g);
+  const base = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.22, 24), STEEL)); base.position.y = 0.11; g.add(base);
+  const glass = new THREE.Mesh(new THREE.SphereGeometry(0.3, 32, 24), new THREE.MeshPhysicalMaterial({ color: 0xffffff, emissive: 0xffc94a, emissiveIntensity: 0, transparent: true, opacity: 0.3, roughness: 0.05, clearcoat: 1, depthWrite: false })); glass.position.y = 0.48; glass.renderOrder = 5; g.add(glass);
+  const filM = new THREE.MeshBasicMaterial({ color: 0x5a4a3a, toneMapped: false });
+  const fil = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.012, 6, 20, Math.PI), filM); fil.position.y = 0.44; g.add(fil);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('255,210,110'), transparent: true, opacity: 0, depthWrite: false })); glow.position.y = 0.46; glow.scale.setScalar(1.6); g.add(glow);
+  const stand = shadowed(new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.08, 0.5, 2, 0.03), WDM())); stand.position.y = -0.04; g.add(stand);
+  return { g, set(b) { b = Math.max(0, Math.min(1, b)); filM.color.setRGB(0.35 + 0.65 * b, 0.29 + 0.6 * b, 0.23 + 0.3 * b); glow.material.opacity = b * 0.95; glow.scale.setScalar(0.8 + 1.6 * b); glass.material.emissiveIntensity = b * 1.1; glass.material.opacity = 0.3 + 0.55 * b; } };
+}
+/** 原木檢流計：中央為零，指針左右偏 */
+function Galvo(parent, pos) {
+  const g = new THREE.Group(); g.position.copy(pos); parent.add(g);
+  const box = shadowed(new THREE.Mesh(new RoundedBoxGeometry(1.0, 0.8, 0.45, 4, 0.08), WDM())); box.position.y = 0.4; g.add(box);
+  const c = document.createElement('canvas'); c.width = 256; c.height = 160; const x = c.getContext('2d');
+  x.fillStyle = '#fffaf0'; x.fillRect(0, 0, 256, 160); x.strokeStyle = '#5d4037'; x.lineWidth = 3; x.beginPath(); x.arc(128, 150, 110, Math.PI * 1.17, Math.PI * 1.83); x.stroke();
+  for (let i = -5; i <= 5; i++) { const a = -Math.PI / 2 + i * 0.11; x.lineWidth = i % 5 ? 2 : 4; x.beginPath(); x.moveTo(128 + Math.cos(a) * 100, 150 + Math.sin(a) * 100); x.lineTo(128 + Math.cos(a) * (i % 5 ? 88 : 80), 150 + Math.sin(a) * (i % 5 ? 88 : 80)); x.stroke(); }
+  x.fillStyle = '#5d4037'; x.font = '700 22px sans-serif'; x.textAlign = 'center'; x.fillText('0', 128, 36); x.fillText('－', 40, 70); x.fillText('＋', 216, 70); x.font = '700 18px sans-serif'; x.fillText('G', 128, 120);
+  const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.5), new THREE.MeshBasicMaterial({ map: tx, toneMapped: false })); face.position.set(0, 0.45, 0.231); g.add(face);
+  const needle = new THREE.Group(); needle.position.set(0, 0.22, 0.24); g.add(needle);
+  const nm = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.4, 0.01), new THREE.MeshBasicMaterial({ color: 0xd32f2f })); nm.position.y = 0.2; needle.add(nm);
+  let ang = 0, vel = 0;
+  return { g, set(v, dt) { const tgt = -Math.max(-1, Math.min(1, v)) * 0.55; vel += (tgt - ang) * 160 * dt; vel *= Math.exp(-dt * 14); ang += vel * dt; needle.rotation.z = ang; } };
+}
+/** 電流—時間圖 */
+function Chart(id) {
+  const hist = [];
+  return {
+    push(t, v, v2) { hist.push([t, v, v2]); while (hist.length && t - hist[0][0] > 4) hist.shift(); },
+    clear() { hist.length = 0; },
+    draw(o = {}) {
+      const c = $(id); if (!c) return; const dpr = Math.min(window.devicePixelRatio || 1, 2), W = c.clientWidth, H = c.clientHeight; if (!W) return;
+      if (c.width !== W * dpr) { c.width = W * dpr; c.height = H * dpr; }
+      const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+      g.fillStyle = 'rgba(255,255,255,.6)'; g.fillRect(0, 0, W, H);
+      const L = 28, R = 6, T = 10, B = 18, mid = T + (H - T - B) / 2, sc = (H - T - B) / 2 * 0.9;
+      g.strokeStyle = 'rgba(93,64,55,.25)'; g.beginPath(); g.moveTo(L, mid); g.lineTo(W - R, mid); g.moveTo(L, T); g.lineTo(L, H - B); g.stroke();
+      g.fillStyle = '#7a6a5a'; g.font = '10px sans-serif'; g.fillText('＋', 8, T + 10); g.fillText('0', 12, mid + 4); g.fillText('－', 8, H - B); g.fillText('時間 →', W - 46, H - 4); g.fillText(o.ylab || '電流', L + 4, T + 9);
+      if (!hist.length) return;
+      const t1 = hist[hist.length - 1][0], X = t => L + (W - L - R) * (1 - (t1 - t) / 4);
+      const line = (k, col) => { g.strokeStyle = col; g.lineWidth = 2.4; g.beginPath(); hist.forEach((h, i) => { const y = mid - Math.max(-1.05, Math.min(1.05, h[k])) * sc; (i ? g.lineTo : g.moveTo).call(g, X(h[0]), y); }); g.stroke(); };
+      if (o.two) { line(1, '#1e88e5'); line(2, '#f57c00'); } else line(1, '#f57c00');
+    }
+  };
+}
+
+/* =========================================================
+   Tab 1：手搖發電機
+   ========================================================= */
+const GEN = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const AY_ = 1.75;                                         // 轉軸高度（轉軸沿 z）
+  const base = shadowed(new THREE.Mesh(new RoundedBoxGeometry(5.2, 0.24, 3.8, 4, 0.06), WDM())); base.position.y = 0.12; group.add(base);
+  // N／S 磁鐵（N 紅、S 藍）：磁場由 N 指向 S（+x）
+  const mag = (x, col, txt) => {
+    const g = new THREE.Group(); g.position.set(x, 0, 0); group.add(g);
+    const b = shadowed(new THREE.Mesh(new RoundedBoxGeometry(0.62, 1.7, 1.9, 4, 0.08), new THREE.MeshStandardMaterial({ color: col, roughness: 0.35, metalness: 0.15 }))); b.position.y = AY_ - 0.02; g.add(b);
+    const c = document.createElement('canvas'); c.width = c.height = 128; const x2 = c.getContext('2d'); x2.fillStyle = '#fff'; x2.font = '900 96px Georgia'; x2.textAlign = 'center'; x2.fillText(txt, 64, 98);
+    const t = new THREE.CanvasTexture(c); const l = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5), new THREE.MeshBasicMaterial({ map: t, transparent: true })); l.position.set(0, AY_ + 0.45, 0.956); g.add(l);
+    const st = shadowed(new THREE.Mesh(new RoundedBoxGeometry(0.8, AY_ - 0.85, 1.5, 3, 0.04), WDM(0xc49a6c))); st.position.y = 0.24 + (AY_ - 0.85) / 2; g.add(st);
+    return g;
+  };
+  const magN = mag(-1.55, 0xe53935, 'N'), magS = mag(1.55, 0x1e88e5, 'S');
+  // 磁力線（藍）：N → S
+  const fieldLines = [];
+  for (const y of [-0.55, 0, 0.55]) for (const z of [-0.6, 0, 0.6]) { const a = glowA(C_B, 0.022, 0.75); group.add(a); fieldLines.push({ a, y, z }); }
+  // 線圈（可轉動）：轉軸沿 z，矩形線圈在「軸＋本身的 x 方向」的平面上
+  const rotor = new THREE.Group(); rotor.position.set(0, AY_, 0); group.add(rotor);
+  const shaft = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 4.0, 14), STEEL)); shaft.rotation.x = Math.PI / 2; shaft.position.z = 0.15; rotor.add(shaft);
+  const coilG = new THREE.Group(); rotor.add(coilG);
+  const CWd = 0.95, CL = 1.5;                              // 線圈半寬、半長
+  let coilKey = '';
+  function buildCoil(N) {
+    while (coilG.children.length) { const c = coilG.children.pop(); c.geometry.dispose(); }
+    const k = N <= 10 ? 1 : N <= 20 ? 2 : 4;
+    for (let i = 0; i < k; i++) {
+      const off = (i - (k - 1) / 2) * 0.06, s = new THREE.Shape();
+      s.moveTo(-CWd, -CL); s.lineTo(CWd, -CL); s.lineTo(CWd, CL); s.lineTo(-CWd, CL); s.closePath();
+      const pts = s.getPoints().map(p => new THREE.Vector3(p.x, off, p.y)); pts.push(pts[0].clone());
+      const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.02), 80, 0.035, 8, true), COPPER); tube.castShadow = true; coilG.add(tube);
+    }
+  }
+  // 集電環（後方）與電刷
+  for (const z of [-1.75, -1.95]) { const r = shadowed(new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.035, 10, 28), COPPER)); r.position.z = z; rotor.add(r); }
+  for (const [z, x] of [[-1.75, 0.2], [-1.95, -0.2]]) { const b = shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.2, 0.1), new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 }))); b.position.set(x, AY_, z); group.add(b); }
+  const bearing = (z) => { const p = shadowed(new THREE.Mesh(new RoundedBoxGeometry(0.3, AY_ - 0.12, 0.26, 3, 0.04), WDM(0xb88a5a))); p.position.set(0, 0.24 + (AY_ - 0.12) / 2 - 0.06, z); group.add(p); };
+  bearing(-1.45); bearing(1.6);
+  // 木頭曲柄（前方）：只顯示曲柄，不顯示人手
+  const crank = new THREE.Group(); crank.position.z = 2.0; rotor.add(crank);
+  const arm = shadowed(new THREE.Mesh(new RoundedBoxGeometry(0.16, 0.8, 0.12, 3, 0.04), WDM(0xc49a6c))); arm.position.y = 0.36; crank.add(arm);
+  const handle = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.42, 16), WDM(0x8d6e4a))); handle.rotation.x = Math.PI / 2; handle.position.set(0, 0.72, 0.22); crank.add(handle);
+  // 線圈兩長邊上的電流箭頭（橘）
+  const aI1 = glowA(C_I, 0.05), aI2 = glowA(C_I, 0.05); rotor.add(aI1, aI2);
+  // 外接：檢流計與小燈泡
+  const galvo = Galvo(group, V3(2.85, 0.24, -1.5)), bulb = Bulb(group, V3(-2.75, 0.3, -1.4));
+  const w1 = Wire(group, [V3(0.2, AY_, -1.75), V3(0.6, AY_ - 0.6, -2.2), V3(2.2, 0.5, -2.1), V3(2.5, 0.45, -1.55)]);
+  const w2 = Wire(group, [V3(3.2, 0.45, -1.55), V3(3.0, 0.32, -0.6), V3(-2.4, 0.32, -0.55), V3(-2.65, 0.45, -1.2)]);
+  const w3 = Wire(group, [V3(-2.85, 0.45, -1.55), V3(-2.4, 0.5, -2.3), V3(-0.6, AY_ - 0.6, -2.4), V3(-0.2, AY_, -1.95)]);
+  const chart = Chart('gnChart');
+  const lI = addLabel('gen', '', 'small iL', V3(0, 0, 0)), lG = addLabel('gen', '檢流計', 'small', V3(2.85, 1.35, -1.5)), lB = addLabel('gen', '小燈泡', 'small', V3(-2.75, 1.25, -1.4));
+  addLabel('gen', '木頭曲柄', 'small', V3(0.7, AY_ + 0.9, 2.2)); addLabel('gen', '磁力線 B（N → S）', 'small bL', V3(0, AY_ + 1.25, 0.9));
+  const st = { th: 0, tgt: 0, auto: true, rpm: 40, N: 20, Bk: 1, w: 0, t: 0, I: 0 };
+  $('gnAuto').addEventListener('click', () => { st.auto = !st.auto; if (!st.auto) { st.tgt = st.th % (Math.PI * 4); $('gnP').value = (st.tgt * 180 / Math.PI).toFixed(0); } paint(); });
+  $('gnP').addEventListener('input', () => { st.auto = false; st.tgt = +$('gnP').value * Math.PI / 180; paint(); });
+  $('gnRpm').addEventListener('input', () => { st.rpm = +$('gnRpm').value; $('gnRpmV').textContent = st.rpm; });
+  document.querySelectorAll('.gnN').forEach(b => b.addEventListener('click', () => { st.N = +b.dataset.n; document.querySelectorAll('.gnN').forEach(x => x.classList.toggle('on', x === b)); }));
+  document.querySelectorAll('.gnB').forEach(b => b.addEventListener('click', () => { st.Bk = +b.dataset.b; document.querySelectorAll('.gnB').forEach(x => x.classList.toggle('on', x === b)); }));
+  function paint() { $('gnAuto').textContent = st.auto ? '⏸ 停止自動轉動' : '▶ 自動轉動'; $('gnAuto').classList.toggle('on', st.auto); }
+  paint();
+  function update(dt) {
+    st.t += dt;
+    const k = st.N + '';
+    if (k !== coilKey) { coilKey = k; buildCoil(st.N); }
+    const prev = st.th;
+    if (st.auto) st.th += st.rpm / 60 * Math.PI * 2 * dt;
+    else st.th += (st.tgt - st.th) * (1 - Math.exp(-dt * 8));
+    st.w = dt > 0 ? (st.th - prev) / dt : 0;                 // 轉速（線圈不動 → 0）
+    rotor.rotation.z = -st.th;
+    $('gnPV').textContent = ((st.th * 180 / Math.PI) % 720).toFixed(0) + '°';
+    // 感應電流 ∝ 匝數 × 磁鐵強弱 × 轉速 × 線圈與磁場的相對位置（每轉半圈方向反轉）
+    const I = st.N * st.Bk * st.w * Math.sin(st.th) * 0.012;  // mA
+    st.I = I;
+    const Imax = 40 * 1.5 * 9.5 * 0.012, rel = I / 4;
+    galvo.set(rel, dt); bulb.set(Math.abs(I) / 4.5);
+    const v = Math.sign(I) * Math.min(1.2, Math.abs(I) * 0.35);
+    [w1, w2, w3].forEach(w => w.flow(dt, v * 0.6, Math.min(1, Math.abs(I) / 2.5)));
+    // 線圈長邊上的電流方向
+    const sgn = Math.sign(I), amp = Math.min(0.9, Math.abs(I) * 0.25);
+    aI1.visible = aI2.visible = Math.abs(I) > 0.05;
+    if (aI1.visible) { aI1.set(V3(CWd + 0.12, 0, -sgn * amp), V3(CWd + 0.12, 0, sgn * amp)); aI2.set(V3(-CWd - 0.12, 0, sgn * amp), V3(-CWd - 0.12, 0, -sgn * amp)); }
+    // 磁力線
+    fieldLines.forEach(f => { f.a.set(V3(-1.2, AY_ + f.y, f.z), V3(1.2, AY_ + f.y, f.z)); f.a.mat.opacity = 0.3 + 0.35 * st.Bk; });
+    magN.scale.set(0.8 + 0.2 * st.Bk, 1, 1); magS.scale.set(0.8 + 0.2 * st.Bk, 1, 1);
+    chart.push(st.t, I / 4.5); chart.draw();
+    setLabel(lI, Math.abs(I) < 0.05 ? '電流 I ＝ 0' : `電流 I ＝ ${fx1(Math.abs(I))} mA ${I > 0 ? '（＋方向）' : '（－方向）'}`); lI.pos.set(2.85, 1.65, -1.5); lI.off.copy(lI.pos);
+    const moving = Math.abs(st.w) > 0.05;
+    setHTML('gnStat', `轉速：<b>${moving ? fx1(Math.abs(st.w) * 60 / (Math.PI * 2)) + ' 轉／分' : '線圈不動'}</b>　匝數：<b>${st.N}</b>　磁鐵：<b>${st.Bk < 0.75 ? '弱' : st.Bk > 1.25 ? '強' : '中'}</b><br>感應電流：<b class="o">${fx1(Math.abs(I))} mA</b>（這個轉速最大約 ${fx1(st.N * st.Bk * Math.abs(st.w) * 0.012)} mA）${moving ? '' : '（磁力線數目沒有改變 → 沒有感應電流）'}<br><small>轉得越快、磁鐵越強、匝數越多 → 感應電流越大；每轉半圈，電流方向反轉一次。</small>`);
+    setCap(!moving ? `<small>手搖發電機</small>線圈不動 → 穿過線圈的磁力線數目不變<span class="huge">電流 ＝ 0，燈泡不亮</span>`
+      : `<small>手搖發電機・力學能 → 電能</small>線圈轉動 → 穿過線圈的磁力線數目改變<span class="huge org">產生感應電流 ${fx1(Math.abs(I))} mA</span>`);
+  }
+  return { group, update, st, enter() { chart.clear(); } };
+})();
+
+/* =========================================================
+   Tab 2：直流電 vs 交流電
+   ========================================================= */
+const ACDC = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const board = (x) => { const b = shadowed(new THREE.Mesh(new RoundedBoxGeometry(4.0, 0.16, 3.0, 3, 0.05), WDM())); b.position.set(x, 0.08, 0); group.add(b); };
+  board(-2.4); board(2.4);
+  // 左：乾電池＋燈泡
+  const bat = new THREE.Group(); bat.position.set(-3.4, 0.45, 0.6); group.add(bat);
+  const cell = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 1.1, 28), new THREE.MeshStandardMaterial({ color: 0x37474f, roughness: 0.5 }))); cell.rotation.z = Math.PI / 2; bat.add(cell);
+  const cap = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.32, 28), new THREE.MeshStandardMaterial({ color: 0xf2c94c, roughness: 0.5 }))); cap.rotation.z = Math.PI / 2; cap.position.x = 0.4; bat.add(cap);
+  const tip = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.1, 16), STEEL)); tip.rotation.z = Math.PI / 2; tip.position.x = 0.6; bat.add(tip);
+  addLabel('acdc', '＋', 'small', V3(-2.65, 0.95, 0.6)); addLabel('acdc', '－', 'small', V3(-4.1, 0.95, 0.6));
+  const bulbL = Bulb(group, V3(-2.4, 0.16, -0.9));
+  const wL = Wire(group, [V3(-2.75, 0.45, 0.6), V3(-1.2, 0.4, 0.6), V3(-1.2, 0.4, -0.9), V3(-2.15, 0.4, -0.9), V3(-2.65, 0.4, -0.9), V3(-3.8, 0.4, -0.9), V3(-4.3, 0.4, 0.0), V3(-3.98, 0.45, 0.6)], 24);
+  // 右：小型發電機＋燈泡
+  const gen = new THREE.Group(); gen.position.set(2.4, 0.16, 0.65); group.add(gen);
+  const gbox = shadowed(new THREE.Mesh(new RoundedBoxGeometry(1.4, 0.9, 0.9, 4, 0.1), WDM(0xc49a6c))); gbox.position.y = 0.45; gen.add(gbox);
+  const gm = (x, c) => { const m = shadowed(new THREE.Mesh(new RoundedBoxGeometry(0.22, 0.6, 0.6, 3, 0.04), new THREE.MeshStandardMaterial({ color: c, roughness: 0.4 }))); m.position.set(x, 0.5, 0.48); gen.add(m); };
+  gm(-0.42, 0xe53935); gm(0.42, 0x1e88e5);
+  const miniCoil = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.03, 8, 4), COPPER); miniCoil.position.set(0, 0.5, 0.55); gen.add(miniCoil);
+  const crk = shadowed(new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.45, 0.08, 2, 0.03), WDM(0x8d6e4a))); crk.position.set(0, 0.5, 0.82); gen.add(crk);
+  const bulbR = Bulb(group, V3(2.4, 0.16, -0.9));
+  const wR = Wire(group, [V3(3.1, 0.6, 0.65), V3(3.6, 0.4, 0.6), V3(3.6, 0.4, -0.9), V3(2.65, 0.4, -0.9), V3(2.15, 0.4, -0.9), V3(1.2, 0.4, -0.9), V3(1.2, 0.4, 0.6), V3(1.7, 0.6, 0.65)], 24);
+  const aL = glowA(C_I, 0.06), aR = glowA(C_I, 0.06); group.add(aL, aR);
+  addLabel('acdc', '直流電（乾電池）', 'big tit', V3(-2.4, 2.0, 0)); addLabel('acdc', '交流電（發電機）', 'big tit', V3(2.4, 2.0, 0));
+  const lL = addLabel('acdc', '', 'small iL', V3(-2.4, 1.45, 0.9)), lR = addLabel('acdc', '', 'small iL', V3(2.4, 1.45, 0.9));
+  const chart = Chart('acChart'); let t = 0;
+  function update(dt) {
+    t += dt;
+    const ac = Math.sin(t * Math.PI * 2 * 0.5);              // 放慢：0.5 Hz（實際 60 Hz）
+    wL.flow(dt, 0.35, 0.9); bulbL.set(0.75);
+    wR.flow(dt, ac * 0.45, Math.abs(ac) * 0.95); bulbR.set(Math.abs(ac) * 0.9);
+    miniCoil.rotation.z = t * Math.PI; crk.rotation.z = t * Math.PI;
+    aL.set(V3(-1.55, 0.75, 0.25), V3(-1.55, 0.75, -0.55));
+    aR.visible = Math.abs(ac) > 0.08;
+    if (aR.visible) { const s = Math.sign(ac), L = 0.4 * Math.abs(ac) + 0.15; aR.set(V3(3.95, 0.75, -0.15 + s * -L), V3(3.95, 0.75, -0.15 + s * L)); }
+    setLabel(lL, '方向固定、大小固定'); setLabel(lR, Math.abs(ac) < 0.08 ? '電流＝0，正在換方向' : ac > 0 ? '電流方向：＋' : '電流方向：－');
+    chart.push(t, 0.7, ac * 0.9); chart.draw({ two: true });
+    setCap(`<small>直流電 vs 交流電</small>左：方向固定｜右：方向和大小週期性改變<span class="huge org">臺灣家用電是 60 Hz（這裡放慢播放）</span>`);
+  }
+  return { group, update, enter() { chart.clear(); } };
+})();
+
+/* =========================================================
+   Tab 3：變壓器與電力輸送
+   ========================================================= */
+const TF = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const N1 = 100, V1 = 110, CY = 1.7;
+  const table = shadowed(new THREE.Mesh(new RoundedBoxGeometry(7.2, 0.16, 3.2, 3, 0.05), WDM())); table.position.y = 0.08; group.add(table);
+  // 鐵芯：口字形（四條矽鋼片）
+  const coreM = new THREE.MeshStandardMaterial({ color: 0x6b7178, metalness: 0.55, roughness: 0.45 });
+  const bar = (w, h, x, y) => { const b = shadowed(new THREE.Mesh(new RoundedBoxGeometry(w, h, 0.5, 3, 0.04), coreM)); b.position.set(x, y, 0); group.add(b); };
+  bar(2.6, 0.4, 0, CY + 1.1); bar(2.6, 0.4, 0, CY - 1.1); bar(0.4, 2.6, -1.1, CY); bar(0.4, 2.6, 1.1, CY);
+  addLabel('tf', '鐵芯', 'small', V3(0, CY + 1.55, 0));
+  // 線圈：一次側（左）、二次側（右）
+  const coil = (x) => { const g = new THREE.Group(); g.position.set(x, CY, 0); group.add(g); return g; };
+  const c1 = coil(-1.1), c2 = coil(1.1);
+  function fillCoil(g, n) { while (g.children.length) { const c = g.children.pop(); c.geometry.dispose(); } const k = Math.max(3, Math.min(22, Math.round(n / 18))); for (let i = 0; i < k; i++) { const r = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.035, 8, 28), COPPER); r.rotation.x = Math.PI / 2; r.position.y = -0.85 + 1.7 * (i + 0.5) / k; r.castShadow = true; g.add(r); } }
+  fillCoil(c1, N1);
+  // 鐵芯中的磁力線（藍色小箭頭沿口字形循環）
+  const loop = new THREE.CurvePath(); [[-1.1, CY - 1.1], [-1.1, CY + 1.1], [1.1, CY + 1.1], [1.1, CY - 1.1], [-1.1, CY - 1.1]].reduce((a, b) => { loop.add(new THREE.LineCurve3(V3(a[0], a[1], 0.3), V3(b[0], b[1], 0.3))); return b; });
+  const fl = Array.from({ length: 10 }, () => { const a = glowA(C_B, 0.03, 0.85); group.add(a); return a; });
+  // 電源：交流（插座盒）或直流（乾電池）
+  const acBox = new THREE.Group(); acBox.position.set(-3.0, 0.16, 0.4); group.add(acBox);
+  const ab = shadowed(new THREE.Mesh(new RoundedBoxGeometry(0.9, 0.7, 0.7, 3, 0.08), WDM(0xc49a6c))); ab.position.y = 0.35; acBox.add(ab);
+  const dcBat = new THREE.Group(); dcBat.position.set(-3.0, 0.42, 0.4); group.add(dcBat);
+  const cell = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.9, 24), new THREE.MeshStandardMaterial({ color: 0x37474f, roughness: 0.5 }))); cell.rotation.z = Math.PI / 2; dcBat.add(cell);
+  const capB = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.26, 24), new THREE.MeshStandardMaterial({ color: 0xf2c94c, roughness: 0.5 }))); capB.rotation.z = Math.PI / 2; capB.position.x = 0.33; dcBat.add(capB);
+  const lSrc = addLabel('tf', '', 'small', V3(-3.0, 1.25, 0.4));
+  const wP = Wire(group, [V3(-2.55, 0.5, 0.4), V3(-1.8, 0.6, 0.45), V3(-1.5, CY - 0.6, 0.45), V3(-1.5, CY + 0.6, 0.45), V3(-1.8, CY + 0.2, -0.6), V3(-2.6, 0.5, -0.4), V3(-3.0, 0.5, 0.0)], 20);
+  const bulb2 = Bulb(group, V3(3.0, 0.16, 0.2));
+  const wS = Wire(group, [V3(1.5, CY + 0.6, 0.45), V3(2.2, 1.2, 0.45), V3(2.75, 0.45, 0.2), V3(3.25, 0.45, 0.2), V3(3.4, 0.6, -0.5), V3(1.8, CY - 0.6, -0.5), V3(1.5, CY - 0.6, 0.45)], 20);
+  const l1 = addLabel('tf', '', 'small iL', V3(-1.1, CY - 1.65, 0.6)), l2 = addLabel('tf', '', 'small iL', V3(1.1, CY - 1.65, 0.6)), lV = addLabel('tf', '', 'big vL', V3(3.0, 1.45, 0.2));
+  const st = { ac: true, N2: 200, t: 0 };
+  document.querySelectorAll('.tfsrc').forEach(b => b.addEventListener('click', () => { st.ac = b.dataset.s === 'ac'; document.querySelectorAll('.tfsrc').forEach(x => x.classList.toggle('on', x === b)); }));
+  $('tfN').addEventListener('input', () => { st.N2 = +$('tfN').value; $('tfNV').textContent = st.N2; });
+  let key2 = '';
+  const pt = new THREE.Vector3(), tg = new THREE.Vector3();
+  function update(dt) {
+    st.t += dt;
+    if (key2 !== st.N2 + '') { key2 = st.N2 + ''; fillCoil(c2, st.N2); }
+    acBox.visible = st.ac; dcBat.visible = !st.ac;
+    setLabel(lSrc, st.ac ? '交流電源 110 V（～）' : '乾電池（直流電）');
+    const ac = Math.sin(st.t * Math.PI);                     // 放慢播放
+    const flux = st.ac ? ac : 1;                             // 直流：磁場固定不變
+    wP.flow(dt, st.ac ? ac * 0.45 : 0.35, st.ac ? Math.abs(ac) : 0.8);
+    // 鐵芯磁力線：交流時方向來回改變；直流時方向固定、不變化
+    fl.forEach((a, i) => { const u = ((i / fl.length) + (st.ac ? st.t * 0.12 * Math.sign(ac || 1) : st.t * 0.05)) % 1; loop.getPointAt((u + 1) % 1, pt); loop.getTangentAt((u + 1) % 1, tg); const L = 0.32 * Math.max(0.15, Math.abs(flux)); const d = tg.clone().multiplyScalar(Math.sign(flux) * L); a.set(pt.clone().sub(d.clone().multiplyScalar(0.5)), pt.clone().add(d.clone().multiplyScalar(0.5))); });
+    const V2 = st.ac ? V1 * st.N2 / N1 : 0, v2now = V2 * Math.abs(ac);
+    wS.flow(dt, st.ac ? ac * 0.45 : 0, st.ac ? Math.abs(ac) * Math.min(1, V2 / 220) : 0);
+    bulb2.set(st.ac ? Math.min(1, V2 / 220) * (0.55 + 0.45 * Math.abs(ac)) : 0);
+    setLabel(l1, `一次側 ${N1} 匝`); setLabel(l2, `二次側 ${st.N2} 匝`);
+    setLabel(lV, st.ac ? `二次側電壓 ${fx1(V2)} V` : '二次側電壓 0 V（燈泡不亮）');
+    const up = st.N2 > N1, same = st.N2 === N1;
+    setHTML('tfStat', `<div class="formula">電壓比 ＝ 匝數比</div>一次側：${V1} V、${N1} 匝　二次側：${st.N2} 匝<br>${st.ac ? `二次側電壓 ＝ ${V1} × ${st.N2} ÷ ${N1} ＝ <b class="o">${fx1(V2)} V</b>　→　<b>${same ? '電壓不變' : up ? '升壓' : '降壓'}</b>` : '<b class="r">直流電：鐵芯裡的磁場不變 → 二次側沒有感應電壓</b>'}`);
+    setCap(st.ac ? `<small>變壓器・交流電</small>一次側的交流電讓鐵芯裡的磁場不斷改變 → 二次側產生感應電壓<span class="huge org">${same ? '電壓不變' : up ? '升壓' : '降壓'}：${fx1(V2)} V</span>`
+      : `<small>變壓器・直流電</small>磁場固定不變 → 穿過二次側的磁力線數目不變<span class="huge red">二次側沒有電，燈泡不亮</span>`);
+  }
+  return { group, update, st };
+})();
+
+/* ----- 共用：面板、按鈕、滑桿不讓事件傳到 3D 畫面；拖曳滑桿時鎖住視角 ----- */
+['panel', 'dock', 'scaleNote'].forEach(id => { const el = $(id); if (!el) return; ['pointerdown', 'touchstart'].forEach(ev => el.addEventListener(ev, e => e.stopPropagation(), { passive: true })); });
+document.querySelectorAll('input[type=range]').forEach(r => {
+  ['pointerdown', 'touchstart'].forEach(ev => r.addEventListener(ev, e => { e.stopPropagation(); controls.enabled = false; }, { passive: true }));
+  ['pointerup', 'pointercancel', 'touchend', 'change'].forEach(ev => r.addEventListener(ev, () => { controls.enabled = true; }));
+});
+document.querySelectorAll('button').forEach(b => ['pointerdown', 'touchstart'].forEach(ev => b.addEventListener(ev, e => e.stopPropagation(), { passive: true })));
+onTabChange = t => { if (t === 'gen') GEN.enter(); if (t === 'acdc') ACDC.enter(); };
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  gen: { group: GEN.group, cam: () => ({ pos: [2.6, 4.8, 9.0], target: [0, 1.3, -0.3], fitW: window.innerWidth < window.innerHeight ? 8.5 : 9.5 }), update: GEN.update },
+  acdc: { group: ACDC.group, cam: () => ({ pos: [0, 7.0, 6.4], target: [0, 0.4, -0.2], fitW: window.innerWidth < window.innerHeight ? 9.5 : 10.5 }), update: ACDC.update },
+  tf: { group: TF.group, cam: () => ({ pos: [0.3, 3.8, 8.6], target: [0, 1.5, 0], fitW: window.innerWidth < window.innerHeight ? 8.5 : 9.5 }), update: TF.update }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  onTabChange(t);
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, GEN, ACDC, TF, camera, controls, renderer, scene, placeLabels };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'gen';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+<script src="goals.js" defer></script>
+</body>
+</html>
