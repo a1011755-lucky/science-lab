@@ -820,7 +820,7 @@ const fp = Array.from({ length: NF }, (_, i) => ({ y: 0.2 + TH * Math.random(), 
     setLabel(lRoot, `根部養分 ${Math.round(health * 100)}%${health < 0.05 ? '（根枯死 → 整棵樹死亡）' : ''}`);
     setLabel(lDisc, st.hollow ? '樹幹中空，但形成層還在 → 仍能長出新的運輸細胞' : st.season === 'spring' ? '春夏：長得快，細胞大、顏色淺' : '秋冬：長得慢，細胞小、顏色深');
     setHTML('gdStat', `${st.gird ? `<b class="r">已環剝</b>：韌皮部被切斷，葉製造的養分運不到根<br>根部養分：<b>${Math.round(health * 100)}%</b>；木質部還在，短時間仍可運水` : '養分（橘）由葉片經<b>韌皮部</b>向下運到根；水分（水藍）由<b>木質部</b>向上'}<br><small>年輪是形成層內側<b>木質部</b>生長快慢不同造成的，不是韌皮部。</small>`);
-    setCap(st.gird ? `<small>環剝樹皮</small>韌皮部被切斷，養分堆在切口上方<span class="huge red">根得不到養分 → 逐漸枯死</span>` : `<small>養分運輸與年輪</small>養分由韌皮部往下送，水分由木質部往上送<span class="huge">年輪是木質部造成的</span>`);
+    setCap(st.gird ? `<small>環剝樹皮</small>韌皮部被切斷，養分堆在切口上方<span class="huge red">根得不到養分 → 逐漸枯死</span>` : `<small>養分運輸與年輪</small>葉製造的養分由韌皮部往下送到根（也能往上送到芽、花、果實），水分由木質部往上送<span class="huge">年輪是木質部造成的</span>`);
   }
   return { group, update, st };
 })();
