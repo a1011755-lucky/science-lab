@@ -124,6 +124,7 @@
 </style>
 <script src="quality.js"></script>
 <script src="mobile.js"></script>
+<script src="keypoints.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -214,7 +215,8 @@ const TAU = Math.PI * 2;
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, stencil: true });
 renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
+if (window.Look) window.Look.bindRenderer(renderer);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 $('scene').appendChild(renderer.domElement);
@@ -233,7 +235,7 @@ scene.add(ambient);
 const sun = new THREE.DirectionalLight(0xfff0dc, 1.8);
 sun.position.set(-6, 14, 9);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(2048, 2048); if (window.Look) window.Look.bindLight(sun);
 Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 12, bottom: -12, near: 1, far: 60 });
 sun.shadow.radius = 6; sun.shadow.bias = -0.0004;
 scene.add(sun);
@@ -630,7 +632,7 @@ BUILD.color = (g) => {
   const lamps = LAMPS.map(L => {
     const spot = new THREE.SpotLight(L.color, 0, 0, Math.PI / 6.2, 0.35, 0);
     spot.position.copy(L.pos); spot.target.position.copy(L.aim);
-    spot.castShadow = true; spot.shadow.mapSize.set(1024, 1024); spot.shadow.radius = 4; spot.shadow.bias = -0.0006;
+    spot.castShadow = true; spot.shadow.mapSize.set(1024, 1024); if (window.Look) window.Look.bindLight(spot); spot.shadow.radius = 4; spot.shadow.bias = -0.0006;
     g.add(spot, spot.target);
     // 燈具外殼
     const house = new THREE.Group();

@@ -141,6 +141,7 @@
 </style>
 <script src="quality.js"></script>
 <script src="mobile.js"></script>
+<script src="keypoints.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -243,7 +244,8 @@ const V2 = (x, y) => new THREE.Vector2(x, y);
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
+if (window.Look) window.Look.bindRenderer(renderer);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.35;
 $('scene').appendChild(renderer.domElement);
@@ -263,7 +265,7 @@ scene.add(new THREE.AmbientLight(0x6a5446, 1.0));
 const topLight = new THREE.DirectionalLight(0x9fb4d8, 2.4);
 topLight.position.set(-6, 14, 9);
 topLight.castShadow = true;
-topLight.shadow.mapSize.set(1024, 1024);
+topLight.shadow.mapSize.set(1024, 1024); if (window.Look) window.Look.bindLight(topLight);
 Object.assign(topLight.shadow.camera, { left: -14, right: 14, top: 12, bottom: -12 });
 scene.add(topLight);
 const magmaLight = new THREE.PointLight(0xff4d14, 140, 0, 1.6);

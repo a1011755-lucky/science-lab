@@ -175,6 +175,7 @@
 </style>
 <script src="quality.js"></script>
 <script src="mobile.js"></script>
+<script src="keypoints.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -353,11 +354,12 @@ scene.add(ambientLight);
 const keyLight = new THREE.DirectionalLight(0xfff4e2, 1.5);
 keyLight.position.set(6, 10, 8);
 keyLight.castShadow = true;
-keyLight.shadow.mapSize.set(1024, 1024);
+keyLight.shadow.mapSize.set(1024, 1024); if (window.Look) window.Look.bindLight(keyLight);
 Object.assign(keyLight.shadow.camera, { left: -24, right: 24, top: 18, bottom: -14, near: 0.5, far: 60 });
 keyLight.shadow.bias = -0.0006;
 scene.add(keyLight);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
+if (window.Look) window.Look.bindRenderer(renderer);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const rimLight = new THREE.DirectionalLight(0xffe9d0, 0.5);
 rimLight.position.set(-8, 3, -6);

@@ -138,6 +138,7 @@
 </style>
 <script src="quality.js"></script>
 <script src="mobile.js"></script>
+<script src="keypoints.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -165,6 +166,7 @@
     <!-- Tab 1：內分泌與血液運輸 -->
     <section class="sec" data-tab="endo">
       <div class="concept" style="--cc:#9b7bc4"><div class="ct">內分泌系統</div><div class="cd">內分泌腺<b>無導管</b>，分泌的<b>激素</b>直接進入微血管，<br><b>經血液運送</b>到全身的靶器官</div></div>
+      <p class="desc">腦垂腺是內分泌系統的<b>主腺</b>（也稱總司令）。碘不足無法合成足量甲狀腺素 → <b>缺碘性甲狀腺腫（大脖子）</b>。腎上腺素在緊急時使心跳、呼吸加快，並<b>抑制腸胃運動</b>。</p>
       <label class="lab">點選內分泌腺</label>
       <div class="objs" id="enBtns"></div>
       <div class="orgcard" id="enCard"></div>
@@ -213,7 +215,8 @@ const TAU = Math.PI * 2;
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
+if (window.Look) window.Look.bindRenderer(renderer);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -231,7 +234,7 @@ scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
 const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
 sun.position.set(-7, 16, 10);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(2048, 2048); if (window.Look) window.Look.bindLight(sun);
 Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
 sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
 scene.add(sun);
@@ -425,7 +428,7 @@ const rim = new THREE.LineSegments(new THREE.EdgesGeometry(torsoGeo, 50), new TH
 function extruded(shape, depth, bevel, mat, opts = {}) { const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel * 0.9, bevelSegments: 5, curveSegments: 32, ...opts }); g.translate(0, 0, -depth / 2); g.computeVertexNormals(); const m = new THREE.Mesh(g, mat); m.castShadow = true; return m; }
 function polarShape(fx, fy, n = 72) { const s = new THREE.Shape(); for (let i = 0; i <= n; i++) { const t = i / n * TAU; i ? s.lineTo(fx(t), fy(t)) : s.moveTo(fx(t), fy(t)); } return s; }
 // 大腦（定位用，淡淡的）
-const brainGeo = new THREE.SphereGeometry(1, 40, 28);
+const brainGeo = new THREE.SphereGeometry(1, window.Look ? window.Look.segments(40, 20) : 40, window.Look ? window.Look.segments(28, 14) : 28);
 {
   const p = brainGeo.attributes.position;
   for (let i = 0; i < p.count; i++) {
@@ -521,6 +524,7 @@ Object.values(VEIN_ROUTES).forEach(r => vessel(routePts(r), veinM, 0.03));
 
 /* ----- 激素粒子：一定沿著血管流動 ----- */
 function Particles(parent, max = 700) {
+  max = window.Look ? window.Look.particles(max, Math.max(80, Math.round(max * 0.28))) : max;
   const pos = new Float32Array(max * 3).fill(-999), col = new Float32Array(max * 3);
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   const m = new THREE.PointsMaterial({ size: 0.13, map: glowTexture('255,255,255'), vertexColors: true, transparent: true, depthWrite: false, depthTest: false, toneMapped: false });
@@ -542,9 +546,9 @@ const EN = (() => {
   const group = new THREE.Group(); scene.add(group);
   const parts = Particles(group);
   const GL = {
-    pit: { n: '腦垂腺', h: '生長激素', d: '位於<b>大腦底部</b>，體積最小。分泌<b>生長激素</b>促進生長，還能調控其他內分泌腺，被稱為「內分泌腺的總司令」。', col: 0xa678e0, mats: [pitM], at: () => P.HEAD_A, vein: ['HEAD_A', V3(-0.12, 5.4, 0.04), 'VJ', 'SVC', 'HEART'], src: () => PIT.position, targets: ['head', 'armL', 'armR', 'legL', 'legR', 'kidL', 'gonL', 'gonR'] },
-    thy: { n: '甲狀腺', h: '甲狀腺素', d: '位於<b>頸部、氣管前方</b>，形狀像<b>蝴蝶</b>。分泌<b>甲狀腺素</b>調節新陳代謝；製造時需要<b>碘</b>。', col: 0xff8a3d, mats: [thyM], vein: [V3(0, 4.92, 0.19), V3(-0.08, 4.95, 0.12), 'VJ', 'SVC', 'HEART'], src: () => thy.position, targets: ['head', 'armL', 'armR', 'liver', 'kidL', 'kidR', 'legL', 'legR'] },
-    adr: { n: '腎上腺', h: '腎上腺素', d: '位於<b>腎臟頂端</b>，像一頂小帽子。緊張或緊急時分泌<b>腎上腺素</b>：心跳加快、血糖上升。', col: 0xffc400, mats: [adrM], vein: () => (rnd() < 0.5 ? [V3(0.47, 2.8, -0.2), V3(0.22, 2.85, -0.16), 'IVC_M', 'IVC_H', 'HEART'] : [V3(-0.47, 2.8, -0.2), V3(-0.28, 2.88, -0.15), 'IVC_M', 'IVC_H', 'HEART']), src: () => adrs[0].position, targets: ['head', 'liver', 'armL', 'armR', 'legL', 'legR'] },
+    pit: { n: '腦垂腺', h: '生長激素', d: '位於<b>大腦底部</b>，體積最小。分泌<b>生長激素</b>促進生長，還能調控其他內分泌腺，是內分泌系統的<b>主腺</b>，被稱為「內分泌腺的總司令」。', col: 0xa678e0, mats: [pitM], at: () => P.HEAD_A, vein: ['HEAD_A', V3(-0.12, 5.4, 0.04), 'VJ', 'SVC', 'HEART'], src: () => PIT.position, targets: ['head', 'armL', 'armR', 'legL', 'legR', 'kidL', 'gonL', 'gonR'] },
+    thy: { n: '甲狀腺', h: '甲狀腺素', d: '位於<b>頸部、氣管前方</b>，形狀像<b>蝴蝶</b>。分泌<b>甲狀腺素</b>調節新陳代謝；製造時需要<b>碘</b>。碘不足無法合成足量甲狀腺素 → <b>缺碘性甲狀腺腫（大脖子）</b>。', col: 0xff8a3d, mats: [thyM], vein: [V3(0, 4.92, 0.19), V3(-0.08, 4.95, 0.12), 'VJ', 'SVC', 'HEART'], src: () => thy.position, targets: ['head', 'armL', 'armR', 'liver', 'kidL', 'kidR', 'legL', 'legR'] },
+    adr: { n: '腎上腺', h: '腎上腺素', d: '位於<b>腎臟頂端</b>，像一頂小帽子。緊張或緊急時分泌<b>腎上腺素</b>：心跳、呼吸加快，血糖上升，<b>腸胃運動被抑制</b>。', col: 0xffc400, mats: [adrM], vein: () => (rnd() < 0.5 ? [V3(0.47, 2.8, -0.2), V3(0.22, 2.85, -0.16), 'IVC_M', 'IVC_H', 'HEART'] : [V3(-0.47, 2.8, -0.2), V3(-0.28, 2.88, -0.15), 'IVC_M', 'IVC_H', 'HEART']), src: () => adrs[0].position, targets: ['head', 'liver', 'armL', 'armR', 'legL', 'legR'] },
     pan: { n: '胰島（胰臟）', h: '胰島素、升糖素', d: '<b>胰臟</b>位於腹腔中央偏左，呈長條葉片狀；其中的<b>胰島</b>分泌胰島素（降血糖）與升糖素（升血糖）。', col: 0xff6fa0, mats: [panM], vein: [V3(0.25, 3.06, 0.18), 'PORTAL', 'LIVER', 'HEP_V', 'IVC_H', 'HEART'], src: () => pan.position, targets: ['liver', 'armL', 'armR', 'legL', 'legR', 'head'] },
     sex: { n: '性腺（睪丸／卵巢）', h: '性激素', d: '位於<b>骨盆腔</b>。青春期分泌<b>性激素</b>，促進生殖器官發育並產生<b>第二性徵</b>。', col: 0x5a9bf0, mats: [sexM], vein: () => (rnd() < 0.5 ? [V3(0.36, 1.68, 0.1), V3(0.18, 1.8, 0.04), 'IVC_B', 'IVC_L', 'IVC_M', 'IVC_H', 'HEART'] : [V3(-0.36, 1.68, 0.1), V3(-0.2, 1.8, 0.04), 'IVC_B', 'IVC_L', 'IVC_M', 'IVC_H', 'HEART']), src: () => gonads[0].position, targets: ['head', 'armL', 'armR', 'legL', 'legR', 'gonL'] }
   };

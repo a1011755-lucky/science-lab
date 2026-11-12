@@ -186,6 +186,7 @@ ol .spin{color:var(--spin)}
 
 <script src="quality.js"></script>
 <script src="mobile.js"></script>
+<script src="keypoints.js"></script>
 <script type="importmap">
 { "imports": {
   "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
@@ -363,11 +364,12 @@ function hourWord(h) {
 const sunLight = new THREE.DirectionalLight(0xfff3e0, 3.6);
 sunLight.position.set(300, 0, 0);
 sunLight.castShadow = true;
-sunLight.shadow.mapSize.set(1024, 1024);
+sunLight.shadow.mapSize.set(1024, 1024); if (window.Look) window.Look.bindLight(sunLight);
 Object.assign(sunLight.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22, near: 250, far: 370 });
 sunLight.shadow.bias = -0.002;
 scene.add(sunLight);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
+if (window.Look) window.Look.bindRenderer(renderer);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 scene.add(new THREE.AmbientLight(0x6070a0, 0.06)); // 一點點「地球照」，讓暗面隱約可見
 
