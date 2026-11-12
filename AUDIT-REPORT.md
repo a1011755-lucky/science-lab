@@ -182,11 +182,11 @@
 - **切換分頁的記憶體釋放（geometry、material、texture）**：沒有長時間反覆切換做壓力測試；目前切換分頁沒有錯誤，也沒有明顯變慢。
 - **quality.js 低畫質模式與背景暫停**：所有首頁列出的頁面都有載入 quality.js；沒有逐頁手動切換低畫質驗證。
 - **會考重點卡**：新上線的 10 頁已補上；另有約 35 頁（多為國二、國三理化與地科）原本就沒有重點卡，這次沒有新增，以免變成新內容。
-- **草稿 PR**：這台電腦沒有安裝 GitHub CLI，無法代開 PR，請老師用下方連結開啟（按「Create draft pull request」）。
+- **草稿 PR**：已由老師開啟，見第 6 節。
 
 ## 6. 草稿 PR 與預覽連結
 
-- 開草稿 PR：https://github.com/a1011755-lucky/science-lab/compare/main...full-audit?expand=1 （下拉選「Create draft pull request」）
+- 草稿 PR：https://github.com/a1011755-lucky/science-lab/pull/8 （草稿狀態，尚未合併）
 
 以下預覽連結固定在這次校正的版本，可以直接打開驗收：
 
