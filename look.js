@@ -337,11 +337,13 @@ export function mountLook(renderer, scene) {
   let tier = saved === 'class' || saved === 'record' ? saved : (coarse || weak ? 'class' : 'record');
 
   function apply() {
-    const rec = tier === 'record';
-    const dpr = Math.min(window.devicePixelRatio || 1, rec ? 3 : 1.25);
+    const rec = window.Look ? window.Look.mode === 'record' : tier === 'record';
+    const dpr = window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, rec ? 3 : 1.25);
     renderer.setPixelRatio(dpr);
+    if (window.Look) renderer.shadowMap.enabled = window.Look.shadows;
     renderer.toneMappingExposure = rec ? 1.05 : 1.0;
-    const sh = rec ? 2048 : 1024;
+    const hi = rec ? 2048 : 1024;
+    const sh = window.Look ? window.Look.shadowSize(hi) : hi;
     if (sun.shadow.mapSize.x !== sh) {
       sun.shadow.mapSize.set(sh, sh);
       if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }

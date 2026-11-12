@@ -61,7 +61,9 @@
     .btn { width: 100%; }
   }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
+<script src="keypoints.js"></script>
 </head>
 <body data-mv-start="closed">
 <div class="wrap">
@@ -121,7 +123,7 @@ function resize() {
   W = Math.max(560, cssW);                  // 邏輯寬
   scale = cssW / W;
   H = CFG.logicalH;
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = window.Look ? window.Look.pixelRatio() : (window.devicePixelRatio || 1);
   cv.style.height = (H * scale) + 'px';
   cv.width = Math.round(cssW * dpr);
   cv.height = Math.round(H * scale * dpr);

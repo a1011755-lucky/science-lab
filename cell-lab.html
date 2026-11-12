@@ -134,6 +134,7 @@
 </style>
 <script src="quality.js"></script>
 <script src="mobile.js"></script>
+<script src="keypoints.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -155,13 +156,13 @@
   <div class="body">
     <div class="tabs three">
       <button class="tab on" data-tab="cell">🏭 細胞工廠<small>動物 vs 植物</small></button>
-      <button class="tab" data-tab="osm">💧 物質進出<small>擴散作用</small></button>
+      <button class="tab" data-tab="osm">💧 物質進出<small>擴散與滲透</small></button>
       <button class="tab" data-tab="lvl">🔭 組成層次<small>細胞到個體</small></button>
     </div>
 
     <!-- Tab 1 -->
     <section class="sec" data-tab="cell">
-      <div class="concept" style="--cc:#7b5ea7"><div class="ct">細胞是生物體的基本單位</div><div class="cd">把細胞想像成一間<b>工廠</b>，每個構造都有自己的工作</div></div>
+      <div class="concept" style="--cc:#7b5ea7"><div class="ct">細胞是生物體的基本單位</div><div class="cd">把細胞想像成一間<b>工廠</b>，每個構造都有自己的工作<br>細胞學說由<b>施萊登、施旺</b>提出。虎克看到的是軟木塞死細胞的細胞壁</div></div>
       <label class="lab">點選構造（再點一次取消）</label>
       <div class="orgs" id="orgBtns"></div>
       <div class="orgcard" id="orgCard"></div>
@@ -171,7 +172,7 @@
 
     <!-- Tab 2 -->
     <section class="sec" data-tab="osm" hidden>
-      <div class="concept" style="--cc:#1e6aa8"><div class="ct">擴散作用</div><div class="cd">物質分子會由<b>高濃度</b>往<b>低濃度</b>移動<br>水、養分、廢物靠擴散作用通過<b>細胞膜</b></div></div>
+      <div class="concept" style="--cc:#1e6aa8"><div class="ct">擴散作用與滲透作用</div><div class="cd"><b>擴散</b>：物質由高濃度往低濃度移動，最後均勻分布<br><b>滲透</b>：水分子透過細胞膜上的<b>蛋白質通道</b>進出</div></div>
       <label class="lab">① 選擇細胞</label>
       <div class="row2"><button class="btn cbtn on" data-c="plant">🌿 水蘊草葉細胞</button><button class="btn cbtn" data-c="rbc">🩸 紅血球</button></div>
       <label class="lab">② 放進哪一種液體？</label>
@@ -179,7 +180,7 @@
       <div class="row2"><button class="btn primary" id="osPlay">▶ 放進液體</button><button class="btn" id="osReset">↺ 重來</button></div>
       <div class="stat" id="osStat"></div>
       <div class="mapbox"><p>🔬 顯微鏡下的樣子（400 倍）</p><canvas id="osView" width="520" height="300"></canvas></div>
-      <p class="desc">水、氧氣、二氧化碳等小分子能直接通過細胞膜；葡萄糖、胺基酸要靠細胞膜上的<b>蛋白質</b>協助；澱粉、蛋白質等大分子無法通過。</p>
+      <p class="desc">氧氣、二氧化碳等氣體能直接通過細胞膜；<b>水不能直接通過</b>，要經細胞膜上的蛋白質通道（滲透）。葡萄糖、胺基酸要靠細胞膜上的<b>蛋白質</b>協助；澱粉、蛋白質等大分子無法通過。<br>等張溶液（如生理食鹽水）中，細胞外形幾乎不變。<br><b>主動運輸</b>：細胞膜上的蛋白質利用能量，把物質從低濃度運向高濃度。</p>
     </section>
 
     <!-- Tab 3 -->
@@ -222,7 +223,8 @@ const TAU = Math.PI * 2;
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
+if (window.Look) window.Look.bindRenderer(renderer);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -240,7 +242,7 @@ scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
 const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
 sun.position.set(-7, 16, 10);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(2048, 2048); if (window.Look) window.Look.bindLight(sun);
 Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
 sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
 scene.add(sun);
@@ -768,13 +770,13 @@ const OS = (() => {
     const inW = salt ? 'high' : 'low';
     const outPct = salt ? 55 : 100, inPct = 80;
     const res = plant
-      ? (salt ? '細胞內的水往外跑 → 細胞膜縮小、和細胞壁<b>分離</b>，葉綠體擠成一團' : '水進入細胞 → 細胞<b>稍微膨脹</b>，但有細胞壁保護<b>不會破裂</b>，葉綠體分散在周圍')
-      : (salt ? '水往細胞外跑 → 紅血球<b>皺縮</b>' : '水不斷進入 → 紅血球膨脹，沒有細胞壁保護，最後<b>破裂</b>！');
+      ? (salt ? '高張食鹽水：水分子由水濃度較高的細胞內往外 → <b>質壁分離</b>（細胞膜萎縮、與細胞壁分離，細胞壁形狀不變）' : '低張清水：水進入細胞 → 有細胞壁保護，只<b>略為膨脹、不破裂</b>')
+      : (salt ? '高張食鹽水：水往細胞外 → 紅血球<b>皺縮</b>' : '低張清水：水不斷進入 → 紅血球膨脹，最後<b>破裂</b>');
     setHTML('osStat', `<div class="bars"><span>細胞外 水分子</span><div class="bar"><i style="width:${outPct}%"></i></div><span>${salt ? '較低' : '較高'}</span><span>細胞內 水分子</span><div class="bar"><i style="width:${inPct}%"></i></div><span>${salt ? '較高' : '較低'}</span></div>
-      <div style="margin-top:6px">💧 水分子由<b class="b">${salt ? '細胞內 → 細胞外' : '細胞外 → 細胞內'}</b>（高濃度 → 低濃度）</div>${st.p > 0.6 ? `<div style="margin-top:4px">🔬 結果：${res}</div>` : ''}`);
+      <div style="margin-top:6px">💧 水分子由<b class="b">${salt ? '細胞內 → 細胞外' : '細胞外 → 細胞內'}</b>（由<b>水的濃度</b>高的一側往低的一側，也就是由低溶質濃度往高溶質濃度）</div>${st.p > 0.6 ? `<div style="margin-top:4px">🔬 結果：${res}</div>` : ''}`);
     drawView(sh);
-    setCap(st.p === 0 ? `<small>物質進出細胞</small>把${plant ? '水蘊草葉細胞' : '紅血球'}放進<b>${salt ? '濃食鹽水' : '清水'}</b>，猜猜看會發生什麼事？按「放進液體」`
-      : st.p < 1 ? `<small>擴散作用進行中</small>水分子通過<b>細胞膜</b>，由<b class="blu">${salt ? '細胞內往細胞外' : '細胞外往細胞內'}</b>移動`
+    setCap(st.p === 0 ? `<small>物質進出細胞</small>把${plant ? '水蘊草葉細胞' : '紅血球'}放進<b>${salt ? '濃食鹽水（高張）' : '清水（低張）'}</b>，猜猜看會發生什麼事？按「放進液體」`
+      : st.p < 1 ? `<small>滲透作用進行中</small>水分子經細胞膜上的蛋白質通道，由<b class="blu">水的濃度較高的一側</b>（${salt ? '細胞內' : '細胞外'}）往較低的一側`
       : `<small>${plant ? '水蘊草葉細胞' : '紅血球'}・${salt ? '濃食鹽水' : '清水'}</small>${res}`);
   }
   return { group, update, st, reset };

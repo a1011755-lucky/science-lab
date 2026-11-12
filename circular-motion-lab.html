@@ -122,6 +122,7 @@
 </style>
 <script src="quality.js"></script>
 <script src="mobile.js"></script>
+<script src="keypoints.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -242,7 +243,8 @@ const BALL_R = 0.17;
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 1.25));
 renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
+if (window.Look) window.Look.bindRenderer(renderer);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.02;
@@ -264,7 +266,7 @@ scene.add(new THREE.AmbientLight(0xfff6ea, 0.28));
 const sun = new THREE.DirectionalLight(0xfff1dc, 1.72);
 sun.position.set(-6.4, 14.2, 8.2);
 sun.castShadow = true;
-sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.mapSize.set(1024, 1024); if (window.Look) window.Look.bindLight(sun);
 Object.assign(sun.shadow.camera, { left: -8, right: 8, top: 8, bottom: -8, near: 2, far: 36 });
 sun.shadow.bias = -0.00045;
 sun.shadow.normalBias = 0.02;
@@ -1239,7 +1241,9 @@ $('ctReset').addEventListener('click', () => resetCut());
 function applyQuality() {
   const rec = window.Look && window.Look.mode === 'record';
   renderer.setPixelRatio(window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 1.25));
-  const sh = rec ? 2048 : 1024;
+  renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
+  const hi = rec ? 2048 : 1024;
+  const sh = window.Look ? window.Look.shadowSize(hi) : hi;
   if (sun.shadow.mapSize.x !== sh) {
     sun.shadow.mapSize.set(sh, sh);
     if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }

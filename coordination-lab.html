@@ -130,6 +130,7 @@
 </style>
 <script src="quality.js"></script>
 <script src="mobile.js"></script>
+<script src="keypoints.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -230,7 +231,8 @@ const TAU = Math.PI * 2;
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
+if (window.Look) window.Look.bindRenderer(renderer);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -248,7 +250,7 @@ scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
 const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
 sun.position.set(-7, 16, 10);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(2048, 2048); if (window.Look) window.Look.bindLight(sun);
 Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
 sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
 scene.add(sun);
@@ -547,7 +549,7 @@ const NV = (() => {
       d: '輕敲膝蓋下方的韌帶 → 訊息傳到<b>脊髓</b> → 脊髓直接命令大腿肌肉收縮，小腿瞬間彈起。訊息<b>沒有經過大腦</b>，是脊髓控制的反射。' },
     { n: '東西飛向眼睛，眨眼', sub: '反射動作（腦幹）', kind: '反射動作（腦幹控制）', time: '很短', chain: [['眼睛（受器）', 's'], ['感覺神經元', 's'], ['腦幹', 'c'], ['運動神經元', 'm'], ['眼皮肌肉（動器）', 'm']],
       segs: [{ t: 's', pts: [eyeP, P(root, 0.12, 5.3, 0.1), stemP], ch: [0, 1] }, { t: 'c', pts: [stemP, P(root, 0, 5.05, -0.1)], ch: [2, 2] }, { t: 'm', pts: [P(root, 0, 5.05, -0.1), P(root, 0.12, 5.35, 0.2), P(root, 0.17, 5.5, 0.45)], ch: [3, 4], react: true }],
-      d: '眨眼、打噴嚏、咳嗽、分泌唾液等，是由<b>腦幹</b>就近控制的反射動作，也不需要大腦判斷。' }
+      d: '眨眼、打噴嚏、咳嗽、分泌唾液等，是由<b>延腦（腦幹）</b>就近控制的反射動作，也不需要大腦判斷。延腦是<b>生命中樞</b>，掌管呼吸與心跳。' }
   ];
   const COL = { s: 0x3f8ad0, c: 0xe0a800, m: 0xe53935 };
   const pulse = glowSprite('255,255,255', 0.55); group.add(pulse);
@@ -555,7 +557,7 @@ const NV = (() => {
   const st = { sc: 0, t: -1, focus: null };
   const SEG_T = 1.1;
   $('scBtns').innerHTML = SC.map((s, i) => `<button class="btn" data-i="${i}">${s.n}<small>${s.sub}</small></button>`).join('');
-  const BR = { brain: ['大腦', '<b>意識中樞</b>：掌管運動、感覺、語言、記憶、思考、情緒。', brain], cereb: ['小腦', '<b>平衡中樞</b>：維持身體平衡，協調全身肌肉。', cereb], stem: ['腦幹', '<b>生命中樞</b>：控制心跳、呼吸、血壓；也控制眨眼、打噴嚏等頭頸部的反射。', stem], cord: ['脊髓', '連接腦和周圍神經，<b>傳遞</b>頸部以下與腦之間的訊息；也是頸部以下<b>反射</b>的中樞。', cord] };
+  const BR = { brain: ['大腦', '<b>意識中樞</b>：掌管運動、感覺、語言、記憶、思考、情緒。', brain], cereb: ['小腦', '<b>平衡中樞</b>：維持身體平衡，協調全身肌肉。', cereb], stem: ['延腦（腦幹）', '<b>生命中樞</b>：控制呼吸、心跳、血壓；也控制眨眼、打噴嚏等頭頸部的反射。', stem], cord: ['脊髓', '連接腦和周圍神經，<b>傳遞</b>頸部以下與腦之間的訊息；也是頸部以下<b>反射</b>的中樞。', cord] };
   $('brBtns').innerHTML = Object.entries(BR).map(([k, b]) => `<button class="btn" data-b="${k}">${b[0]}</button>`).join('');
   const sel = i => { st.sc = i; st.t = -1; st.focus = null; document.querySelectorAll('#scBtns .btn').forEach(b => b.classList.toggle('on', Number(b.dataset.i) === i)); document.querySelectorAll('#brBtns .btn').forEach(b => b.classList.remove('on')); };
   document.querySelectorAll('#scBtns .btn').forEach(b => b.addEventListener('click', () => { sel(Number(b.dataset.i)); st.t = 0; }));
@@ -707,10 +709,10 @@ const HM = (() => {
   const liver = sphere(0.35, clay(0x8d4b3b), 20, { amp: 0.1, freq: 1.1 }); liver.scale.set(1.2, 0.55, 0.6); liver.position.set(-0.3, 3.4, 0.12); B.root.add(liver);
   [-1, 1].forEach(s => { const k = sphere(0.14, clay(0x9c4a3a), 16); k.scale.set(0.7, 1.1, 0.6); k.position.set(s * 0.28, 2.85, -0.15); B.root.add(k); });
   const G = {
-    pit: { n: '腦垂腺', h: '生長激素', d: '促進<b>生長</b>（骨骼、肌肉）；也能分泌激素，調控其他內分泌腺，被稱為「內分泌腺的總司令」。', pos: [0, 5.28, 0.05], col: 0x8e6bbf, targets: [[0.95, 2.5, 0], [-0.95, 2.5, 0], [0.38, 1.2, 0], [-0.38, 1.2, 0]] },
-    thy: { n: '甲狀腺', h: '甲狀腺素', d: '調節<b>新陳代謝</b>的速率。製造甲狀腺素需要<b>碘</b>。', pos: [0, 4.68, 0.16], col: 0xef6c00, targets: [[0, 3.4, 0], [0.95, 3.2, 0], [-0.95, 3.2, 0], [0, 5.4, 0]] },
+    pit: { n: '腦垂腺', h: '生長激素', d: '促進<b>生長</b>（骨骼、肌肉）；也能分泌激素，調控其他內分泌腺，是內分泌系統的<b>主腺</b>，被稱為「內分泌腺的總司令」。', pos: [0, 5.28, 0.05], col: 0x8e6bbf, targets: [[0.95, 2.5, 0], [-0.95, 2.5, 0], [0.38, 1.2, 0], [-0.38, 1.2, 0]] },
+    thy: { n: '甲狀腺', h: '甲狀腺素', d: '調節<b>新陳代謝</b>的速率。製造甲狀腺素需要<b>碘</b>。碘不足無法合成足量甲狀腺素 → <b>缺碘性甲狀腺腫（大脖子）</b>。', pos: [0, 4.68, 0.16], col: 0xef6c00, targets: [[0, 3.4, 0], [0.95, 3.2, 0], [-0.95, 3.2, 0], [0, 5.4, 0]] },
     pan: { n: '胰島（胰臟）', h: '胰島素', d: '<b>降低血糖</b>：讓葡萄糖進入細胞利用，或在肝臟轉換成肝糖儲存。', pos: [0.12, 3.1, 0.1], col: 0xf9a825, targets: [[-0.3, 3.4, 0.12], [0.38, 1.6, 0], [-0.38, 1.6, 0]] },
-    adr: { n: '腎上腺', h: '腎上腺素', d: '緊急或緊張時分泌：<b>心跳加快</b>、血糖上升，讓身體迅速應變。', pos: [0.28, 3.05, -0.12], col: 0xd84315, targets: [[0.12, 3.95, 0.12], [0.95, 3.0, 0], [0.38, 1.6, 0]] },
+    adr: { n: '腎上腺', h: '腎上腺素', d: '緊急或緊張時分泌：<b>心跳、呼吸加快</b>、血糖上升，<b>腸胃運動被抑制</b>。', pos: [0.28, 3.05, -0.12], col: 0xd84315, targets: [[0.12, 3.95, 0.12], [0.95, 3.0, 0], [0.38, 1.6, 0]] },
     sex: { n: '睪丸／卵巢', h: '性激素', d: '青春期促進生殖器官發育，產生<b>第二性徵</b>（如變聲、長鬍子、乳房發育）。', pos: [0.2, 2.3, 0.1], col: 0x1e88e5, targets: [[0, 4.7, 0], [0, 3.6, 0.2], [0, 2.2, 0]] }
   };
   Object.values(G).forEach(g => { const m = sphere(0.1, clay(g.col, { clearcoat: 1 }), 16); m.position.set(...g.pos); B.root.add(m); if (g === G.thy) { m.scale.set(1.8, 0.8, 0.8); } if (g === G.adr) { const m2 = m.clone(); m2.material = m.material; m2.position.x = -0.28; B.root.add(m2); } if (g === G.sex) { const m2 = m.clone(); m2.material = m.material; m2.position.x = -0.2; B.root.add(m2); } g.mesh = m; });
@@ -800,8 +802,8 @@ const HM = (() => {
     pet.rotation.z = -0.15 - 0.5 * Math.max(st.nk, st.touchT < 4 ? fold * 0.6 : 0);
     scene.background.setHex(st.night ? 0xc9c3d8 : 0xf5f1e7);
     const pName = st.side ? '盆栽橫放' : st.light === 0 ? '光從上方來' : st.light < 0 ? '光從左邊來' : '光從右邊來';
-    setHTML('plCard', `<h4>🌱 向性（長時間的感應）</h4>莖：<b>向光性</b>、<b>背地性</b>；根：<b>向地性</b>、背光性、向濕性。向性和<b>生長</b>有關，要好幾天才看得出來。<hr style="border:none;border-top:1px dashed #e4d9c6;margin:6px 0"><h4>🌿 短時間的感應</h4>含羞草被碰觸，小葉閉合＝<b>觸發運動</b>；晚上葉子閉合下垂＝<b>睡眠運動</b>；捕蠅草夾住昆蟲＝<b>捕蟲運動</b>。這些和細胞內<b>水分</b>的變化有關。`);
-    setCap(st.touchT < 2.5 ? '<small>含羞草・觸發運動</small>被碰觸後小葉<b>很快</b>閉合，過一陣子又會打開' : st.night ? '<small>睡眠運動</small>到了晚上，含羞草的葉子閉合下垂' : `<small>植物的向性・${pName}</small>${st.side ? '莖<b>背地</b>向上彎、根<b>向地</b>向下彎' : st.light ? '莖朝光源彎曲生長：<b>向光性</b>' : '莖筆直向上生長'}${st.growT > 0 ? '（生長中…）' : ''}`);
+    setHTML('plCard', `<h4>🌱 向性（長時間的感應）</h4>莖：<b>向光性</b>、<b>背地性</b>；根：<b>向地性</b>、背光性、<b>向水性／向濕性</b>。向性是因為兩側<b>生長素</b>分布不均：莖的高濃度生長素促進生長（向光面生長素較少，背光面長得快，所以彎向光源）；<b>根相反</b>，高濃度生長素會抑制根細胞生長，所以根有向地性。<hr style="border:none;border-top:1px dashed #e4d9c6;margin:6px 0"><h4>🌿 短時間的感應</h4>含羞草被碰觸，小葉閉合＝<b>觸發運動</b>（<b>膨壓運動</b>）；晚上葉子閉合下垂＝<b>睡眠運動</b>；捕蠅草夾住昆蟲＝<b>捕蟲運動</b>。這些和細胞內<b>水分（膨壓）</b>的變化有關，不是生長素。`);
+    setCap(st.touchT < 2.5 ? '<small>含羞草・膨壓運動</small>觸發運動是<b>膨壓運動</b>：細胞水分快速改變，小葉很快閉合，和生長素無關' : st.night ? '<small>睡眠運動・膨壓運動</small>到了晚上，含羞草的葉子閉合下垂' : `<small>植物的向性・${pName}</small>${st.side ? '莖<b>背地</b>向上彎、根<b>向地</b>向下彎（根和莖對生長素的反應相反）' : st.light ? '莖朝光源彎曲：向光面<b>生長素</b>較少，背光面長得快' : '莖筆直向上生長'}${st.growT > 0 ? '（生長中…）' : ''}`);
   }
   return { group, update, st, G };
 })();

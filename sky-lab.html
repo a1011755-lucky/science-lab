@@ -371,6 +371,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1
 </section>
 
 <script src="quality.js"></script>
+<script src="keypoints.js"></script>
 <script type="importmap">
 { "imports": {
   "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
@@ -568,11 +569,12 @@ function hourWord(h) {
 const sunLight = new THREE.DirectionalLight(0xfff3e0, 3.6);
 sunLight.position.set(300, 0, 0);
 sunLight.castShadow = true;
-sunLight.shadow.mapSize.set(1024, 1024);
+sunLight.shadow.mapSize.set(1024, 1024); if (window.Look) window.Look.bindLight(sunLight);
 Object.assign(sunLight.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22, near: 250, far: 370 });
 sunLight.shadow.bias = -0.002;
 scene.add(sunLight);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
+if (window.Look) window.Look.bindRenderer(renderer);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 scene.add(new THREE.AmbientLight(0x6070a0, 0.06)); // 一點點「地球照」，讓暗面隱約可見
 
@@ -1084,11 +1086,12 @@ function makeLabel(text, color = '#e6edf8', h = 0.6) {
 const hemi = new THREE.HemisphereLight(0xcfe6ff, 0x30402a, 1);
 const sunLight = new THREE.DirectionalLight(0xfff1d6, 2);
 sunLight.castShadow = true;
-sunLight.shadow.mapSize.set(1024, 1024);
+sunLight.shadow.mapSize.set(1024, 1024); if (window.Look) window.Look.bindLight(sunLight);
 Object.assign(sunLight.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 0.4, far: 40 });
 sunLight.shadow.bias = -0.001;
 scene.add(hemi, sunLight, sunLight.target);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
+if (window.Look) window.Look.bindRenderer(renderer);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 /* ===== 地面 ===== */

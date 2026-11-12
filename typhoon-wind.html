@@ -119,6 +119,7 @@
 </style>
 <script src="quality.js"></script>
 <script src="mobile.js"></script>
+<script src="keypoints.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -251,7 +252,8 @@ function windAt(station, center, alphaDeg) {
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
+if (window.Look) window.Look.bindRenderer(renderer);
 renderer.shadowMap.type = THREE.PCFShadowMap;
 $('scene').appendChild(renderer.domElement);
 
@@ -283,7 +285,7 @@ scene.add(new THREE.HemisphereLight(0xeaf6ff, 0x7aa86a, 1.4));
 const sunLight = new THREE.DirectionalLight(0xfff3dd, 1.5);
 sunLight.position.set(-12, 30, 14);
 sunLight.castShadow = true;
-sunLight.shadow.mapSize.set(2048, 2048);
+sunLight.shadow.mapSize.set(2048, 2048); if (window.Look) window.Look.bindLight(sunLight);
 Object.assign(sunLight.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22, near: 1, far: 80 });
 sunLight.shadow.radius = 6;
 sunLight.shadow.bias = -0.0006;

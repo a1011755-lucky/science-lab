@@ -121,6 +121,7 @@
 </style>
 <script src="quality.js"></script>
 <script src="mobile.js"></script>
+<script src="keypoints.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -214,7 +215,8 @@ const OXY = new THREE.Color(0xd98a86), DEOXY = new THREE.Color(0x7f9fcc);
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
+if (window.Look) window.Look.bindRenderer(renderer);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 $('scene').appendChild(renderer.domElement);
@@ -230,7 +232,7 @@ scene.add(new THREE.AmbientLight(0xfff4e6, 0.85));
 const sun = new THREE.DirectionalLight(0xfff0dc, 1.8);
 sun.position.set(-6, 14, 10);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(2048, 2048); if (window.Look) window.Look.bindLight(sun);
 Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -8, near: 1, far: 60 });
 sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
 scene.add(sun);
@@ -249,6 +251,7 @@ const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o
 function orgNoise(x, y, z, s) { return Math.sin(x * 1.7 + s) * Math.sin(y * 2.3 + s * 1.3) * Math.sin(z * 1.9 + s * 0.7) + 0.5 * Math.sin(x * 3.1 - s) * Math.sin(y * 2.9 + s * 2.1) * Math.sin(z * 3.7 + s); }
 function orgSmooth(g) { const p = g.attributes.position, n = g.attributes.normal, m = new Map(); for (let i = 0; i < p.count; i++) { const k = Math.round(p.getX(i) * 1e4) + "," + Math.round(p.getY(i) * 1e4) + "," + Math.round(p.getZ(i) * 1e4); let a = m.get(k); if (!a) { a = [0, 0, 0, []]; m.set(k, a); } a[0] += n.getX(i); a[1] += n.getY(i); a[2] += n.getZ(i); a[3].push(i); } for (const a of m.values()) { const l = Math.hypot(a[0], a[1], a[2]) || 1; for (const i of a[3]) n.setXYZ(i, a[0] / l, a[1] / l, a[2] / l); } n.needsUpdate = true; }
 function blobGeo(r, { amp = 0.08, freq = 1.4, seed = 1, detail = 5, ripple = 0, rippleF = 9 } = {}) {
+  detail = window.Look ? window.Look.segments(detail, Math.min(detail, 2)) : detail;
   const g = new THREE.IcosahedronGeometry(1, detail), p = g.attributes.position, v = new THREE.Vector3();
   for (let i = 0; i < p.count; i++) {
     v.fromBufferAttribute(p, i).normalize();
@@ -602,7 +605,7 @@ BUILD.circ = (g) => {
   })();
   const lungMat = rubber(0xffffff, { map: alvTex, roughness: 0.75, transparent: true, opacity: 0.88 });
   const makeLung = (s) => {
-    const geo = new THREE.SphereGeometry(1, 72, 54);
+    const geo = new THREE.SphereGeometry(1, window.Look ? window.Look.segments(72, 36) : 72, window.Look ? window.Look.segments(54, 24) : 54);
     const pos = geo.attributes.position, v = V3();
     for (let i = 0; i < pos.count; i++) {
       v.fromBufferAttribute(pos, i);
@@ -659,7 +662,7 @@ BUILD.circ = (g) => {
   seg([W(V3(...P.desc[4])), ...bodyCap.slice(0, 1)], 0xe0a09b, 0.2);
   seg([bodyCap[bodyCap.length - 1], W(V3(...P.ivc[0]))], 0x93b0da, 0.2);
   // 血流粒子
-  const NP = 140;
+  const NP = window.Look ? window.Look.particles(140, 48) : 140;
   const rbcGeo = discCellGeo(0.095);
   const rbcs = new THREE.InstancedMesh(rbcGeo, rubber(0xffffff), NP); rbcs.instanceMatrix.setUsage(THREE.DynamicDrawUsage); g.add(rbcs);
   const parts = Array.from({ length: NP }, (_, i) => ({ loop: loops[i % 2], u: Math.random(), k: rnd(0.85, 1.15), off: V3(rnd(-0.06, 0.06), rnd(-0.06, 0.06), rnd(-0.06, 0.06)) }));
@@ -678,7 +681,7 @@ BUILD.circ = (g) => {
   const ring = new THREE.Mesh(new THREE.TorusGeometry(0.34, 0.025, 8, 40), new THREE.MeshBasicMaterial({ color: 0xffc94d, transparent: true, opacity: 0.85, depthWrite: false })); ring.renderOrder = 9; g.add(ring);
   const trackLoop = loops[0];
   let tu = trackLoop.key.rv, tracking = false, slowK = 1;
-  const gas = Array.from({ length: 30 }, () => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), rubber(0xffffff, { emissive: 0xffffff, emissiveIntensity: 0.3 })); m.visible = false; g.add(m); return { m, on: false }; });
+  const gas = Array.from({ length: window.Look ? window.Look.particles(30, 12) : 30 }, () => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), rubber(0xffffff, { emissive: 0xffffff, emissiveIntensity: 0.3 })); m.visible = false; g.add(m); return { m, on: false }; });
   const lTrack = addLabel('', 'pop'); lTrack.visible = false;
   const STAGES = [['ivc', '下大靜脈（缺氧血）'], ['ra', '右心房'], ['rv', '右心室'], ['pa', '肺動脈（缺氧血・藍）'], ['lung0', '肺泡微血管：吸 O₂、放 CO₂'], ['lung1', '肺靜脈（充氧血・紅）'], ['la', '左心房'], ['lv', '左心室'], ['ao', '主動脈（充氧血）'], ['body0', '組織微血管：放 O₂、吸 CO₂'], ['body1', '大靜脈（缺氧血）']];
   /** 目前位置 = 最近一個「已經經過」的檢查點 */
@@ -795,7 +798,7 @@ BUILD.vessel = (g) => {
   const art = Array.from({ length: 34 }, () => ({ m: mkRBC(0xd98a86), y: rnd(0, H), r: rnd(0, 0.38), a: rnd(Math.PI * 0.55, Math.PI * 1.45) }));
   const vn = Array.from({ length: 30 }, () => ({ m: mkRBC(0x7f9fcc), y: rnd(0, H), r: rnd(0, 0.52), a: rnd(Math.PI * 0.55, Math.PI * 1.45) }));
   const cap = Array.from({ length: 6 }, (_, i) => { const m = mkRBC(0xd98a86); m.material = m.material.clone(); return { m, y: i * (H / 6) }; });
-  const gasPool = Array.from({ length: 30 }, () => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), rubber(0xffffff)); m.visible = false; g.add(m); return { m, on: false }; });
+  const gasPool = Array.from({ length: window.Look ? window.Look.particles(30, 12) : 30 }, () => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.07, 10, 8), rubber(0xffffff)); m.visible = false; g.add(m); return { m, on: false }; });
   const L = (t, p, cls) => { const l = addLabel(t, cls); l.pos.copy(p); return l; };
   L('動脈：管壁最厚（三層、有彈性）', V3(XA, Y0 + H + 0.55, 0), 'red'); L('靜脈：管壁薄、有瓣膜', V3(XV, Y0 + H + 0.55, 0), 'blue'); L('微血管：一層細胞', V3(XC, Y0 + H + 0.55, 0));
   const lPulse = addLabel('💓 彈性搏動', 'red'), lValve = addLabel('', 'blue');
