@@ -433,7 +433,7 @@ const COURSES = [
       {
         name: '八下', sub: '化學反應、氧化還原、酸鹼、反應速率、有機物與力',
         chapters: [
-          { title: '化學反應', sum: '從生活中的化學變化出發，理解質量守恆，學會用原子量、化學式與莫耳計算反應中的質量關係。', labs: [{ t: '原子不滅', u: 'mass-lab.html#atom' }, { t: '氣體逸散', u: 'mass-lab.html#gas' }, { t: '沉澱反應', u: 'mass-lab.html#ppt' }],
+          { title: '化學反應', sum: '從生活中的化學變化出發，理解質量守恆，學會用原子量、化學式與莫耳計算反應中的質量關係。', labs: [{ t: '原子不滅', u: 'mass-lab.html#atom' }, { t: '氣體逸散', u: 'mass-lab.html#gas' }, { t: '沉澱反應', u: 'mass-lab.html#ppt' }, { t: '莫耳、分子量與化學計量', u: 'mole-lab.html' }],
             k: ['常見的化學反應現象（產生氣體、沉澱、變色、溫度變化）', '質量守恆定律', '開放系統與密閉系統', '原子量與分子量', '化學反應式的寫法與平衡', '莫耳與亞佛加厥數', '化學計量：係數比＝莫耳數比'] },
           { title: '氧化與還原', sum: '比較金屬與非金屬的燃燒，從元素活性判斷氧化還原反應，認識煉鐵與生活中的氧化還原。', labs: [{ t: '氧化與還原：高爐煉鐵', u: 'chem-lab.html#furnace' }],
             k: ['金屬元素的燃燒（鎂、鐵、銅）', '非金屬元素的燃燒（碳、硫）', '金屬氧化物呈鹼性、非金屬氧化物呈酸性', '元素對氧的活性大小', '氧化：得到氧；還原：失去氧', '活性大的元素能奪取活性小元素的氧', '金屬的冶煉（高爐煉鐵）', '生活中的氧化還原（生鏽、漂白、暖暖包）', '氧化劑與還原劑'] },
@@ -530,7 +530,7 @@ function renderStats() {
   const stats = [
     { n: ready, label: '個已上線單元' },
     { n: pages, label: '座 3D 互動實驗室' },
-    { n: '277', label: '題會考題型自我檢測' }
+    { n: '282', label: '題會考題型自我檢測' }
   ];
   document.getElementById('heroStats').innerHTML = stats.map(s => `<div class="stat"><b>${s.n}</b><span>${s.label}</span></div>`).join('');
 }
