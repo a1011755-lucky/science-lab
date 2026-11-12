@@ -6,12 +6,12 @@
 <title>功與能綜合實驗室</title>
 <style>
   :root {
-    --bg: #ece7e1;
+    --bg: #f5f1e7;
     --ink: #1d1d1f;
     --ink-soft: #6e6e73;
     --card: rgba(255,255,255,.62);
     --accent: #c46a4c;
-    --ek: #e5484d; --ug: #3f7be8; --ue: #22a35a; --heat: #8e8e93;
+    --ek: #e07a70; --ug: #6f9bd8; --ue: #6fb58a; --heat: #a9a39c;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; }
@@ -145,7 +145,7 @@
         <div class="top"><span>阻力／摩擦力 f</span><b id="frVal">20 N</b></div>
         <input type="range" id="sFr" min="0" max="100" step="1" value="20" aria-label="摩擦力大小">
       </div>
-      <div class="ios" id="v0Row" style="--c:#e5484d">
+      <div class="ios" id="v0Row" style="--c:#e07a70">
         <div class="top"><span>初速度 V₀ <small id="v0Lock"></small></span><b id="v0Val">0 m/s</b></div>
         <input type="range" id="sV0" min="0" max="10" step="0.5" value="0" aria-label="初速度">
         <div class="v0ek" id="v0Ek"></div>
@@ -211,15 +211,28 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 $('scene').appendChild(renderer.domElement);
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xece7e1);
-scene.add(new THREE.HemisphereLight(0xffffff, 0xd9cfc4, 1.25));
-const sun = new THREE.DirectionalLight(0xffffff, 2.0);
-sun.position.set(-6, 14, 10);
+scene.background = new THREE.Color(0xf5f1e7);
+// 環境反射：一個小小的暖色攝影棚（讓材質有柔和的反光，不再像死板的塑膠）
+{
+  const pmrem = new THREE.PMREMGenerator(renderer), env = new THREE.Scene();
+  env.background = new THREE.Color(0xf1e9dd);
+  const soft = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const b1 = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), soft); b1.position.set(-4, 5, 4); b1.scale.setScalar(2.6); env.add(b1);
+  const b2 = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), soft); b2.position.set(5, 3, -2); b2.scale.setScalar(1.4); env.add(b2);
+  scene.environment = pmrem.fromScene(env, 0.04).texture;
+  pmrem.dispose();
+}
+scene.add(new THREE.HemisphereLight(0xfff6ea, 0xd9cbb8, 0.9));
+// 主光：暖白、偏側邊 → 影子拉長且邊緣極柔
+const sun = new THREE.DirectionalLight(0xfff0dc, 1.9);
+sun.position.set(-11, 13, 8);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 12, bottom: -10, near: 1, far: 50 });
-sun.shadow.radius = 4;
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 13, bottom: -11, near: 1, far: 60 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005; sun.shadow.normalBias = 0.02;
 scene.add(sun);
+const fillLight = new THREE.DirectionalLight(0xffe9d2, 0.35);      // 暖色側補光：背光面不死黑
+fillLight.position.set(9, 5, 7); scene.add(fillLight);
 const camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 0.1, 150);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
@@ -227,9 +240,26 @@ controls.maxPolarAngle = Math.PI * 0.49;
 controls.minDistance = 5;
 controls.maxDistance = 45;
 
-const clay = (color, extra = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.5, metalness: 0.05, clearcoat: 0.25, ...extra });
+// 霧面溫潤的實體材質（高粗糙度、低飽和）
+const clay = (color, extra = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.68, metalness: 0.03, clearcoat: 0.12, clearcoatRoughness: 0.6, envMapIntensity: 0.7, ...extra });
 const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
-const floor = new THREE.Mesh(new RoundedBoxGeometry(32, 0.5, 14, 6, 0.24), clay(0xe0d6cb));
+// 原木：程式畫出的木紋貼圖
+function woodTexture(base, rep) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = base; g.fillRect(0, 0, 512, 256);
+  for (let i = 0; i < 80; i++) {
+    g.strokeStyle = `rgba(${110 + Math.random() * 40 | 0},${72 + Math.random() * 30 | 0},${44 + Math.random() * 16 | 0},${0.05 + Math.random() * 0.13})`;
+    g.lineWidth = 1 + Math.random() * 3; g.beginPath();
+    const y = Math.random() * 256, ph = Math.random() * 6, amp = 1.5 + Math.random() * 4;
+    const w = Math.PI * 2 / 512 * (1 + (Math.random() * 3 | 0));   // 波長是貼圖寬度的整數分之一 → 左右接縫看不出來
+    g.moveTo(0, y); for (let x = 0; x <= 512; x += 16) g.lineTo(x, y + Math.sin(x * w + ph) * amp); g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...rep); t.anisotropy = 8;
+  return t;
+}
+const wood = (base = '#deb887', rep = [1, 1], extra = {}) => new THREE.MeshStandardMaterial({ map: woodTexture(base, rep), roughness: 0.72, metalness: 0, envMapIntensity: 0.6, ...extra });
+const floor = new THREE.Mesh(new RoundedBoxGeometry(32, 0.5, 14, 6, 0.24), wood('#e3cdb0', [4, 1.8]));
 floor.position.y = -0.25; floor.receiveShadow = true; scene.add(floor);
 
 /* ----- 標籤 ----- */
@@ -260,21 +290,21 @@ function placeLabels() {
    由下而上：熱能（灰）→ 彈力位能（綠）→ 重力位能（藍）→ 動能（紅）
    每一段的 scaleY = 能量 × 比例尺
    ========================================================= */
-const E_COLORS = { Q: 0x9a9aa0, Ue: 0x22a35a, Ug: 0x3f7be8, Ek: 0xe5484d };
+const E_COLORS = { Q: 0xb3aca4, Ue: 0x6fb58a, Ug: 0x6f9bd8, Ek: 0xe07a70 };   // 粉彩系（與面板圖例同色）
 function makeEnergyBar(mode) {
   const g = new THREE.Group();
   const segs = {};
   ['Q', 'Ue', 'Ug', 'Ek'].forEach(k => {
-    const geo = new THREE.BoxGeometry(0.42, 1, 0.42);
+    const geo = new RoundedBoxGeometry(0.42, 1, 0.42, 3, 0.05);   // 圓角方柱（不再是尖角方塊）
     geo.translate(0, 0.5, 0);                                  // 以底部為原點，scaleY 往上長
-    const m = new THREE.Mesh(geo, clay(E_COLORS[k], { emissive: E_COLORS[k], emissiveIntensity: 0.12 }));
-    m.castShadow = true;
+    const m = new THREE.Mesh(geo, clay(E_COLORS[k], { emissive: E_COLORS[k], emissiveIntensity: 0.1 }));
+    m.castShadow = true; m.receiveShadow = true;
     g.add(m);
     segs[k] = m;
   });
-  // 底座圓盤
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.06, 32), clay(0xffffff));
-  base.position.y = -0.03;
+  // 底座圓盤（原木）
+  const base = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.46, 0.07, 40), wood('#d9b58c')));
+  base.position.y = -0.035;
   g.add(base);
   const label = addLabel(mode, '', 'font-size:.7rem');
   g.userData.barOf = mode;          // 切換模組時只顯示對應的能量條
@@ -300,7 +330,7 @@ function setEnergyBar(bar, E, scale) {
 /* ----- 粒子：金幣（獲得能量）、煙霧（熱能）、火花 ----- */
 const particles = [];
 const coinGeo = new THREE.CylinderGeometry(0.13, 0.13, 0.04, 20), coinMat = clay(0xf5c518, { emissive: 0xf5a800, emissiveIntensity: 0.4, metalness: 0.4 });
-const smokeGeo = new THREE.SphereGeometry(0.16, 14, 10), smokeMat = clay(0xb8b8bd, { transparent: true, opacity: 0.6 });
+const smokeGeo = new THREE.SphereGeometry(0.16, 14, 10), smokeMat = clay(0xc9c4be, { transparent: true, opacity: 0.6, depthWrite: false, roughness: 0.95, clearcoat: 0 });
 function emit(kind, pos, vel, life = 1) {
   const m = new THREE.Mesh(kind === 'coin' ? coinGeo : smokeGeo, kind === 'coin' ? coinMat : smokeMat.clone());
   m.position.copy(pos);
@@ -331,7 +361,7 @@ function stepParticles(dt) {
 const M1 = (() => {
   const group = new THREE.Group();
   const m = 10, E_REF = 500;                     // 沒有速度上限；E_REF：V₀ = 10 m/s 時的動能，能量條的最小比例尺
-  const box = shadowed(new THREE.Mesh(new RoundedBoxGeometry(1.4, 1.2, 1.2, 5, 0.22), clay(0xf0a35e)));
+  const box = shadowed(new THREE.Mesh(new RoundedBoxGeometry(1.4, 1.2, 1.2, 6, 0.2), wood('#deb887', [1, 1])));   // 原木塊
   box.position.set(0, 0.6, 0);
   group.add(box);
 
@@ -359,7 +389,7 @@ const M1 = (() => {
   }
 
   // 速度風痕：越快越長、越多（高速時地面條紋會「看起來停住」，改用風痕表現越來越快）
-  const streakMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75, depthWrite: false });
+  const streakMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff1dc, emissiveIntensity: 0.7, transparent: true, opacity: 0.62, depthWrite: false, roughness: 0.4 });
   const streaks = [];
   for (let i = 0; i < 40; i++) {
     const s = new THREE.Mesh(new THREE.CapsuleGeometry(0.025, 1, 4, 8), streakMat);
@@ -369,20 +399,25 @@ const M1 = (() => {
   }
 
   // 推力箭頭（越大越長、越粗、越亮橘）
-  const pushMat = clay(0xffd2a0, { emissive: 0xff7a00, emissiveIntensity: 0.1 });
+  // 向量箭頭：發光毛玻璃質感（半透明＋清漆＋微光）；幾何改成圓頭錐與圓角軸，不再是尖銳的錐體
+  const glassArrow = (color, emissive) => new THREE.MeshPhysicalMaterial({ color, emissive, emissiveIntensity: 0.1, transparent: true, opacity: 0.82, roughness: 0.25, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.3, envMapIntensity: 1 });
+  const lathe = pts => new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), 36);
+  const HEAD_GEO = lathe([[0, -0.5], [0.86, -0.5], [0.96, -0.48], [1, -0.42], [0.97, -0.34], [0.2, 0.4], [0.12, 0.46], [0, 0.5]]);   // 單位圓頭錐（尖端朝 +y）
+  const SHAFT_GEO = lathe([[0, -0.5], [0.82, -0.5], [0.95, -0.49], [1, -0.475], [1, 0.475], [0.95, 0.49], [0.82, 0.5], [0, 0.5]]);   // 單位圓角軸
+  const pushMat = glassArrow(0xffd2a0, 0xff7a00);
   const pushArrow = new THREE.Group();
-  const pShaft = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 24), pushMat);
+  const pShaft = new THREE.Mesh(SHAFT_GEO, pushMat);
   pShaft.rotation.z = Math.PI / 2;
-  const pHead = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 32), pushMat);
+  const pHead = new THREE.Mesh(HEAD_GEO, pushMat);
   pHead.rotation.z = -Math.PI / 2;
   pushArrow.add(pShaft, pHead);
   group.add(shadowed(pushArrow));
-  // 摩擦力箭頭（灰，向後）
-  const fricMat = clay(0x8e8e93, { emissive: 0x555555, emissiveIntensity: 0.1 });
+  // 摩擦力箭頭（霧灰，向後）
+  const fricMat = glassArrow(0xa9a39c, 0x6b655f);
   const fricArrow = new THREE.Group();
-  const fShaft = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 20), fricMat);
+  const fShaft = new THREE.Mesh(SHAFT_GEO, fricMat);
   fShaft.rotation.z = Math.PI / 2;
-  const fHead = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 24), fricMat);
+  const fHead = new THREE.Mesh(HEAD_GEO, fricMat);
   fHead.rotation.z = Math.PI / 2;
   fricArrow.add(fShaft, fHead);
   group.add(shadowed(fricArrow));
@@ -607,15 +642,15 @@ const M2 = (() => {
   shape.lineTo(XMAX + 0.6, yOf(XMAX));
   shape.lineTo(XMAX + 0.6, -0.4);
   shape.closePath();
-  const pipe = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: DEPTH, bevelEnabled: true, bevelSize: 0.08, bevelThickness: 0.08, bevelSegments: 4, curveSegments: 1 }),
-    clay(0x9ec3d6));
+  const pipe = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: DEPTH, bevelEnabled: true, bevelSize: 0.1, bevelThickness: 0.1, bevelSegments: 8, curveSegments: 1 }),
+    clay(0xa9c7d6, { roughness: 0.78, clearcoat: 0.05 }));          // 霧面粉藍、圓角更圓滑
   pipe.position.z = -DEPTH / 2;
   group.add(shadowed(pipe));
   // 高度刻度（每 1 m）
   for (let h = 1; h <= 4; h++) {
     const x = Math.sqrt(h / K);
     const L = addLabel('m2', `${h} m`, 'font-size:.64rem;padding:1px 6px;color:#3f7be8'); L.pos.set(-x - 0.9, h, DEPTH / 2);
-    const line = new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.03, 0.04, 2, 0.01), clay(0x3f7be8));
+    const line = shadowed(new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.03, 0.04, 2, 0.01), clay(0x6f9bd8)));
     line.position.set(-x - 0.3, h, DEPTH / 2 + 0.06); group.add(line);
   }
   const ball = shadowed(new THREE.Mesh(new THREE.SphereGeometry(R, 40, 28), clay(0xff8a5b, { emissive: 0xff6a2a, emissiveIntensity: 0.2 })));
@@ -705,16 +740,17 @@ const M3 = (() => {
   const group = new THREE.Group();
   const k = 20, m = 1, WALL_X = -7, L0 = 3.2, R = 0.42, XMAXC = 2.0, Y = R;
   const REST = WALL_X + L0;                                   // 彈簧自然長度時的末端位置
-  const wall = shadowed(new THREE.Mesh(new RoundedBoxGeometry(0.6, 2.6, 2.4, 4, 0.18), clay(0x9a8f86)));
+  const wall = shadowed(new THREE.Mesh(new RoundedBoxGeometry(0.6, 2.6, 2.4, 5, 0.18), wood('#b89470', [1, 1])));   // 深一階的原木牆
   wall.position.set(WALL_X - 0.3, 1.3, 0); group.add(wall);
   const rail = new THREE.Mesh(new RoundedBoxGeometry(18, 0.08, 1.2, 3, 0.03), clay(0xf7f2ec));
   rail.position.set(1.5, 0.04, 0); rail.receiveShadow = true; group.add(rail);
   // 自然長度刻度與壓縮量標示
-  const restMark = new THREE.Mesh(new RoundedBoxGeometry(0.05, 0.02, 1.4, 2, 0.01), clay(0x22a35a));
+  const restMark = shadowed(new THREE.Mesh(new RoundedBoxGeometry(0.05, 0.02, 1.4, 2, 0.01), clay(0x6fb58a)));
   restMark.position.set(REST, 0.1, 0); group.add(restMark);
   const lRest = addLabel('m3', '自然長度', 'font-size:.64rem;color:#22a35a'); lRest.pos.set(REST, 0.15, 1.0);
   const spring = new THREE.Mesh(new THREE.BufferGeometry(), clay(0x7fa7a0, { metalness: 0.3 }));
-  spring.castShadow = true; group.add(spring);
+  spring.castShadow = true; spring.receiveShadow = true; group.add(spring);
+  const springCap = shadowed(new THREE.Mesh(new THREE.SphereGeometry(0.055, 14, 10), spring.material)); group.add(springCap);   // 彈簧末端圓蓋
   const plate = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.14, 32), clay(0x5f8c84)));
   plate.rotation.z = Math.PI / 2; group.add(plate);
   const ball = shadowed(new THREE.Mesh(new THREE.SphereGeometry(R, 40, 28), clay(0xff8a5b, { emissive: 0xff6a2a, emissiveIntensity: 0.2 })));
@@ -732,7 +768,8 @@ const M3 = (() => {
       pts.push(V3(WALL_X + len * t, Y + 0.32 * Math.sin(a), 0.32 * Math.cos(a)));
     }
     spring.geometry.dispose();
-    spring.geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 400, 0.055, 8, false);
+    spring.geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 320, 0.055, 12, false);   // 斷面 12 邊：看不出稜角
+    springCap.position.copy(pts[pts.length - 1]);
   }
 
   // 狀態：comp = 壓縮量（≥0）；ballX = 球心 x；phase: 'rest' | 'drag' | 'push' | 'fly'
