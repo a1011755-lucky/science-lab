@@ -94,7 +94,9 @@
     .tag { font-size: .62rem; padding: 2px 7px; }
   }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
+<script src="keypoints.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -229,9 +231,10 @@ function alongFloor(tilt01) {
 function tiltWord(t) { return t < 0.12 ? '水平' : t > 0.88 ? '垂直' : '傾斜'; }
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
+if (window.Look) window.Look.bindRenderer(renderer);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -896,7 +899,7 @@ $('collapse').addEventListener('click', () => {
   $('dock').addEventListener(ev, e => e.stopPropagation(), { passive: true });
 });
 function syncQuality() {
-  const rec = look.tier() === 'record';
+  const rec = window.Look ? window.Look.mode === 'record' : look.tier() === 'record';
   $('qClass').classList.toggle('on', !rec);
   $('qRecord').classList.toggle('on', rec);
 }
@@ -910,8 +913,8 @@ function resize() {
   camera.updateProjectionMatrix();
   syncQuality();
 }
-$('qClass').addEventListener('click', () => { look.setTier('class'); resize(); });
-$('qRecord').addEventListener('click', () => { look.setTier('record'); resize(); });
+$('qClass').addEventListener('click', () => { look.setTier('class'); if (window.Look) window.Look.setMode('class'); else resize(); });
+$('qRecord').addEventListener('click', () => { look.setTier('record'); if (window.Look) window.Look.setMode('record'); else resize(); });
 window.addEventListener('resize', () => { resize(); if (TABS[tab]) goView(TABS[tab].cam(), true); });
 
 const body = document.querySelector('#panel .body');

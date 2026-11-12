@@ -121,6 +121,7 @@
 </style>
 <script src="quality.js"></script>
 <script src="mobile.js"></script>
+<script src="keypoints.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -141,7 +142,7 @@
   <div class="title">恆定性實驗室</div>
   <div class="body">
     <div class="tabs three">
-      <button class="tab on" data-tab="br">🫁 呼吸運動<small>肋骨與橫膈</small></button>
+      <button class="tab on" data-tab="br">🫁 呼吸運動<small>肋間肌・肋骨・橫膈</small></button>
       <button class="tab" data-tab="rx">🧪 呼吸作用<small>檢驗 CO₂ 與水</small></button>
       <button class="tab" data-tab="ho">⚖️ 恆定調節<small>血糖・體溫・水分</small></button>
     </div>
@@ -223,7 +224,8 @@ const TAU = Math.PI * 2;
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
+if (window.Look) window.Look.bindRenderer(renderer);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -241,7 +243,7 @@ scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
 const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
 sun.position.set(-7, 16, 10);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(2048, 2048); if (window.Look) window.Look.bindLight(sun);
 Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
 sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
 scene.add(sun);
@@ -509,7 +511,7 @@ const BR = (() => {
   const stemG = glowSprite('255,190,60', 0.6); stemG.position.set(0, 5.1, -0.1); T.add(stemG);
   const pts = Array.from({ length: 24 }, (_, i) => { const p = sphere(0.04, clay(0x7cc4f5), 8); p.userData.k = i / 24; p.userData.s = i % 2 ? 1 : -1; T.add(p); return p; });
   const L = (t, p) => addLabel('br', t, 'part', p);
-  [L('鼻', V3(-0.55, 5.35, 0.5)), L('氣管', V3(-0.42, 4.55, 0.2)), L('支氣管', V3(0.72, 4.2, 0.3)), L('肺', V3(-0.5, 3.55, 0.45)), L('肋骨', V3(0.95, 3.45, 0.4)), L('橫膈膜', V3(0.95, 2.85, 0.3)), L('腦幹（呼吸中樞）', V3(-1.4, 5.15, 0))];
+  [L('鼻', V3(-0.55, 5.35, 0.5)), L('氣管', V3(-0.42, 4.55, 0.2)), L('支氣管', V3(0.72, 4.2, 0.3)), L('肺', V3(-0.5, 3.55, 0.45)), L('肋骨／肋間肌', V3(0.95, 3.45, 0.4)), L('橫膈膜', V3(0.95, 2.85, 0.3)), L('腦幹（呼吸中樞）', V3(-1.4, 5.15, 0))];
   const lPress = addLabel('br', '', 'yel', V3(0, 4.9, 1.2));
   const st = { act: 'rest', auto: true, ph: 0, b: 0, manual: null, co2: 0.3 };
   document.querySelectorAll('.abtn').forEach(b => b.addEventListener('click', () => { document.querySelectorAll('.abtn').forEach(x => x.classList.toggle('on', x === b)); st.act = b.dataset.a; }));
@@ -546,8 +548,8 @@ const BR = (() => {
     const bar = (n, v, c, t) => `<span>${n}</span><div class="bar"><i style="width:${Math.round(v * 100)}%;background:${c}"></i></div><span>${t}</span>`;
     setHTML('brStat', `<div class="nbar">${bar('血液 CO₂', st.co2, '#8d6e63', st.co2 > 0.6 ? '偏高' : '正常')}${bar('呼吸頻率', (rate - 10) / 30, '#1e6aa8', Math.round(rate) + ' 次')}${bar('胸腔體積', b, '#e57373', b > 0.5 ? '大' : '小')}</div>
       <div style="margin-top:6px">肺內壓：<b>${P.toFixed(1)} mmHg</b>${P < 759.9 ? '（<b style="color:#1e6aa8">低於</b>大氣壓 → 空氣進入）' : P > 760.1 ? '（<b style="color:#c62828">高於</b>大氣壓 → 空氣排出）' : '（＝ 大氣壓）'}</div>
-      <div style="margin-top:6px">${inhale || b > 0.5 ? '吸氣：<b>肋骨上升、橫膈下降</b> → 胸腔變大 → 空氣進入肺' : '呼氣：<b>肋骨下降、橫膈上升</b> → 胸腔變小 → 空氣排出'}</div>
-      <div style="margin-top:4px">肺沒有肌肉，要靠肋骨和橫膈改變胸腔大小。</div>`);
+      <div style="margin-top:6px">${inhale || b > 0.5 ? '吸氣：<b>肋間肌收縮、肋骨上舉、橫膈下降</b> → 胸腔變大 → 空氣進入肺' : '呼氣：<b>肋間肌舒張、肋骨下降、橫膈上升</b> → 胸腔變小 → 空氣排出'}</div>
+      <div style="margin-top:4px">肺本身沒有會把空氣泵出去的肌肉（「呼吸時肺的肌肉收縮使氣體排出」是錯的），要靠<b>肋間肌</b>、肋骨和橫膈改變胸腔大小。</div>`);
     setCap(st.act === 'run' ? `<small>激烈運動</small>細胞的呼吸作用增加 → 血液 CO₂ 變多 → <b>腦幹</b>讓呼吸加快（每分鐘約 ${Math.round(rate)} 次）` : '<small>休息時</small>成人每分鐘呼吸約 <b>15～18 次</b>，由<b>腦幹</b>自動控制');
   }
   return { group, update, st };

@@ -112,6 +112,7 @@
 </style>
 <script src="quality.js"></script>
 <script src="mobile.js"></script>
+<script src="keypoints.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -160,7 +161,7 @@
 
     <!-- Tab 3 -->
     <section class="sec" data-tab="sel" hidden>
-      <div class="concept" style="--cc:#4f7d5c"><div class="ct">天擇：環境選擇了適合的個體</div><div class="cd">族群中本來就有<b>差異（變異）</b>，較能適應環境的個體容易存活、繁殖後代</div></div>
+      <div class="concept" style="--cc:#4f7d5c"><div class="ct">達爾文的天擇說</div><div class="cd">族群中本來就有<b>差異（變異）</b>，較能適應環境的個體容易存活、繁殖後代<br>不是拉馬克的「用進廢退」：長頸鹿不是因為脖子愈伸愈長才遺傳下去</div></div>
       <div class="row2"><button class="btn tbtn on" data-t="clean">🌳 乾淨的樹幹</button><button class="btn tbtn" data-t="soot">🏭 被煤煙燻黑</button></div>
       <div class="row2"><button class="btn primary" id="selGen">🐦 過一個世代</button><button class="btn" id="selAuto">⏩ 連續 10 代</button></div>
       <button class="btn" id="selReset">↺ 重來</button>
@@ -192,7 +193,8 @@ const TAU = Math.PI * 2;
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
+if (window.Look) window.Look.bindRenderer(renderer);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -210,7 +212,7 @@ scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
 const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
 sun.position.set(-7, 16, 10);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(2048, 2048); if (window.Look) window.Look.bindLight(sun);
 Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
 sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
 scene.add(sun);
@@ -533,7 +535,7 @@ const SE = (() => {
     } else bird.visible = false;
     chart();
     const soot = st.env === 'soot';
-    setHTML('selCard', `<h4>第 ${st.gen} 代</h4>深色蛾 <b>${Math.round(st.dark * 100)}%</b>、淺色蛾 <b>${Math.round((1 - st.dark) * 100)}%</b><br>${soot ? '樹幹被煤煙燻黑，<b>淺色蛾</b>很顯眼、容易被鳥吃掉；深色蛾不容易被發現，存活下來繁殖。' : '樹幹顏色淺，<b>深色蛾</b>很顯眼、容易被鳥吃掉；淺色蛾比較不容易被發現。'}<br>環境選擇了較能適應的個體，族群特徵就跟著改變。`);
+    setHTML('selCard', `<h4>第 ${st.gen} 代</h4>深色蛾 <b>${Math.round(st.dark * 100)}%</b>、淺色蛾 <b>${Math.round((1 - st.dark) * 100)}%</b><br>${soot ? '樹幹被煤煙燻黑，<b>淺色蛾</b>很顯眼、容易被鳥吃掉；深色蛾不容易被發現，存活下來繁殖。' : '樹幹顏色淺，<b>深色蛾</b>很顯眼、容易被鳥吃掉；淺色蛾比較不容易被發現。'}<br>這是<b>達爾文的天擇說</b>：變異本來就有，環境選擇了較能適應的個體。不是拉馬克的「用進廢退」。`);
     setCap(st.anim > 0 ? '<small>鳥來覓食</small>顯眼的蛾比較容易被吃掉' : `<small>天擇・${soot ? '工業污染後' : '乾淨的環境'}</small>按「過一個世代」，看看哪一種顏色的蛾比較容易活下來`);
   }
   return { group, update, st, generation };

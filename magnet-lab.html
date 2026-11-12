@@ -140,7 +140,9 @@
   .btn.hbtn.on { border-style: solid; background: #fff1c9; box-shadow: 0 0 0 3px rgba(255,179,0,.18); }
   .btn.hbtn.on small { background: #ffb300; color: #fff; }
 </style>
+<script src="quality.js"></script>
 <script src="mobile.js"></script>
+<script src="keypoints.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -256,9 +258,10 @@ const TAU = Math.PI * 2;
    溫暖無印風場景：米白背景、木紋桌、柔和光影
    ========================================================= */
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
+if (window.Look) window.Look.bindRenderer(renderer);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -1124,14 +1127,15 @@ function resize() {
   bloomComposer.setPixelRatio(rec ? dpr : Math.min(dpr, 1));
   bloomComposer.setSize(w, h);
   camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+  syncQuality();
 }
 function syncQuality() {
-  const rec = look.tier() === 'record';
+  const rec = window.Look ? window.Look.mode === 'record' : look.tier() === 'record';
   $('qClass').classList.toggle('on', !rec);
   $('qRecord').classList.toggle('on', rec);
 }
-$('qClass').addEventListener('click', () => { look.setTier('class'); resize(); syncQuality(); });
-$('qRecord').addEventListener('click', () => { look.setTier('record'); resize(); syncQuality(); });
+$('qClass').addEventListener('click', () => { look.setTier('class'); if (window.Look) window.Look.setMode('class'); else resize(); });
+$('qRecord').addEventListener('click', () => { look.setTier('record'); if (window.Look) window.Look.setMode('record'); else resize(); });
 syncQuality();
 window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
 

@@ -122,6 +122,7 @@
 </style>
 <script src="quality.js"></script>
 <script src="mobile.js"></script>
+<script src="keypoints.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -215,7 +216,8 @@ const S = THREE.MathUtils.smoothstep;
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
+if (window.Look) window.Look.bindRenderer(renderer);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -228,7 +230,7 @@ scene.add(new THREE.HemisphereLight(0xffffff, 0xd6dde6, 0.6));
 const sun = new THREE.DirectionalLight(0xffffff, 2.1);
 sun.position.set(-6, 12, 10);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(2048, 2048); if (window.Look) window.Look.bindLight(sun);
 Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10, near: 1, far: 50 });
 sun.shadow.radius = 4;
 scene.add(sun);
@@ -275,6 +277,7 @@ function deform(x, y, z) {
 function orgNoise(x, y, z, s) { return Math.sin(x * 1.7 + s) * Math.sin(y * 2.3 + s * 1.3) * Math.sin(z * 1.9 + s * 0.7) + 0.5 * Math.sin(x * 3.1 - s) * Math.sin(y * 2.9 + s * 2.1) * Math.sin(z * 3.7 + s); }
 function orgSmooth(g) { const p = g.attributes.position, n = g.attributes.normal, m = new Map(); for (let i = 0; i < p.count; i++) { const k = Math.round(p.getX(i) * 1e4) + "," + Math.round(p.getY(i) * 1e4) + "," + Math.round(p.getZ(i) * 1e4); let a = m.get(k); if (!a) { a = [0, 0, 0, []]; m.set(k, a); } a[0] += n.getX(i); a[1] += n.getY(i); a[2] += n.getZ(i); a[3].push(i); } for (const a of m.values()) { const l = Math.hypot(a[0], a[1], a[2]) || 1; for (const i of a[3]) n.setXYZ(i, a[0] / l, a[1] / l, a[2] / l); } n.needsUpdate = true; }
 function blobGeo(r, { amp = 0.08, freq = 1.4, seed = 1, detail = 5, ripple = 0, rippleF = 9 } = {}) {
+  detail = window.Look ? window.Look.segments(detail, Math.min(detail, 2)) : detail;
   const g = new THREE.IcosahedronGeometry(1, detail), p = g.attributes.position, v = new THREE.Vector3();
   for (let i = 0; i < p.count; i++) {
     v.fromBufferAttribute(p, i).normalize();
@@ -301,7 +304,7 @@ const oblob = (r, o = {}) => blobGeo(r, { amp: 0.06, seed: (orgSeed = orgSeed * 
 const MUSCLE_GEO = spindleGeo(2, 1, { blunt: 0.6, seed: 2 }).rotateZ(Math.PI / 2);
 const MUSCLE = 0xc94b58, MUSCLE_IN = 0x8e2a36;
 {
-  const g = new THREE.SphereGeometry(1, 120, 90);
+  const g = new THREE.SphereGeometry(1, window.Look ? window.Look.segments(120, 48) : 120, window.Look ? window.Look.segments(90, 32) : 90);
   const p = g.attributes.position;
   for (let i = 0; i < p.count; i++) {
     const v = deform(p.getX(i), p.getY(i), p.getZ(i));
@@ -321,8 +324,10 @@ const MUSCLE = 0xc94b58, MUSCLE_IN = 0x8e2a36;
   heart.userData.shell = back;
   // 剖面切口：一圈厚厚的心肌壁
   const rim = [];
-  for (let i = 0; i < 160; i++) { const t = i / 160 * Math.PI * 2; rim.push(deform(Math.cos(t), Math.sin(t), 0)); }
-  const rimMesh = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rim, true), 240, 0.11, 12, true), clay(0xb73d4b, { roughness: 0.5 }));
+  const rimN = window.Look ? window.Look.segments(160, 64) : 160;
+  const rimTube = window.Look ? window.Look.segments(240, 80) : 240;
+  for (let i = 0; i < rimN; i++) { const t = i / rimN * Math.PI * 2; rim.push(deform(Math.cos(t), Math.sin(t), 0)); }
+  const rimMesh = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rim, true), rimTube, 0.11, window.Look ? window.Look.segments(12, 6) : 12, true), clay(0xb73d4b, { roughness: 0.5 }));
   rimMesh.castShadow = true;
   heart.add(rimMesh);
   // 冠狀血管：爬在心臟表面的紅色動脈、藍紫色靜脈
@@ -676,7 +681,7 @@ function lap() {
   return W;
 }
 
-const N = 90;
+const N = window.Look ? window.Look.particles(90, 36) : 90;
 const pGeo = discCellGeo(0.14);
 const particles = [];
 for (let i = 0; i < N; i++) {

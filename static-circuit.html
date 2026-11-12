@@ -165,6 +165,7 @@
 </style>
 <script src="quality.js"></script>
 <script src="mobile.js"></script>
+<script src="keypoints.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -313,7 +314,8 @@ const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
+if (window.Look) window.Look.bindRenderer(renderer);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -333,7 +335,7 @@ scene.add(new THREE.HemisphereLight(0xfffaf0, 0xd8c3a0, 1.05));
 const sun = new THREE.DirectionalLight(0xfff1dc, 2.0);
 sun.position.set(-5, 13, 9);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(2048, 2048); if (window.Look) window.Look.bindLight(sun);
 Object.assign(sun.shadow.camera, { left: -13, right: 13, top: 13, bottom: -8, near: 1, far: 50 });
 sun.shadow.radius = 6;
 scene.add(sun);

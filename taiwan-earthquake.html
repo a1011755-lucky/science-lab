@@ -116,6 +116,7 @@
 </style>
 <script src="quality.js"></script>
 <script src="mobile.js"></script>
+<script src="keypoints.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -201,7 +202,8 @@ const FOCAL_DEPTH_KM = 15;                          // 震源深度（標示用�
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
+if (window.Look) window.Look.bindRenderer(renderer);
 renderer.shadowMap.type = THREE.PCFShadowMap;
 $('scene').appendChild(renderer.domElement);
 
@@ -223,7 +225,7 @@ scene.add(new THREE.HemisphereLight(0xffffff, 0x8a7a66, 1.5));
 const sun = new THREE.DirectionalLight(0xfff4e0, 1.6);
 sun.position.set(-8, 16, 10);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(2048, 2048); if (window.Look) window.Look.bindLight(sun);
 Object.assign(sun.shadow.camera, { left: -14, right: 14, top: 12, bottom: -12 });
 sun.shadow.radius = 5;
 scene.add(sun);

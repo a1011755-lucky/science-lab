@@ -161,6 +161,7 @@
 </style>
 <script src="quality.js"></script>
 <script src="mobile.js"></script>
+<script src="keypoints.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -310,7 +311,8 @@ const TAU = Math.PI * 2;
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
 renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
+if (window.Look) window.Look.bindRenderer(renderer);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -328,7 +330,7 @@ scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
 const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
 sun.position.set(-7, 16, 10);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(2048, 2048); if (window.Look) window.Look.bindLight(sun);
 Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
 sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
 scene.add(sun);
@@ -471,6 +473,7 @@ const glass = (o = {}) => new THREE.MeshPhysicalMaterial({ color: 0xffffff, tran
 function orgNoise(x, y, z, s) { return Math.sin(x * 1.7 + s) * Math.sin(y * 2.3 + s * 1.3) * Math.sin(z * 1.9 + s * 0.7) + 0.5 * Math.sin(x * 3.1 - s) * Math.sin(y * 2.9 + s * 2.1) * Math.sin(z * 3.7 + s); }
 function orgSmooth(g) { const p = g.attributes.position, n = g.attributes.normal, m = new Map(); for (let i = 0; i < p.count; i++) { const k = Math.round(p.getX(i) * 1e4) + "," + Math.round(p.getY(i) * 1e4) + "," + Math.round(p.getZ(i) * 1e4); let a = m.get(k); if (!a) { a = [0, 0, 0, []]; m.set(k, a); } a[0] += n.getX(i); a[1] += n.getY(i); a[2] += n.getZ(i); a[3].push(i); } for (const a of m.values()) { const l = Math.hypot(a[0], a[1], a[2]) || 1; for (const i of a[3]) n.setXYZ(i, a[0] / l, a[1] / l, a[2] / l); } n.needsUpdate = true; }
 function blobGeo(r, { amp = 0.08, freq = 1.4, seed = 1, detail = 5, ripple = 0, rippleF = 9 } = {}) {
+  detail = window.Look ? window.Look.segments(detail, Math.min(detail, 2)) : detail;
   const g = new THREE.IcosahedronGeometry(1, detail), p = g.attributes.position, v = new THREE.Vector3();
   for (let i = 0; i < p.count; i++) {
     v.fromBufferAttribute(p, i).normalize();
@@ -583,8 +586,8 @@ const LF = (() => {
   function makeFish() {
     const g = new THREE.Group();
     const gravel = cyl(0.85, 0.85, 0.12, clay(0xd9c3a0, { roughness: 1 }), 32); gravel.position.y = 0.16; g.add(gravel);
-    const bowl = new THREE.Mesh(new THREE.SphereGeometry(1.2, 48, 32, 0, TAU, 0.42, Math.PI - 0.42), glass({ opacity: 0.25 })); bowl.position.y = 1.15; g.add(bowl);
-    const water = new THREE.Mesh(new THREE.SphereGeometry(1.13, 40, 24, 0, TAU, 0.8, Math.PI - 0.8), new THREE.MeshPhysicalMaterial({ color: 0x8fd0f0, transparent: true, opacity: 0.22, roughness: 0.1, depthWrite: false })); water.position.y = 1.15; g.add(water);
+    const bowl = new THREE.Mesh(new THREE.SphereGeometry(1.2, window.Look ? window.Look.segments(48, 20) : 48, window.Look ? window.Look.segments(32, 14) : 32, 0, TAU, 0.42, Math.PI - 0.42), glass({ opacity: 0.25 })); bowl.position.y = 1.15; g.add(bowl);
+    const water = new THREE.Mesh(new THREE.SphereGeometry(1.13, window.Look ? window.Look.segments(40, 18) : 40, window.Look ? window.Look.segments(24, 12) : 24, 0, TAU, 0.8, Math.PI - 0.8), new THREE.MeshPhysicalMaterial({ color: 0x8fd0f0, transparent: true, opacity: 0.22, roughness: 0.1, depthWrite: false })); water.position.y = 1.15; g.add(water);
     [[-0.45, 0.2], [0.4, -0.35]].forEach(([x, z]) => { const p = cyl(0.04, 0.05, 0.7, clay(0x5fa35a), 8); p.position.set(x, 0.55, z); p.rotation.z = x * 0.4; g.add(p); });
     const mkFish = sc => {
       const f = new THREE.Group();
