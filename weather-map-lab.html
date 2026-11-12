@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>天氣圖判讀與臺灣的天氣</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+  .tabs.three .tab { font-size: .72rem; padding: 9px 2px; }
+  .objs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .objs.three { grid-template-columns: repeat(3, 1fr); }
+  .objs .btn { padding: 8px 4px; font-size: .78rem; margin-top: 0; }
+  .objs .btn.yes { background: #e3f1e6; color: #2e6b3f; } .objs .btn.no { background: #fde5e2; color: #a5311f; }
+  .orgcard { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin-top: 8px; font-size: .8rem; line-height: 1.65; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
+  .orgcard:empty { display: none; }
+  .orgcard h4 { font-size: .98rem; font-weight: 900; margin-bottom: 2px; }
+  .orgcard .pill { display: inline-block; font-size: .72rem; font-weight: 800; color: #fff; background: #7b5ea7; border-radius: 999px; padding: 1px 9px; margin: 2px 4px 2px 0; }
+  .orgcard i.sci { font-family: Georgia, serif; }
+  .orgcard table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .orgcard td, .orgcard th { padding: 2px 4px; border-bottom: 1px solid #efe6d8; font-size: .74rem; text-align: left; }
+  .orgcard tr.same { background: #e3f1e6; } .orgcard tr.diff td { color: #a8998a; }
+  .tag.big { font-size: .86rem; }
+  .stat table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: .74rem; }
+  .stat td, .stat th { padding: 3px 3px; border-bottom: 1px solid #efe6d8; text-align: left; white-space: nowrap; }
+  .stat tr.same { background: #e3f1e6; }
+  .tip { background: #fff3c4; color: #7a5300; border: 1.5px solid #e0b000; border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .82rem; font-weight: 800; line-height: 1.6; animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  .tip[hidden], .mapbox[hidden], .btn[hidden] { display: none; }
+  .ticks span:first-child { text-align: left; } .ticks span:last-child { text-align: right; }
+  .meter { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: .74rem; font-weight: 800; color: var(--ink-soft); }
+  .meter i { flex: 1; height: 16px; border-radius: 999px; background: linear-gradient(90deg, #f7efe6, #8b2e0f); position: relative; }
+  .meter i::after { content: ''; position: absolute; top: -4px; width: 6px; height: 24px; border-radius: 3px; background: var(--ink); left: var(--v, 50%); transform: translateX(-50%); transition: left .2s; }
+  .cap .eq { display: inline-flex; align-items: center; gap: 6px; font-size: 1.05em; font-weight: 900; }
+  .cap .arrs { display: inline-flex; flex-direction: column; line-height: .9; font-size: 1.1em; }
+  .cap .arrs span { opacity: .28; transition: opacity .3s, color .3s, transform .3s; }
+  .cap .arrs span.on { opacity: 1; color: #c62828; transform: scale(1.35); }
+  .cap .brown { color: #8b2e0f; }
+  .legend { display: flex; gap: 6px; margin: 8px 0 2px; font-size: .72rem; font-weight: 800; }
+  .legend .lg { flex: 1; text-align: center; border-radius: 999px; padding: 3px 0; color: #fff; }
+  .legend .f { background: #ff2d2d; } .legend .a { background: #22c55e; } .legend .w { background: #424242; } .legend .n { background: #29b6f6; }
+  .tag.vA { background: #16a34a; color: #fff; font-weight: 900; } .tag.vN { background: #29b6f6; color: #fff; font-weight: 900; }
+  .formula { font-size: 1.02rem; font-weight: 900; background: #fff1c9; border-radius: 10px; padding: 5px 8px; margin-bottom: 4px; text-align: center; } .bbtn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; color: #5d4037; }
+  .tag.vF { background: #ff2d2d; color: #fff; font-weight: 900; } .tag.vS { background: #29b6f6; color: #fff; font-weight: 900; } .tag.vW { background: #424242; color: #fff; font-weight: 900; } .tag.org { background: #ef6c00; color: #fff; font-weight: 900; }
+  .tip.ok { background: #e3f1e6; color: #1f5f32; border-color: #3f9a57; } .tip.bad { background: #fde5e2; color: #a5311f; border-color: #e53935; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+  .half { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px 9px; font-size: .76rem; line-height: 1.6; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
+  .half h4 { font-size: .86rem; font-weight: 900; margin-bottom: 2px; }
+  .half .res { margin-top: 4px; font-weight: 900; font-size: .9rem; border-radius: 10px; padding: 3px 6px; text-align: center; }
+  .half .res.pos { background: #e3f1e6; color: #1f5f32; } .half .res.neg { background: #fde5e2; color: #a5311f; } .half .res.zero { background: #efe9df; color: #7a6a5a; }
+  .legend .piv { background: #e0b800; } .legend .tq { background: #ff8a1f; }
+  .lvbtn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; color: #5d4037; }
+  .stat b.g { color: #2e7d32; } .stat b.r { color: #e53935; }
+  /* 毛玻璃：本頁規格 */
+  .panel.glass, .dock.glass, .skyBox.glass { background: rgba(255,255,255,0.5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 12px; color: #5d4037; }
+  .scaleNote { position: fixed; right: 14px; bottom: 10px; max-width: 46vw; z-index: 9; font-size: .72rem; font-weight: 700; color: #8d6e63; background: rgba(255,255,255,.5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 12px; padding: 4px 10px; }
+  .skyBox { position: fixed; right: 16px; top: 16px; z-index: 9; width: 236px; padding: 8px; }
+  .skyBox[hidden] { display: none; }
+  .skyBox canvas { width: 100%; height: auto; border-radius: 10px; display: block; margin: 5px 0; }
+  .skyT { font-size: .76rem; font-weight: 700; line-height: 1.4; }
+  .row2.mini .btn { font-size: .7rem; padding: 5px 2px; margin-top: 0; }
+  .hint { font-size: .72rem; color: #8d6e63; background: rgba(255,255,255,.55); border-radius: 10px; padding: 5px 8px; margin: 6px 0 8px; }
+  .chk { display: flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 700; margin-top: 8px; cursor: pointer; }
+  .chk input { width: 17px; height: 17px; accent-color: #8d6e63; }
+  .cards { display: grid; gap: 5px; margin-top: 8px; }
+  .cards .card { background: rgba(255,255,255,.72); border-radius: 12px; padding: 6px 9px; font-size: .78rem; line-height: 1.55; box-shadow: 0 3px 10px rgba(93,64,55,.06); }
+  .terms { margin-top: 8px; background: rgba(255,255,255,.72); border-radius: 12px; padding: 7px 9px; font-size: .76rem; line-height: 1.7; }
+  .ph4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; } .ph4 .btn { margin-top: 0; padding: 8px 2px; }
+  .tcurve { width: 100%; height: 150px; display: block; margin-top: 8px; border-radius: 10px; }
+  .tw { margin-top: 8px; background: rgba(255,255,255,.72); border-radius: 12px; padding: 6px 9px; font-size: .78rem; }
+  .tw summary { font-weight: 800; cursor: pointer; }
+  .twmap { width: 100%; height: auto; margin-top: 6px; }
+  .tip.gold { background: #fff4d6; color: #7a5300; border-color: #f0b429; } .tip.red { background: #fde5e2; color: #a5311f; border-color: #e53935; }
+  .ticks { display: flex; justify-content: space-between; }
+  .tag.sunL { background: #fff1c2; color: #8a5a00; } .tag.umb { background: #3d3d3d; color: #fff; } .tag.pen { background: #cfcfcf; color: #333; }
+  .tag.eclL { background: #ffe0b2; color: #8a4b00; } .tag.wdL { background: #d6e9ff; color: #0b4d9a; } .tag.nodeL { background: #ffd8c9; color: #b23c17; }
+  .tag.pullL { background: #ff3b30; color: #fff; } .tag.sunPullL { background: #ffd59e; color: #8a4b00; } .tag.seaL { background: #d8efff; color: #0d5ea8; } .tag.portL { background: #fff; color: #b71c1c; }
+  .tag.hiL { background: #1565c0; color: #fff; } .tag.loL { background: #ef6c00; color: #fff; } .tag.bandL { background: #dcedc8; color: #33691e; }
+  .tag.nowL { font-size: .86rem; font-weight: 900; } .tag.nowL.hi { background: #1565c0; color: #fff; } .tag.nowL.lo { background: #ef6c00; color: #fff; } .tag.nowL.up { background: #d8efff; color: #0d5ea8; } .tag.nowL.down { background: #ffe9d6; color: #a14a00; }
+  .stat b.r { color: #e53935; }
+  .legend.wl .h { background: #1e88e5; } .legend.wl .l { background: #e53935; } .legend.wl .w { background: #2ec5e6; }
+  .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; } .row3 .btn { margin-top: 0; }
+  .pbar { height: 6px; border-radius: 99px; background: rgba(93,64,55,.12); margin-top: 6px; position: relative; overflow: hidden; } .pbar::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: var(--p, 0%); background: #2ec5e6; }
+  .qbox { margin-top: 8px; background: rgba(255,255,255,.75); border-radius: 12px; padding: 8px 10px; font-size: .84rem; line-height: 1.6; }
+  .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 6px; } .opts .btn { margin-top: 0; font-size: .8rem; padding: 9px 4px; }
+  .opts .btn.yes { background: #e3f1e6; color: #1f5f32; box-shadow: 0 0 0 2px #3f9a57 inset; } .opts .btn.no { background: #fde5e2; color: #a5311f; box-shadow: 0 0 0 2px #e53935 inset; }
+  .tag.geo { background: rgba(255,255,255,.7); color: #6d4c41; font-weight: 800; } .tag.windL { background: #e0f7fb; color: #0b6f86; border: 1.5px solid #2ec5e6; } .tag.tempL { background: #fff3e0; color: #a14a00; } .tag.cityL { background: #ff7043; color: #fff; }
+  @media (max-width: 767px) { .skyBox { width: 160px; top: auto; bottom: 74px; right: 8px; } .skyT { font-size: .64rem; } .scaleNote { bottom: auto; top: 64px; right: 8px; font-size: .62rem; } }
+  .zbtn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; }
+</style>
+<script src="quality.js"></script>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+<div class="scaleNote" id="scaleNote">簡化示意圖：海岸線、氣壓數值與天氣系統大小都經過簡化</div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g8">‹ 課程總覽</a>
+  <div class="title">天氣圖判讀與臺灣的天氣</div>
+  <div class="body">
+    <div class="tabs three">
+      <button class="tab on" data-tab="isobar">🗺️ 等壓線與風<small>高壓吹向低壓</small></button>
+      <button class="tab" data-tab="season">🇹🇼 臺灣四季<small>季風・梅雨・颱風</small></button>
+      <button class="tab" data-tab="detect">🕵️ 天氣圖偵探<small>8 題四選一</small></button>
+    </div>
+    <div class="legend wl"><span class="lg h">H 高氣壓</span><span class="lg l">L 低氣壓</span><span class="lg w">風（水藍）</span></div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="isobar">
+      <div class="concept" style="--cc:#1e88e5"><div class="ct">風由高氣壓吹向低氣壓</div><div class="cd">北半球：高壓<b>順時針向外</b>吹、中心下沉；低壓<b>逆時針向內</b>吹、中心上升</div></div>
+      <div class="lab">📏 氣壓差（等壓線疏密）</div>
+      <div class="row3">
+        <button class="btn ibamp" data-a="1" type="button">小</button>
+        <button class="btn ibamp on" data-a="2" type="button">中</button>
+        <button class="btn ibamp" data-a="3" type="button">大</button>
+      </div>
+      <div class="row2">
+        <button class="btn ibtype" data-t="H" type="button">🔵 高氣壓 H</button>
+        <button class="btn ibtype on" data-t="L" type="button">🔴 低氣壓 L</button>
+      </div>
+      <label class="chk"><input type="checkbox" id="ibVert" checked> 顯示垂直氣流（上升／下沉）</label>
+      <div class="stat" id="ibStat"></div>
+      <div class="cards">
+        <div class="card">📏 等壓線越密 → 氣壓差越大 → <b>風越強</b></div>
+        <div class="card">🧭 風向是風的<b>來向</b>：東北季風表示從<b>東北方</b>吹來</div>
+      </div>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="season" hidden>
+      <div class="concept" style="--cc:#2e7d32"><div class="ct">臺灣四季的天氣圖</div><div class="cd">換一張天氣圖，看 H、L 與鋒面怎麼移動 6 秒</div></div>
+      <div class="row2">
+        <button class="btn snbtn on" data-s="winter" type="button">❄️ 冬：東北季風</button>
+        <button class="btn snbtn" data-s="meiyu" type="button">🌧️ 春末夏初：梅雨</button>
+      </div>
+      <div class="row2">
+        <button class="btn snbtn" data-s="summer" type="button">☀️ 夏：太平洋高壓</button>
+        <button class="btn snbtn" data-s="typhoon" type="button">🌀 夏秋：颱風</button>
+      </div>
+      <button class="btn primary" id="snPlay" type="button">▶ 再播一次（6 秒）</button>
+      <div class="pbar" id="snBar"></div>
+      <div class="stat" id="snStat"></div>
+      <div class="cards" id="snCards"></div>
+      <div class="desc">🔺 冷鋒（藍三角）、🔴 暖鋒（紅半圓）、滯留鋒（紅藍交錯）：符號凸出的方向＝鋒面移動的方向。</div>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="sec" data-tab="detect" hidden>
+      <div class="concept" style="--cc:#ef6c00"><div class="ct">天氣圖偵探</div><div class="cd">讀等壓線、H／L、鋒面符號，判斷橘色圖釘城市的風向與天氣</div></div>
+      <div class="ph4">
+        <button class="btn dtmap on" type="button">圖 1</button>
+        <button class="btn dtmap" type="button">圖 2</button>
+        <button class="btn dtmap" type="button">圖 3</button>
+        <button class="btn dtmap" type="button">圖 4</button>
+      </div>
+      <div class="qbox" id="dtQ"></div>
+      <div class="opts" id="dtOpts"></div>
+      <div class="tip" id="dtFb" hidden></div>
+      <button class="btn primary" id="dtNext" type="button" hidden>下一題 ➜</button>
+      <div class="desc" id="dtScore"></div>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'isobar', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+/* =========================================================
+   共用小工具
+   ========================================================= */
+const lerp = (a, b, k) => a + (b - a) * k;
+const sphere = (r, mat, seg = 24) => new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg * 0.6 | 0)), mat);
+const cyl = (r1, r2, h, mat, seg = 32, open = false) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg, 1, open), mat);
+const rbox = (w, h, d, mat, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001)), mat);
+const glassM = (op = 0.16) => new THREE.MeshPhysicalMaterial({ color: 0xd8ecf4, emissive: 0x9fb8c4, emissiveIntensity: 0.12, sheen: 1, sheenColor: 0xffffff, transparent: true, opacity: op, roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0.05, side: THREE.DoubleSide, depthWrite: false });
+const shellM = (c, op) => new THREE.MeshPhysicalMaterial({ color: c, transparent: true, opacity: op, roughness: 0.2, clearcoat: 0.6, side: THREE.DoubleSide, depthWrite: false });
+let rs = 4242;
+const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+const glowSprite = (rgb, s = 0.5) => { const g = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(rgb), transparent: true, depthWrite: false })); g.scale.setScalar(s); return g; };
+const ease = k => 1 - Math.exp(-k);
+function makeArrow(color) {
+  const g = new THREE.Group(); const m = clay(color, { emissive: color, emissiveIntensity: 0.25 });
+  const shaft = cyl(0.07, 0.07, 1, m, 16); const head = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.34, 20), m);
+  g.add(shaft, head); shadowed(g);
+  g.setLen = L => { L = Math.max(0.05, L); shaft.scale.y = L; shaft.position.y = L / 2; head.position.y = L + 0.17; };
+  g.setLen(1); return g;
+}
+/** 畫布貼圖面板（碼錶螢幕等） */
+function canvasPanel(w, h, pxW = 512) {
+  const c = document.createElement('canvas'); c.width = pxW; c.height = Math.round(pxW * h / w);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t, toneMapped: false }));
+  return { c, g: c.getContext('2d'), t, m };
+}
+let onTabChange = () => {};
+
+/* =========================================================
+   天氣圖判讀與臺灣的天氣：共用東亞地圖板
+   ・經緯度 → 桌面座標：x 向東、−z 向北（地圖北方朝畫面上方）
+   ・氣壓場＝基準 1012 hPa ＋ 每個高、低氣壓的鐘形分布
+   ・風＝由高壓吹向低壓（氣壓下降方向），北半球再往右偏 → 高壓順時針向外、低壓逆時針向內
+   ========================================================= */
+const WOOD_M = (c = 0xdeb887) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, metalness: 0 });
+const C_WIND = 0x2ec5e6, C_H = 0x1e88e5, C_L = 0xe53935;
+const UPV = new THREE.Vector3(0, 1, 0);
+const LON0 = 125, LAT0 = 30, KM = 0.28, MAPY = 0.3;
+const MX = lon => (lon - LON0) * KM, MZ = lat => -(lat - LAT0) * KM;
+const XMIN = MX(100), XMAX = MX(150), ZMIN = MZ(52), ZMAX = MZ(8);
+const mapGroup = new THREE.Group(); scene.add(mapGroup);
+/* ----- 地圖板：原木底座＋海＋陸地（簡化海岸線） ----- */
+{
+  const W = XMAX - XMIN, D = ZMAX - ZMIN, cx = (XMIN + XMAX) / 2, cz = (ZMIN + ZMAX) / 2;
+  const base = shadowed(new THREE.Mesh(new RoundedBoxGeometry(W + 0.8, 0.22, D + 0.8, 4, 0.08), WOOD_M()));
+  base.position.set(cx, 0.11, cz); mapGroup.add(base);
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshStandardMaterial({ color: 0xc6e0ee, roughness: 0.85 }));
+  sea.rotation.x = -Math.PI / 2; sea.position.set(cx, 0.225, cz); sea.receiveShadow = true; mapGroup.add(sea);
+  const LAND = {
+    asia: [[100, 52], [131, 52], [131.5, 43], [129.6, 41.5], [129.5, 37], [129.4, 35.2], [126.5, 34.4], [126.2, 37.6], [124.7, 39.9], [121.6, 39], [122.2, 40.5], [121, 40.9], [119.5, 39.9], [118, 39], [117.7, 38.4], [119, 37.2], [120.7, 37.8], [122.5, 37.3], [120.3, 36], [119.3, 35], [120.8, 32.5], [121.9, 31.2], [121.6, 30], [122, 29.5], [120.8, 27.9], [119.6, 26], [118.5, 24.6], [117, 23.6], [114.2, 22.3], [112, 21.7], [110.4, 21], [109.7, 21.6], [108, 21.5], [106.7, 20.4], [105.7, 18.9], [106.6, 17.4], [108.8, 15.3], [109.2, 12], [107.6, 10.5], [105, 8.7], [100, 8]],
+    taiwan: [[121.5, 25.3], [122, 25], [121.6, 24], [121.2, 22.8], [120.85, 21.9], [120.3, 22.6], [120.1, 23.3], [120.6, 24.5], [121, 25.1]],
+    hainan: [[108.7, 19.9], [111, 20.1], [110, 18.2], [108.6, 18.6]],
+    honshu: [[130.9, 34], [132.5, 35.4], [135.3, 35.6], [136.8, 37.3], [139.5, 38.2], [140, 40.5], [141.4, 41.4], [141.9, 39.8], [140.9, 38], [140.7, 35.7], [139.8, 35], [138.7, 34.6], [136.8, 34.3], [135.1, 33.7], [133, 34], [131, 33.9]],
+    kyushu: [[129.6, 33.5], [131.1, 33.9], [132, 32.5], [130.6, 31], [129.8, 32.7]],
+    shikoku: [[132.6, 33.9], [134.6, 34.2], [134.2, 33.2], [133, 32.8]],
+    hokkaido: [[140, 41.5], [141.5, 45.4], [145.6, 43.3], [143.3, 42], [141, 41.8]],
+    luzon: [[120.6, 18.5], [122.2, 18.4], [122, 16.2], [121.5, 14.2], [120.6, 14.5], [120.3, 16]]
+  };
+  const landM = new THREE.MeshStandardMaterial({ color: 0xe9d3a9, roughness: 0.8 });
+  for (const [k, pts] of Object.entries(LAND)) {
+    const s = new THREE.Shape(pts.map(([lo, la]) => new THREE.Vector2(MX(lo), -MZ(la))));
+    const g = new THREE.ExtrudeGeometry(s, { depth: 0.06, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.015, bevelSegments: 2 });
+    g.rotateX(-Math.PI / 2);
+    const m = new THREE.Mesh(g, k === 'taiwan' ? new THREE.MeshStandardMaterial({ color: 0xd9a86c, roughness: 0.75 }) : landM);
+    m.position.y = 0.226; m.receiveShadow = m.castShadow = true; mapGroup.add(m);
+  }
+}
+/* ----- 天氣圖圖層（畫布貼在地圖上）：等壓線、鋒面符號、H／L ----- */
+const CW = 1400, CH = Math.round(CW * (ZMAX - ZMIN) / (XMAX - XMIN));
+const wxCanvas = document.createElement('canvas'); wxCanvas.width = CW; wxCanvas.height = CH;
+const wxTex = new THREE.CanvasTexture(wxCanvas); wxTex.colorSpace = THREE.SRGBColorSpace; wxTex.anisotropy = 8;
+const wxPlane = new THREE.Mesh(new THREE.PlaneGeometry(XMAX - XMIN, ZMAX - ZMIN), new THREE.MeshBasicMaterial({ map: wxTex, transparent: true, depthWrite: false, toneMapped: false }));
+wxPlane.rotation.x = -Math.PI / 2; wxPlane.position.set((XMIN + XMAX) / 2, MAPY + 0.005, (ZMIN + ZMAX) / 2); wxPlane.renderOrder = 3; mapGroup.add(wxPlane);
+const PX = x => (x - XMIN) / (XMAX - XMIN) * CW, PZ = z => (z - ZMIN) / (ZMAX - ZMIN) * CH;
+/** 氣壓與風 */
+function pressure(sys, x, z) { let p = 1012; for (const s of sys) p += s.a * Math.exp(-((x - s.x) ** 2 + (z - s.z) ** 2) / (s.r * s.r)); return p; }
+function windAt(sys, x, z) {
+  let gx = 0, gz = 0;
+  for (const s of sys) { const e = s.a * Math.exp(-((x - s.x) ** 2 + (z - s.z) ** 2) / (s.r * s.r)); gx += e * -2 * (x - s.x) / (s.r * s.r); gz += e * -2 * (z - s.z) / (s.r * s.r); }
+  // 往氣壓下降的方向吹（−梯度），北半球往右偏 60°（從上往下看順時針）
+  const e0 = -gx, n0 = gz, c = Math.cos(1.05), sn = Math.sin(1.05);
+  const e1 = e0 * c + n0 * sn, n1 = -e0 * sn + n0 * c;
+  return new THREE.Vector2(e1, -n1);                          // (x, z) 方向，長度＝風速
+}
+const DIR8 = ['北', '東北', '東', '東南', '南', '西南', '西', '西北'];
+/** 風向＝風的「來向」 */
+function windName(w) { const e = -w.x, n = w.y; const b = (Math.atan2(e, n) * 180 / Math.PI + 360) % 360; return DIR8[Math.round(b / 45) % 8] + '風'; }
+/** 畫天氣圖：等壓線（每 4 hPa 一條）＋鋒面＋H／L */
+function drawWeather(sys, fronts = [], opt = {}) {
+  const g = wxCanvas.getContext('2d'); g.clearRect(0, 0, CW, CH);
+  const NX = 140, NZ = Math.round(NX * CH / CW), V = new Float32Array((NX + 1) * (NZ + 1));
+  const gx = i => XMIN + (XMAX - XMIN) * i / NX, gz = j => ZMIN + (ZMAX - ZMIN) * j / NZ;
+  let lo = 1e9, hi = -1e9;
+  for (let j = 0; j <= NZ; j++) for (let i = 0; i <= NX; i++) { const v = pressure(sys, gx(i), gz(j)); V[j * (NX + 1) + i] = v; lo = Math.min(lo, v); hi = Math.max(hi, v); }
+  const step = opt.step || 4;
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  for (let L = Math.ceil(lo / step) * step; L <= hi; L += step) {
+    if (L === 1012 && !opt.showBase) continue;
+    g.strokeStyle = L > 1012 ? 'rgba(25,95,170,.8)' : 'rgba(180,45,40,.8)'; g.lineWidth = 3;
+    g.beginPath(); let labelAt = null;
+    for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++) {
+      const a = V[j * (NX + 1) + i], b = V[j * (NX + 1) + i + 1], c = V[(j + 1) * (NX + 1) + i + 1], d = V[(j + 1) * (NX + 1) + i];
+      const pts = [];
+      const edge = (v1, v2, x1, z1, x2, z2) => { if ((v1 < L) !== (v2 < L)) { const t = (L - v1) / (v2 - v1); pts.push([x1 + (x2 - x1) * t, z1 + (z2 - z1) * t]); } };
+      edge(a, b, i, j, i + 1, j); edge(b, c, i + 1, j, i + 1, j + 1); edge(c, d, i + 1, j + 1, i, j + 1); edge(d, a, i, j + 1, i, j);
+      for (let k = 0; k + 1 < pts.length; k += 2) {
+        const [x1, z1] = pts[k], [x2, z2] = pts[k + 1];
+        g.moveTo(x1 / NX * CW, z1 / NZ * CH); g.lineTo(x2 / NX * CW, z2 / NZ * CH);
+        if (!labelAt && i > 8 && i < NX - 8 && j > 6 && j < NZ - 6 && (i + j) % 7 === 0) labelAt = [x1 / NX * CW, z1 / NZ * CH];
+      }
+    }
+    g.stroke();
+    if (labelAt) { g.font = '700 22px -apple-system, "Microsoft JhengHei", sans-serif'; g.textAlign = 'center'; g.fillStyle = 'rgba(255,255,255,.85)'; g.fillRect(labelAt[0] - 28, labelAt[1] - 14, 56, 26); g.fillStyle = L > 1012 ? '#195faa' : '#b42d28'; g.fillText(L, labelAt[0], labelAt[1] + 8); }
+  }
+  for (const f of fronts) drawFront(g, f);
+  for (const s of sys) {
+    if (s.hide) continue;
+    const x = PX(s.x), z = PZ(s.z), H = s.a > 0;
+    g.font = '900 78px Georgia, serif'; g.textAlign = 'center'; g.lineWidth = 8; g.strokeStyle = 'rgba(255,255,255,.95)';
+    g.strokeText(H ? 'H' : 'L', x, z + 26); g.fillStyle = H ? '#1e88e5' : '#e53935'; g.fillText(H ? 'H' : 'L', x, z + 26);
+    g.font = '700 24px -apple-system, "Microsoft JhengHei", sans-serif'; g.fillStyle = H ? '#195faa' : '#b42d28';
+    g.fillText(Math.round(pressure(sys, s.x, s.z)), x, z + 56);
+  }
+  wxTex.needsUpdate = true;
+}
+/** 鋒面符號：冷鋒藍三角、暖鋒紅半圓、滯留鋒紅藍交錯；符號凸出的方向＝移動方向 */
+function drawFront(g, f) {
+  const P = f.pts.map(([lo, la]) => [PX(MX(lo)), PZ(MZ(la))]);
+  const seg = [], lens = []; let tot = 0;
+  for (let i = 1; i < P.length; i++) { const l = Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]); seg.push([P[i - 1], P[i]]); lens.push(l); tot += l; }
+  const at = d => { let s = 0; for (let i = 0; i < seg.length; i++) { if (d <= s + lens[i] || i === seg.length - 1) { const t = Math.min(1, (d - s) / lens[i]); const [a, b] = seg[i]; return { x: a[0] + (b[0] - a[0]) * t, y: a[1] + (b[1] - a[1]) * t, tx: (b[0] - a[0]) / lens[i], ty: (b[1] - a[1]) / lens[i] }; } s += lens[i]; } };
+  const col = f.type === 'cold' ? '#1e63d6' : f.type === 'warm' ? '#e0352b' : null;
+  // 線
+  if (f.type === 'stat') {
+    for (let d = 0, k = 0; d < tot; d += 60, k++) { const a = at(d), b = at(Math.min(tot, d + 60)); g.strokeStyle = k % 2 ? '#1e63d6' : '#e0352b'; g.lineWidth = 6; g.beginPath(); g.moveTo(a.x, a.y); g.lineTo(b.x, b.y); g.stroke(); }
+  } else { g.strokeStyle = col; g.lineWidth = 6; g.beginPath(); P.forEach(([x, y], i) => (i ? g.lineTo : g.moveTo).call(g, x, y)); g.stroke(); }
+  // 符號
+  const S = 20;
+  for (let d = 30, k = 0; d < tot - 15; d += 60, k++) {
+    const p = at(d), nx = -p.ty * f.side, ny = p.tx * f.side;
+    const kind = f.type === 'stat' ? (k % 2 ? 'tri' : 'semi') : f.type === 'cold' ? 'tri' : 'semi';
+    const dir = f.type === 'stat' && kind === 'tri' ? -1 : 1;          // 滯留鋒：三角與半圓朝相反兩側
+    g.fillStyle = kind === 'tri' ? '#1e63d6' : '#e0352b';
+    if (kind === 'tri') { g.beginPath(); g.moveTo(p.x - p.tx * S, p.y - p.ty * S); g.lineTo(p.x + p.tx * S, p.y + p.ty * S); g.lineTo(p.x + nx * S * 1.3 * dir, p.y + ny * S * 1.3 * dir); g.closePath(); g.fill(); }
+    else { const a0 = Math.atan2(p.ty, p.tx); g.beginPath(); g.arc(p.x, p.y, S * 0.95, a0, a0 + Math.PI, (f.side * dir) > 0 ? false : true); g.closePath(); g.fill(); }
+  }
+}
+/* ----- 風：流動的水藍色細線＋網格上的小箭頭 ----- */
+const NPART = 650;
+const partGeo = new THREE.BufferGeometry(); partGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NPART * 6), 3));
+const partLines = new THREE.LineSegments(partGeo, new THREE.LineBasicMaterial({ color: C_WIND, transparent: true, opacity: 0.85, toneMapped: false }));
+partLines.frustumCulled = false; partLines.renderOrder = 5; mapGroup.add(partLines);
+const parts = Array.from({ length: NPART }, () => ({ x: 0, z: 0, age: 99 }));
+const glyphGeo = new THREE.ConeGeometry(0.07, 0.32, 10); glyphGeo.rotateX(Math.PI / 2);
+const glyphs = new THREE.InstancedMesh(glyphGeo, new THREE.MeshBasicMaterial({ color: 0x1a9fbd, toneMapped: false }), 400);
+glyphs.frustumCulled = false; mapGroup.add(glyphs);
+const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _s = new THREE.Vector3(), _p = new THREE.Vector3(), _f = new THREE.Vector3(0, 0, 1);
+function flowWind(sys, dt, gain = 1) {
+  const pos = partGeo.attributes.position;
+  for (let i = 0; i < NPART; i++) {
+    const P = parts[i];
+    if (P.age > 3 || P.x < XMIN || P.x > XMAX || P.z < ZMIN || P.z > ZMAX) { P.x = XMIN + Math.random() * (XMAX - XMIN); P.z = ZMIN + Math.random() * (ZMAX - ZMIN); P.age = Math.random() * 2; }
+    const w = windAt(sys, P.x, P.z), sp = w.length();
+    P.x += w.x * dt * 2.2 * gain; P.z += w.y * dt * 2.2 * gain; P.age += dt;
+    const k = Math.min(0.45, sp * 0.5);
+    pos.setXYZ(i * 2, P.x, MAPY + 0.06, P.z); pos.setXYZ(i * 2 + 1, P.x - (sp ? w.x / sp : 0) * k, MAPY + 0.06, P.z - (sp ? w.y / sp : 0) * k);
+  }
+  pos.needsUpdate = true;
+  let n = 0;
+  for (let x = XMIN + 0.8; x < XMAX; x += 1.45) for (let z = ZMIN + 0.8; z < ZMAX; z += 1.45) {
+    const w = windAt(sys, x, z), sp = w.length(); if (sp < 0.02) continue;
+    _p.set(x, MAPY + 0.1, z); _q.setFromUnitVectors(_f, _s.set(w.x / sp, 0, w.y / sp)); const sc = Math.min(1.15, 0.4 + sp * 0.35);
+    _m.compose(_p, _q, new THREE.Vector3(sc, sc, sc)); glyphs.setMatrixAt(n++, _m);
+  }
+  glyphs.count = n; glyphs.instanceMatrix.needsUpdate = true;
+}
+/* ----- 雲、雨、閃電（物品可以用球體） ----- */
+const cloudM = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, transparent: true, opacity: 0.92 });
+const darkCloudM = new THREE.MeshStandardMaterial({ color: 0x9aa3ad, roughness: 1, transparent: true, opacity: 0.95 });
+const puffGeo = new THREE.IcosahedronGeometry(1, 3);
+function makeCloud(dark = false) {
+  const g = new THREE.Group();
+  [[0, 0, 0, 0.42], [0.4, 0.05, 0.1, 0.32], [-0.38, 0.02, -0.05, 0.3], [0.12, 0.25, -0.1, 0.3], [-0.15, 0.18, 0.18, 0.26], [0.3, -0.05, -0.25, 0.25]].forEach(([x, y, z, r]) => { const m = new THREE.Mesh(puffGeo, dark ? darkCloudM : cloudM); m.position.set(x, y, z); m.scale.setScalar(r); m.castShadow = true; g.add(m); });
+  g.visible = false; mapGroup.add(g); return g;
+}
+const clouds = Array.from({ length: 16 }, (_, i) => makeCloud(i % 3 === 0));
+const RAIN = 500, rainGeo = new THREE.BufferGeometry(); rainGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(RAIN * 6), 3));
+const rain = new THREE.LineSegments(rainGeo, new THREE.LineBasicMaterial({ color: 0x5a9fd6, transparent: true, opacity: 0.8 })); rain.frustumCulled = false; mapGroup.add(rain);
+const drops = Array.from({ length: RAIN }, () => ({ x: 0, y: 0, z: 0, on: false }));
+const bolt = new THREE.Line(new THREE.BufferGeometry().setFromPoints([0, 1, 2, 3, 4].map(() => V3(0, 0, 0))), new THREE.LineBasicMaterial({ color: 0xfff176, toneMapped: false })); bolt.visible = false; mapGroup.add(bolt);
+/** 依天氣設定擺雲、下雨：spots＝[{lon, lat, s, dark}]，rainAt＝[{lon, lat, r}] */
+function weatherFX(dt, spots, rainAt, heavy = 0.6, thunder = false, grow = 1) {
+  clouds.forEach((c, i) => { const sp = spots[i]; c.visible = !!sp; if (!sp) return; c.position.set(MX(sp.lon), MAPY + 0.55 + (sp.h || 0) * grow, MZ(sp.lat)); c.scale.set(sp.s, sp.s * (sp.tall ? 1 + 1.6 * grow : 1), sp.s); c.children.forEach(m => { m.material = sp.dark ? darkCloudM : cloudM; }); });
+  const pos = rainGeo.attributes.position, n = Math.floor(RAIN * heavy * (rainAt.length ? 1 : 0));
+  for (let i = 0; i < RAIN; i++) {
+    const d = drops[i];
+    if (i >= n) { pos.setXYZ(i * 2, 0, -9, 0); pos.setXYZ(i * 2 + 1, 0, -9, 0); continue; }
+    if (!d.on || d.y < MAPY) { const r = rainAt[i % rainAt.length], a = Math.random() * Math.PI * 2, rr = Math.sqrt(Math.random()) * r.r; d.x = MX(r.lon) + Math.cos(a) * rr; d.z = MZ(r.lat) + Math.sin(a) * rr; d.y = MAPY + 0.5 + Math.random() * 0.4; d.on = true; }
+    d.y -= dt * 2.4;
+    pos.setXYZ(i * 2, d.x, d.y, d.z); pos.setXYZ(i * 2 + 1, d.x - 0.02, d.y + 0.12, d.z);
+  }
+  pos.needsUpdate = true;
+  bolt.visible = thunder && Math.sin(wall * 7.3) > 0.93 && Math.sin(wall * 2.1) > 0.2;
+  if (bolt.visible && thunder) { const s = spots.find(p => p.tall) || spots[0]; const p = bolt.geometry.attributes.position; const x = MX(s.lon), z = MZ(s.lat); [[0, 1.4], [0.12, 1.05], [-0.08, 0.8], [0.1, 0.55], [0, MAPY + 0.02]].forEach(([dx, y], i) => p.setXYZ(i, x + dx, i === 4 ? y : MAPY + y, z + 0.05)); p.needsUpdate = true; }
+}
+const hideFX = () => { clouds.forEach(c => { c.visible = false; }); weatherFX(0, [], [], 0); bolt.visible = false; };
+/* ----- 臺灣的風向計（原木）：箭頭指向風「吹來」的方向；旁邊的水藍箭頭是風吹去的方向 ----- */
+const vane = new THREE.Group(); mapGroup.add(vane);
+{ const pole = shadowed(cyl(0.025, 0.03, 0.75, WOOD_M(0x9c7448), 10)); pole.position.y = 0.375; vane.add(pole);
+  const arm = new THREE.Group(); arm.position.y = 0.72; vane.add(arm); vane.userData.arm = arm;
+  const rod = shadowed(cyl(0.018, 0.018, 0.7, WOOD_M(0xc49a6c), 8)); rod.rotation.x = Math.PI / 2; arm.add(rod);
+  const tip = shadowed(new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.16, 12), WOOD_M(0x8d6e4a))); tip.rotation.x = Math.PI / 2; tip.position.z = 0.42; arm.add(tip);
+  const tail = shadowed(new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.16, 0.2), WOOD_M(0xe8cfa6))); tail.position.z = -0.32; arm.add(tail); }
+const flowArrow = (() => { const g = new THREE.Group(), m = new THREE.MeshBasicMaterial({ color: C_WIND, toneMapped: false }); const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 1, 12), m), hd = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.22, 16), m); g.add(sh, hd); g.set = (from, dir, len) => { g.position.copy(from); g.quaternion.setFromUnitVectors(UPV, dir.clone().normalize()); sh.scale.y = Math.max(0.01, len - 0.22); sh.position.y = sh.scale.y / 2; hd.position.y = sh.scale.y + 0.11; }; mapGroup.add(g); return g; })();
+function placeVane(sys, lon, lat, lab) {
+  const x = MX(lon), z = MZ(lat), w = windAt(sys, x, z), sp = w.length();
+  vane.position.set(x, MAPY, z);
+  if (sp > 1e-4) { const from = V3(-w.x, 0, -w.y).normalize(); vane.userData.arm.rotation.y = Math.atan2(from.x, from.z); flowArrow.visible = true; flowArrow.set(V3(x, MAPY + 0.95, z).addScaledVector(from, 0.55), V3(w.x, 0, w.y), 1.1); }
+  else flowArrow.visible = false;
+  if (lab) { lab.pos.set(x + 0.9, MAPY + 1.15, z); lab.off.copy(lab.pos); }
+  return windName(w);
+}
+const geoLabels = [];
+[['中國大陸', 112, 33], ['日本', 137.5, 37.5], ['太平洋', 141, 21], ['臺灣', 119.0, 23.6], ['菲律賓', 118.6, 16.5]].forEach(([t, lo, la]) => geoLabels.push({ t, x: MX(lo), z: MZ(la) }));
+function geoTags(key) { geoLabels.forEach(g => addLabel(key, g.t, 'small geo', V3(g.x, MAPY + 0.15, g.z))); }
+const lerp2 = (a, b, k) => a + (b - a) * k;
+const easeIO = k => k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+
+/* =========================================================
+   Tab 1：等壓線與風
+   ========================================================= */
+const IB = (() => {
+  const group = new THREE.Group(); scene.add(group); geoTags('isobar');
+  const st = { amp: 2, type: 'L', vert: true };
+  const AMP = [0, 8, 16, 28];
+  document.querySelectorAll('.ibamp').forEach(b => b.addEventListener('click', () => { st.amp = +b.dataset.a; document.querySelectorAll('.ibamp').forEach(x => x.classList.toggle('on', x === b)); }));
+  document.querySelectorAll('.ibtype').forEach(b => b.addEventListener('click', () => { st.type = b.dataset.t; document.querySelectorAll('.ibtype').forEach(x => x.classList.toggle('on', x === b)); }));
+  $('ibVert').addEventListener('change', () => { st.vert = $('ibVert').checked; });
+  // 垂直氣流（水藍色＝速度）與中心的雲
+  const vArrows = Array.from({ length: 6 }, () => { const a = glowArrowW(); group.add(a); return a; });
+  function glowArrowW() { const g = new THREE.Group(), m = new THREE.MeshBasicMaterial({ color: C_WIND, toneMapped: false, transparent: true, opacity: 0.9 }); const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 1, 12), m), hd = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.26, 16), m); g.add(sh, hd); g.set = (from, up, len) => { g.position.copy(from); g.rotation.set(up ? 0 : Math.PI, 0, 0); sh.scale.y = len - 0.26; sh.position.y = sh.scale.y / 2; hd.position.y = sh.scale.y + 0.13; }; return g; }
+  const lVert = addLabel('isobar', '', 'small windL', V3(0, 0, 0)), lCity = addLabel('isobar', '', 'small windL', V3(0, 0, 0));
+  const CX = MX(126), CZ = MZ(28);
+  let key = '';
+  function update(dt) {
+    const a = AMP[st.amp] * (st.type === 'H' ? 1 : -1);
+    const sys = [{ x: CX, z: CZ, a, r: 3.4 }];
+    const k = st.amp + st.type;
+    if (k !== key) { key = k; drawWeather(sys, [], { step: 4 }); }
+    flowWind(sys, dt, 0.8);
+    // 中心的垂直氣流：高壓下沉、低壓上升
+    const up = st.type === 'L', t = (wall * 0.6) % 1;
+    vArrows.forEach((ar, i) => { ar.visible = st.vert; const ang = i / 6 * Math.PI * 2, r = i % 2 ? 0.55 : 0.25; ar.set(V3(CX + Math.cos(ang) * r, up ? MAPY + 0.2 + t * 0.5 : MAPY + 2.2 - t * 0.5, CZ + Math.sin(ang) * r), up, 1.1); });
+    if (st.vert && up) weatherFX(dt, [{ lon: 126, lat: 28, s: 1.6, h: 1.2 }, { lon: 127.6, lat: 29.2, s: 1.0, h: 1.0 }, { lon: 124.6, lat: 27, s: 1.1, h: 1.0 }], [{ lon: 126, lat: 28, r: 1.0 }], 0.35);
+    else hideFX();
+    setLabel(lVert, up ? '中心空氣上升 → 成雲致雨' : '中心空氣下沉 → 天氣晴朗'); lVert.show = st.vert; lVert.pos.set(CX + 1.3, MAPY + 2.6, CZ); lVert.off.copy(lVert.pos);
+    const nm = placeVane(sys, 121.5, 25, lCity);
+    setLabel(lCity, `臺灣：吹<b>${nm}</b>（風從${nm.replace('風', '')}方吹來）`);
+    const ws = windAt(sys, MX(121.5), MZ(25)).length();
+    const amp = AMP[st.amp], name = ['', '小', '中', '大'][st.amp];
+    setHTML('ibStat', `${st.type === 'H' ? '<b class="b">高氣壓 H</b>：中心氣壓 ' + (1012 + amp) : '<b class="r">低氣壓 L</b>：中心氣壓 ' + (1012 - amp)} hPa<br>氣壓差：<b>${name}</b>（等壓線每 4 hPa 一條，共 ${Math.floor(amp / 4)} 圈）<br>臺灣的風：<b>${nm}</b>　風力 <b>${'●'.repeat(Math.min(5, Math.max(1, Math.round(ws * 0.65))))}${'○'.repeat(5 - Math.min(5, Math.max(1, Math.round(ws * 0.65))))}</b><br><small>北半球：高壓<b>順時針</b>向外吹，低壓<b>逆時針</b>向內吹。</small>`);
+    setCap(`<small>等壓線與風・${st.type === 'H' ? '高氣壓' : '低氣壓'}</small>${st.type === 'H' ? '順時針向外吹、中心下沉' : '逆時針向內吹、中心上升'}<span class="huge ${st.amp === 3 ? 'red' : ''}">等壓線越密 → 風越強</span>`);
+  }
+  return { group, update, st, enter() { key = ''; } };
+})();
+
+/* =========================================================
+   四種天氣型態（Tab 2、Tab 3 共用）：k＝0→1 是 6 秒動畫的進度
+   ========================================================= */
+const P = (lon, lat) => ({ x: MX(lon), z: MZ(lat) });
+const SEASONS = {
+  winter: {
+    name: '冬季：大陸冷高壓南下', city: { n: '臺北', lon: 121.5, lat: 25.05 },
+    sys: k => [{ ...P(lerp2(108, 114, k), lerp2(48, 41, k)), a: 30, r: 5.2 }, { ...P(152, 46), a: -16, r: 4, hide: true }, { ...P(146, 40), a: -10, r: 3 }],
+    fronts: k => [{ type: 'cold', side: -1, pts: [[lerp2(145, 146, k), lerp2(39, 38, k)], [lerp2(134, 138, k), lerp2(32, 29, k)], [lerp2(124, 129, k), lerp2(27, 23, k)], [lerp2(115, 120, k), lerp2(25, 21, k)]] }],
+    fx: (k) => ({ spots: [{ lon: 121.8, lat: 25.3, s: 0.7, dark: true }, { lon: 122.4, lat: 24.6, s: 0.6, dark: true }, { lon: 123.5, lat: 25.6, s: 0.6 }], rain: [{ lon: 121.7, lat: 24.9, r: 0.45 }], heavy: 0.25 * k + 0.08 }),
+    temp: '氣溫下降 ↓', cards: ['❄️ 大陸冷高壓南下，臺灣吹<b>東北季風</b>', '☔ 北部、東北部是迎風面 → 陰雨、氣溫下降', '🥶 強烈冷氣團南下、氣溫驟降 → <b>寒潮</b>'],
+    cap: '大陸冷高壓 H 南下 → 東北季風 → 北部、東北部迎風面降雨'
+  },
+  meiyu: {
+    name: '春末夏初：梅雨', city: { n: '臺中', lon: 120.7, lat: 24.15 },
+    sys: k => [{ ...P(118, 37), a: 12, r: 4.6 }, { ...P(146, 24), a: 12, r: 5 }, { ...P(124, 26 + 0.6 * Math.sin(k * Math.PI * 3)), a: -5, r: 2.4, hide: true }],
+    fronts: k => { const d = 0.7 * Math.sin(k * Math.PI * 3); return [{ type: 'stat', side: 1, pts: [[108, 26 + d], [116, 25 + d], [122, 24.2 + d], [130, 26 + d], [140, 30 + d * 0.5]] }]; },
+    fx: () => ({ spots: [{ lon: 116, lat: 25.3, s: 0.8, dark: true }, { lon: 119.5, lat: 24.6, s: 0.8, dark: true }, { lon: 121, lat: 24.2, s: 0.9, dark: true }, { lon: 124, lat: 24.9, s: 0.8, dark: true }, { lon: 128, lat: 25.8, s: 0.75, dark: true }, { lon: 133, lat: 27.5, s: 0.7 }], rain: [{ lon: 121, lat: 24, r: 0.8 }, { lon: 117, lat: 25, r: 0.8 }, { lon: 127, lat: 25.6, r: 0.8 }], heavy: 0.75 }),
+    temp: '連日降雨', cards: ['🌧️ 冷、暖氣團勢力相當 → <b>滯留鋒</b> → 5、6 月連日降雨', '🔁 滯留鋒在臺灣附近南北徘徊，所以雨下很多天', '📝 暖鋒通常不經過臺灣'],
+    cap: '冷暖氣團勢力相當 → 滯留鋒在臺灣附近徘徊 → 梅雨'
+  },
+  summer: {
+    name: '夏季：太平洋高壓', city: { n: '臺南', lon: 120.2, lat: 23.0 },
+    sys: k => [{ ...P(lerp2(150, 140, k), lerp2(30, 27, k)), a: 14, r: 6.5 }, { ...P(108, 30), a: -10, r: 5 }],
+    fronts: () => [],
+    fx: k => ({ spots: [{ lon: 120.9, lat: 23.6, s: 0.75, tall: true, dark: k > 0.6, h: 0.4 }, { lon: 121.2, lat: 22.8, s: 0.5, tall: true, h: 0.3 }], rain: k > 0.6 ? [{ lon: 120.9, lat: 23.4, r: 0.45 }] : [], heavy: 0.6, thunder: k > 0.7, grow: k }),
+    temp: '炎熱，午後雷陣雨', cards: ['☀️ <b>太平洋高壓</b>籠罩，天氣炎熱', '⛈️ 午後地面受熱 → 空氣上升 → <b>積雨雲</b> → 雷陣雨', '🌬️ 臺灣多吹偏南風（西南季風）'],
+    cap: '太平洋高壓籠罩 → 炎熱 → 午後積雨雲、雷陣雨'
+  },
+  typhoon: {
+    name: '夏秋：颱風', city: { n: '臺北', lon: 121.5, lat: 25.05 },
+    sys: k => [{ ...P(lerp2(133, 124.2, easeIO(k)), lerp2(17.5, 22.3, easeIO(k))), a: -30, r: 1.6 }, { ...P(146, 32), a: 12, r: 5 }],
+    fronts: () => [],
+    fx: k => ({ spots: [], rain: [{ lon: lerp2(133, 124.2, easeIO(k)), lat: lerp2(17.5, 22.3, easeIO(k)), r: 1.4 }, { lon: 121.5, lat: 24, r: 0.9 * k }], heavy: 0.9 }),
+    temp: '狂風豪雨', cards: ['🌀 颱風是<b>熱帶低壓 L</b>，北半球<b>逆時針</b>向中心吹', '🌧️ 接近臺灣時帶來狂風豪雨', '🏞️ 颱風也為臺灣帶來重要的水資源（少了容易乾旱）'],
+    cap: '熱帶低壓（颱風）逆時針旋轉，接近臺灣 → 狂風豪雨'
+  }
+};
+/** 颱風雲帶：逆時針旋轉的螺旋貼圖 */
+const spiral = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d');
+  for (let arm = 0; arm < 3; arm++) for (let i = 0; i < 260; i++) { const t = i / 260, a = arm * 2.09 + t * 7, r = 20 + t * 230; g.fillStyle = `rgba(255,255,255,${0.75 * (1 - t) + 0.1})`; g.beginPath(); g.arc(256 + Math.cos(a) * r, 256 + Math.sin(a) * r, 26 * (1 - t * 0.6), 0, Math.PI * 2); g.fill(); }
+  g.globalCompositeOperation = 'destination-out'; g.beginPath(); g.arc(256, 256, 14, 0, Math.PI * 2); g.fill();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 3.4), new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, opacity: 0.9 }));
+  m.rotation.x = -Math.PI / 2; m.position.y = MAPY + 0.75; m.renderOrder = 6; m.visible = false; mapGroup.add(m); return m;
+})();
+function showSeason(key, k, dt) {
+  const S = SEASONS[key], sys = S.sys(k);
+  drawWeather(sys, S.fronts(k));
+  flowWind(sys, dt, 0.7);
+  const f = S.fx(k); weatherFX(dt, f.spots, f.rain, f.heavy, !!f.thunder, f.grow ?? 1);
+  spiral.visible = key === 'typhoon';
+  if (spiral.visible) { const L = sys[0]; spiral.position.x = L.x; spiral.position.z = L.z; spiral.rotation.z += dt * 1.6; }       // 從上往下看逆時針
+  return sys;
+}
+
+/* =========================================================
+   Tab 2：臺灣四季天氣
+   ========================================================= */
+const SN = (() => {
+  const group = new THREE.Group(); scene.add(group); geoTags('season');
+  const st = { key: 'winter', t: 0, play: true };
+  const lCity = addLabel('season', '', 'small windL', V3(0, 0, 0)), lTemp = addLabel('season', '', 'small tempL', V3(0, 0, 0));
+  document.querySelectorAll('.snbtn').forEach(b => b.addEventListener('click', () => { st.key = b.dataset.s; st.t = 0; st.play = true; document.querySelectorAll('.snbtn').forEach(x => x.classList.toggle('on', x === b)); }));
+  $('snPlay').addEventListener('click', () => { st.t = 0; st.play = true; });
+  function update(dt) {
+    if (st.play) { st.t = Math.min(6, st.t + dt); if (st.t >= 6) st.play = false; }
+    const k = st.t / 6, S = SEASONS[st.key], sys = showSeason(st.key, k, dt);
+    const nm = placeVane(sys, S.city.lon, S.city.lat, lCity);
+    setLabel(lCity, `${S.city.n}：吹<b>${nm}</b>`);
+    setLabel(lTemp, S.temp); lTemp.pos.set(MX(S.city.lon) - 1.2, MAPY + 1.4, MZ(S.city.lat) + 0.6); lTemp.off.copy(lTemp.pos);
+    $('snBar').style.setProperty('--p', (k * 100).toFixed(1) + '%');
+    $('snPlay').textContent = st.play ? `⏳ 播放中 ${st.t.toFixed(1)} / 6 秒` : '▶ 再播一次（6 秒）';
+    $('snCards').innerHTML = S.cards.map(c => `<div class="card">${c}</div>`).join('');
+    setHTML('snStat', `<b>${S.name}</b><br>${S.city.n}的風：<b class="b">${nm}</b>（風從${nm.replace('風', '')}方吹來）<br>天氣：<b>${S.temp}</b>`);
+    setCap(`<small>臺灣四季天氣・${S.name}</small><span class="huge">${S.cap}</span>`);
+  }
+  return { group, update, st, enter() { st.t = 0; st.play = true; } };
+})();
+
+/* =========================================================
+   Tab 3：天氣圖偵探（4 張固定圖、每張 2 題四選一；答錯時用動畫演示原因）
+   ========================================================= */
+const DT = (() => {
+  const group = new THREE.Group(); scene.add(group); geoTags('detect');
+  const ORDER = ['winter', 'meiyu', 'summer', 'typhoon'];
+  const st = { map: 0, q: 0, explain: 0, done: {} };
+  const lCity = addLabel('detect', '', 'big cityL', V3(0, 0, 0)), lWhy = addLabel('detect', '', 'small windL', V3(0, 0, 0));
+  const pin = new THREE.Group(); mapGroup.add(pin);
+  { const p = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.42, 20), new THREE.MeshStandardMaterial({ color: 0xff7043, roughness: 0.5 })); p.rotation.x = Math.PI; p.position.y = 0.21; pin.add(p); const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.17, 3), new THREE.MeshStandardMaterial({ color: 0xff7043, roughness: 0.5 })); b.position.y = 0.48; pin.add(b); }
+  const WEATHER_OPT = { winter: '陰雨、氣溫下降', meiyu: '連日降雨', summer: '炎熱，午後雷陣雨', typhoon: '狂風豪雨' };
+  function questions(key) {
+    const S = SEASONS[key], sys = S.sys(1), w = windAt(sys, MX(S.city.lon), MZ(S.city.lat)), right = windName(w);
+    const idx = DIR8.indexOf(right.replace('風', '')), wrong = [idx + 4, idx + 2, idx + 6].map(i => DIR8[i % 8] + '風');
+    const q1 = key === 'meiyu'
+      ? { q: `圖中臺灣附近紅藍交錯的鋒面是哪一種？`, opts: ['滯留鋒', '冷鋒', '暖鋒', '颱風'], a: '滯留鋒', why: '紅色半圓與藍色三角交錯，表示冷、暖氣團勢力相當，鋒面幾乎不動 → 滯留鋒。', kind: 'front' }
+      : { q: `${S.city.n}（橘色圖釘）吹什麼風？`, opts: [right, ...wrong], a: right, why: `看等壓線：風由高壓吹向低壓，北半球往右偏。水藍箭頭是風吹去的方向，風向計指著風「吹來」的方向 → ${right}。`, kind: 'wind' };
+    const q2 = { q: `${S.city.n}最可能的天氣是？`, opts: [WEATHER_OPT[key], ...ORDER.filter(x => x !== key).map(x => WEATHER_OPT[x])], a: WEATHER_OPT[key], why: S.cap + '。', kind: 'wx' };
+    return [q1, q2];
+  }
+  const shuffle = (a, s) => { const r = a.slice(); for (let i = r.length - 1; i > 0; i--) { const j = (s * (i + 3) * 7) % (i + 1); [r[i], r[j]] = [r[j], r[i]]; } return r; };
+  let QS = [];
+  function render() {
+    const key = ORDER[st.map]; QS = questions(key); const Q = QS[st.q];
+    document.querySelectorAll('.dtmap').forEach((b, i) => b.classList.toggle('on', i === st.map));
+    $('dtQ').innerHTML = `<b>第 ${st.map + 1} 張圖・第 ${st.q + 1} 題</b><br>${Q.q}`;
+    $('dtOpts').innerHTML = shuffle(Q.opts, st.map * 3 + st.q + 2).map(o => `<button class="btn dtopt" type="button" data-o="${o}">${o}</button>`).join('');
+    $('dtFb').hidden = true; $('dtNext').hidden = true;
+    document.querySelectorAll('.dtopt').forEach(b => {
+      ['pointerdown', 'touchstart'].forEach(ev => b.addEventListener(ev, e => e.stopPropagation(), { passive: true }));
+      b.addEventListener('click', () => {
+        const ok = b.dataset.o === Q.a;
+        document.querySelectorAll('.dtopt').forEach(x => { x.disabled = true; x.classList.toggle('yes', x.dataset.o === Q.a); x.classList.toggle('no', x === b && !ok); });
+        $('dtFb').hidden = false; $('dtFb').className = 'tip ' + (ok ? 'ok' : 'bad');
+        $('dtFb').innerHTML = ok ? '✅ 答對了！' + Q.why : '❌ 再看看動畫：' + Q.why;
+        if (!ok) { st.explain = 5; st.kind = Q.kind; } else st.done[st.map + '-' + st.q] = true;
+        $('dtNext').hidden = false;
+        $('dtScore').textContent = `已答對 ${Object.keys(st.done).length} / 8 題`;
+      });
+    });
+    $('dtScore').textContent = `已答對 ${Object.keys(st.done).length} / 8 題`;
+  }
+  document.querySelectorAll('.dtmap').forEach((b, i) => b.addEventListener('click', () => { st.map = i; st.q = 0; st.explain = 0; render(); }));
+  $('dtNext').addEventListener('click', () => { if (st.q === 0) st.q = 1; else { st.q = 0; st.map = (st.map + 1) % 4; } st.explain = 0; render(); });
+  function update(dt) {
+    const key = ORDER[st.map], S = SEASONS[key];
+    // 答錯時：重播 6 秒動畫的後半段，並放大風向計與水藍箭頭
+    let k = 1;
+    if (st.explain > 0) { st.explain -= dt; k = st.kind === 'wx' ? Math.min(1, 1 - st.explain / 5 + 0.3) : 1; }
+    const sys = showSeason(key, k, dt);
+    const nm = placeVane(sys, S.city.lon, S.city.lat, lWhy);
+    const pulse = st.explain > 0 && st.kind !== 'wx' ? 1.5 + 0.3 * Math.sin(wall * 8) : 1;
+    vane.scale.setScalar(pulse); flowArrow.scale.setScalar(pulse);
+    setLabel(lWhy, st.explain > 0 && st.kind === 'wind' ? `風從<b>${nm.replace('風', '')}</b>方吹來 → ${nm}` : '風向計');
+    pin.position.set(MX(S.city.lon) + 0.3, MAPY, MZ(S.city.lat) + 0.25);
+    setLabel(lCity, '📍 ' + S.city.n); lCity.pos.set(MX(S.city.lon) + 0.3, MAPY + 0.95, MZ(S.city.lat) + 0.25); lCity.off.copy(lCity.pos);
+    setCap(`<small>天氣圖偵探・第 ${st.map + 1} 張</small>讀等壓線、H／L 與鋒面符號<span class="huge">${st.explain > 0 ? '看動畫找原因！' : '這張圖的天氣是？'}</span>`);
+  }
+  return { group, update, st, render, enter() { render(); } };
+})();
+
+/* ----- 共用：面板、按鈕、滑桿不讓事件傳到 3D 畫面；拖曳時鎖住視角 ----- */
+['panel', 'dock', 'scaleNote'].forEach(id => { const el = $(id); if (!el) return; ['pointerdown', 'touchstart'].forEach(ev => el.addEventListener(ev, e => e.stopPropagation(), { passive: true })); });
+document.querySelectorAll('input[type=range]').forEach(r => {
+  ['pointerdown', 'touchstart'].forEach(ev => r.addEventListener(ev, e => { e.stopPropagation(); controls.enabled = false; }, { passive: true }));
+  ['pointerup', 'pointercancel', 'touchend', 'change'].forEach(ev => r.addEventListener(ev, () => { controls.enabled = true; }));
+});
+document.querySelectorAll('button, input[type=checkbox]').forEach(b => ['pointerdown', 'touchstart'].forEach(ev => b.addEventListener(ev, e => e.stopPropagation(), { passive: true })));
+onTabChange = t => { if (t === 'isobar') IB.enter(); if (t === 'season') SN.enter(); if (t === 'detect') DT.enter(); vane.scale.setScalar(1); flowArrow.scale.setScalar(1); };
+DT.render();
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  isobar: { group: IB.group, cam: () => ({ pos: [0.2, 12.5, 8.6], target: [0.2, 0.3, 0.2], fitW: window.innerWidth < window.innerHeight ? 13 : 15 }), update: IB.update },
+  season: { group: SN.group, cam: () => ({ pos: [0.2, 12.5, 8.6], target: [0.2, 0.3, 0.2], fitW: window.innerWidth < window.innerHeight ? 13 : 15 }), update: SN.update },
+  detect: { group: DT.group, cam: () => ({ pos: [0.2, 12.5, 8.6], target: [0.2, 0.3, 0.2], fitW: window.innerWidth < window.innerHeight ? 13 : 15 }), update: DT.update }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  onTabChange(t);
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, IB, SN, DT, camera, controls, renderer, scene, placeLabels };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'isobar';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+<script src="goals.js" defer></script>
+</body>
+</html>
