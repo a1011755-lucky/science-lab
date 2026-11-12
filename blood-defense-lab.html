@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>血液成分、淋巴循環與人體防禦</title>
+<style>
+  :root {
+    --bg: #f5f1e7;
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --card: rgba(255,255,255,.58);
+    --accent: #a1674a;
+    --ok: #4f7d5c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: absolute; inset: 0; }
+  #scene canvas { display: block; touch-action: none; }
+  .glass {
+    background: var(--card); backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(93,64,55,.1), 0 2px 6px rgba(93,64,55,.05);
+  }
+  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 26px; padding: 18px; }
+  .panel.collapsed { width: auto; min-width: 240px; }
+  .panel.collapsed .body { display: none; }
+  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
+  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
+  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
+  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
+  .tab { border: none; cursor: pointer; font: inherit; font-size: .78rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.6); line-height: 1.4; }
+  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
+  .tab:hover { background: rgba(255,255,255,.95); }
+  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
+  .sec[hidden] { display: none; }
+  .concept { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
+  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
+  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
+  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
+  .desc b { color: var(--ink); }
+  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
+  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
+  input.big[type=range] { height: 40px; }
+  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
+  select { width: 100%; font: inherit; font-size: .86rem; font-weight: 700; border: 1px solid #e6dccd; border-radius: 12px; padding: 9px 10px; background: rgba(255,255,255,.9); color: var(--ink); margin-top: 4px; }
+  .btn {
+    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px;
+    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.62);
+    transition: background .2s, transform .1s, box-shadow .2s;
+  }
+  .btn small { display: block; font-weight: 600; font-size: .7rem; opacity: .8; }
+  .btn:hover { background: rgba(255,255,255,.95); }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
+  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; padding: 12px 6px; }
+  .btn.primary:hover { background: #4f7d65; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: rgba(255,255,255,.78); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.75; font-variant-numeric: tabular-nums; }
+  .stat b { font-size: .92rem; }
+  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
+  .mapbox { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px; margin-top: 8px; }
+  .mapbox canvas { display: block; width: 100%; height: auto; border-radius: 8px; }
+  .mapbox p { font-size: .72rem; font-weight: 800; color: var(--ink-soft); margin-bottom: 4px; }
+
+  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 24px; padding: 12px 22px; text-align: center;
+          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; }
+  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
+  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
+  .cap b { color: #a1674a; }
+  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .cap .pop { animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
+  .cap .chg { font-size: .62em; font-weight: 800; vertical-align: middle; }
+
+  .tag {
+    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
+    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.1); font-variant-numeric: tabular-nums;
+  }
+  .tag.red { background: #e53935; color: #fff; }
+  .tag.energy { background: #f4a261; color: #fff; font-size: .82rem; }
+  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
+  .tag.lam { background: #1e6aa8; color: #fff; }
+  .tag.depth { background: #d84315; color: #fff; font-size: .82rem; }
+  .tag.small { font-size: .64rem; padding: 2px 7px; }
+  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
+
+  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
+    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; border-radius: 18px; }
+    .cap { font-size: .74rem; }
+    .cap .huge { font-size: .98rem; }
+    .tag { font-size: .62rem; padding: 2px 7px; }
+  }
+  .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
+  .tabs.three .tab { font-size: .72rem; padding: 9px 2px; }
+  .objs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  .objs.three { grid-template-columns: repeat(3, 1fr); }
+  .objs .btn { padding: 8px 4px; font-size: .78rem; margin-top: 0; }
+  .objs .btn.yes { background: #e3f1e6; color: #2e6b3f; } .objs .btn.no { background: #fde5e2; color: #a5311f; }
+  .orgcard { background: rgba(255,255,255,.85); border-radius: 16px; padding: 10px 12px; margin-top: 8px; font-size: .8rem; line-height: 1.65; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
+  .orgcard:empty { display: none; }
+  .orgcard h4 { font-size: .98rem; font-weight: 900; margin-bottom: 2px; }
+  .orgcard .pill { display: inline-block; font-size: .72rem; font-weight: 800; color: #fff; background: #7b5ea7; border-radius: 999px; padding: 1px 9px; margin: 2px 4px 2px 0; }
+  .orgcard i.sci { font-family: Georgia, serif; }
+  .orgcard table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .orgcard td, .orgcard th { padding: 2px 4px; border-bottom: 1px solid #efe6d8; font-size: .74rem; text-align: left; }
+  .orgcard tr.same { background: #e3f1e6; } .orgcard tr.diff td { color: #a8998a; }
+  .tag.big { font-size: .86rem; }
+  .stat table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: .74rem; }
+  .stat td, .stat th { padding: 3px 3px; border-bottom: 1px solid #efe6d8; text-align: left; white-space: nowrap; }
+  .stat tr.same { background: #e3f1e6; }
+  .tip { background: #fff3c4; color: #7a5300; border: 1.5px solid #e0b000; border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .82rem; font-weight: 800; line-height: 1.6; animation: pop .45s cubic-bezier(.2,1.6,.4,1); }
+  .tip[hidden], .mapbox[hidden], .btn[hidden] { display: none; }
+  .ticks span:first-child { text-align: left; } .ticks span:last-child { text-align: right; }
+  .meter { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: .74rem; font-weight: 800; color: var(--ink-soft); }
+  .meter i { flex: 1; height: 16px; border-radius: 999px; background: linear-gradient(90deg, #f7efe6, #8b2e0f); position: relative; }
+  .meter i::after { content: ''; position: absolute; top: -4px; width: 6px; height: 24px; border-radius: 3px; background: var(--ink); left: var(--v, 50%); transform: translateX(-50%); transition: left .2s; }
+  .cap .eq { display: inline-flex; align-items: center; gap: 6px; font-size: 1.05em; font-weight: 900; }
+  .cap .arrs { display: inline-flex; flex-direction: column; line-height: .9; font-size: 1.1em; }
+  .cap .arrs span { opacity: .28; transition: opacity .3s, color .3s, transform .3s; }
+  .cap .arrs span.on { opacity: 1; color: #c62828; transform: scale(1.35); }
+  .cap .brown { color: #8b2e0f; }
+  .legend { display: flex; gap: 6px; margin: 8px 0 2px; font-size: .72rem; font-weight: 800; }
+  .legend .lg { flex: 1; text-align: center; border-radius: 999px; padding: 3px 0; color: #fff; }
+  .legend .f { background: #ff2d2d; } .legend .a { background: #22c55e; } .legend .w { background: #424242; } .legend .n { background: #29b6f6; }
+  .tag.vA { background: #16a34a; color: #fff; font-weight: 900; } .tag.vN { background: #29b6f6; color: #fff; font-weight: 900; }
+  .formula { font-size: 1.02rem; font-weight: 900; background: #fff1c9; border-radius: 10px; padding: 5px 8px; margin-bottom: 4px; text-align: center; } .bbtn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; color: #5d4037; }
+  .tag.vF { background: #ff2d2d; color: #fff; font-weight: 900; } .tag.vS { background: #29b6f6; color: #fff; font-weight: 900; } .tag.vW { background: #424242; color: #fff; font-weight: 900; } .tag.org { background: #ef6c00; color: #fff; font-weight: 900; }
+  .tip.ok { background: #e3f1e6; color: #1f5f32; border-color: #3f9a57; } .tip.bad { background: #fde5e2; color: #a5311f; border-color: #e53935; }
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+  .half { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px 9px; font-size: .76rem; line-height: 1.6; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
+  .half h4 { font-size: .86rem; font-weight: 900; margin-bottom: 2px; }
+  .half .res { margin-top: 4px; font-weight: 900; font-size: .9rem; border-radius: 10px; padding: 3px 6px; text-align: center; }
+  .half .res.pos { background: #e3f1e6; color: #1f5f32; } .half .res.neg { background: #fde5e2; color: #a5311f; } .half .res.zero { background: #efe9df; color: #7a6a5a; }
+  .legend .piv { background: #e0b800; } .legend .tq { background: #ff8a1f; }
+  .lvbtn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; color: #5d4037; }
+  .stat b.g { color: #2e7d32; } .stat b.r { color: #e53935; }
+  /* 毛玻璃：本頁規格 */
+  .panel.glass, .dock.glass, .skyBox.glass { background: rgba(255,255,255,0.5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 12px; color: #5d4037; }
+  .scaleNote { position: fixed; right: 14px; bottom: 10px; z-index: 9; font-size: .72rem; font-weight: 700; color: #8d6e63; background: rgba(255,255,255,.5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 12px; padding: 4px 10px; }
+  .skyBox { position: fixed; right: 16px; top: 16px; z-index: 9; width: 236px; padding: 8px; }
+  .skyBox[hidden] { display: none; }
+  .skyBox canvas { width: 100%; height: auto; border-radius: 10px; display: block; margin: 5px 0; }
+  .skyT { font-size: .76rem; font-weight: 700; line-height: 1.4; }
+  .row2.mini .btn { font-size: .7rem; padding: 5px 2px; margin-top: 0; }
+  .hint { font-size: .72rem; color: #8d6e63; background: rgba(255,255,255,.55); border-radius: 10px; padding: 5px 8px; margin: 6px 0 8px; }
+  .chk { display: flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 700; margin-top: 8px; cursor: pointer; }
+  .chk input { width: 17px; height: 17px; accent-color: #8d6e63; }
+  .cards { display: grid; gap: 5px; margin-top: 8px; }
+  .cards .card { background: rgba(255,255,255,.72); border-radius: 12px; padding: 6px 9px; font-size: .78rem; line-height: 1.55; box-shadow: 0 3px 10px rgba(93,64,55,.06); }
+  .terms { margin-top: 8px; background: rgba(255,255,255,.72); border-radius: 12px; padding: 7px 9px; font-size: .76rem; line-height: 1.7; }
+  .ph4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; } .ph4 .btn { margin-top: 0; padding: 8px 2px; }
+  .tcurve { width: 100%; height: 150px; display: block; margin-top: 8px; border-radius: 10px; }
+  .tw { margin-top: 8px; background: rgba(255,255,255,.72); border-radius: 12px; padding: 6px 9px; font-size: .78rem; }
+  .tw summary { font-weight: 800; cursor: pointer; }
+  .twmap { width: 100%; height: auto; margin-top: 6px; }
+  .tip.gold { background: #fff4d6; color: #7a5300; border-color: #f0b429; } .tip.red { background: #fde5e2; color: #a5311f; border-color: #e53935; }
+  .ticks { display: flex; justify-content: space-between; }
+  .tag.sunL { background: #fff1c2; color: #8a5a00; } .tag.umb { background: #3d3d3d; color: #fff; } .tag.pen { background: #cfcfcf; color: #333; }
+  .tag.eclL { background: #ffe0b2; color: #8a4b00; } .tag.wdL { background: #d6e9ff; color: #0b4d9a; } .tag.nodeL { background: #ffd8c9; color: #b23c17; }
+  .tag.pullL { background: #ff3b30; color: #fff; } .tag.sunPullL { background: #ffd59e; color: #8a4b00; } .tag.seaL { background: #d8efff; color: #0d5ea8; } .tag.portL { background: #fff; color: #b71c1c; }
+  .tag.hiL { background: #1565c0; color: #fff; } .tag.loL { background: #ef6c00; color: #fff; } .tag.bandL { background: #dcedc8; color: #33691e; }
+  .tag.nowL { font-size: .86rem; font-weight: 900; } .tag.nowL.hi { background: #1565c0; color: #fff; } .tag.nowL.lo { background: #ef6c00; color: #fff; } .tag.nowL.up { background: #d8efff; color: #0d5ea8; } .tag.nowL.down { background: #ffe9d6; color: #a14a00; }
+  .stat b.r { color: #e53935; }
+  .ph4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; } .ph4.five { grid-template-columns: repeat(5, 1fr); } .ph4 .btn { margin-top: 0; padding: 8px 2px; font-size: .74rem; }
+  .tag.selL { background: #8d6e63; color: #fff; } .tag.tit { background: #8d6e63; color: #fff; font-size: .9rem; } .tag.o2L { background: #e3f4ff; color: #0d5ea8; } .tag.redT { background: #ffebee; color: #b71c1c; } .tag.grnT { background: #e8f5e9; color: #2e7d32; } .tag.bluT { background: #e3f2fd; color: #1565c0; } .tag.stepL { background: #fff; color: #5d4037; font-size: .86rem; }
+  @media (max-width: 767px) { .skyBox { width: 160px; top: auto; bottom: 74px; right: 8px; } .skyT { font-size: .64rem; } .scaleNote { bottom: auto; top: 64px; right: 8px; font-size: .62rem; } }
+  .zbtn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; }
+</style>
+<script src="quality.js"></script>
+<script src="mobile.js"></script>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body data-mv-start="closed">
+
+<div id="scene"></div>
+<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
+<div class="scaleNote" id="scaleNote">心臟與雙循環請看 heart-anatomy-lab；細胞大小經過放大示意</div>
+
+<aside class="panel glass" id="panel">
+  <button class="collapse" id="collapse">收合</button>
+  <a class="back" href="index.html#g7">‹ 課程總覽</a>
+  <div class="title">血液成分、淋巴循環與人體防禦</div>
+  <div class="body">
+    <div class="tabs three">
+      <button class="tab on" data-tab="blood">🩸 血液成分<small>血漿・血球</small></button>
+      <button class="tab" data-tab="oc">🔁 開放／閉鎖<small>循環方式</small></button>
+      <button class="tab" data-tab="lymph">🛡️ 淋巴與防禦<small>淋巴結過濾</small></button>
+    </div>
+
+    <!-- Tab 1 -->
+    <section class="sec" data-tab="blood">
+      <div class="ph4 five">
+        <button class="btn blsel on" data-v="all" type="button">全部</button>
+        <button class="btn blsel" data-v="plasma" type="button">血漿</button>
+        <button class="btn blsel" data-v="rbc" type="button">紅血球</button>
+        <button class="btn blsel" data-v="wbc" type="button">白血球</button>
+        <button class="btn blsel" data-v="plt" type="button">血小板</button>
+      </div>
+      <label class="chk"><input type="checkbox" id="blAnemia"> 貧血（血紅素不足）</label>
+      <label class="chk"><input type="checkbox" id="blWound"> 傷口（血小板聚集）</label>
+      <div class="stat" id="blStat"></div>
+      <div class="cards">
+        <div class="card">💧 <b>血漿</b>運送養分、廢物、抗體和激素</div>
+        <div class="card">🔴 <b>紅血球</b>靠血紅素運氧；哺乳類成熟紅血球沒有細胞核</div>
+        <div class="card">⚪ <b>白血球</b>負責吞噬病原體、產生抗體；病原體入侵時數目增加</div>
+        <div class="card">🩹 <b>血小板</b>負責凝血</div>
+      </div>
+    </section>
+
+    <!-- Tab 2 -->
+    <section class="sec" data-tab="oc" hidden>
+      <button class="btn primary" id="ocPlay" type="button">⏸ 暫停</button>
+      <div class="cards">
+        <div class="card">🔒 <b>閉鎖式</b>：血液一直在血管裡（魚類、兩生類、哺乳類）</div>
+        <div class="card">🦗 <b>開放式</b>：血液會流入體腔，例如昆蟲</div>
+        <div class="card">⚠️ 開放或閉鎖，和單循環、雙循環<b>不是同一件事</b>：魚類是閉鎖式單循環，人是閉鎖式雙循環</div>
+      </div>
+    </section>
+
+    <!-- Tab 3 -->
+    <section class="sec" data-tab="lymph" hidden>
+      <button class="btn primary" id="lyPlay" type="button">▶ 播放路徑：組織液 → 淋巴管 → 淋巴結 → 靜脈</button>
+      <label class="chk"><input type="checkbox" id="lyInf"> 🦠 病原體入侵</label>
+      <div class="stat" id="lyStat"></div>
+      <div class="cards">
+        <div class="card">💧 組織液進入淋巴管後叫做<b>淋巴</b></div>
+        <div class="card">🛡️ 淋巴流經<b>淋巴結</b>，病原體在這裡被過濾</div>
+        <div class="card">🔵 淋巴最後注入<b>靜脈</b>，回到血液循環</div>
+        <div class="card">🧪 <b>抗體</b>是血漿裡的蛋白質，能抵抗病原體</div>
+      </div>
+    </section>
+
+    <button class="btn" id="viewBtn">🎥 重設視角</button>
+  </div>
+</aside>
+
+<script type="module">
+import * as THREE from 'three';
+import { enhanceLiquid } from './liquid.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+window.__labReady = true;
+const $ = id => document.getElementById(id);
+const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
+const V2 = (x, y) => new THREE.Vector2(x, y);
+const clamp = THREE.MathUtils.clamp;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+
+/* =========================================================
+   溫暖無印風場景：米白背景、木紋桌、柔和光影
+   ========================================================= */
+const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
+renderer.setSize(window.innerWidth || 1, window.innerHeight || 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+$('scene').appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf5f1e7);
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envScene = new THREE.Scene();
+envScene.background = new THREE.Color(0xf6efe2);
+const envLight = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+envLight.position.set(3, 5, 4); envLight.scale.setScalar(2.6); envScene.add(envLight);
+scene.environment = pmrem.fromScene(envScene, 0.04).texture;
+scene.add(new THREE.AmbientLight(0xfff6ea, 1.1));
+const sun = new THREE.DirectionalLight(0xfff1dc, 1.7);
+sun.position.set(-7, 16, 10);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 14, bottom: -10, near: 1, far: 50 });
+sun.shadow.radius = 7; sun.shadow.bias = -0.0005;
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(40, (window.innerWidth || 1) / (window.innerHeight || 1), 0.05, 200);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.minDistance = 3; controls.maxDistance = 70;
+controls.maxPolarAngle = Math.PI * 0.49;
+
+function woodTexture(c1 = '#e2c39b', c2 = '#d6b285') {
+  const c = document.createElement('canvas'); c.width = 1024; c.height = 512;
+  const g = c.getContext('2d');
+  const grd = g.createLinearGradient(0, 0, 0, 512);
+  grd.addColorStop(0, c1); grd.addColorStop(1, c2);
+  g.fillStyle = grd; g.fillRect(0, 0, 1024, 512);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 512;
+    g.strokeStyle = `rgba(${140 + Math.random() * 40 | 0},${92 + Math.random() * 30 | 0},${52 + Math.random() * 20 | 0},${0.05 + Math.random() * 0.12})`;
+    g.lineWidth = 0.8 + Math.random() * 3;
+    g.beginPath();
+    for (let x = 0; x <= 1024; x += 16) { const yy = y + Math.sin(x * 0.005 + i) * 7 + Math.sin(x * 0.021 + i * 3) * 2; if (x) g.lineTo(x, yy); else g.moveTo(x, yy); }
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  return t;
+}
+const table = new THREE.Mesh(new RoundedBoxGeometry(34, 0.6, 18, 5, 0.28),
+  new THREE.MeshPhysicalMaterial({ map: woodTexture(), roughness: 0.75, clearcoat: 0.2, clearcoatRoughness: 0.5 }));
+table.position.set(0, -0.3, 1); table.receiveShadow = true; scene.add(table);
+
+const clay = (color, o = {}) => new THREE.MeshPhysicalMaterial({ color, roughness: 0.6, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.45, ...o });
+const metal = (color = 0xc9ccd2, o = {}) => clay(color, { metalness: 0.75, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.15, ...o });
+const shadowed = m => { m.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return m; };
+const add = (group, mesh, x = 0, y = 0, z = 0) => { mesh.position.set(x, y, z); group.add(mesh); return mesh; };
+
+/* ----- 細圓管繪圖工具（虛線、標線） ----- */
+const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 10, 1);
+const YUP = V3(0, 1, 0);
+const matCache = {};
+function basic(color, opacity = 1) {
+  const k = color + ':' + opacity;
+  return matCache[k] || (matCache[k] = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
+}
+function makePool(group, geo) {
+  const items = []; let used = 0;
+  return {
+    begin() { used = 0; },
+    get(mat) { let m = items[used]; if (!m) { m = new THREE.Mesh(geo, mat); m.renderOrder = 2; group.add(m); items.push(m); } m.material = mat; m.visible = true; used++; return m; },
+    end() { for (let i = used; i < items.length; i++) items[i].visible = false; }
+  };
+}
+const tmpD = V3(0, 0, 0);
+function placeSeg(m, a, b, r) {
+  tmpD.copy(b).sub(a); const len = tmpD.length();
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len));
+  m.scale.set(r, Math.max(len, 1e-4), r);
+}
+function Drawer(group) {
+  const tubes = makePool(group, UNIT_CYL);
+  return {
+    begin() { tubes.begin(); },
+    end() { tubes.end(); },
+    line(a, b, color, r = 0.04, opacity = 1) { placeSeg(tubes.get(basic(color, opacity)), a, b, r); },
+    dash(a, b, color, { r = 0.035, on = 0.22, off = 0.14, opacity = 1 } = {}) {
+      const len = a.distanceTo(b); if (len < 1e-4) return;
+      const dir = b.clone().sub(a).divideScalar(len);
+      for (let s = 0; s < len; s += on + off) {
+        const p0 = a.clone().addScaledVector(dir, s), p1 = a.clone().addScaledVector(dir, Math.min(len, s + on));
+        placeSeg(tubes.get(basic(color, opacity)), p0, p1, r);
+      }
+    }
+  };
+}
+/** 圓點貼圖（粒子用） */
+function dotTexture(fill = '#ffffff', rim = 'rgba(120,130,150,.75)') {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.beginPath(); g.arc(32, 32, 26, 0, TAU); g.fillStyle = fill; g.fill();
+  g.lineWidth = 6; g.strokeStyle = rim; g.stroke();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+function glowTexture(rgb = '255,80,60') {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d');
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, `rgba(${rgb},.75)`); grd.addColorStop(0.35, `rgba(${rgb},.32)`); grd.addColorStop(1, `rgba(${rgb},0)`);
+  g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+/** 記錄「波源過去的位移」：波傳到 x 處的位移 = 波源在 (t − x / V) 時的位移 */
+function makeHist() { return { t: [], v: [] }; }
+function pushHist(h, t, v, keep) {
+  h.t.push(t); h.v.push(v);
+  while (h.t.length > 2 && h.t[1] < t - keep) { h.t.shift(); h.v.shift(); }
+}
+function sampleHist(h, tq) {
+  const T = h.t, n = T.length;
+  if (!n || tq < T[0]) return 0;
+  if (tq >= T[n - 1]) return h.v[n - 1];
+  let lo = 0, hi = n - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (T[m] <= tq) lo = m; else hi = m; }
+  const k = (tq - T[lo]) / Math.max(1e-9, T[hi] - T[lo]);
+  return h.v[lo] + (h.v[hi] - h.v[lo]) * k;
+}
+
+/* ----- 浮動標籤 ----- */
+const labels = [];
+const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
+function addLabel(tabKey, html, cls, off, follow = null) {
+  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
+  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
+}
+function setLabel(L, html, cls) {
+  if (L.html !== html) { L.html = html; L.el.innerHTML = html; }
+  if (cls !== undefined && L.cls !== cls) { L.cls = cls; L.el.className = 'tag ' + cls; }
+}
+function placeLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (const L of labels) {
+    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
+    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
+    tmpV.copy(L.pos).project(camera);
+    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
+    L.el.style.display = '';
+    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
+    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
+  }
+}
+let tab = 'blood', wall = 0;
+const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
+const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
+
+/* =========================================================
+   共用小工具
+   ========================================================= */
+const lerp = (a, b, k) => a + (b - a) * k;
+const sphere = (r, mat, seg = 24) => new THREE.Mesh(new THREE.SphereGeometry(r, seg, Math.max(8, seg * 0.6 | 0)), mat);
+const cyl = (r1, r2, h, mat, seg = 32, open = false) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg, 1, open), mat);
+const rbox = (w, h, d, mat, r = 0.08) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 4, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001)), mat);
+const glassM = (op = 0.16) => new THREE.MeshPhysicalMaterial({ color: 0xd8ecf4, emissive: 0x9fb8c4, emissiveIntensity: 0.12, sheen: 1, sheenColor: 0xffffff, transparent: true, opacity: op, roughness: 0.05, clearcoat: 1, clearcoatRoughness: 0.05, side: THREE.DoubleSide, depthWrite: false });
+const shellM = (c, op) => new THREE.MeshPhysicalMaterial({ color: c, transparent: true, opacity: op, roughness: 0.2, clearcoat: 0.6, side: THREE.DoubleSide, depthWrite: false });
+let rs = 4242;
+const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+const glowSprite = (rgb, s = 0.5) => { const g = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture(rgb), transparent: true, depthWrite: false })); g.scale.setScalar(s); return g; };
+const ease = k => 1 - Math.exp(-k);
+function makeArrow(color) {
+  const g = new THREE.Group(); const m = clay(color, { emissive: color, emissiveIntensity: 0.25 });
+  const shaft = cyl(0.07, 0.07, 1, m, 16); const head = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.34, 20), m);
+  g.add(shaft, head); shadowed(g);
+  g.setLen = L => { L = Math.max(0.05, L); shaft.scale.y = L; shaft.position.y = L / 2; head.position.y = L + 0.17; };
+  g.setLen(1); return g;
+}
+/** 畫布貼圖面板（碼錶螢幕等） */
+function canvasPanel(w, h, pxW = 512) {
+  const c = document.createElement('canvas'); c.width = pxW; c.height = Math.round(pxW * h / w);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t, toneMapped: false }));
+  return { c, g: c.getContext('2d'), t, m };
+}
+let onTabChange = () => {};
+
+function orgNoise(x, y, z, s) { return Math.sin(x * 1.7 + s) * Math.sin(y * 2.3 + s * 1.3) * Math.sin(z * 1.9 + s * 0.7) + 0.5 * Math.sin(x * 3.1 - s) * Math.sin(y * 2.9 + s * 2.1) * Math.sin(z * 3.7 + s); }
+function orgSmooth(g) { const p = g.attributes.position, n = g.attributes.normal, m = new Map(); for (let i = 0; i < p.count; i++) { const k = Math.round(p.getX(i) * 1e4) + "," + Math.round(p.getY(i) * 1e4) + "," + Math.round(p.getZ(i) * 1e4); let a = m.get(k); if (!a) { a = [0, 0, 0, []]; m.set(k, a); } a[0] += n.getX(i); a[1] += n.getY(i); a[2] += n.getZ(i); a[3].push(i); } for (const a of m.values()) { const l = Math.hypot(a[0], a[1], a[2]) || 1; for (const i of a[3]) n.setXYZ(i, a[0] / l, a[1] / l, a[2] / l); } n.needsUpdate = true; }
+function blobGeo(r, { amp = 0.08, freq = 1.4, seed = 1, detail = 5, ripple = 0, rippleF = 9 } = {}) {
+  const g = new THREE.IcosahedronGeometry(1, detail), p = g.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i).normalize();
+    let k = 1 + amp * orgNoise(v.x * freq * 2, v.y * freq * 2, v.z * freq * 2, seed);
+    if (ripple) k += ripple * Math.sin(v.x * rippleF + seed) * Math.sin(v.y * rippleF * 1.1 + 1) * Math.sin(v.z * rippleF * 0.9 + seed * 2);
+    v.multiplyScalar(r * k); p.setXYZ(i, v.x, v.y, v.z);
+  }
+  g.computeVertexNormals(); orgSmooth(g); return g;
+}
+function spindleGeo(len, r, { blunt = 0.35, seed = 4 } = {}) {
+  const pts = [], N = 48;
+  for (let i = 0; i <= N; i++) { const t = (1 - Math.cos(Math.PI * i / N)) / 2, prof = Math.pow(Math.sin(Math.PI * t), blunt) * (1 + 0.05 * Math.sin(t * 17 + seed)); pts.push(new THREE.Vector2(Math.max(0.002, r * prof), (t - 0.5) * len)); }
+  const g = new THREE.LatheGeometry(pts, 28); g.rotateZ(Math.PI / 2); g.computeVertexNormals(); return g;
+}
+function discCellGeo(r = 0.1) {
+  const up = [], N = 16;
+  for (let i = 0; i <= N; i++) { const p = Math.sin(i / N * Math.PI / 2), h = Math.sqrt(Math.max(0, 1 - p * p)) * (0.207 + 2.0 * p * p - 1.12 * p ** 4) * r / 2; up.push([p * r, Math.max(h, 0.0005)]); }
+  const pts = []; for (let i = 0; i <= N; i++) pts.push(new THREE.Vector2(Math.max(0.001, up[i][0]), -up[i][1]));
+  for (let i = N - 1; i >= 0; i--) pts.push(new THREE.Vector2(Math.max(0.001, up[i][0]), up[i][1]));
+  const g = new THREE.LatheGeometry(pts, 20); g.computeVertexNormals(); return g;
+}
+function holoMat(op = 0.4, color = 0xf6d2bd) {
+  return new THREE.MeshPhysicalMaterial({ color, transmission: 0.8, opacity: op, transparent: true, roughness: 0.35, thickness: 0.6, ior: 1.2, depthWrite: false, side: THREE.DoubleSide, emissive: 0x000000 });
+}
+function holoEdgeMat(color = 0xffa477, op = 0.6) { return new THREE.LineBasicMaterial({ color, transparent: true, opacity: op, depthWrite: false }); }
+function holoPiece(shape, depth, bevel, mat, edgeMat) {
+  const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel * 0.8, bevelSegments: 6, curveSegments: 40 });
+  g.translate(0, 0, -depth / 2);
+  const m = new THREE.Mesh(g, mat); m.renderOrder = 8;
+  if (edgeMat) { const e = new THREE.LineSegments(new THREE.EdgesGeometry(g, 60), edgeMat); e.renderOrder = 9; m.add(e); }
+  return m;
+}
+function holoBodyShape(o) {
+  const V = (x, y) => new THREE.Vector2(x, y);
+  const R = [V(0, o.hipY), V(o.hipW * 0.7, o.hipY + 0.03), V(o.hipW, o.hipY + 0.3), V(o.waistW, o.waistY), V(o.chestW, o.chestY), V(o.shW, o.shY - 0.18), V(o.shW * 0.82, o.shY + 0.06), V(o.neckW * 1.35, o.neckY - 0.1), V(o.neckW, o.neckY)];
+  const t0 = -Math.acos(Math.min(0.98, o.neckW / o.headR)), head = [];
+  for (let i = 1; i < 24; i++) { const t = t0 + (Math.PI - 2 * t0) * i / 24; head.push(V(Math.cos(t) * o.headR, o.headY + Math.sin(t) * o.headR * 1.08)); }
+  const L = R.slice(1).reverse().map(p => V(-p.x, p.y));
+  const pts = [...R, ...head, ...L];
+  const s = new THREE.Shape(); s.moveTo(pts[0].x, pts[0].y); s.splineThru(pts.slice(1)); s.closePath(); return s;
+}
+function holoOutline(shape, color, r = 0.02, z = 0.07, op = 1) {
+  const pts = shape.getSpacedPoints(240).map(p => new THREE.Vector3(p.x, p.y, z));
+  const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), 480, r, 6, true), new THREE.MeshBasicMaterial({ color, toneMapped: false, transparent: op < 1, opacity: op, depthWrite: false }));
+  m.renderOrder = 10; return m;
+}/* =========================================================
+   血液成分、淋巴循環與人體防禦
+   ・血球、淋巴結、管道都是「物品」；人體只用全息半透明輪廓
+   ・有機形態：紅血球＝中央凹陷的圓盤、白血球＝不規則的軟球、病菌＝紡錘形
+   ========================================================= */
+const BWD = (c = 0xdeb887) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.7, metalness: 0 });
+const soft = (c, o = {}) => new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.35, clearcoat: 0.6, sheen: 0.5, sheenColor: 0xffffff, ...o });
+const AXIS_Y = new THREE.Vector3(0, 1, 0);
+const tubeAlong = (pts, r, mat, closed = false) => { const m = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, closed), 160, r, 20, closed), mat); return m; };
+const glassTube = (c = 0xffe0d8, op = 0.22) => new THREE.MeshPhysicalMaterial({ color: c, transparent: true, opacity: op, roughness: 0.1, clearcoat: 1, side: THREE.DoubleSide, depthWrite: false });
+/** 病菌：綠色紡錘形（物品） */
+const bugGeo = spindleGeo(0.34, 0.07, { blunt: 0.6, seed: 5 });
+const bugMat = soft(0x7cb342);
+
+/* =========================================================
+   Tab 1：血液的成分
+   ========================================================= */
+const BL = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const base = shadowed(new THREE.Mesh(new RoundedBoxGeometry(10.5, 0.16, 3.6, 3, 0.05), BWD())); base.position.y = 0.08; group.add(base);
+  // 血管模型：水平的半透明管子，裡面是淡黃色血漿
+  const L = 8.4, R = 0.95, Y = 1.55, X0 = -4.2;
+  const stand = x => { const s = shadowed(new THREE.Mesh(new RoundedBoxGeometry(0.3, Y - 0.9, 0.5, 2, 0.05), BWD(0xc49a6c))); s.position.set(x, 0.16 + (Y - 0.9) / 2, 0); group.add(s); };
+  stand(-3.3); stand(3.3);
+  const wallGeo = new THREE.CylinderGeometry(R, R, L, 64, 1, true, Math.PI * 0.12, Math.PI * 1.76);
+  const wall = new THREE.Mesh(wallGeo, glassTube(0xf6c9c0, 0.28)); wall.rotation.z = Math.PI / 2; wall.position.y = Y; wall.renderOrder = 6; group.add(wall);
+  const plasma = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.96, R * 0.96, L - 0.05, 48), new THREE.MeshPhysicalMaterial({ color: 0xffe9a8, transparent: true, opacity: 0.22, roughness: 0.2, depthWrite: false })); plasma.rotation.z = Math.PI / 2; plasma.position.y = Y; plasma.renderOrder = 4; group.add(plasma);
+  addLabel('blood', '左側：肺（氧氣多）', 'small o2L', V3(X0 + 0.6, Y + 1.35, 0)); addLabel('blood', '右側：組織（需要氧氣）', 'small', V3(-X0 - 0.8, Y + 1.35, 0));
+  // 紅血球、白血球、血小板
+  const rbcG = discCellGeo(0.22);
+  const rbcM = soft(0xd9534f), rbcPale = new THREE.Color(0xf0a09a), rbcRed = new THREE.Color(0xd9534f);
+  const NR = 26, rbcs = Array.from({ length: NR }, (_, i) => { const m = new THREE.Mesh(rbcG, rbcM); m.castShadow = true; group.add(m); return { m, x: X0 + (i / NR) * L, r: Math.sqrt(Math.random()) * 0.65, a: Math.random() * Math.PI * 2, spin: Math.random() * 3, o2: [] }; });
+  const o2Geo = new THREE.IcosahedronGeometry(0.045, 1), o2M = new THREE.MeshBasicMaterial({ color: 0x8fd3ff, toneMapped: false });
+  rbcs.forEach(c => { for (let k = 0; k < 4; k++) { const d = new THREE.Mesh(o2Geo, o2M); c.m.add(d); d.position.set(Math.cos(k * 1.57) * 0.22, 0.05, Math.sin(k * 1.57) * 0.22); c.o2.push(d); } });
+  const wbcM = soft(0xf4f0fa, { transparent: true, opacity: 0.92 }), nucM = soft(0x8e6bbf);
+  const wbcs = Array.from({ length: 3 }, (_, i) => { const g = new THREE.Group(); const b = new THREE.Mesh(blobGeo(0.36, { amp: 0.12, seed: i + 2, detail: 4 }), wbcM); g.add(b); for (let k = 0; k < 3; k++) { const n = new THREE.Mesh(blobGeo(0.1, { amp: 0.15, seed: k + i * 3, detail: 2 }), nucM); n.position.set((k - 1) * 0.11, 0.03 * k, 0.05); g.add(n); } group.add(g); return { g, x: X0 + 1.5 + i * 2.6, r: 0.3, a: i * 2 }; });
+  const pltM = soft(0xc9a0dc);
+  const plts = Array.from({ length: 14 }, (_, i) => { const m = new THREE.Mesh(blobGeo(0.07, { amp: 0.3, seed: i + 7, detail: 2 }), pltM); group.add(m); return { m, x: X0 + Math.random() * L, r: Math.random() * 0.7, a: Math.random() * 6 }; });
+  // 血漿裡運送的小分子：養分（黃）、二氧化碳（灰）、尿素（綠）、抗體（Y 形）、激素（粉）
+  const MOL = [[0xf2c94c, '養分'], [0x9aa0a6, '二氧化碳'], [0x81c784, '尿素'], [0xf48fb1, '激素']];
+  const mols = Array.from({ length: 24 }, (_, i) => { const m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.05, 1), new THREE.MeshBasicMaterial({ color: MOL[i % 4][0], toneMapped: false })); group.add(m); return { m, x: X0 + Math.random() * L, r: Math.random() * 0.8, a: Math.random() * 6 }; });
+  const abG = new THREE.Group(); { const m = new THREE.MeshBasicMaterial({ color: 0xffd54f, toneMapped: false }); const s = (len, rot, x, y) => { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, len, 8), m); c.position.set(x, y, 0); c.rotation.z = rot; abG.add(c); }; s(0.14, 0, 0, -0.07); s(0.12, 0.6, -0.04, 0.05); s(0.12, -0.6, 0.04, 0.05); }
+  const antis = Array.from({ length: 6 }, () => { const g = abG.clone(); group.add(g); return { g, x: X0 + Math.random() * L, r: Math.random() * 0.7, a: Math.random() * 6 }; });
+  // 傷口：管壁破口＋血小板堆疊、纖維網
+  const GX = 1.4;
+  const breach = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.035, 8, 28), new THREE.MeshBasicMaterial({ color: 0xb71c1c, toneMapped: false })); breach.position.set(GX, Y - R, 0.15); breach.rotation.x = Math.PI / 2; group.add(breach);
+  const plug = Array.from({ length: 16 }, (_, i) => { const m = new THREE.Mesh(blobGeo(0.075, { amp: 0.3, seed: 20 + i, detail: 2 }), pltM); group.add(m); return m; });
+  const fibers = Array.from({ length: 6 }, (_, i) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.6, 4), new THREE.MeshBasicMaterial({ color: 0xfff3c4 })); m.rotation.z = i * 0.52; m.position.set(GX, Y - R + 0.06, 0.15); group.add(m); return m; });
+  // 白血球吞噬的病菌（管外組織）
+  const bugs = Array.from({ length: 3 }, (_, i) => { const m = new THREE.Mesh(bugGeo, bugMat); m.position.set(-1 + i * 0.5, 0.45, 1.3 + (i % 2) * 0.2); m.rotation.y = i; group.add(m); return m; });
+  // 離心後的血液試管（血漿在上、紅血球在下）
+  const tubeG = new THREE.Group(); tubeG.position.set(4.6, 0.16, 1.0); group.add(tubeG);
+  const tg = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.6, 24, 1, true), glassTube(0xffffff, 0.3)); tg.position.y = 0.9; tg.renderOrder = 6; tubeG.add(tg);
+  const layer = (h0, h1, c) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, h1 - h0, 24), soft(c, { transparent: true, opacity: 0.85 })); m.position.y = 0.1 + (h0 + h1) / 2; tubeG.add(m); };
+  layer(0, 0.62, 0xc0392b); layer(0.62, 0.66, 0xf5f5f5); layer(0.66, 1.4, 0xffe08a);
+  addLabel('blood', '血漿 約 55%', 'small', V3(5.35, 1.35, 1.0)); addLabel('blood', '血球 約 45%', 'small', V3(5.35, 0.55, 1.0));
+  const lSel = addLabel('blood', '', 'big selL', V3(0, Y + 1.85, 0));
+  const st = { sel: 'all', anemia: false, wound: false, t: 0, eat: 0 };
+  document.querySelectorAll('.blsel').forEach(b => b.addEventListener('click', () => { st.sel = b.dataset.v; st.eat = 0; document.querySelectorAll('.blsel').forEach(x => x.classList.toggle('on', x === b)); }));
+  $('blAnemia').addEventListener('change', () => { st.anemia = $('blAnemia').checked; });
+  $('blWound').addEventListener('change', () => { st.wound = $('blWound').checked; st.t = 0; });
+  const place = (o, x) => { o.x = x; };
+  const pos = (o, y = Y) => V3(o.x, y + Math.sin(o.a) * o.r * R * 0.95, Math.cos(o.a) * o.r * R * 0.95);
+  const DESC = {
+    all: '血液由血漿和血球組成；點選一種看看它的功能', plasma: '血漿：90% 以上是水，運送養分、廢物（二氧化碳、尿素）、抗體和激素',
+    rbc: '紅血球：含血紅素，在肺與氧結合、到組織放出氧；哺乳類成熟的紅血球沒有細胞核', wbc: '白血球：能鑽出血管、進入組織吞噬病原體，也能產生抗體',
+    plt: '血小板：在破口處聚集，幫助凝血、傷口癒合'
+  };
+  function update(dt) {
+    st.t += dt;
+    const s = st.sel, dim = k => s === 'all' || s === k ? 1 : 0.18;
+    const flow = dt * 0.9;
+    // 紅血球：在左邊（肺）載滿氧，到右邊（組織）放出氧；貧血時顏色淡、載氧少
+    rbcM.color.copy(st.anemia ? rbcPale : rbcRed); rbcM.transparent = dim('rbc') < 1; rbcM.opacity = dim('rbc');
+    const nO2 = st.anemia ? 1 : 4, big = s === 'rbc' ? 1.5 : 1;
+    rbcs.forEach((c, i) => {
+      if (st.anemia && i % 2) { c.m.visible = false; return; } c.m.visible = true;
+      c.x += flow; if (c.x > X0 + L) c.x = X0;
+      c.m.position.copy(pos(c)); c.spin += dt; c.m.rotation.set(c.spin, c.spin * 0.6, 0.3); c.m.scale.setScalar(big);
+      const k = (c.x - X0) / L;                                   // 0＝肺、1＝組織
+      c.o2.forEach((d, j) => { d.visible = j < nO2 && k < 0.7 && (s === 'all' || s === 'rbc'); });
+    });
+    wbcM.opacity = 0.92 * dim('wbc'); nucM.transparent = true; nucM.opacity = dim('wbc');
+    // 白血球：被點選時，第一顆鑽出管壁去吞噬病菌
+    wbcs.forEach((w, i) => {
+      if (s === 'wbc' && i === 0) { st.eat = Math.min(1, st.eat + dt / 4); const tgt = bugs[1].position, from = V3(-0.5, Y - 0.6, 0.6); w.g.position.lerpVectors(from, tgt, Math.min(1, st.eat * 1.4)); w.g.scale.setScalar(1.5 + 0.1 * Math.sin(st.t * 6)); }
+      else { w.x += flow * 0.6; if (w.x > X0 + L) w.x = X0; w.g.position.copy(pos(w)); w.g.scale.setScalar(s === 'wbc' ? 1.3 : 1); }
+      w.g.rotation.y += dt * 0.5;
+    });
+    bugs.forEach((b, i) => { const eaten = s === 'wbc' && st.eat > 0.75 && i === 1; b.scale.setScalar(eaten ? Math.max(0.01, 1 - (st.eat - 0.75) * 4) : 1); b.visible = s === 'wbc' || s === 'all'; b.rotation.y += dt * 0.6; });
+    // 血小板：有傷口時聚集到破口
+    const wound = st.wound || s === 'plt';
+    breach.visible = wound; fibers.forEach(f => { f.visible = wound && st.t > 1.5; });
+    pltM.transparent = true; pltM.opacity = dim('plt');
+    plts.forEach(p => { p.x += flow; if (p.x > X0 + L) p.x = X0; p.m.position.copy(pos(p)); p.m.scale.setScalar(s === 'plt' ? 1.8 : 1.2); });
+    plug.forEach((m, i) => { m.visible = wound; const k = Math.min(1, st.t * 0.5 - i * 0.04); m.position.set(GX + Math.cos(i * 2.4) * 0.2 * (1 - (i % 3) * 0.2), Y - R + 0.05 + Math.max(0, k) * 0.0 + (i % 4) * 0.04, 0.15 + Math.sin(i * 2.4) * 0.2); m.scale.setScalar(Math.max(0.01, k) * 1.4); });
+    // 血漿裡的小分子向前流動
+    mols.forEach(m => { m.x += flow * 1.3; if (m.x > X0 + L) m.x = X0; m.m.position.copy(pos(m)); m.m.visible = s === 'plasma' || s === 'all'; m.m.scale.setScalar(s === 'plasma' ? 1.8 : 1); });
+    antis.forEach(m => { m.x += flow * 1.3; if (m.x > X0 + L) m.x = X0; m.g.position.copy(pos(m)); m.g.visible = s === 'plasma' || s === 'all' || s === 'wbc'; m.g.rotation.z += dt; m.g.scale.setScalar(s === 'plasma' ? 1.6 : 1); });
+    plasma.material.opacity = s === 'plasma' ? 0.45 : 0.22;
+    setLabel(lSel, { all: '血液 ＝ 血漿 ＋ 血球', plasma: '血漿', rbc: '紅血球', wbc: '白血球', plt: '血小板' }[s]);
+    setHTML('blStat', `${DESC[s]}${st.anemia ? '<br><b class="r">貧血</b>：血紅素不足，每次能帶的氧變少' : ''}${wound ? '<br><b>傷口</b>：血小板聚集在破口，幫助凝血' : ''}`);
+    setCap(`<small>血液的成分</small>${DESC[s]}<span class="huge">${{ all: '點選一種成分', plasma: '運送養分、廢物、抗體、激素', rbc: '靠血紅素運氧', wbc: '吞噬病原體、產生抗體', plt: '凝血' }[s]}</span>`);
+  }
+  return { group, update, st };
+})();
+
+/* =========================================================
+   Tab 2：開放式循環與閉鎖式循環
+   ========================================================= */
+const OC = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const base = shadowed(new THREE.Mesh(new RoundedBoxGeometry(11, 0.16, 3.6, 3, 0.05), BWD())); base.position.y = 0.08; group.add(base);
+  /* --- 左：開放式（昆蟲，全息輪廓） --- */
+  const insect = new THREE.Group(); insect.position.set(-2.9, 2.0, 0); group.add(insect);
+  const ins = new THREE.Shape(); ins.absellipse(0, 0, 2.2, 0.85, 0, Math.PI * 2, false, 0);
+  const insBody = holoPiece(ins, 0.5, 0.15, holoMat(0.28, 0xd7e9c4), null); insBody.add(holoOutline(ins, 0x689f38, 0.02, 0.32, 0.9)); insect.add(insBody);
+  const headS = new THREE.Shape(); headS.absellipse(0, 0, 0.45, 0.4, 0, Math.PI * 2, false, 0);
+  const head = holoPiece(headS, 0.45, 0.12, holoMat(0.28, 0xd7e9c4), null); head.position.x = 2.55; head.add(holoOutline(headS, 0x689f38, 0.02, 0.3, 0.9)); insect.add(head);
+  for (let i = 0; i < 3; i++) for (const s of [-1, 1]) { const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.02, 0.9, 6), new THREE.MeshBasicMaterial({ color: 0x8bbf62, transparent: true, opacity: 0.6 })); leg.position.set(-0.6 + i * 0.7, -0.95, s * 0.1); leg.rotation.z = s * 0.25; insect.add(leg); }
+  // 背血管（管狀心臟）：兩端開口，血液流入體腔
+  const dorsal = tubeAlong([V3(-1.6, 0.45, 0), V3(0, 0.55, 0), V3(1.9, 0.4, 0)], 0.09, soft(0xe57373, { transparent: true, opacity: 0.8 })); insect.add(dorsal);
+  addLabel('oc', '開放式（昆蟲）', 'big tit', V3(-2.9, 3.5, 0)); addLabel('oc', '背血管', 'small', V3(-2.9, 2.85, 0.4)); addLabel('oc', '體腔', 'small', V3(-2.9, 1.55, 0.4));
+  /* --- 右：閉鎖式（人的示意：全息人形輪廓＋一圈血管） --- */
+  const human = new THREE.Group(); human.position.set(3.0, 0.3, 0); human.scale.setScalar(0.62); group.add(human);
+  const bs = holoBodyShape({ hipY: -0.35, hipW: 1.45, waistY: 1.5, waistW: 1.35, chestY: 3.2, chestW: 1.55, shY: 4.35, shW: 1.62, neckY: 5.05, neckW: 0.36, headR: 0.8, headY: 5.8 });
+  const core = holoPiece(bs, 0.9, 0.36, holoMat(0.2, 0xf3c9a6), null); core.add(holoOutline(bs, 0xffa477, 0.02, 0.8, 0.85)); core.position.y = 0.6; human.add(core);
+  const heartBox = new THREE.Mesh(blobGeo(0.32, { amp: 0.08, seed: 4, detail: 3 }), soft(0xe57373)); heartBox.position.set(0.15, 3.8, 0.6); human.add(heartBox);
+  const loopPts = [V3(0.15, 3.8, 0.6), V3(1.0, 3.3, 0.6), V3(1.05, 1.2, 0.6), V3(0.4, 0.5, 0.6), V3(-0.4, 0.5, 0.6), V3(-1.05, 1.2, 0.6), V3(-1.0, 3.3, 0.6), V3(-0.4, 4.3, 0.6), V3(0.4, 4.3, 0.6)];
+  const loopCurve = new THREE.CatmullRomCurve3(loopPts, true);
+  human.add(new THREE.Mesh(new THREE.TubeGeometry(loopCurve, 160, 0.1, 12, true), glassTube(0xe57373, 0.35)));
+  addLabel('oc', '閉鎖式（人的示意）', 'big tit', V3(3.0, 3.85, 0)); addLabel('oc', '血液一直在血管裡', 'small', V3(3.0, 0.55, 0.8));
+  // 血液粒子
+  const dot = new THREE.IcosahedronGeometry(0.06, 1), redM = new THREE.MeshBasicMaterial({ color: 0xd32f2f, toneMapped: false });
+  const NO = 40, open = new THREE.InstancedMesh(dot, redM, NO), NC = 40, closed = new THREE.InstancedMesh(dot, redM, NC);
+  open.frustumCulled = closed.frustumCulled = false; insect.add(open); human.add(closed);
+  const op = Array.from({ length: NO }, (_, i) => ({ ph: i / NO, seed: Math.random() }));
+  const dorsalCurve = new THREE.CatmullRomCurve3([V3(-1.6, 0.45, 0), V3(0, 0.55, 0), V3(1.9, 0.4, 0)]);
+  const st = { play: true, t: 0 };
+  $('ocPlay').addEventListener('click', () => { st.play = !st.play; $('ocPlay').textContent = st.play ? '⏸ 暫停' : '▶ 播放'; });
+  const m4 = new THREE.Matrix4(), P = new THREE.Vector3();
+  function update(dt) {
+    if (st.play) st.t += dt;
+    // 開放式：背血管往前 → 從前端流出到體腔 → 在體腔中慢慢往後 → 從後端小孔回到背血管
+    op.forEach((p, i) => {
+      const u = (p.ph + st.t * 0.12) % 1;
+      if (u < 0.35) dorsalCurve.getPointAt(u / 0.35, P);
+      else { const k = (u - 0.35) / 0.65, x = 1.9 - k * 3.6, wob = Math.sin(k * 9 + p.seed * 6); P.set(x, 0.3 - 0.75 * Math.sin(k * Math.PI) * (0.5 + p.seed * 0.6) + 0.06 * wob, (p.seed - 0.5) * 0.6); }
+      m4.makeTranslation(P.x, P.y, P.z + 0.3); open.setMatrixAt(i, m4);
+    });
+    open.instanceMatrix.needsUpdate = true;
+    for (let i = 0; i < NC; i++) { loopCurve.getPointAt(((i / NC) + st.t * 0.1) % 1, P); m4.makeTranslation(P.x, P.y, P.z); closed.setMatrixAt(i, m4); }
+    closed.instanceMatrix.needsUpdate = true;
+    heartBox.scale.setScalar(1 + 0.08 * Math.max(0, Math.sin(st.t * 6)));
+    setCap(`<small>開放式 vs 閉鎖式循環</small>左：血液會流入體腔｜右：血液一直在血管裡<span class="huge">和單循環、雙循環是兩件不同的事</span>`);
+  }
+  return { group, update, st };
+})();
+
+/* =========================================================
+   Tab 3：淋巴循環與防禦
+   ========================================================= */
+const LY = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const base = shadowed(new THREE.Mesh(new RoundedBoxGeometry(11, 0.16, 4.2, 3, 0.05), BWD())); base.position.y = 0.08; group.add(base);
+  const Y = 0.75;
+  // 微血管（紅）→ 組織液滲出 → 淋巴管（綠，盲端）→ 淋巴結 → 靜脈（藍）
+  const capPts = [V3(-4.8, Y, 1.1), V3(-2, Y + 0.05, 1.1), V3(0.5, Y, 1.1)];
+  group.add(tubeAlong(capPts, 0.16, glassTube(0xe57373, 0.5)));
+  const tissue = Array.from({ length: 7 }, (_, i) => { const m = new THREE.Mesh(blobGeo(0.32, { amp: 0.12, seed: i + 30, detail: 3 }), soft(0xf3d6c4)); m.position.set(-4.2 + i * 0.75, Y, 0.1 + (i % 2) * 0.25); m.scale.y = 0.6; m.castShadow = true; group.add(m); return m; });
+  const lymphPts = [V3(-3.8, Y, -0.9), V3(-1.5, Y + 0.05, -0.9), V3(0.6, Y + 0.2, -0.7), V3(1.9, Y + 0.45, -0.1)];
+  const lymphCurve = new THREE.CatmullRomCurve3(lymphPts);
+  group.add(tubeAlong(lymphPts, 0.13, glassTube(0xa5d6a7, 0.55)));
+  const cap0 = new THREE.Mesh(new THREE.IcosahedronGeometry(0.13, 2), glassTube(0xa5d6a7, 0.6)); cap0.position.copy(lymphPts[0]); group.add(cap0);
+  // 淋巴結：豆形、裡面有淋巴球
+  const NODE = V3(2.4, Y + 0.55, 0.1);
+  const node = new THREE.Mesh(blobGeo(0.62, { amp: 0.08, seed: 9, detail: 4 }), new THREE.MeshPhysicalMaterial({ color: 0xc5e1a5, transparent: true, opacity: 0.55, roughness: 0.25, clearcoat: 0.8, depthWrite: false })); node.scale.set(1.25, 0.85, 0.85); node.position.copy(NODE); node.renderOrder = 5; group.add(node);
+  const lymphocytes = Array.from({ length: 16 }, (_, i) => { const m = new THREE.Mesh(blobGeo(0.09, { amp: 0.12, seed: i + 50, detail: 2 }), soft(0xf4f0fa)); m.position.copy(NODE).add(V3((Math.random() - 0.5) * 0.9, (Math.random() - 0.5) * 0.5, (Math.random() - 0.5) * 0.5)); group.add(m); return m; });
+  const outPts = [V3(2.95, Y + 0.6, 0.1), V3(3.6, Y + 0.6, 0.1), V3(4.2, Y + 0.5, 0.6)];
+  const outCurve = new THREE.CatmullRomCurve3(outPts);
+  group.add(tubeAlong(outPts, 0.12, glassTube(0xa5d6a7, 0.55)));
+  const veinPts = [V3(0.8, Y, 1.1), V3(3.0, Y + 0.1, 1.0), V3(5.0, Y + 0.1, 0.9)];
+  group.add(tubeAlong(veinPts, 0.2, glassTube(0x64b5f6, 0.5)));
+  const lab = (t, p, c = 'small') => { const l = addLabel('lymph', t, c, p); return l; };
+  lab('微血管', V3(-4.3, Y + 0.6, 1.3), 'small redT'); lab('組織細胞', V3(-2.1, Y + 0.65, 0.2)); lab('淋巴管（末端封閉）', V3(-3.5, Y + 0.55, -1.2), 'small grnT'); lab('淋巴結', V3(2.4, Y + 1.45, 0.1), 'small grnT'); lab('靜脈', V3(4.6, Y + 0.6, 1.1), 'small bluT');
+  const lStep = addLabel('lymph', '', 'big stepL', V3(0, 3.0, 0));
+  // 粒子：組織液（淡藍）→ 淋巴（淡綠）→ 靜脈
+  const dotG = new THREE.IcosahedronGeometry(0.055, 1);
+  const NF = 36, fluid = new THREE.InstancedMesh(dotG, new THREE.MeshBasicMaterial({ color: 0x7fd8f0, toneMapped: false }), NF); fluid.frustumCulled = false; group.add(fluid);
+  const fp = Array.from({ length: NF }, (_, i) => ({ ph: i / NF, x0: -4.4 + Math.random() * 4.6 }));
+  const bugs = Array.from({ length: 8 }, () => { const m = new THREE.Mesh(bugGeo, bugMat); m.visible = false; group.add(m); return { m, ph: Math.random(), caught: false }; });
+  const extraW = Array.from({ length: 10 }, (_, i) => { const m = new THREE.Mesh(blobGeo(0.12, { amp: 0.12, seed: i + 70, detail: 2 }), soft(0xf4f0fa)); m.visible = false; group.add(m); return m; });
+  const st = { t: 0, inf: false, it: 0, step: -1, stT: 0 };
+  $('lyPlay').addEventListener('click', () => { st.step = 0; st.stT = 0; });
+  $('lyInf').addEventListener('change', () => { st.inf = $('lyInf').checked; st.it = 0; bugs.forEach(b => { b.caught = false; b.ph = Math.random() * 0.4; }); });
+  const STEPS = ['① 血漿從微血管滲出，成為組織液', '② 組織液進入淋巴管，改叫做淋巴', '③ 淋巴流經淋巴結，病原體在這裡被過濾', '④ 淋巴最後注入靜脈，回到血液循環'];
+  const m4 = new THREE.Matrix4(), P = new THREE.Vector3();
+  function pathAt(u, x0, out) {
+    // 0～0.25：微血管滲出到組織；0.25～0.6：淋巴管；0.6～0.75：淋巴結；0.75～1：出淋巴結到靜脈
+    if (u < 0.25) { const k = u / 0.25; out.set(x0, Y + 0.1 * Math.sin(k * 3), 1.0 - k * 1.9); }
+    else if (u < 0.6) lymphCurve.getPointAt((u - 0.25) / 0.35, out);
+    else if (u < 0.75) { const k = (u - 0.6) / 0.15; out.lerpVectors(lymphPts[3], outPts[0], k).add(V3(0, 0.1 * Math.sin(k * 6), 0)); }
+    else { const k = (u - 0.75) / 0.25; if (k < 0.6) outCurve.getPointAt(k / 0.6, out); else out.lerpVectors(outPts[2], veinPts[2], (k - 0.6) / 0.4); }
+    return out;
+  }
+  function update(dt) {
+    st.t += dt;
+    if (st.step >= 0) { st.stT += dt; if (st.stT > 2.6) { st.stT = 0; st.step++; if (st.step > 3) st.step = -1; } }
+    fp.forEach((p, i) => { const u = (p.ph + st.t * 0.07) % 1; pathAt(u, p.x0, P); m4.makeTranslation(P.x, P.y, P.z); fluid.setMatrixAt(i, m4); });
+    fluid.instanceMatrix.needsUpdate = true;
+    // 病原體入侵：跟著淋巴走，到淋巴結被攔下；淋巴結腫大、白血球增多
+    if (st.inf) st.it += dt;
+    const caught = bugs.filter(b => b.caught).length;
+    bugs.forEach((b, i) => {
+      b.m.visible = st.inf;
+      if (!st.inf) return;
+      if (!b.caught) { b.ph += dt * 0.07; if (b.ph >= 0.66) { b.caught = true; } pathAt(Math.min(b.ph, 0.66), -3.5 + i * 0.4, P); b.m.position.copy(P); }
+      else { b.m.position.copy(NODE).add(V3(Math.cos(i * 1.7) * 0.35, Math.sin(i * 2.3) * 0.2, Math.sin(i * 1.7) * 0.25)); b.m.scale.setScalar(Math.max(0.3, 1 - (st.it - 6) * 0.08)); }
+      b.m.rotation.y += dt;
+    });
+    const swell = st.inf ? 1 + Math.min(0.3, caught * 0.04) : 1;
+    node.scale.set(1.25 * swell, 0.85 * swell, 0.85 * swell);
+    extraW.forEach((m, i) => { m.visible = st.inf && i < Math.min(10, Math.floor(st.it * 1.2)); m.position.copy(NODE).add(V3(Math.cos(i * 2.1) * 0.5, Math.sin(i * 1.3) * 0.25, Math.sin(i * 2.1) * 0.3)); });
+    lymphocytes.forEach((m, i) => { m.position.y += Math.sin(st.t * 2 + i) * 0.0008; });
+    setLabel(lStep, st.step >= 0 ? STEPS[st.step] : '組織液 → 淋巴管 → 淋巴結 → 靜脈');
+    setHTML('lyStat', `${st.step >= 0 ? `<b>${STEPS[st.step]}</b><br>` : ''}${st.inf ? `🦠 病原體入侵：<b>${caught}</b> 隻在淋巴結被攔下<br>淋巴結輕微腫大，白血球增加 <b>${extraW.filter(m => m.visible).length}</b> 個` : '淋巴也能把組織液送回血液，並協助小腸<b>乳糜管</b>運送養分。'}<br><small>抗體是血漿中的蛋白質，可抵抗入侵的病原體。</small>`);
+    setCap(`<small>淋巴循環與防禦</small>${st.inf ? '病原體跟著淋巴流到淋巴結，被淋巴球攔下' : '組織液進入淋巴管後叫做淋巴'}<span class="huge grn">${st.inf ? '淋巴結腫大、白血球增多' : '淋巴最後注入靜脈'}</span>`);
+  }
+  return { group, update, st };
+})();
+
+/* ----- 共用：面板、按鈕、滑桿不讓事件傳到 3D 畫面；拖曳滑桿時鎖住視角 ----- */
+['panel', 'dock', 'scaleNote'].forEach(id => { const el = $(id); if (!el) return; ['pointerdown', 'touchstart'].forEach(ev => el.addEventListener(ev, e => e.stopPropagation(), { passive: true })); });
+document.querySelectorAll('input[type=range]').forEach(r => {
+  ['pointerdown', 'touchstart'].forEach(ev => r.addEventListener(ev, e => { e.stopPropagation(); controls.enabled = false; }, { passive: true }));
+  ['pointerup', 'pointercancel', 'touchend', 'change'].forEach(ev => r.addEventListener(ev, () => { controls.enabled = true; }));
+});
+document.querySelectorAll('button, input[type=checkbox]').forEach(b => ['pointerdown', 'touchstart'].forEach(ev => b.addEventListener(ev, e => e.stopPropagation(), { passive: true })));
+
+/* =========================================================
+   Tab 切換、鏡頭
+   ========================================================= */
+const TABS = {
+  blood: { group: BL.group, cam: () => ({ pos: [0.3, 4.2, 9.4], target: [0.3, 1.3, 0], fitW: window.innerWidth < window.innerHeight ? 10 : 11.5 }), update: BL.update },
+  oc: { group: OC.group, cam: () => ({ pos: [0, 3.4, 10.5], target: [0, 2.0, 0], fitW: window.innerWidth < window.innerHeight ? 10.5 : 12 }), update: OC.update },
+  lymph: { group: LY.group, cam: () => ({ pos: [0.2, 5.2, 8.2], target: [0.2, 0.8, 0], fitW: window.innerWidth < window.innerHeight ? 10 : 11.5 }), update: LY.update }
+};
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
+  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
+  onTabChange(t);
+  renderer.domElement.style.cursor = '';
+  goView(TABS[t].cam());
+  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+}
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+function layoutDock() {
+  const d = $('dock');
+  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  d.style.left = ((left + window.innerWidth) / 2) + 'px';
+  d.style.maxWidth = Math.max(300, window.innerWidth - left - 28) + 'px';
+}
+function viewFor(c) {
+  const pos = V3(...c.pos), tgt = V3(...c.target);
+  if (!window.innerWidth || !window.innerHeight) return { pos, tgt };
+  if (window.MobileView?.isMobile()) {
+    const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
+    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
+    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
+    return { pos, tgt };
+  }
+  const left = $('panel').classList.contains('collapsed') ? 0 : $('panel').getBoundingClientRect().right;
+  const dist = pos.distanceTo(tgt), tanH = Math.tan(camera.fov * Math.PI / 360);
+  if (c.fitW) {
+    const avail = Math.max(0.35, (window.innerWidth - left) / window.innerWidth);
+    const need = c.fitW / avail / (2 * tanH * camera.aspect);
+    if (need > dist * 1.0001) { pos.sub(tgt).multiplyScalar(need / dist).add(tgt); return viewFor({ pos: pos.toArray(), target: tgt.toArray() }); }
+  }
+  const visH = 2 * dist * tanH, visW = visH * camera.aspect;
+  const sx = -(left / 2) / window.innerWidth * visW;
+  const sy = (($('dock').getBoundingClientRect().height + 18) / 2) / window.innerHeight * visH;
+  pos.x += sx; tgt.x += sx; pos.y += sy; tgt.y += sy;
+  return { pos, tgt };
+}
+let camTw = null;
+function goView(c, instant = false) {
+  layoutDock();
+  const { pos, tgt } = viewFor(c);
+  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
+  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
+}
+controls.addEventListener('start', () => { camTw = null; });
+$('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
+$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
+  renderer.setSize(w, h);
+  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
+
+const clock = new THREE.Clock();
+function frame(dt) {
+  wall += dt;
+  TABS[tab].update(dt);
+  if (camTw) {
+    camTw.k = Math.min(1, camTw.k + dt / 1.3);
+    const s = smooth(0, 1, camTw.k);
+    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
+    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
+    if (camTw.k >= 1) camTw = null;
+  }
+  controls.update();
+  if (!window.innerWidth || !window.innerHeight) return;
+  placeLabels();
+  window.MobileView?.offset(camera);
+  renderer.render(scene, camera);
+}
+function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
+
+window.lab = { frame, setTab, BL, OC, LY, camera, controls, renderer, scene, placeLabels };
+
+resize();
+const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'blood';
+tab = first;
+for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
+document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
+document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
+goView(TABS[first].cam(), true);
+animate();
+</script>
+
+<script>
+setTimeout(() => {
+  if (!window.__labReady) {
+    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+  }
+}, 6000);
+</script>
+<script src="goals.js" defer></script>
+</body>
+</html>
