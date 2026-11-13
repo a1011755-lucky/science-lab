@@ -179,7 +179,7 @@
   <button class="mcard on" data-mode="m1"><div class="ic">🛹</div><div class="n">牛一：慣性</div><div class="s">靜者恆靜、動者恆動</div></button>
   <button class="mcard" data-mode="m2"><div class="ic">🧊</div><div class="n">牛二：F = ma</div><div class="s">力越大、質量越小 → a 越大</div></button>
   <button class="mcard" data-mode="m3"><div class="ic">🤝</div><div class="n">牛三：作用與反作用</div><div class="s">力一樣大、方向相反</div></button>
-  <button class="mcard" data-mode="m4"><div class="ic">🪐</div><div class="n">萬有引力</div><div class="s">距離平方反比</div></button>
+  <button class="mcard" data-mode="m4"><div class="ic">🪐</div><div class="n">萬有引力</div><div class="s">距離越遠越小</div></button>
   <button class="mcard" data-mode="m5"><div class="ic">💧</div><div class="n">圓周運動</div><div class="s">向心力與切線速度</div></button>
 </nav>
 
@@ -626,8 +626,8 @@ const M4 = (() => {
     lR.pos.set(0, 0.7, 0); lR.el.textContent = `距離 r = ${r.toFixed(1)}`;
     lF.pos.set(0, 3.6, 0); lF.el.textContent = `引力 = 基準的 ${F.toFixed(2)} 倍${F * L_REF > L_MAX ? '（箭頭已超出畫面）' : ''}`;
     $('m4Read').innerHTML = `<div class="kv"><span>A 質量</span><b>${mA} 倍</b><span>距離 r</span><b>${r.toFixed(1)}（基準 8）</b>
-      <span>引力 ∝ m ÷ r²</span><b>${mA} × (8 ÷ ${r.toFixed(1)})² = ${F.toFixed(2)} 倍</b></div>
-      <div class="concl">質量變 2 倍 → 引力變 2 倍（正比）。<br>距離變一半 → 引力變 <b>4 倍</b>（距離平方反比）。</div>`;
+      <span>引力大小</span><b>基準的 ${F.toFixed(2)} 倍</b></div>
+      <div class="concl">質量越大 → 引力越大。<br>距離越近 → 引力越大；距離越遠 → 引力<b>越小</b>。</div>`;
   }
 
   // 拖曳星球改變距離

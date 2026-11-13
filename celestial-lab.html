@@ -503,7 +503,7 @@ function updateSphere(dt) {
   lbEcl.show = SP.ecl; wp(eclAt(Math.PI * 0.62), lbEcl.pos);
   lbSeason.forEach((L, i) => { L.show = SP.ecl; wp(eclAt(i * Math.PI / 2).multiplyScalar(1), L.pos); });
   lbEclSun.show = SP.ecl;
-  if (SP.ecl) { const dec = Math.asin(Math.sin(SP.lam) * Math.sin(EPS)) / DEG; setLabel(lbEclSun, `☀️ 太陽赤緯 ${dec >= 0 ? '+' : ''}${dec.toFixed(1)}°`); }
+  if (SP.ecl) { const dec = Math.asin(Math.sin(SP.lam) * Math.sin(EPS)) / DEG; setLabel(lbEclSun, `☀️ 陽光直射 ${dec > 0.05 ? '北緯 ' + dec.toFixed(1) + '°' : dec < -0.05 ? '南緯 ' + (-dec).toFixed(1) + '°' : '赤道'}`); }
   setCap(SP.spin
     ? `<small>地球由西向東自轉（從北極上方看是逆時針）</small><span class="huge">所以天上的星星、太陽看起來<b>由東向西</b>繞著北極星轉</span>這就是<b>周日運動</b>；北極星在地軸延長線上，所以幾乎不動`
     : `<small>🔮 天球</small><span class="huge">天球是假想的透明球體，星星與太陽彷彿都投影在這個球面上！</span>拖曳畫面可以 360° 翻轉天球`);
@@ -705,9 +705,9 @@ function updateSun(dt) {
   else if (nearNoon && SUN.dec > 0) setCap(`<small>夏至・正午</small><span class="huge red">太陽在天頂（正上方），竿子沒有影子！</span>北緯 23.5° 的夏至正午，陽光<b>直射</b>`);
   else if (nearNoon && SUN.dec < 0) setCap(`<small>冬至・正午</small><span class="huge blu">正午仰角只有 ${noonAlt.toFixed(1)}°，竿影一年中最長</span>太陽從東偏南升起、在南方低空走一小段就落下`);
   else if (nearNoon) setCap(`<small>${s}・正午</small><span class="huge">太陽在正南方最高（仰角 ${noonAlt.toFixed(1)}°）</span>竿影最短，影子指向<b>正北</b>`);
-  else setCap(`<small>${s}・${fmtH(SUN.hour)}（太陽赤緯 ${SUN.dec > 0 ? '+' : ''}${SUN.dec}°）</small>太陽從<b>${dirText(r.riseV)}</b>升起 → 正午在南方最高 → 從<b>${dirText(r.setV)}</b>落下`);
+  else setCap(`<small>${s}・${fmtH(SUN.hour)}（陽光直射 ${SUN.dec > 0 ? '北緯 ' + SUN.dec + '°' : SUN.dec < 0 ? '南緯 ' + (-SUN.dec) + '°' : '赤道'}）</small>太陽從<b>${dirText(r.riseV)}</b>升起 → 正午在南方最高 → 從<b>${dirText(r.setV)}</b>落下`);
   const day = 2 * r.hd;
-  setHTML('sunStat', `${s}：太陽赤緯 <b>${SUN.dec > 0 ? '+' : ''}${SUN.dec}°</b><br>日出 <b class="o">${fmtH(12 - r.hd)}</b>（${dirText(r.riseV)}）<br>日落 <b class="o">${fmtH(12 + r.hd)}</b>（${dirText(r.setV)}）<br>白天長 <b>${Math.floor(day)} 小時 ${Math.round((day % 1) * 60)} 分</b><br>正午仰角 ＝ 90° − 23.5° ${SUN.dec >= 0 ? '+' : '−'} ${Math.abs(SUN.dec)}° ＝ <b class="r">${noonAlt.toFixed(1)}°</b><br>現在仰角 <b>${r.alt.toFixed(1)}°</b>　${r.shadowLen !== null ? `竿影長 ＝ 竿高 × <b>${r.shadowLen < 0.02 ? '0（沒有影子）' : r.shadowLen.toFixed(2)}</b>` : '沒有竿影'}${SUN.moon ? `<br>🌙 農曆${LUNAR[SUN.lunar - 1]}：月亮大約比太陽晚 <b>${((SUN.lunar - 1) * 50 / 60).toFixed(1)}</b> 小時升起` : ''}`);
+  setHTML('sunStat', `${s}：陽光直射 <b>${SUN.dec > 0 ? '北緯 ' + SUN.dec + '°' : SUN.dec < 0 ? '南緯 ' + (-SUN.dec) + '°' : '赤道'}</b><br>日出 <b class="o">${fmtH(12 - r.hd)}</b>（${dirText(r.riseV)}）<br>日落 <b class="o">${fmtH(12 + r.hd)}</b>（${dirText(r.setV)}）<br>白天長 <b>${Math.floor(day)} 小時 ${Math.round((day % 1) * 60)} 分</b><br>正午仰角 ＝ 90° − 23.5° ${SUN.dec >= 0 ? '+' : '−'} ${Math.abs(SUN.dec)}° ＝ <b class="r">${noonAlt.toFixed(1)}°</b><br>現在仰角 <b>${r.alt.toFixed(1)}°</b>　${r.shadowLen !== null ? `竿影長 ＝ 竿高 × <b>${r.shadowLen < 0.02 ? '0（沒有影子）' : r.shadowLen.toFixed(2)}</b>` : '沒有竿影'}${SUN.moon ? `<br>🌙 農曆${LUNAR[SUN.lunar - 1]}：月亮大約比太陽晚 <b>${((SUN.lunar - 1) * 50 / 60).toFixed(1)}</b> 小時升起` : ''}`);
 }
 
 /* =========================================================

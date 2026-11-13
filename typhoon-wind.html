@@ -154,9 +154,9 @@
 
     <div class="group">
       <div class="row col">
-        <div style="display:flex;justify-content:space-between"><span>內吹角 α</span><small id="alphaVal"></small></div>
-        <input type="range" id="alpha" min="10" max="45" step="1" value="30" aria-label="內吹角">
-        <small>風向與「繞中心的切線」夾角；陸地摩擦大，約 30°。右偏角 = 90° − α</small>
+        <div style="display:flex;justify-content:space-between"><span>風往中心偏的角度</span><small id="alphaVal"></small></div>
+        <input type="range" id="alpha" min="10" max="45" step="1" value="30" aria-label="風往中心偏的角度">
+        <small>風不是只繞著中心轉，還會往中心偏；陸地摩擦大，偏得較多，約 30°。</small>
       </div>
       <div class="row">
         <span>典型路徑</span>
@@ -625,10 +625,10 @@ $('playBtn').addEventListener('click', () => {
 const paint = el => el.style.setProperty('--fill', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
 $('alpha').addEventListener('input', e => {
   alpha = Number(e.target.value);
-  $('alphaVal').textContent = `${alpha}°（右偏 ${90 - alpha}°）`;
+  $('alphaVal').textContent = `${alpha}°`;
   paint(e.target); refresh();
 });
-$('alphaVal').textContent = `${alpha}°（右偏 ${90 - alpha}°）`;
+$('alphaVal').textContent = `${alpha}°`;
 paint($('alpha'));
 $('viewBtn').addEventListener('click', resetView);
 $('collapse').addEventListener('click', () => {

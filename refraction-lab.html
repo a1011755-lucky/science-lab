@@ -431,8 +431,8 @@ const visDraw = Drawer(VIS.group);
 const lbReal = addLabel('vis', '', 'real', V3(0, 0, 0));
 const lbGhost = addLabel('vis', '', 'ghost', V3(0, 0, 0));
 const lbEye = addLabel('vis', '', 'eye', V3(0, 0, 0));
-addLabel('vis', '💧 水（n ＝ 1.33）', '', V3(4.6, 0.55, TD / 2 + 0.1));
-const lbAir = addLabel('vis', '空氣（n ＝ 1.00）', '', V3(4.6, 3.6, TD / 2 + 0.1));
+addLabel('vis', '💧 水（光速較慢）', '', V3(4.6, 0.55, TD / 2 + 0.1));
+const lbAir = addLabel('vis', '空氣（光速較快）', '', V3(4.6, 3.6, TD / 2 + 0.1));
 
 /** 在水面上找出「從 S 經水面折射到 T」的折射點（費馬原理，二分法；結果完全符合司乃耳定律） */
 function solveRay(S, ns, T, ne) {
@@ -562,7 +562,7 @@ function updateVis(dt) {
       : `空氣中光線與法線夾角 ＝ <b class="r">${f1(VIS.angShow)}°</b><br>進入水中後 ＝ <b class="b">${f1(aW)}°</b>（偏向法線）<br>`) +
     `<hr style="border:none;border-top:1px dashed #e6dccd;margin:4px 0">` +
     `實際 <b>${cm(depthReal)}</b> cm → 看起來 <b class="y">${cm(depthApp)}</b> cm（${(depthApp / depthReal).toFixed(2)} 倍）` +
-    (VIS.angShow < 1.5 ? `<br><span style="color:#8d7366">正上下方觀看：約為 ${coinMode ? '1 ÷ 1.33' : '1.33'} 倍</span>` : ''));
+    (VIS.angShow < 1.5 ? `<br><span style="color:#8d7366">從正上下方觀看時，${coinMode ? '一樣會變淺' : '一樣會變高'}</span>` : ''));
 }
 
 /* =========================================================
