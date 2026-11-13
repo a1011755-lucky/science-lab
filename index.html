@@ -259,6 +259,54 @@
   }
   @media (max-width: 340px) { .unit-grid { grid-template-columns: 1fr; } }
   @media (max-width: 480px) { .hero h1 { font-size: 1.75rem; } .hero h1 br { display: none; } }
+  /* ===== 質感升級：毛玻璃、上浮、國一薄荷綠、頁籤淡入 ===== */
+  :root { --mint: #a8dfc4; --mint-deep: #6fae8f; }
+
+  /* 高級毛玻璃卡片 */
+  .glass-card, .chap-card, .unit-card {
+    color: #5d4037;
+    background: rgba(255,255,255,.55);
+    border: 1px solid rgba(255,255,255,.85);
+    border-radius: 22px;
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    box-shadow: 0 1px 2px rgba(93,64,55,.05), 0 8px 24px rgba(93,64,55,.08);
+    transition: transform .3s cubic-bezier(.22,.61,.36,1), box-shadow .3s ease, border-color .3s ease, background .3s ease;
+  }
+
+  /* 滑過時上浮、陰影擴散 */
+  .chap-card:hover, a.unit-card:hover, .glass-card:hover {
+    transform: translateY(-4px);
+    background: rgba(255,255,255,.8);
+    box-shadow: 0 14px 30px rgba(93,64,55,.14), 0 28px 56px rgba(93,64,55,.10);
+  }
+  a.unit-card:active { transform: translateY(0) scale(.99); box-shadow: var(--shadow-press); }
+  /* 「即將推出」的卡片維持原本的斜紋樣式 */
+  .unit-card.soon { background: repeating-linear-gradient(135deg, rgba(255,253,248,.7) 0 12px, rgba(245,239,226,.7) 12px 24px); border-style: dashed; box-shadow: none; }
+
+  /* 國一生物專屬：粉彩薄荷綠邊框與光暈 */
+  #panel-g7 .chap-card:hover, #panel-g7 a.unit-card:hover {
+    border-color: var(--mint);
+    box-shadow: 0 0 0 3px rgba(168,223,196,.45), 0 16px 36px rgba(111,174,143,.24), 0 28px 56px rgba(93,64,55,.08);
+  }
+  #panel-g7 .chap-card::before { background: linear-gradient(90deg, var(--mint), var(--mint-deep)); opacity: 1; }
+  #panel-g7 .lab-btn.sub:hover { border-color: var(--mint-deep); }
+
+  /* 頁籤切換：面板與卡片依序淡入上滑 */
+  @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+  .grade-panel { animation: none; }
+  .grade-panel.is-entering { animation: fadeSlideUp .45s cubic-bezier(.22,.61,.36,1) both; }
+  .grade-panel.is-entering .chap-card,
+  .grade-panel.is-entering .unit-card { animation: fadeSlideUp .5s cubic-bezier(.22,.61,.36,1) both; }
+  .grade-panel.is-entering :is(.chap-card, .unit-card):nth-child(2) { animation-delay: .05s; }
+  .grade-panel.is-entering :is(.chap-card, .unit-card):nth-child(3) { animation-delay: .10s; }
+  .grade-panel.is-entering :is(.chap-card, .unit-card):nth-child(4) { animation-delay: .15s; }
+  .grade-panel.is-entering :is(.chap-card, .unit-card):nth-child(n+5) { animation-delay: .20s; }
+
+  /* 手機：卡片多，模糊量減半，捲動才順 */
+  @media (max-width: 760px) {
+    .glass-card, .chap-card, .unit-card { backdrop-filter: blur(6px) saturate(130%); -webkit-backdrop-filter: blur(6px) saturate(130%); }
+  }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } html { scroll-behavior: auto; } }
 </style>
 </head>
@@ -562,7 +610,7 @@ function renderChapters(c) {
           : '<span class="soon-badge">🛠️ 3D 實驗室製作中</span>';
         const rel = (ch.rel || []).map(l => `<a class="rel-link" href="${escapeHTML(l.u)}">🔗 相關：${escapeHTML(l.t)}</a>`).join('');
         return `
-        <article class="chap-card${ch.labs.length ? '' : ' nolab'}">
+        <article class="chap-card glass-card${ch.labs.length ? '' : ' nolab'}">
           <div class="unit-top"><span class="unit-no">${pad(no)}</span><span class="unit-tag">${escapeHTML(s.name)} · 第 ${i + 1} 章</span></div>
           <h3 class="unit-title">${escapeHTML(ch.title)}</h3>
           <p class="chap-sum">${escapeHTML(ch.sum)}</p>
@@ -622,7 +670,16 @@ function renderCourses() {
 function switchGrade(id, { scroll = false } = {}) {
   if (!COURSES.some(c => c.id === id)) id = COURSES[0].id;
   document.querySelectorAll('.nav-tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.target === id)));
-  document.querySelectorAll('.grade-panel').forEach(p => p.classList.toggle('active', p.id === `panel-${id}`));
+  document.querySelectorAll('.grade-panel').forEach(p => {
+    const on = p.id === `panel-${id}`, was = p.classList.contains('active');
+    p.classList.toggle('active', on);
+    p.classList.remove('is-entering');
+    if (on && !was) {
+      void p.offsetWidth;                 // 強制重新計算，讓淡入動畫每次切換都重播
+      p.classList.add('is-entering');
+      setTimeout(() => p.classList.remove('is-entering'), 900);   // 播完移除，之後滑過卡片才能正常上浮
+    }
+  });
   try { history.replaceState(null, '', `#${id}`); } catch (e) { /* file:// */ }
   if (scroll) document.getElementById('courses').scrollIntoView({ behavior: 'smooth' });
 }
