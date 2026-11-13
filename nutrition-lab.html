@@ -844,14 +844,32 @@ const DG = (() => {
   const liPts = [[-0.85, 1.2, 0.15], [-1.05, 1.5, 0.1], [-1.1, 2.3, 0.05], [-1.0, 2.85, 0.05], [0, 2.95, 0.15], [1.0, 2.85, 0.05], [1.1, 2.2, 0.05], [1.05, 1.4, 0.05], [0.6, 1.0, 0.0], [0.15, 0.85, 0.0], [0, 0.55, 0.0]];
   reg('li', tube(liPts, 0.2, orgMat(0xd8a47f), 160));
   const anus = reg('anus', new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.04, 8, 20), orgMat(0xb87060))); anus.rotation.x = Math.PI / 2; anus.position.set(0, 0.48, 0);
-  // 食物（漢堡碎塊）：澱粉（藍方塊）、蛋白質（紅球）、脂質（黃滴）
-  const bolus = new THREE.Group(); group.add(bolus);
+  // 食團：一串珠子＝一個大分子（澱粉藍、蛋白質紅、脂質黃），被消化後散成單顆小分子；褐色＝不能消化的殘渣
+  // 珠子沿著消化道的曲線排列、限制在管徑內，並且畫在器官前面（depthTest 關閉），看起來像透視到管子裡
+  const bolus = new THREE.Group(); group.add(bolus);          // 只用來記錄食團中心（標籤、光暈跟著它）
+  const beadGeo = new THREE.SphereGeometry(1, 18, 14);
+  const beadMat = c => new THREE.MeshPhysicalMaterial({ color: c, roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.2, emissive: c, emissiveIntensity: 0.28, transparent: true, depthTest: false, depthWrite: false });
+  const BEAD = { starch: { mat: beadMat(0x5c7cfa), r: 0.036, n: 4, groups: 6 }, protein: { mat: beadMat(0xe5484d), r: 0.034, n: 3, groups: 5 }, fat: { mat: beadMat(0xffc93c), r: 0.04, n: 4, groups: 4 }, rest: { mat: beadMat(0x8d6e63), r: 0.036, n: 1, groups: 9 } };
   const parts = [];
-  const addP = (type, n, mk) => { for (let i = 0; i < n; i++) { const m = mk(); const d = V3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize().multiplyScalar(0.08 + rnd() * 0.12); m.userData = { type, d, seed: rnd() }; bolus.add(m); parts.push(m); } };
-  addP('starch', 9, () => new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.09), orgMat(0x5c7cfa)));
-  addP('protein', 7, () => sphere(0.06, orgMat(0xd32f2f), 10));
-  addP('fat', 6, () => sphere(0.075, orgMat(0xffd54f, { transparent: true, opacity: 0.95 }), 10));
-  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('255,180,80'), transparent: true, depthWrite: false })); glow.scale.setScalar(0.9); bolus.add(glow);
+  for (const [type, B] of Object.entries(BEAD)) for (let gI = 0; gI < B.groups; gI++) {
+    // 每一串共用：沿曲線的前後位置、在管子截面上的方向與半徑、串的排列方向
+    const along = (rnd() - 0.5) * 2, dir = V3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize(), rad = 0.25 + rnd() * 0.75;
+    const axis = V3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize(), seed = rnd();
+    for (let j = 0; j < B.n; j++) {
+      const m = new THREE.Mesh(beadGeo, B.mat); m.renderOrder = 20; group.add(m);
+      // 串裡每顆的位置：脂質擠成一大滴，澱粉、蛋白質排成一條鏈
+      const local = type === 'fat' ? V3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize().multiplyScalar(B.r * 0.8) : axis.clone().multiplyScalar((j - (B.n - 1) / 2) * B.r * 1.7);
+      const fly = V3(rnd() - 0.5, rnd() - 0.5, rnd() - 0.5).normalize();                 // 被消化後散開的方向
+      m.userData = { type, along, dir, rad, local, fly, seed: seed + j * 0.37, r: B.r };
+      parts.push(m);
+    }
+  }
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('255,190,110'), transparent: true, depthWrite: false, depthTest: false })); glow.scale.setScalar(0.7); glow.renderOrder = 19; bolus.add(glow);
+  // 食道蠕動：一圈收縮的肌肉跟在食團後面往下推
+  const squeeze = new THREE.Mesh(new THREE.TorusGeometry(0.115, 0.04, 10, 28), orgMat(0xd55f5f)); squeeze.visible = false; group.add(squeeze);
+  // 每一站的管徑（珠子不會超出這個半徑）與食團沿管子前後拉開的長度（佔該站路徑的比例）
+  const ROOM = [{ R: 0.17, L: 0.16 }, { R: 0.065, L: 0.13 }, { R: 0.25, L: 0.14 }, { R: 0.075, L: 0.05 }, { R: 0.14, L: 0.06 }, { R: 0.09, L: 0.1 }];
+  const pC = V3(0, 0, 0), pT = V3(0, 0, 0), pV = V3(0, 0, 0), pW = V3(0, 0, 0);
 
   const STA = [
     { n: '口腔', org: ['mouth', 'saliva'], path: [[0, 5.6, 0.75], [0, 5.48, 0.42], [0, 5.35, 0.2]], juice: [['唾液', '唾腺']], d: '牙齒切斷、磨碎食物，舌頭攪拌，讓食物和唾液混合。<b>唾液</b>含澱粉酶，開始<b>初步分解澱粉</b>。', cam: [0, 5.3, 0] },
@@ -885,24 +903,47 @@ const DG = (() => {
     bolus.position.copy(S.curve.getPoint(k));
     const ds = val('starch', st.s, k), dp = val('protein', st.s, k), df = val('fat', st.s, k), ab = val('abs', st.s, k), wa = val('water', st.s, k);
     const out = st.s === 5 ? smooth(0.6, 1, st.k) : 0;
+    const room = ROOM[st.s];
     parts.forEach(m => {
-      const t = m.userData.type, dd = t === 'starch' ? ds : t === 'protein' ? dp : df;
-      const spread = 1 + dd * 1.6;
-      m.position.copy(m.userData.d).multiplyScalar(spread).add(V3(Math.sin(wall * 3 + m.userData.seed * 9) * 0.02, 0, 0));
-      m.scale.setScalar(Math.max(0.001, (1 - 0.65 * dd) * (1 - ab)));
-      m.visible = ab < 0.99;
-      m.rotation.y = wall + m.userData.seed * 6;
+      const u = m.userData, t = u.type, rest = t === 'rest';
+      const dd = rest ? 0 : t === 'starch' ? ds : t === 'protein' ? dp : df;
+      // 沿著這一站的曲線前後排開（到了出口會自然擠在一起）
+      const uu = clamp(k + u.along * room.L, 0, 1);
+      S.curve.getPoint(uu, pC); S.curve.getTangent(uu, pT);
+      // 管子截面上的位置：把隨機方向去掉「沿管子」的分量，再乘上管徑
+      pV.copy(u.dir).addScaledVector(pT, -u.dir.dot(pT)); if (pV.lengthSq() < 1e-6) pV.set(0, 0, 1); pV.normalize();
+      const clump = rest ? 1 - 0.55 * wa : 1;                                   // 殘渣在大腸失去水分後聚成一團
+      pV.multiplyScalar(room.R * u.rad * 0.7 * clump);
+      // 串 → 散開：dd 越大，每顆離串中心越遠
+      pW.copy(u.local).multiplyScalar(1 + dd * 0.6).addScaledVector(u.fly, dd * room.R * 0.75);
+      pV.add(pW).addScaledVector(pT, -pV.dot(pT) * 0.5);
+      if (pV.length() > room.R) pV.setLength(room.R);                            // 不超出管壁
+      pV.multiplyScalar(1 + (rest ? 0 : ab * 0.7));                              // 被吸收：往腸壁靠過去
+      const wob = Math.sin(wall * 2.2 + u.seed * 9) * 0.006;
+      m.position.copy(pC).add(pV); m.position.y += wob;
+      const sc = rest ? u.r * (0.8 + 0.35 * wa) * (1 - out) : u.r * (1 - 0.22 * dd) * (1 - ab);
+      m.scale.setScalar(Math.max(0.0001, sc));
+      m.visible = sc > u.r * 0.03;
     });
-    glow.material.opacity = st.s >= 4 ? 0.25 : 0.7; glow.material.color.setHex(st.s >= 4 ? 0x8d6e63 : 0xffffff);
-    glow.scale.setScalar(st.s >= 4 ? 0.55 : 0.9);
+    glow.material.opacity = st.s >= 4 ? 0.18 : 0.42; glow.material.color.setHex(st.s >= 4 ? 0x8d6e63 : 0xffffff);
+    glow.scale.setScalar(Math.max(0.3, room.R * 5));
     glow.visible = out < 0.95;
+    // 食道蠕動環：在食團後方（上方）一點點，隨食團往下
+    squeeze.visible = st.s === 1 && st.k < 0.98;
+    if (squeeze.visible) { const us = clamp(k - 0.2, 0, 1); S.curve.getPoint(us, pC); S.curve.getTangent(us, pT); squeeze.position.copy(pC); squeeze.quaternion.setFromUnitVectors(V3(0, 0, 1), pT); const p = 0.82 + 0.1 * Math.sin(wall * 9); squeeze.scale.set(p, p, 1); }
     // 器官發光
     const pulse = 0.3 + 0.3 * Math.sin(wall * 5);
-    for (const [key, list] of Object.entries(ORG)) list.forEach(m => { m.material.emissive.copy(m.userData.base).multiplyScalar(S.org.includes(key) ? pulse : 0); });
+    for (const [key, list] of Object.entries(ORG)) list.forEach(m => {
+      const on = S.org.includes(key);
+      m.material.emissive.copy(m.userData.base).multiplyScalar(on ? pulse : 0);
+      // 不是這一站的器官變半透明：焦點清楚，也看得到被擋在後面的那一段消化道
+      if (!m.material.transparent) m.material.transparent = true;
+      m.material.opacity += ((on ? 1 : 0.32) - m.material.opacity) * Math.min(1, dt * 5);
+    });
     lOrg.pos.copy(bolus.position).add(V3(-1.0, 0.35, 0.4)); setLabel(lOrg, `📍 ${S.n}`);
     lVil.show = st.s === 3;
     const bar = (n, v, c) => `<span>${n}</span><div class="bar"><i style="width:${Math.round(v * 100)}%;background:${c}"></i></div><span>${Math.round(v * 100)}%</span>`;
-    setHTML('digStat', `<div class="nbar">${bar('澱粉分解', ds, '#5c7cfa')}${bar('蛋白質分解', dp, '#d32f2f')}${bar('脂質分解', df, '#e0b000')}${bar('養分吸收', ab, '#4f7d5c')}${bar('水分吸收', wa, '#3f8ad0')}</div><p class="desc" style="margin-top:6px">大分子養分要分解成<b>小分子</b>（葡萄糖、胺基酸、脂肪酸和甘油）才能被吸收。</p>`);
+    setHTML('digStat', `<div class="nbar">${bar('澱粉分解', ds, '#5c7cfa')}${bar('蛋白質分解', dp, '#d32f2f')}${bar('脂質分解', df, '#e0b000')}${bar('養分吸收', ab, '#4f7d5c')}${bar('水分吸收', wa, '#3f8ad0')}</div><p class="desc" style="margin-top:6px">🔵 澱粉　🔴 蛋白質　🟡 脂質　🟤 殘渣<br>連成一串＝<b>大分子</b>，散開的單顆＝<b>小分子</b>。大分子養分要分解成小分子（葡萄糖、胺基酸、脂肪酸和甘油）才能被吸收。</p>`);
     setCap(`<small>消化之旅・第 ${st.s + 1} 站</small><b>${S.n}</b>　${S.juice.length ? S.juice.map(j => j[0]).join('、') : '沒有消化液'}${st.s === 3 ? '　→ 養分在這裡被<b class="grn">吸收</b>' : ''}`);
   }
   return { group, update, go, st, STA, cam: () => { const c = STA[st.s].cam; return { pos: [c[0] + 2.0, c[1] + BY + 0.8, 7.6], target: [c[0], c[1] + BY, 0], fitW: 5.2 }; } };
