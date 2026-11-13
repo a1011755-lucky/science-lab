@@ -6,19 +6,19 @@
 <title>細胞分裂與配子形成模擬器</title>
 <style>
   :root {
-    --ink: #1f2a37;
-    --ink-soft: #64748b;
-    --line: rgba(30,60,100,.1);
-    --card: rgba(255,255,255,.66);
+    --ink: #5d4037;
+    --ink-soft: #8d7366;
+    --line: rgba(93,64,55,.12);
+    --card: rgba(255,255,255,.5);
     --blue: #3b82f6;
     --red: #ef4444;
-    --teal: #0ea5a4;
-    --track: #e2e8f0;
+    --teal: #8d6e63;
+    --track: #e6dccd;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; }
   body {
-    background: linear-gradient(#e6f0fa, #ffffff);
+    background: #f5f1e7;
     color: var(--ink);
     font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -27,15 +27,15 @@
   #scene canvas { display: block; }
 
   .glass {
-    background: var(--card); backdrop-filter: blur(14px) saturate(160%); -webkit-backdrop-filter: blur(14px) saturate(160%);
-    border: 1px solid rgba(255,255,255,.85); box-shadow: 0 10px 30px rgba(40,80,130,.14);
+    background: var(--card); backdrop-filter: blur(10px) saturate(140%); -webkit-backdrop-filter: blur(10px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.85); box-shadow: 0 10px 30px rgba(93,64,55,.14);
   }
   .collapse {
     position: absolute; top: 14px; right: 14px; z-index: 2; cursor: pointer;
     border: none; border-radius: 999px; padding: 4px 12px;
-    font: inherit; font-size: .76rem; font-weight: 600; color: var(--teal); background: rgba(14,165,164,.1);
+    font: inherit; font-size: .76rem; font-weight: 600; color: var(--teal); background: rgba(141,110,99,.1);
   }
-  .collapse:hover { background: rgba(14,165,164,.18); }
+  .collapse:hover { background: rgba(141,110,99,.18); }
   .collapsed .body { display: none; }
 
   /* ===== 左側控制面板 ===== */
@@ -51,7 +51,7 @@
     background: rgba(255,255,255,.6); border: 1px solid var(--line); border-radius: 12px;
     transition: background .2s, color .2s, border-color .2s;
   }
-  .tab:hover { border-color: rgba(14,165,164,.45); }
+  .tab:hover { border-color: rgba(141,110,99,.45); }
   .tab.on { background: var(--teal); color: #fff; border-color: var(--teal); font-weight: 700; }
 
   .section[hidden] { display: none; }
@@ -65,7 +65,7 @@
     background: linear-gradient(90deg, var(--teal) 0%, var(--teal) var(--fill, 0%), var(--track) var(--fill, 0%)); outline: none; }
   input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,.15), 0 0 0 .5px rgba(0,0,0,.06); }
   input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 3px 8px rgba(0,0,0,.15); }
-  input[type=range]:focus-visible { box-shadow: 0 0 0 3px rgba(14,165,164,.3); }
+  input[type=range]:focus-visible { box-shadow: 0 0 0 3px rgba(141,110,99,.3); }
   .ticks { display: grid; grid-template-columns: 25% 30% 15% 30%; font-size: .7rem; color: var(--ink-soft); margin-top: 6px; }
   .ticks span { text-align: center; border-left: 1px solid var(--track); }
   .ticks span:first-child { border-left: none; }
@@ -76,7 +76,7 @@
   .sum caption { text-align: left; font-weight: 800; font-size: .82rem; color: var(--teal); padding: 0 0 6px; }
   .sum th, .sum td { padding: 5px 6px; border-bottom: 1px solid var(--line); text-align: center; line-height: 1.35; }
   .sum th { font-weight: 700; color: var(--ink-soft); text-align: left; white-space: nowrap; }
-  .sum thead th { color: var(--ink); text-align: center; background: rgba(14,165,164,.1); }
+  .sum thead th { color: var(--ink); text-align: center; background: rgba(141,110,99,.1); }
   .sum tr { transition: background .3s; }
   .sum tr.hl { background: rgba(250,204,21,.4); }
   .sum b { color: #c2410c; }
@@ -86,13 +86,13 @@
 
   .btn {
     width: 100%; border: none; border-radius: 12px; padding: 10px; cursor: pointer; margin-top: 6px;
-    font: inherit; font-size: .88rem; font-weight: 700; color: var(--teal); background: rgba(14,165,164,.1);
+    font: inherit; font-size: .88rem; font-weight: 700; color: var(--teal); background: rgba(141,110,99,.1);
     transition: background .2s, transform .1s;
   }
-  .btn:hover { background: rgba(14,165,164,.18); }
+  .btn:hover { background: rgba(141,110,99,.18); }
   .btn:active { transform: scale(.98); }
   .btn.primary { color: #fff; background: var(--teal); }
-  .btn.primary:hover { background: #0b8f8e; }
+  .btn.primary:hover { background: #795548; }
   .btn:disabled { opacity: .4; cursor: default; transform: none; }
   .legend { display: flex; gap: 14px; font-size: .74rem; color: var(--ink-soft); margin-top: 8px; }
   .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
@@ -108,7 +108,7 @@
   .ro .vals { display: flex; gap: 16px; align-items: baseline; margin-top: 2px; }
   .ro .v { font-size: 1.6rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; transition: color .3s; }
   .ro .v small { font-size: .68rem; font-weight: 600; color: var(--ink-soft); margin-left: 2px; }
-  .ro .v.n { color: #7c3aed; } .ro .v.a { color: #0ea5a4; }
+  .ro .v.n { color: #7c3aed; } .ro .v.a { color: #4f7d5c; }
   .ro .note { font-size: .72rem; color: var(--ink-soft); margin-top: 4px; line-height: 1.5; }
   .flash { animation: flash .6s; }
   @keyframes flash { 0% { background: rgba(250,204,21,.55); } 100% { background: rgba(255,255,255,.8); } }
@@ -116,7 +116,7 @@
   .tag {
     position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
     font-size: .76rem; font-weight: 600; padding: 4px 10px; border-radius: 10px; white-space: nowrap; line-height: 1.4; text-align: center;
-    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 3px 10px rgba(40,80,130,.12);
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 3px 10px rgba(93,64,55,.12);
   }
   .tag small { display: block; font-weight: 500; color: var(--ink-soft); font-size: .68rem; }
   .tag.big { font-size: .9rem; }
@@ -259,7 +259,7 @@ const ease = x => { x = clamp(x, 0, 1); return x * x * (3 - 2 * x); };
 const COLORS = { blue: 0x3b82f6, red: 0xef4444 };
 
 /* =========================================================
-   場景：明亮醫學實驗室
+   場景：溫暖原木無印風（米白背景）
    ========================================================= */
 const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
 renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
@@ -274,13 +274,13 @@ scene.background = (() => {
   c.width = 2; c.height = 256;
   const g = c.getContext('2d');
   const grad = g.createLinearGradient(0, 0, 0, 256);
-  grad.addColorStop(0, '#e6f0fa'); grad.addColorStop(1, '#ffffff');
+  grad.addColorStop(0, '#f5f1e7'); grad.addColorStop(1, '#f5f1e7');
   g.fillStyle = grad; g.fillRect(0, 0, 2, 256);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 })();
-scene.add(new THREE.HemisphereLight(0xffffff, 0xc9d9ee, 1.4));
+scene.add(new THREE.HemisphereLight(0xfff6ea, 0xe6d6c0, 1.4));
 const key = new THREE.DirectionalLight(0xffffff, 1.3);
 key.position.set(5, 9, 10);
 key.castShadow = true;
@@ -291,7 +291,7 @@ scene.add(key);
 renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
 if (window.Look) window.Look.bindRenderer(renderer);
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-const fill = new THREE.DirectionalLight(0xdbeafe, 0.5);
+const fill = new THREE.DirectionalLight(0xffe9d2, 0.5);
 fill.position.set(-8, -3, 6);
 scene.add(fill);
 
