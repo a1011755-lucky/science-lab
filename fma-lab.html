@@ -130,10 +130,10 @@
   .cap .brown { color: #8b2e0f; }
   .legend { display: flex; gap: 6px; margin: 8px 0 2px; font-size: .72rem; font-weight: 800; }
   .legend .lg { flex: 1; text-align: center; border-radius: 999px; padding: 3px 0; color: #fff; }
-  .legend .f { background: #ff2d2d; } .legend .a { background: #22c55e; } .legend .w { background: #424242; } .legend .n { background: #29b6f6; }
+  .legend .f { background: #ff3b30; } .legend .a { background: #22c55e; } .legend .w { background: #424242; } .legend .n { background: #29b6f6; }
   .tag.vA { background: #16a34a; color: #fff; font-weight: 900; } .tag.vN { background: #29b6f6; color: #fff; font-weight: 900; }
   .formula { font-size: 1.02rem; font-weight: 900; background: #fff1c9; border-radius: 10px; padding: 5px 8px; margin-bottom: 4px; text-align: center; } .bbtn.on { background: #fff1c9; box-shadow: 0 0 0 2px #f0b429 inset; color: #5d4037; }
-  .tag.vF { background: #ff2d2d; color: #fff; font-weight: 900; } .tag.vS { background: #29b6f6; color: #fff; font-weight: 900; } .tag.vW { background: #424242; color: #fff; font-weight: 900; } .tag.org { background: #ef6c00; color: #fff; font-weight: 900; }
+  .tag.vF { background: #ff3b30; color: #fff; font-weight: 900; } .tag.vS { background: #29b6f6; color: #fff; font-weight: 900; } .tag.vW { background: #424242; color: #fff; font-weight: 900; } .tag.org { background: #ef6c00; color: #fff; font-weight: 900; }
   .tip.ok { background: #e3f1e6; color: #1f5f32; border-color: #3f9a57; } .tip.bad { background: #fde5e2; color: #a5311f; border-color: #e53935; }
   .split { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
   .half { background: rgba(255,255,255,.85); border-radius: 14px; padding: 8px 9px; font-size: .76rem; line-height: 1.6; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
@@ -472,7 +472,7 @@ function mannequin() {
 /* =========================================================
    發光 3D 向量箭頭（Cylinder ＋ Cone）
    ========================================================= */
-const C_F = 0xff2d2d, C_A = 0x2fe86a, C_W = 0x424242, C_N = 0x29b6f6;
+const C_F = 0xff3b30, C_A = 0x2fe86a, C_W = 0x424242, C_N = 0x29b6f6;
 const YAX = V3(0, 1, 0);
 function Vec(color, glow = true, r = 0.07) {
   const g = new THREE.Group();

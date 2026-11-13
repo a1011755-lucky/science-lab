@@ -165,12 +165,12 @@
 
     <!-- Tab 1：內分泌與血液運輸 -->
     <section class="sec" data-tab="endo">
-      <div class="concept" style="--cc:#9b7bc4"><div class="ct">內分泌系統</div><div class="cd">內分泌腺<b>無導管</b>，分泌的<b>激素</b>直接進入微血管，<br><b>經血液運送</b>到全身的靶器官</div></div>
+      <div class="concept" style="--cc:#9b7bc4"><div class="ct">內分泌系統</div><div class="cd">內分泌腺<b>無導管</b>，分泌的<b>激素</b>直接進入微血管，<br><b>經血液運送</b>到全身的目標器官</div></div>
       <p class="desc">腦垂腺是內分泌系統的<b>主腺</b>（也稱總司令）。碘不足無法合成足量甲狀腺素 → <b>缺碘性甲狀腺腫（大脖子）</b>。腎上腺素在緊急時使心跳、呼吸加快，並<b>抑制腸胃運動</b>。</p>
       <label class="lab">點選內分泌腺</label>
       <div class="objs" id="enBtns"></div>
       <div class="orgcard" id="enCard"></div>
-      <div class="tip" id="enTip" hidden>💡 內分泌腺無導管，激素必須直接進入微血管，由血液運送至全身靶細胞！</div>
+      <div class="tip" id="enTip" hidden>💡 內分泌腺無導管，激素必須直接進入微血管，由血液運送至全身目標細胞！</div>
       <table class="cmp"><thead><tr><th></th><th>神經系統</th><th>內分泌系統</th></tr></thead><tbody>
         <tr><th>傳遞方式</th><td>神經元傳導訊息</td><td>激素由<b>血液</b>運送</td></tr>
         <tr><th>反應速度</th><td>快</td><td>較慢</td></tr>
@@ -572,7 +572,7 @@ const EN = (() => {
     parts.update(dt);
     Object.entries(LBL).forEach(([k, l]) => { l.el.className = 'tag small' + (k === st.gl ? ' org' : ''); });
     $('enTip').hidden = !g;
-    setHTML('enCard', g ? `<h4>${g.n}</h4><span class="pill">${g.h}</span><div>${g.d}</div><div style="margin-top:4px">激素先進入腺體周圍的<b>微血管</b> → 經靜脈回到<b>心臟</b> → 由動脈送到<b>全身</b>，只對特定的靶器官起作用。</div>` : '點選一個內分泌腺，看它分泌的<b>激素</b>怎麼被<b>血液</b>運送到全身。');
+    setHTML('enCard', g ? `<h4>${g.n}</h4><span class="pill">${g.h}</span><div>${g.d}</div><div style="margin-top:4px">激素先進入腺體周圍的<b>微血管</b> → 經靜脈回到<b>心臟</b> → 由動脈送到<b>全身</b>，只對特定的目標器官起作用。</div>` : '點選一個內分泌腺，看它分泌的<b>激素</b>怎麼被<b>血液</b>運送到全身。');
     setCap(g ? `<small>內分泌系統・${g.n}</small>${g.h}無導管 → 進入<b>微血管</b> → <b>經血液運送</b>到全身<span class="huge org">血管裡的激素粒子：${parts.count()}</span>`
       : `<small>內分泌系統</small>半透明人體裡：<b class="red">粉紅＝動脈</b>、<b class="blu">淡藍＝靜脈</b><span class="huge org">點選左側的內分泌腺</span>`);
   }

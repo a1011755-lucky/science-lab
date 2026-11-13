@@ -426,7 +426,7 @@ const fCoil = new THREE.Mesh(coilGeo, coilMat); fCoil.scale.set(1, 0.6, 0.6); fC
 const fHook = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 8).rotateZ(Math.PI / 2), clay(0x9aa0a8, { metalness: 0.5 })); fHook.position.x = 0.9; scaleG.add(fHook);
 const fHand = shadowed(new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.5, 8, 20).rotateZ(Math.PI / 2), clay(0xb4865a))); scaleG.add(fHand);
 scaleG.position.set(0, 0.5, 0);
-const aFric = makeArrow(0xe5484d); aFric.rotation.y = Math.PI; aFric.position.set(-0.2, 0.12, 0.7); fBlock.add(aFric);
+const aFric = makeArrow(0xff3b30); aFric.rotation.y = Math.PI; aFric.position.set(-0.2, 0.12, 0.7); fBlock.add(aFric);
 const lPull = addLabel('fric', '', 'f1', V3(2.4, 0.9, 0), fBlock);
 const lFr = addLabel('fric', '', 'fr', V3(-0.6, -0.35, 0.9), fBlock);
 const chartC = document.createElement('canvas'); chartC.width = 900; chartC.height = 560;

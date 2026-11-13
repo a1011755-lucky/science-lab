@@ -112,7 +112,7 @@
   .rulecard.warn b { color: #c62828; }
   @keyframes warnFlash { from { background: rgba(255,255,255,.9); } to { background: rgba(255,226,222,.95); } }
   .cap.alarm { animation: warnFlash .55s ease-in-out infinite alternate; border-radius: 14px; }
-  .tag.cur { background: #ffa726; color: #fff; }
+  .tag.cur { background: #f57c00; color: #fff; }
   .tag.poleN { background: #e53935; color: #fff; font-size: .95rem; }
   .tag.poleS { background: #3f74c9; color: #fff; font-size: .95rem; }
   .tag.small.poleN, .tag.small.poleS { font-size: .7rem; text-align: center; line-height: 1.4; }
@@ -626,7 +626,7 @@ for (const y of [0.85, 1.85, 3.25, 4.35]) for (const R of [0.65, 1.15, 1.75, 2.4
 }
 // 導線上的電流（發光小點往電流方向流動）
 const curDots = glowLayer(new THREE.InstancedMesh(SPH, glowMat(0xffc04d), 18)); curDots.frustumCulled = false; WR.group.add(curDots);
-const curArrow = makeArrow(0xffa726, { r: 0.05, head: 0.17 }); WR.group.add(curArrow);
+const curArrow = makeArrow(0xf57c00, { r: 0.05, head: 0.17 }); WR.group.add(curArrow);
 const lI = addLabel('wire', '', 'cur', V3(0.55, WH + 0.25, 0));
 const lB = addLabel('wire', '磁力線（同心圓）', 'lam', V3(2.7, 4.75, 0));
 // 實體右手握導線：拇指＝電流，四指＝磁場。光暈之後再畫一次。
@@ -755,7 +755,7 @@ for (const y of [AY - 0.75, AY, AY + 0.75]) for (const z of [-0.5, 0, 0.5]) {
   const lm = glowMat(0xffffff, 0.5); lm.color.setRGB(0.58, 0.84, 1.3);
   const l = glowLayer(new THREE.Mesh(UNIT_CYL, lm)); placeSeg(l, V3(-1.48, y, z), V3(1.48, y, z), 0.02); MO.group.add(l);
 }
-const bArrow = makeArrow(0x42a5f5, { r: 0.045, head: 0.15 }); setArrow(bArrow, V3(-0.5, AY + 1.45, 1.35), V3(1, 0, 0), 1.0); MO.group.add(bArrow);
+const bArrow = makeArrow(0x1e88e5, { r: 0.045, head: 0.15 }); setArrow(bArrow, V3(-0.5, AY + 1.45, 1.35), V3(1, 0, 0), 1.0); MO.group.add(bArrow);
 addLabel('motor', 'B 磁場 N → S', 'lam small', V3(0, AY + 1.75, 1.35));
 // 轉軸與支架
 const axle = add(MO.group, new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 4.6, 16), metal(0xb0b4ba)), 0, AY, 0.2);

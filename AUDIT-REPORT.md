@@ -1,97 +1,320 @@
-# 全站逐頁校正報告
+# 全站逐頁校正報告（第二輪：知識與動畫內容）
 
-分支：`full-audit`（從 main 開出，**尚未合併、尚未上線**）　｜　校正完成的版本：`f769872`
+分支：`full-audit`（從最新 main 開出，**尚未合併、尚未上線**）　｜　校正完成的版本：`f74e414`
 
-## 怎麼看這份報告
+## 這份報告怎麼看
 
-- **通過**：檢查過，沒有發現問題。
-- **已修正**：發現問題，已經在這個分支改好。
-- **待老師確認**：不確定要不要改，或改動太大，先列出來請老師決定（見第 4 節）。
-- 技術檢查方式：每一頁在瀏覽器實際打開、切換每個分頁，記錄主控台的錯誤與警告，另以手機寬 390px 與平板寬 768px 抽查版面。**全站 77 頁沒有任何錯誤或警告。**
+- 這一輪的重點是**學科知識本身**：每一頁學生看得到的文字（分頁說明、字卡、3D 標籤、跳出說明、數值顯示、實驗結果文字）都逐句讀過；題庫 303 題、會考卡全部重看一次。
+- **動畫內容**分兩種檢查方式：
+  - 「已核對程式」：打開程式碼，確認箭頭或粒子實際移動的方向和文字一致（例如滲透的水流方向、向光彎曲、電磁鐵 N 極、力與速度箭頭）。
+  - 「已核對文字」：隨動畫變化的標籤、說明文字和它的判斷條件逐句讀過，觀念正確、彼此沒有矛盾；但沒有逐格盯著動畫畫面看。詳細紀錄在第 5 節後面。
+- **技術**：每一頁在手機寬 390px 下實際打開、切換每個分頁，收集錯誤與警告；另確認五個共用程式都有載入（quiz.js 由 goals.js 自動載入）。
+- 狀態：**通過**＝沒發現問題；**已修正**＝這個分支已改好；**待老師確認**＝不確定或改動太大，列在第 5 節。
+- 上一輪（已上線）的修正不重複列在明細裡，只在最後的附錄留一份對照。
 
 ## 1. 總表
 
-| 頁面 | 年級 | 內容 | 技術 | 視覺 |
-| --- | --- | --- | --- | --- |
-| [酸鹼中和與 pH](acid-base-lab.html) `acid-base-lab.html` | 國二 | 已修正 | 已修正（補載入 keypoints.js） | 通過 |
-| [大氣層與天氣系統實驗室](atmo-lab.html) `atmo-lab.html` | 國三 | 已修正；部分待老師確認 | 通過 | 通過 |
-| [血液成分、淋巴循環與人體防禦](blood-defense-lab.html) `blood-defense-lab.html` | 國一 | 已修正 | 已修正（補載入 keypoints.js） | 通過 |
-| [ABO 血型與性聯遺傳](blood-type-lab.html) `blood-type-lab.html` | 國一 | 已修正 | 已修正（補載入 keypoints.js） | 通過 |
-| [天球與太陽視運動實驗室](celestial-lab.html) `celestial-lab.html` | 國三 | 已修正 | 通過 | 通過 |
-| [細胞分裂與配子形成模擬器](cell-division.html) `cell-division.html` | 國一 | 已修正；部分待老師確認 | 通過 | 待老師確認 |
-| [生物體的構造實驗室](cell-lab.html) `cell-lab.html` | 國一 | 待老師確認 | 通過 | 通過 |
-| [進階化學綜合實驗室](chem-lab.html) `chem-lab.html` | 國二 | 待老師確認 | 通過 | 通過 |
-| [圓周運動：向心力與切線軌跡](circular-motion-lab.html) `circular-motion-lab.html` | 國三 | 通過 | 通過 | 通過 |
-| [血液循環與心臟運作實驗室](circulation-lab.html) `circulation-lab.html` | 國一 | 已修正 | 通過 | 通過 |
-| [生物分類實驗室](classification-lab.html) `classification-lab.html` | 國一 | 通過 | 通過 | 通過 |
-| [3D 自然科直觀模擬器](clay-sim.html) `clay-sim.html` | 國一、國三 | 通過 | 通過 | 已修正 |
-| [協調作用實驗室](coordination-lab.html) `coordination-lab.html` | 國一 | 已修正 | 通過 | 通過 |
-| [周日運動 3D](daily-motion.html) `daily-motion.html` | 國三 | 已修正 | 通過 | 待老師確認 |
-| [日食、月食與潮汐](eclipse-tide-lab.html) `eclipse-tide-lab.html` | 國三 | 已修正 | 已修正（補載入 keypoints.js） | 通過 |
-| [生態系實驗室](ecosystem-lab.html) `ecosystem-lab.html` | 國一 | 通過 | 通過 | 通過 |
-| [電化學實驗室](electrochem.html) `electrochem.html` | 國三 | 通過 | 通過 | 已修正 |
-| [電與磁終極實驗室](em-lab.html) `em-lab.html` | 國三 | 通過 | 通過 | 通過 |
-| [內分泌與血糖恆定實驗室](endocrine-lab.html) `endocrine-lab.html` | 國一 | 已修正 | 通過 | 通過 |
-| [全球環境變遷實驗室](env-lab.html) `env-lab.html` | 國一、國三 | 已修正；部分待老師確認 | 通過 | 通過 |
-| [酵素鎖鑰假說](enzyme-lock-key.html) `enzyme-lock-key.html` | 國一 | 已修正 | 通過 | 已修正 |
-| [反應速率與動態平衡實驗室](equilibrium-lab.html) `equilibrium-lab.html` | 國二 | 已修正；部分待老師確認 | 通過 | 通過 |
-| [古生物演化特徵考證室](evo-proof-lab.html) `evo-proof-lab.html` | 國一 | 已修正 | 通過 | 通過 |
-| [演化實驗室](evolution-lab.html) `evolution-lab.html` | （首頁未列） | 已修正 | 待老師確認（首頁沒連結） | 通過 |
-| [演化學說：天擇與用進廢退](evolve-theory-lab.html) `evolve-theory-lab.html` | 國一 | 已修正 | 已修正（補載入 keypoints.js） | 通過 |
-| [熱膨脹與三態變化實驗室](expansion-lab.html) `expansion-lab.html` | 國二 | 通過 | 通過 | 通過 |
-| [牛頓第二定律：F＝ma 動力實驗室](fma-lab.html) `fma-lab.html` | 國三 | 通過 | 通過 | 通過 |
-| [力與壓力綜合實驗室](force-lab.html) `force-lab.html` | （首頁未列） | 通過 | 待老師確認（首頁沒連結） | 通過 |
-| [力與壓力終極實驗室](force-pressure-lab.html) `force-pressure-lab.html` | 國二 | 已修正 | 通過 | 已修正 |
-| [古生物化石與演化實驗室](fossil-lab.html) `fossil-lab.html` | 國一 | 已修正 | 通過 | 通過 |
-| [發電機、交流電與變壓器](generator-lab.html) `generator-lab.html` | 國三 | 已修正 | 已修正（補載入 keypoints.js） | 通過 |
-| [遺傳學與基因密碼實驗室](genetics-lab.html) `genetics-lab.html` | 國一 | 已修正 | 通過 | 通過 |
-| [地質剖面與斷層模擬器](geology-fault.html) `geology-fault.html` | （首頁未列） | 已修正 | 待老師確認（首頁沒連結） | 已修正 |
-| [血液循環與心臟解剖實驗室](heart-anatomy-lab.html) `heart-anatomy-lab.html` | 國一 | 通過 | 通過 | 通過 |
-| [心臟與雙循環模擬器](heart.html) `heart.html` | 國一 | 已修正 | 通過 | 已修正 |
-| [溫度與熱實驗室](heat-lab.html) `heat-lab.html` | 國二 | 通過 | 通過 | 通過 |
-| [恆定性實驗室](homeostasis-lab.html) `homeostasis-lab.html` | 國一 | 通過 | 通過 | 通過 |
-| [人類與環境實驗室](human-env-lab.html) `human-env-lab.html` | 國一 | 已修正 | 通過 | 通過 |
-| [牛頓力學：慣性與運動狀態實驗室](inertia-lab.html) `inertia-lab.html` | 國三 | 通過 | 通過 | 通過 |
-| [運動學綜合實驗室](kinematics-lab.html) `kinematics-lab.html` | 國三 | 待老師確認 | 通過 | 已修正 |
-| [八上理化經典實驗大廳](lab8a-classics.html) `lab8a-classics.html` | 國二 | 通過 | 通過 | 通過 |
-| [力矩與槓桿：原木機械沙盒](lever-lab.html) `lever-lab.html` | 國三 | 通過 | 通過 | 通過 |
-| [生命世界與科學方法實驗室](life-lab.html) `life-lab.html` | 國一 | 通過 | 通過 | 通過 |
-| [簡單機械：滑輪、斜面與輪軸](machine-lab.html) `machine-lab.html` | 國三 | 已修正 | 已修正（補載入 keypoints.js） | 通過 |
-| [立體磁學與微觀磁域實驗室](magnet-lab.html) `magnet-lab.html` | 國三 | 通過 | 通過 | 通過 |
-| [質量守恆定律實驗室](mass-lab.html) `mass-lab.html` | 國二 | 已修正 | 通過 | 通過 |
-| [探索物質組成實驗室](matter-lab.html) `matter-lab.html` | 國二 | 通過 | 通過 | 通過 |
-| [基本測量實驗室](measure-lab.html) `measure-lab.html` | 國一、國二 | 通過 | 通過 | 通過 |
-| [光學面鏡與透鏡綜合實驗室](mirror-lens-lab.html) `mirror-lens-lab.html` | 國二 | 通過 | 通過 | 通過 |
-| [莫耳、分子量與化學計量](mole-lab.html) `mole-lab.html` | 國二 | 已修正 | 已修正（補載入 keypoints.js） | 通過 |
-| [月相變化 3D](moon-phases.html) `moon-phases.html` | 國三 | 通過 | 通過 | 待老師確認 |
-| [牛頓力學遊樂園](newton-park.html) `newton-park.html` | 國三 | 已修正；部分待老師確認 | 通過 | 已修正 |
-| [養分實驗室](nutrition-lab.html) `nutrition-lab.html` | 國一 | 已修正；部分待老師確認 | 通過 | 通過 |
-| [3D 光學綜合實驗室](optics-lab.html) `optics-lab.html` | 國二 | 通過 | 通過 | 已修正 |
-| [植物的運輸](plant-transport-lab.html) `plant-transport-lab.html` | 國一 | 已修正 | 已修正（補載入 keypoints.js） | 通過 |
-| [地球內部與板塊運動實驗室](plates-lab.html) `plates-lab.html` | 國三 | 已修正 | 通過 | 通過 |
-| [電流的熱效應與功率實驗室](power-lab.html) `power-lab.html` | 國三 | 待老師確認 | 通過 | 通過 |
-| [壓力與浮力綜合實驗室](pressure-lab.html) `pressure-lab.html` | （首頁未列） | 通過 | 待老師確認（首頁沒連結） | 通過 |
-| [反應速率與化學平衡實驗室](rate-lab.html) `rate-lab.html` | 國二 | 已修正 | 通過 | 通過 |
-| [光的折射與視深實驗室](refraction-lab.html) `refraction-lab.html` | 國二 | 待老師確認 | 通過 | 通過 |
-| [生殖實驗室](reproduction-lab.html) `reproduction-lab.html` | 國一 | 通過 | 通過 | 通過 |
-| [光學與影子實驗室](shadow-lab.html) `shadow-lab.html` | 國二 | 通過 | 通過 | 通過 |
-| [月亮與天空 3D 教室](sky-lab.html) `sky-lab.html` | （首頁未列） | 已修正 | 待老師確認（首頁沒連結） | 通過 |
-| [物質與水溶液實驗室](solution-lab.html) `solution-lab.html` | 國二 | 已修正 | 通過 | 通過 |
-| [波動與聲音特效實驗室](sound-fx-lab.html) `sound-fx-lab.html` | 國二 | 通過 | 通過 | 通過 |
-| [波與聲音互動實驗室](sound-lab.html) `sound-lab.html` | 國二 | 已修正 | 通過 | 通過 |
-| [靜電與電路實驗室](static-circuit.html) `static-circuit.html` | 國三 | 待老師確認 | 通過 | 通過 |
-| [臺灣逆斷層與地震模擬器](taiwan-earthquake.html) `taiwan-earthquake.html` | 國三 | 已修正 | 通過 | 已修正 |
-| [連續橫波與質點運動](transverse-wave.html) `transverse-wave.html` | （首頁未列） | 通過 | 待老師確認（首頁沒連結） | 已修正 |
-| [颱風過境風向模擬器](typhoon-wind.html) `typhoon-wind.html` | 國三 | 已修正 | 通過 | 通過 |
-| [地球上的水與地貌實驗室](water-lab.html) `water-lab.html` | 國三 | 已修正 | 通過 | 通過 |
-| [3D 橫波與縱波對照](waves-3d.html) `waves-3d.html` | （首頁未列） | 通過 | 待老師確認（首頁沒連結） | 已修正 |
-| [鋒面剖面模擬器](weather-fronts.html) `weather-fronts.html` | （首頁未列） | 通過 | 待老師確認（首頁沒連結） | 通過 |
-| [天氣圖判讀與臺灣的天氣](weather-map-lab.html) `weather-map-lab.html` | 國三 | 已修正 | 已修正（補載入 keypoints.js） | 已修正 |
-| [高低氣壓模擬器](weather-pressure.html) `weather-pressure.html` | （首頁未列） | 通過 | 待老師確認（首頁沒連結） | 通過 |
-| [功與能綜合實驗室](work-energy.html) `work-energy.html` | 國三 | 已修正 | 通過 | 通過 |
-| [功與能：作功的物理含意](work-vector-lab.html) `work-vector-lab.html` | 國三 | 通過 | 通過 | 通過 |
+### 七年級（25 頁）
 
-## 2. 修正明細（頁面內容、用語、技術、視覺）
+| 頁面 | 知識內容 | 動畫內容 | 技術 | 視覺 |
+| --- | --- | --- | --- | --- |
+| [生命世界與科學方法實驗室](life-lab.html) `life-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [基本測量實驗室](measure-lab.html) `measure-lab.html` | 通過 | 通過（已核對程式） | 通過 | 通過 |
+| [生物體的構造實驗室](cell-lab.html) `cell-lab.html` | 已修正 | 通過（已核對程式） | 通過 | 通過 |
+| [養分實驗室](nutrition-lab.html) `nutrition-lab.html` | 待老師確認 | 通過（已核對文字） | 通過 | 通過 |
+| [酵素鎖鑰假說](enzyme-lock-key.html) `enzyme-lock-key.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [植物的運輸](plant-transport-lab.html) `plant-transport-lab.html` | 已修正 | 通過（已核對文字） | 通過 | 通過 |
+| [血液循環與心臟解剖實驗室](heart-anatomy-lab.html) `heart-anatomy-lab.html` | 已修正 | 通過（已核對文字） | 通過 | 通過 |
+| [血液成分、淋巴循環與人體防禦](blood-defense-lab.html) `blood-defense-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [血液循環與心臟運作實驗室](circulation-lab.html) `circulation-lab.html` | 已修正 | 通過（已核對文字） | 通過 | 通過 |
+| [心臟與雙循環模擬器](heart.html) `heart.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [協調作用實驗室](coordination-lab.html) `coordination-lab.html` | 通過 | 通過（已核對程式） | 通過 | 通過 |
+| [內分泌與血糖恆定實驗室](endocrine-lab.html) `endocrine-lab.html` | 已修正 | 通過（已核對文字） | 通過 | 通過 |
+| [恆定性實驗室](homeostasis-lab.html) `homeostasis-lab.html` | 已修正 | 通過（已核對文字） | 通過 | 通過 |
+| [生殖實驗室](reproduction-lab.html) `reproduction-lab.html` | 已修正；部分待老師確認 | 通過（已核對文字） | 通過 | 通過 |
+| [細胞分裂與配子形成模擬器](cell-division.html) `cell-division.html` | 待老師確認 | 通過（已核對文字） | 通過 | 待老師確認 |
+| [3D 自然科直觀模擬器](clay-sim.html) `clay-sim.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [遺傳學與基因密碼實驗室](genetics-lab.html) `genetics-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [ABO 血型與性聯遺傳](blood-type-lab.html) `blood-type-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [古生物化石與演化實驗室](fossil-lab.html) `fossil-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [古生物演化特徵考證室](evo-proof-lab.html) `evo-proof-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [演化學說：天擇與用進廢退](evolve-theory-lab.html) `evolve-theory-lab.html` | 待老師確認 | 通過（已核對文字） | 通過 | 通過 |
+| [生物分類實驗室](classification-lab.html) `classification-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [生態系實驗室](ecosystem-lab.html) `ecosystem-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [人類與環境實驗室](human-env-lab.html) `human-env-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [全球環境變遷實驗室](env-lab.html) `env-lab.html` | 待老師確認 | 通過（已核對程式） | 通過 | 通過 |
+
+### 八年級（19 頁）
+
+| 頁面 | 知識內容 | 動畫內容 | 技術 | 視覺 |
+| --- | --- | --- | --- | --- |
+| [基本測量實驗室](measure-lab.html) `measure-lab.html` | 通過 | 通過（已核對程式） | 通過 | 通過 |
+| [八上理化經典實驗大廳](lab8a-classics.html) `lab8a-classics.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [物質與水溶液實驗室](solution-lab.html) `solution-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [波與聲音互動實驗室](sound-lab.html) `sound-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [波動與聲音特效實驗室](sound-fx-lab.html) `sound-fx-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [3D 光學綜合實驗室](optics-lab.html) `optics-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [光學與影子實驗室](shadow-lab.html) `shadow-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [光的折射與視深實驗室](refraction-lab.html) `refraction-lab.html` | 待老師確認 | 通過（已核對文字） | 通過 | 通過 |
+| [光學面鏡與透鏡綜合實驗室](mirror-lens-lab.html) `mirror-lens-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [溫度與熱實驗室](heat-lab.html) `heat-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [熱膨脹與三態變化實驗室](expansion-lab.html) `expansion-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [探索物質組成實驗室](matter-lab.html) `matter-lab.html` | 待老師確認 | 通過（已核對文字） | 通過 | 通過 |
+| [質量守恆定律實驗室](mass-lab.html) `mass-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [莫耳、分子量與化學計量](mole-lab.html) `mole-lab.html` | 已修正 | 通過（已核對文字） | 通過 | 通過 |
+| [進階化學綜合實驗室](chem-lab.html) `chem-lab.html` | 已修正；部分待老師確認 | 通過（已核對文字） | 通過 | 通過 |
+| [酸鹼中和與 pH](acid-base-lab.html) `acid-base-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [反應速率與化學平衡實驗室](rate-lab.html) `rate-lab.html` | 待老師確認 | 通過（已核對文字） | 通過 | 通過 |
+| [反應速率與動態平衡實驗室](equilibrium-lab.html) `equilibrium-lab.html` | 待老師確認 | 通過（已核對文字） | 通過 | 待老師確認 |
+| [力與壓力終極實驗室](force-pressure-lab.html) `force-pressure-lab.html` | 待老師確認 | 已修正（已核對程式） | 通過 | 已修正；部分待老師確認 |
+
+### 九年級（27 頁）
+
+| 頁面 | 知識內容 | 動畫內容 | 技術 | 視覺 |
+| --- | --- | --- | --- | --- |
+| [運動學綜合實驗室](kinematics-lab.html) `kinematics-lab.html` | 待老師確認 | 已修正（已核對程式） | 通過 | 已修正；部分待老師確認 |
+| [牛頓力學遊樂園](newton-park.html) `newton-park.html` | 待老師確認 | 已修正（已核對程式） | 通過 | 已修正；部分待老師確認 |
+| [牛頓力學：慣性與運動狀態實驗室](inertia-lab.html) `inertia-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [牛頓第二定律：F＝ma 動力實驗室](fma-lab.html) `fma-lab.html` | 待老師確認 | 通過（已核對文字） | 通過 | 已修正；部分待老師確認 |
+| [圓周運動：向心力與切線軌跡](circular-motion-lab.html) `circular-motion-lab.html` | 通過 | 通過（已核對文字） | 通過 | 已修正 |
+| [功與能綜合實驗室](work-energy.html) `work-energy.html` | 通過 | 通過（已核對文字） | 通過 | 已修正；部分待老師確認 |
+| [功與能：作功的物理含意](work-vector-lab.html) `work-vector-lab.html` | 通過 | 通過（已核對文字） | 通過 | 已修正 |
+| [力矩與槓桿：原木機械沙盒](lever-lab.html) `lever-lab.html` | 通過 | 通過（已核對文字） | 通過 | 已修正；部分待老師確認 |
+| [簡單機械：滑輪、斜面與輪軸](machine-lab.html) `machine-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [靜電與電路實驗室](static-circuit.html) `static-circuit.html` | 待老師確認 | 通過（已核對文字） | 通過 | 通過 |
+| [電流的熱效應與功率實驗室](power-lab.html) `power-lab.html` | 待老師確認 | 通過（已核對文字） | 通過 | 通過 |
+| [電化學實驗室](electrochem.html) `electrochem.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [電與磁終極實驗室](em-lab.html) `em-lab.html` | 待老師確認 | 通過（已核對文字） | 通過 | 已修正 |
+| [發電機、交流電與變壓器](generator-lab.html) `generator-lab.html` | 待老師確認 | 通過（已核對文字） | 通過 | 通過 |
+| [立體磁學與微觀磁域實驗室](magnet-lab.html) `magnet-lab.html` | 通過 | 通過（已核對程式） | 通過 | 通過 |
+| [地球上的水與地貌實驗室](water-lab.html) `water-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [地球內部與板塊運動實驗室](plates-lab.html) `plates-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [臺灣逆斷層與地震模擬器](taiwan-earthquake.html) `taiwan-earthquake.html` | 已修正 | 通過（已核對文字） | 通過 | 通過 |
+| [月相變化 3D](moon-phases.html) `moon-phases.html` | 通過 | 通過（已核對文字） | 通過 | 待老師確認 |
+| [日食、月食與潮汐](eclipse-tide-lab.html) `eclipse-tide-lab.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [周日運動 3D](daily-motion.html) `daily-motion.html` | 已修正 | 通過（已核對文字） | 通過 | 待老師確認 |
+| [天球與太陽視運動實驗室](celestial-lab.html) `celestial-lab.html` | 已修正；部分待老師確認 | 通過（已核對文字） | 通過 | 通過 |
+| [大氣層與天氣系統實驗室](atmo-lab.html) `atmo-lab.html` | 待老師確認 | 通過（已核對文字） | 通過 | 通過 |
+| [天氣圖判讀與臺灣的天氣](weather-map-lab.html) `weather-map-lab.html` | 已修正 | 通過（已核對文字） | 通過 | 通過 |
+| [颱風過境風向模擬器](typhoon-wind.html) `typhoon-wind.html` | 已修正；部分待老師確認 | 通過（已核對文字） | 通過 | 通過 |
+| [3D 自然科直觀模擬器](clay-sim.html) `clay-sim.html` | 通過 | 通過（已核對文字） | 通過 | 通過 |
+| [全球環境變遷實驗室](env-lab.html) `env-lab.html` | 待老師確認 | 通過（已核對程式） | 通過 | 通過 |
+
+> 首頁沒有列出的 9 頁（`evolution-lab.html`、`force-lab.html`、`geology-fault.html`、`pressure-lab.html`、`sky-lab.html`、`transverse-wave.html`、`waves-3d.html`、`weather-fronts.html`、`weather-pressure.html`）不在三個年級的課程清單裡，這一輪沒有校正，見第 5 節。
+
+## 2. 知識修正明細
+
+含頁面文字、3D 標籤、會考卡、學習目標，以及配合知識正確性調整的箭頭配色。
+
+### 七年級
+
+| 頁面 | 位置 | 原文 | 改成 | 理由與依據 |
+| --- | --- | --- | --- | --- |
+| `plant-transport-lab.html` | 環剝與年輪分頁・下方說明 | 養分運輸與年輪養分由韌皮部往下送， | 養分運輸與年輪葉製造的養分由韌皮部往下送到根（也能往上送到芽、花、果實）， | 韌皮部運送養分的方向不只往下；課本強調可送到根、莖、芽、果實等各部位，避免學生誤以為只能往下 |
+| `heart-anatomy-lab.html` | 心臟解剖分頁・心跳數值 | 下/分 | 次/分 | 與 heart.html 及課本「每分鐘心跳次數」的單位寫法統一 |
+| `circulation-lab.html` | 體肺循環分頁・心跳數值 | 下/分 | 次/分 | 與 heart.html 及課本的單位寫法統一 |
+| `endocrine-lab.html` | 內分泌系統分頁・觀念卡與腺體說明 | 靶器官 | 目標器官 | 「靶器官」是高中用語，國中課本寫「特定的（目標）細胞或器官」 |
+| `endocrine-lab.html` | 內分泌系統分頁・提示 | 靶細胞 | 目標細胞 | 同上 |
+| `goals.js` | 內分泌頁學習目標 | 靶器官 | 目標器官 | 同上 |
+| `keypoints.js` | 內分泌會考卡 | 靶器官 | 目標器官 | 同上 |
+| `keypoints.js` | 生殖會考卡 | 子房發成果實 | 子房發育成果實 | 漏字 |
+| `keypoints.js` | 恆定會考卡 | 吸氣：肋間肌和肋骨上舉、橫膈下降 | 吸氣：肋間肌收縮使肋骨上舉、橫膈收縮下降 | 原句把肋間肌說成「上舉」，改成與頁面一致的「肋間肌收縮、肋骨上舉、橫膈下降」 |
+
+### 八年級
+
+| 頁面 | 位置 | 原文 | 改成 | 理由與依據 |
+| --- | --- | --- | --- | --- |
+| `mole-lab.html` | 化學計量分頁・字卡 | 氣體時也等於體積比 | 同溫、同壓下的氣體也等於體積比 | 氣體體積比等於係數比必須在同溫同壓下才成立，補上條件避免學生誤用 |
+| `force-pressure-lab.html` | 摩擦力分頁・摩擦力箭頭顏色 | 箭頭顏色：暗紅 | 箭頭顏色：亮紅 #ff3b30 | 力的箭頭統一用亮紅 #ff3b30 |
+
+### 九年級
+
+| 頁面 | 位置 | 原文 | 改成 | 理由與依據 |
+| --- | --- | --- | --- | --- |
+| `kinematics-lab.html` | 三個分頁的速度箭頭 | 箭頭顏色：綠色 | 箭頭顏色：水藍 #2ec5e6 | 速度箭頭由綠色改為規範的水藍 #2ec5e6 |
+| `kinematics-lab.html` | 位移分頁・位移箭頭 | 箭頭顏色：紫色 | 箭頭顏色：水藍 #2ec5e6 | 位移箭頭由紫色改為規範的水藍 #2ec5e6 |
+| `kinematics-lab.html` | 自由落體分頁・說明文字 | 綠色 = 速度 v | 水藍色 = 速度 v | 配合箭頭改色 |
+| `kinematics-lab.html` | x-t、v-t 圖分頁・說明文字 | 綠色速度箭頭越變越長 | 水藍色速度箭頭越變越長 | 配合箭頭改色 |
+| `kinematics-lab.html` | 自由落體分頁・3D 標籤 | v = 0（綠色箭頭消失） | v = 0（速度箭頭消失） | 配合箭頭改色 |
+| `newton-park.html` | 圓周運動分頁・向心力與速度箭頭 | 箭頭顏色：藍色、暗紅 | 箭頭顏色：亮紅 #ff3b30、水藍 #2ec5e6 | 原本向心力是藍色、速度是紅色，和全站規範（力亮紅、速度水藍）正好相反，學生跨頁會混淆 |
+| `newton-park.html` | 圓周運動分頁・說明文字 | 藍色 = 向心力（指向圓心），紅色 = 速度 | 紅色 = 向心力（指向圓心），水藍色 = 速度 | 藍色 = 向心力、紅色 = 速度 → 紅色 = 向心力、水藍色 = 速度（配合箭頭改色） |
+| `newton-park.html` | 萬有引力分頁・引力箭頭 | 箭頭顏色：黃色 | 箭頭顏色：亮紅 #ff3b30 | 引力箭頭由黃色改為規範的亮紅 #ff3b30 |
+| `newton-park.html` | 萬有引力分頁・說明文字 | 黃色箭頭是兩顆星球互相吸引的 | 紅色箭頭是兩顆星球互相吸引的 | 配合箭頭改色 |
+| `newton-park.html` | 牛二、牛三分頁・力的箭頭 | 箭頭顏色：暗紅 | 箭頭顏色：亮紅 #ff3b30 | 力的箭頭統一為亮紅 #ff3b30 |
+| `newton-park.html` | 牛三分頁・速度箭頭 | 箭頭顏色：綠色 | 箭頭顏色：水藍 #2ec5e6 | 速度箭頭由綠色改為水藍 #2ec5e6 |
+| `newton-park.html` | 牛三分頁・圖例 | 箭頭顏色：暗紅、綠色 | 箭頭顏色：亮紅 #ff3b30、水藍 #2ec5e6 | 配合箭頭改色 |
+| `circular-motion-lab.html` | 三個分頁・向心力箭頭 | 箭頭顏色：偏紅（#ff2a2a） | 箭頭顏色：亮紅 #ff3b30 | 力的箭頭統一為規範亮紅 #ff3b30（原本是相近的 #ff2a2a） |
+| `circular-motion-lab.html` | 三個分頁・速度箭頭 | 箭頭顏色：偏藍（#1aa4e0） | 箭頭顏色：水藍 #2ec5e6 | 速度箭頭統一為規範水藍 #2ec5e6（原本是相近的 #1aa4e0） |
+| `work-vector-lab.html` | 各分頁・施力箭頭 | 箭頭顏色：偏紅（#ff2a2a） | 箭頭顏色：亮紅 #ff3b30 | 力的箭頭統一為規範亮紅 #ff3b30 |
+| `work-vector-lab.html` | 各分頁・平行分量箭頭 | 箭頭顏色：偏橘（#ff8a14） | 箭頭顏色：亮橘 #ff9500 | 平行分量統一為規範亮橘 #ff9500 |
+| `work-vector-lab.html` | 各分頁・位移箭頭 | 箭頭顏色：偏藍（#2eb6e6） | 箭頭顏色：水藍 #2ec5e6 | 位移箭頭統一為規範水藍 #2ec5e6 |
+| `lever-lab.html` | 各分頁・施力箭頭 | 箭頭顏色：偏紅（#ff2d2d） | 箭頭顏色：亮紅 #ff3b30 | 力的箭頭統一為規範亮紅 #ff3b30 |
+| `fma-lab.html` | 各分頁・外力箭頭 | 箭頭顏色：偏紅（#ff2d2d） | 箭頭顏色：亮紅 #ff3b30 | 力的箭頭統一為規範亮紅 #ff3b30 |
+| `em-lab.html` | 電流磁效應分頁・電流箭頭 | 箭頭顏色：淺橘（#ffa726） | 箭頭顏色：橘 #f57c00 | 電流箭頭統一為規範橘 #f57c00 |
+| `em-lab.html` | 電動機分頁・磁場箭頭 | 箭頭顏色：淺藍（#42a5f5） | 箭頭顏色：藍 #1e88e5 | 磁場箭頭統一為規範藍 #1e88e5 |
+| `work-energy.html` | 作功分頁・推力箭頭 | 箭頭顏色：橘色（#ff7a00） | 箭頭顏色：亮紅 #ff3b30 | 推力箭頭原本是橘色（橘色在全站代表平行分量），改為力的亮紅 #ff3b30 |
+| `taiwan-earthquake.html` | 測站震度標題 | 全台同一 | 全臺同一 | 上一輪已把「台灣」統一為「臺灣」，這裡的地名漏改 |
+| `taiwan-earthquake.html` | 測站名稱 | '台中站 | '臺中站 | 同上，教育部用字為「臺中」 |
+| `taiwan-earthquake.html` | 測站名稱 | '台北站 | '臺北站 | 同上，教育部用字為「臺北」 |
+| `typhoon-wind.html` | 地圖城市標籤 | '台北' | '臺北' | 同上 |
+| `typhoon-wind.html` | 地圖城市標籤 | '台中' | '臺中' | 同上 |
+| `typhoon-wind.html` | 地圖城市標籤 | '台東' | '臺東' | 同上 |
+| `weather-map-lab.html` | 臺灣四季分頁・鋒面符號說明 | 🔺 冷鋒（藍三角）、🔴 暖鋒（紅半圓）、滯留鋒（紅藍交錯）：符號凸出的方向＝鋒面移動的方向。 | 🔺 冷鋒（藍三角）、🔴 暖鋒（紅半圓）：符號凸出的方向＝鋒面移動的方向。滯留鋒（紅藍交錯、分別朝兩側）：冷暖氣團勢力相當，鋒面幾乎不動。 | 滯留鋒的三角與半圓朝相反兩側，代表幾乎不移動，不能說「凸出方向＝移動方向」；與同頁題目解析「鋒面幾乎不動 → 滯留鋒」一致 |
+| `keypoints.js` | 天氣圖會考卡 | 冷鋒、暖鋒、滯留鋒的符號凸出方向就是移動方向；梅雨是滯留鋒造成的。 | 冷鋒、暖鋒的符號凸出方向就是移動方向；滯留鋒的符號朝兩側、幾乎不動，梅雨就是滯留鋒造成的。 | 同上 |
+| `daily-motion.html` | 數據面板與學習重點（太陽、北極星、月亮） | 高度角 | 仰角 | 同一個量在 celestial-lab、題庫都叫「仰角」（課本用語），這頁卻叫「高度角」，統一成仰角 |
+| `goals.js` | 周日運動頁學習目標 | 高度角 | 仰角 | 同上 |
+| `quiz.js` | 天球頁第 2 題解析 | 正午仰角 ＝ 90° − 緯度 ＋ 太陽赤緯 ＝ 90 − 23.5 ＋ 23.5 ＝ 90°，太陽在天頂。 | 夏至時陽光直射北回歸線（北緯 23.5°），所以在北緯 23.5° 的地方，正午太陽就在天頂，仰角 90°。 | 原解析用到高中的「赤緯」與公式，改成國中的說法（陽光直射北回歸線） |
+
+## 3. 題庫修正明細（quiz.js）
+
+全部 303 題重新逐題核對：答案正確、只有一個正確選項、解析與頁面內容一致。**沒有發現答案錯誤**；以下是用語或解析的修正。
+
+| 年級 | 題目位置 | 原本 | 改成 | 理由 |
+| --- | --- | --- | --- | --- |
+| 七年級 | 細胞頁第 3 題解析 | 細胞內的水分子濃度比外面高，水往細胞外擴散，細胞失水萎縮 | 細胞內的水分子濃度比外面高，水經滲透作用往細胞外移動，細胞失水萎縮 | 水分子進出細胞膜叫滲透，與頁面「水走蛋白質通道（滲透）」一致 |
+| 八年級 | 化學反應頁・高爐煉鐵題選項 | o: ['石灰石', '一氧化碳', '二氧化碳', '氧氣'] | o: ['灰石', '一氧化碳', '二氧化碳', '氧氣'] | 與頁面及課本用語「灰石」統一 |
+| 八年級 | 化學反應頁・高爐煉鐵題解析 | 焦炭燃燒產生一氧化碳 | 煤焦燃燒產生一氧化碳 | 與頁面及課本用語「煤焦」統一 |
+
+## 4. 跨年級（跨頁面）不一致的地方
+
+| 觀念或用語 | 原本的狀況 | 處理結果 |
+| --- | --- | --- |
+| 心跳次數的單位 | heart-anatomy-lab、circulation-lab 寫「下/分」；heart.html 寫「次/分」 | 已統一為「次/分」 |
+| 太陽、星星離地平面的角度 | daily-motion 叫「高度角」；celestial-lab、題庫叫「仰角」 | 已統一為「仰角」 |
+| 力與速度的箭頭顏色 | newton-park 圓周運動：向心力藍、速度紅；circular-motion-lab：向心力紅、速度藍（兩頁相反） | 已統一為力亮紅 #ff3b30、速度水藍 #2ec5e6（kinematics、work-vector、lever、fma、work-energy 一併對齊） |
+| 激素作用的對象 | endocrine-lab 寫「靶器官、靶細胞」；coordination-lab 寫「特定的器官」 | 已統一為「目標器官、目標細胞」 |
+| 高爐煉鐵的原料名稱 | chem-lab 頁面寫「煤焦、灰石」；題庫寫「焦炭、石灰石」 | 題庫已改成「煤焦、灰石」 |
+| 滯留鋒符號 | weather-map-lab 說明與會考卡寫「凸出方向＝移動方向」；同頁題目解析寫「鋒面幾乎不動」 | 說明與會考卡已改成「滯留鋒符號朝兩側、幾乎不動」 |
+| 臺灣地名用字 | 上一輪已統一「臺灣」，但 taiwan-earthquake、typhoon-wind 仍有「台北、台中、台東、全台」 | 已統一為「臺」 |
+| 細胞分裂的名稱（七年級內部） | cell-division、題庫用「有絲分裂」；reproduction-lab、clay-sim 用「細胞分裂」 | 未改，列入待老師確認（沿用上一輪） |
+| 溫室效應 | ecosystem-lab 碳循環提到「加劇溫室效應」，首頁 env-lab 簡介也有，但 env-lab 頁面沒有溫室效應內容 | 未改，列入待老師確認（新增分頁屬於新模組） |
+| 力的單位 | force-pressure-lab 的力用 N、壓力與浮力用 gw；lever-lab 用 N·m 與 kgw·m；fma-lab 註明 1 kgw ≈ 9.8 N | 各頁內部一致、沒有 N 與 N/cm² 混用；跨頁並存兩種單位符合課本，未改 |
+| 加速度的箭頭顏色 | newton-park、fma-lab 用綠色；kinematics-lab 用橘黃色 | 未改，列入待老師確認 |
+
+## 5. 待老師確認清單
+
+### 七年級
+
+| 頁面 | 內容 | 為什麼不確定 | 建議 | 來源 |
+| --- | --- | --- | --- | --- |
+| evolve-theory-lab.html | 同源・同功分頁：痕跡器官的例子寫「盲腸」（字卡、3D 標籤、下方說明） | 嚴格來說人類的痕跡器官是「闌尾」（盲腸末端的小突起），多數版本課本寫闌尾；但口語常說盲腸 | 建議改成「闌尾（俗稱盲腸）」；請老師決定 | 本輪新增 |
+| nutrition-lab.html | 「腸液分解醣類、蛋白質」（沒有脂質） | 各版本課本寫法不同，有的寫腸液可分解醣類、蛋白質、脂質 | 請老師依所用版本確認 | 上一輪沿用 |
+| env-lab.html | 首頁寫「溫室效應、全球暖化與節能減碳」，但頁面內容是聖嬰現象、土石流、空氣品質，沒有溫室效應 | 新增溫室效應分頁屬於新模組，這次不做 | 已先把首頁說明改成和內容一致；是否補做溫室效應分頁請老師決定 | 上一輪沿用 |
+| cell-division.html、quiz.js、keypoints.js、goals.js | 使用「有絲分裂」「G1／S／G2 期」「四分體」「二分體」「初級／次級精母細胞」「姊妹染色分體」 | 國中課本多用「細胞分裂」；細胞週期分期、四分體、初級／次級母細胞屬高中內容 | 建議：畫面改用「細胞分裂」，細胞週期滑桿改成「分裂前／複製／準備分裂」，四分體、初級／次級等名稱拿掉或改成小字延伸；需老師確認所用版本 | 上一輪沿用 |
+| keypoints.js 生殖重點卡 | 「被子植物有雙重受精，會形成胚乳」「卵胎生」 | 雙重受精、胚乳屬高中生物；卵胎生在部分新版課本已不強調 | 建議刪除雙重受精那一條，或請老師依版本確認 | 上一輪沿用 |
+| cell-division.html | 3D 背景是漸層「明亮醫學實驗室」風格，面板白底 | 與全站原木風不同，但改動牽涉整頁配色 | 請老師決定是否要統一 | 上一輪沿用 |
+
+### 八年級
+
+| 頁面 | 內容 | 為什麼不確定 | 建議 | 來源 |
+| --- | --- | --- | --- | --- |
+| rate-lab.html | 碰撞學說分頁出現「活化能」與能量變化圖；第三分頁標題用「勒沙特列原理」 | 國中課本談碰撞多半只講「有效碰撞」，活化能與能量圖屬高中；勒沙特列原理的名稱國中也多半不提（只做鉻酸根變色實驗） | 建議保留動畫，把「活化能」改成「反應所需的最低能量」；請老師決定 | 本輪新增 |
+| matter-lab.html | 週期表分頁說明「最外層電子數相同」「最外層電子已經穩定」 | 國中只教「同族元素化學性質相似」，電子排列屬高中 | 建議刪去「最外層電子」的說法；請老師決定 | 本輪新增 |
+| force-pressure-lab.html | 大氣壓力分頁的「大氣壓力往下壓」箭頭是藍色 | 規範只規定「力」用亮紅；壓力箭頭是否比照不確定 | 請老師決定要不要改成亮紅 | 本輪新增 |
+| force-pressure-lab.html | 摩擦力分頁滑動時顯示「a ＝ … m/s²」 | 加速度是九年級內容，八年級學生還沒學 | 建議改成「木塊越滑越快」；請老師決定 | 本輪新增 |
+| refraction-lab.html | 標籤「水（n ＝ 1.33）」「空氣（n ＝ 1.00）」、視深「約為 1 ÷ 1.33 倍」、半圓玻璃磚的「全反射」「臨界角 41.8°」 | 折射率 n 與全反射、臨界角屬高中物理；部分版本國中課本當補充（光纖） | 建議：標籤改成「水（光速較慢）」，視深只說「看起來變淺」；全反射保留但標「延伸」 | 上一輪沿用 |
+| equilibrium-lab.html 勒沙特列分頁 | 「壓力測試：推動活塞」→ 平衡向氣體分子數較少的一方移動 | 國中課本的平衡移動多只談濃度、溫度；壓力（氣體分子數）屬高中 | 建議保留溫度部分，壓力測試標「延伸」或移除 | 上一輪沿用 |
+| chem-lab.html | 強電解質／弱電解質（完全解離、部分解離） | 國中課本多只分電解質與非電解質；強弱電解質可能屬延伸 | 請老師依版本確認 | 上一輪沿用 |
+| quiz.js 平衡題（NO₂ 加壓） | 「活塞迅速向內推，顏色最後如何」 | 與頁面壓力測試同屬高中範圍 | 隨頁面決定一併保留或刪除 | 上一輪沿用 |
+
+### 九年級
+
+| 頁面 | 內容 | 為什麼不確定 | 建議 | 來源 |
+| --- | --- | --- | --- | --- |
+| fma-lab.html、lever-lab.html | 重力箭頭是深灰、正向力箭頭是淺藍（只有外力是亮紅） | 規範寫「力亮紅」，但受力圖裡若全部同色，學生分不出重力、正向力、外力 | 建議維持現狀（不同的力用不同顏色）；請老師決定 | 本輪新增 |
+| work-energy.html | 作功分頁的摩擦力箭頭是灰色 | 同上：摩擦力也是力，但和推力同色會分不清 | 建議維持灰色；請老師決定 | 本輪新增 |
+| newton-park.html、kinematics-lab.html、fma-lab.html | 加速度箭頭是綠色或橘黃色 | 規範沒有規定加速度的顏色 | 建議全站加速度統一用綠色；請老師決定 | 本輪新增 |
+| fma-lab.html | 第一、二分頁的道具叫「啤酒杯」（🍺） | 國中教材出現酒類道具是否合適 | 建議改成「玻璃杯」或「水杯」；請老師決定 | 本輪新增 |
+| em-lab.html、generator-lab.html | 分頁與字卡直接用「冷次定律」「法拉第定律」的名稱 | 108 課綱國中只要求「線圈內磁場變化會產生感應電流」，定律名稱多在高中才出現（部分版本以補充方式提到） | 建議保留動畫，名稱改成「感應電流的方向」「變化越快、電流越大」；請老師決定 | 本輪新增 |
+| celestial-lab.html | 天球分頁與四季分頁顯示「太陽赤緯 +23.4°」 | 「赤緯」是高中地科用語；國中說「陽光直射北回歸線／赤道／南回歸線」 | 建議改成「陽光直射：北緯 23.5°」這類說法；請老師決定 | 本輪新增 |
+| typhoon-wind.html | 面板有「內吹角 α」「右偏角 = 90° − α」 | 國中只要求「逆時針向中心旋入」，角度參數是延伸 | 建議保留滑桿但把名稱改成「往中心偏的程度」；請老師決定 | 本輪新增 |
+| env-lab.html | 首頁寫「溫室效應、全球暖化與節能減碳」，但頁面內容是聖嬰現象、土石流、空氣品質，沒有溫室效應 | 新增溫室效應分頁屬於新模組，這次不做 | 已先把首頁說明改成和內容一致；是否補做溫室效應分頁請老師決定 | 上一輪沿用 |
+| atmo-lab.html | 3D 探測船只能升到 50 km，看不到中氣層、增溫層 | 已用文字補上四層；若要在 3D 中呈現，需重做場景與滑桿（屬於較大改版） | 請老師決定是否要延伸 3D 模型到 100 km | 上一輪沿用 |
+| newton-park.html 萬有引力分頁 | 「距離平方反比」「引力 ∝ m ÷ r²」「距離變一半 → 引力變 4 倍」 | 國中課本多只要求定性：質量越大、距離越近，引力越大；平方反比的計算可能屬高中 | 請老師依版本確認是否保留倍數計算 | 上一輪沿用 |
+| kinematics-lab.html | 顯示「位置 x = v₀t + ½at²」 | 部分版本國中課本只用 v-t 圖面積求位移，不寫這個公式 | 請老師確認；可改成「位移 ＝ v-t 圖下的面積」 | 上一輪沿用 |
+| power-lab.html | 「串聯：P ＝ I²R → R 大較亮；並聯：P ＝ V²／R → R 小較亮」 | 部分國中版本只教 P ＝ I × V（電功率＝電流×電壓），I²R、V²/R 為延伸 | 請老師確認；可改成文字「串聯時電阻大的較亮、並聯時電阻小的較亮」 | 上一輪沿用 |
+| moon-phases.html、daily-motion.html | 背景是深色夜空（#04060d、#060a18），不是規定的 #F5F1E7 | 天文頁刻意用夜空才看得到星星與月相，改成米色會影響教學 | 建議維持夜空；若要統一，可只把面板改成米色毛玻璃 | 上一輪沿用 |
+| static-circuit.html | 首頁連結用 #trio、#ohm、#series，頁面內用另一套代號（ut、u2、u4）對照 | 實測可正常跳到對應單元 | 不用改，僅記錄 | 上一輪沿用 |
+
+### 不屬於單一年級
+
+| 頁面 | 內容 | 為什麼不確定 | 建議 | 來源 |
+| --- | --- | --- | --- | --- |
+| evolution-lab、force-lab、geology-fault、pressure-lab、sky-lab、transverse-wave、waves-3d、weather-fronts、weather-pressure（9 頁） | 首頁課程清單沒有列出這 9 頁，這一輪沒有校正；其中 8 頁沒有載入 goals.js／題庫，pressure-lab 的壓力單位是 N/cm²（和現行力與壓力頁的 gw/cm² 不同） | 不確定這些舊頁要保留、補連結還是刪除 | 建議刪除或在首頁標示為舊版；請老師決定 | 本輪新增 |
+
+### 動畫重點核對紀錄
+
+| 年級 | 頁面 | 位置 | 核對內容 | 檢查方式 | 結果 |
+| --- | --- | --- | --- | --- | --- |
+| 七年級 | `cell-lab.html` | 物質進出分頁：水蘊草／紅血球放進濃食鹽水或清水 | 水分子粒子的流動方向、細胞脹縮（質壁分離、紅血球皺縮／破裂）與文字一致 | 讀程式碼核對 | 通過 |
+| 七年級 | `measure-lab.html` | 質量分頁：天平指針 | 指針朝下，左盤重時指針偏右，文字「偏右（左盤重）」與模型一致 | 讀程式碼核對 | 通過 |
+| 七年級 | `heart-anatomy-lab.html、circulation-lab.html、heart.html` | 瓣膜開關與心動週期 | 心室收縮時房室瓣關、半月瓣開；心室舒張時相反；三頁說法一致 | 讀畫面文字與判斷式核對 | 通過 |
+| 七年級 | `homeostasis-lab.html` | 呼吸運動分頁 | 吸氣時肋骨上舉、橫膈下降、胸腔變大，動畫與文字一致 | 讀畫面文字與判斷式核對 | 通過 |
+| 七年級 | `coordination-lab.html` | 植物感應分頁 | 莖彎向光源、根背光；橫放時莖背地、根向地 | 讀程式碼核對 | 通過 |
+| 七年級 | `env-lab.html` | 聖嬰分頁 | 信風由東向西吹；聖嬰年信風減弱、暖水往東 | 讀程式碼核對 | 通過 |
+| 七年級 | `plant-transport-lab.html` | 三個分頁 | 水（藍）沿木質部上升、養分（橘）沿韌皮部運送；環剝後養分堆在切口上方 | 讀畫面文字與判斷式核對 | 通過 |
+| 八年級 | `sound-lab.html、sound-fx-lab.html` | 橫波與縱波 | 紅色質點只在原地上下（橫波）或左右（縱波）振動，波形往右傳；改頻率時波速不變、波長改變 | 讀畫面文字與判斷式核對 | 通過 |
+| 八年級 | `heat-lab.html` | 海風陸風分頁 | 白天地面風由海吹向陸、高空反向；夜晚相反；熱處上升、冷處下沉 | 讀畫面文字與判斷式核對 | 通過 |
+| 八年級 | `heat-lab.html` | 自製溫度計分頁 | 放入熱水時液面先微降再大幅上升；放入冰水相反 | 讀畫面文字與判斷式核對 | 通過 |
+| 八年級 | `expansion-lab.html` | 雙金屬片分頁 | 受熱彎向膨脹率小的鐵片、遇冷彎向銅片 | 讀畫面文字與判斷式核對 | 通過 |
+| 八年級 | `optics-lab.html、refraction-lab.html` | 反射與折射 | 入射角＝反射角；進入水或玻璃偏向法線、回到空氣偏離法線 | 讀畫面文字與判斷式核對 | 通過 |
+| 八年級 | `mirror-lens-lab.html` | 透鏡滑軌 | 2F 外縮小實像、F～2F 放大實像、F 內正立放大虛像，光線圖與文字一致 | 讀畫面文字與判斷式核對 | 通過 |
+| 八年級 | `chem-lab.html` | 電解質導電台 | 正離子游向負極、負離子游向正極；強電解質燈亮、弱電解質微亮、非電解質不亮 | 讀畫面文字與判斷式核對 | 通過 |
+| 八年級 | `equilibrium-lab.html` | 動態平衡分頁 | 開放系統水位持續下降；密閉系統蒸發與凝結箭頭最後等長 | 讀畫面文字與判斷式核對 | 通過 |
+| 八年級 | `force-pressure-lab.html` | 液體壓力分頁 | 越深的洞噴得越遠 | 讀畫面文字與判斷式核對 | 通過 |
+| 八年級 | `force-pressure-lab.html` | 摩擦力分頁 | 摩擦力箭頭與拉力方向相反；顏色已改為亮紅 | 讀程式碼核對 | 已修正 |
+| 九年級 | `newton-park.html` | 圓周運動分頁 | 向心力指向圓心、速度沿切線；剪斷後沿切線直線飛出。箭頭顏色原本與規範相反（力藍、速度紅），已改成力亮紅、速度水藍 | 讀程式碼核對 | 已修正 |
+| 九年級 | `kinematics-lab.html` | 自由落體與上拋分頁 | 重力加速度箭頭永遠向下、長度不變；速度箭頭在最高點消失。速度箭頭顏色已改水藍 | 讀程式碼核對 | 已修正 |
+| 九年級 | `circular-motion-lab.html` | 三個分頁 | 向心力水平指向圓心、切線速度與它垂直；水滴與木球沿切線飛出，不是沿半徑向外 | 讀畫面文字與判斷式核對 | 通過 |
+| 九年級 | `em-lab.html` | 安培右手分頁 | 電流向上時，從上往下看磁力線逆時針；反向則順時針 | 讀畫面文字與判斷式核對 | 通過 |
+| 九年級 | `em-lab.html` | 電動機分頁 | 磁場向右、右側導線電流由前往後 → 受力向下，左側向上，從前面看順時針轉；與右手開掌定則一致 | 讀畫面文字與判斷式核對 | 通過 |
+| 九年級 | `em-lab.html` | 電磁感應分頁 | N 極靠近時線圈上端感應出 N 極（相斥）、遠離時感應出 S 極（相吸）；磁鐵不動時指針歸零 | 讀畫面文字與判斷式核對 | 通過 |
+| 九年級 | `magnet-lab.html` | 電磁鐵分頁 | 依線圈繞向與電流方向用右手定則驗算：正極在左時 N 極在右端，反轉電池後互換，與畫面文字一致 | 讀程式碼核對 | 通過 |
+| 九年級 | `inertia-lab.html` | 公車吊環分頁 | 起步時吊環向後擺、煞車時向前擺、等速時回到垂直 | 讀畫面文字與判斷式核對 | 通過 |
+| 九年級 | `work-vector-lab.html` | 三個分頁 | 拉繩越斜，平行分量（橘）越短；垂直時為 0；摩擦力與位移反向為負功 | 讀畫面文字與判斷式核對 | 通過 |
+
+### 技術檢查備註
+
+- 檢查頁數：69 頁（手機寬 390px，逐頁打開並切換分頁）。
+- 所有頁面都沒有錯誤或警告，3D 畫布都有出現，沒有白屏。
+- 手機寬 390px：全部頁面的控制面板都收成底部抽屜，頁面沒有左右捲動。
+- 平板寬 768px 抽查 5 頁（牛頓遊樂園、運動學、天氣圖、功的向量、周日運動）：沒有錯誤，面板位置正常。
+- 少數頁面的 3D 標籤在手機寬度會超出畫面右緣（血液與防禦、演化學說、環境、聲音、折射），但頁面設定不能左右滑動，只是標籤被裁掉一小段，和上一輪相同，未改。
+- 滑桿與按鈕擋住事件冒泡：由共用的 mobile.js 統一處理（面板、字卡、底部列），這一輪沒有改動。
+- 改色後實際打開牛頓遊樂園的圓周運動分頁確認：紅色向心力箭頭指向圓心、水藍色速度箭頭沿切線。
+- 首頁沒列出的 9 頁當中，有 8 頁沒有載入 goals.js（所以也沒有題庫），sky-lab 另外缺 mobile.js。
+- 這一輪**沒有做**的：每個分頁逐張截圖比對、長時間反覆切換分頁的記憶體壓力測試、低畫質模式逐頁手動切換。
+
+## 6. 草稿 PR 與預覽連結
+
+- 草稿 PR：https://github.com/a1011755-lucky/science-lab/pull/9
+
+以下連結固定在這次校正的版本，可以直接打開驗收（只列這一輪有改到的頁面）：
+
+- 圓周運動：向心力與切線軌跡：https://raw.githack.com/a1011755-lucky/science-lab/f74e4144fdd3f0e80ec93c62d465946edc465053/circular-motion-lab.html
+- 血液循環與心臟運作實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f74e4144fdd3f0e80ec93c62d465946edc465053/circulation-lab.html
+- 周日運動 3D：https://raw.githack.com/a1011755-lucky/science-lab/f74e4144fdd3f0e80ec93c62d465946edc465053/daily-motion.html
+- 電與磁終極實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f74e4144fdd3f0e80ec93c62d465946edc465053/em-lab.html
+- 內分泌與血糖恆定實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f74e4144fdd3f0e80ec93c62d465946edc465053/endocrine-lab.html
+- 牛頓第二定律：F＝ma 動力實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f74e4144fdd3f0e80ec93c62d465946edc465053/fma-lab.html
+- 力與壓力終極實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f74e4144fdd3f0e80ec93c62d465946edc465053/force-pressure-lab.html
+- 血液循環與心臟解剖實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f74e4144fdd3f0e80ec93c62d465946edc465053/heart-anatomy-lab.html
+- 運動學綜合實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f74e4144fdd3f0e80ec93c62d465946edc465053/kinematics-lab.html
+- 力矩與槓桿：原木機械沙盒：https://raw.githack.com/a1011755-lucky/science-lab/f74e4144fdd3f0e80ec93c62d465946edc465053/lever-lab.html
+- 莫耳、分子量與化學計量：https://raw.githack.com/a1011755-lucky/science-lab/f74e4144fdd3f0e80ec93c62d465946edc465053/mole-lab.html
+- 牛頓力學遊樂園：https://raw.githack.com/a1011755-lucky/science-lab/f74e4144fdd3f0e80ec93c62d465946edc465053/newton-park.html
+- 植物的運輸：https://raw.githack.com/a1011755-lucky/science-lab/f74e4144fdd3f0e80ec93c62d465946edc465053/plant-transport-lab.html
+- 臺灣逆斷層與地震模擬器：https://raw.githack.com/a1011755-lucky/science-lab/f74e4144fdd3f0e80ec93c62d465946edc465053/taiwan-earthquake.html
+- 颱風過境風向模擬器：https://raw.githack.com/a1011755-lucky/science-lab/f74e4144fdd3f0e80ec93c62d465946edc465053/typhoon-wind.html
+- 天氣圖判讀與臺灣的天氣：https://raw.githack.com/a1011755-lucky/science-lab/f74e4144fdd3f0e80ec93c62d465946edc465053/weather-map-lab.html
+- 功與能綜合實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f74e4144fdd3f0e80ec93c62d465946edc465053/work-energy.html
+- 功與能：作功的物理含意：https://raw.githack.com/a1011755-lucky/science-lab/f74e4144fdd3f0e80ec93c62d465946edc465053/work-vector-lab.html
+
+> quiz.js、keypoints.js、goals.js 的修改會出現在相關頁面的「會考自我檢測」「會考出題重點」「學習目標」裡。
+
+## 附錄：上一輪（已合併上線）的修正對照
+
+<details><summary>展開上一輪的修正明細</summary>
 
 | 頁面 | 原文 | 改成 | 理由 |
 | --- | --- | --- | --- |
@@ -138,102 +361,11 @@
 | weather-map-lab.html | 返回按鈕連到國二（index.html#g8） | 連到國三（index.html#g9） | 天氣圖在首頁屬於國三地科 |
 | clay-sim、heart、electrochem、kinematics-lab、taiwan-earthquake、newton-park、enzyme-lock-key | 背景色 #f4f7f6／#eef3f7／#eef0f4／#e4ece6／#cfeaf7／#e6edf1／#f5f5f0（偏藍、偏綠） | 統一為 #F5F1E7 | 美學規範：背景 #F5F1E7 |
 | force-pressure-lab.html 力的平衡分頁 | 左右拉力箭頭為橘色 0xff8a3d、藍色 0x3d8bff | 兩個拉力箭頭都改為力的規定色亮紅 #ff3b30 | 向量配色規範：力＝#ff3b30 |
+| quiz.js 酵素題（第 11、13 題） | 活性部位 | 活化位 | 與酵素頁面用語一致 |
+| quiz.js 消化題 | 選項「胃液含鹽酸，能分解蛋白質」 | 「胃液含有酵素，能初步分解蛋白質」 | 分解蛋白質的是酵素不是鹽酸，避免學生誤會而出現兩個可爭議選項 |
+| quiz.js 循環題 | 選項「肺靜脈就是心室」 | 「微血管」 | 原選項語意不通 |
+| quiz.js 化石題 | 馬「為了適應」草原環境而產生的變化 | 馬在草原環境中演化出的特徵變化 | 「為了適應而改變」是用進廢退式說法，與天擇觀念衝突 |
+| quiz.js 水資源題 1 | 解析「海水約占 97%」 | 「海水約占 98%」 | 與頁面數據一致 |
+| quiz.js 水資源題 2 | 「人類最容易取得與利用的淡水是？」答案：河川與湖泊 | 「人類可利用的淡水中，數量最多的是？」答案：地下水 | 依老師指示，可利用淡水主要是地下水 |
 
-## 3. 題庫修正明細（quiz.js）
-
-全部 303 題都逐題驗算過答案、確認每題只有一個正確選項；以下是有修改的題目。
-
-| 題目 | 原本 | 改成 | 理由 |
-| --- | --- | --- | --- |
-| 心臟題（2 題） | 上、下腔靜脈／上腔靜脈／下腔靜脈 | 上、下大靜脈／上大靜脈／下大靜脈 | 國中課本用「大靜脈」 |
-| 酵素題（第 11、13 題） | 活性部位 | 活化位 | 與酵素頁面用語一致 |
-| 消化題 | 選項「胃液含鹽酸，能分解蛋白質」 | 「胃液含有酵素，能初步分解蛋白質」 | 分解蛋白質的是酵素不是鹽酸，避免學生誤會而出現兩個可爭議選項 |
-| 循環題 | 選項「肺靜脈就是心室」 | 「微血管」 | 原選項語意不通 |
-| 化石題 | 馬「為了適應」草原環境而產生的變化 | 馬在草原環境中演化出的特徵變化 | 「為了適應而改變」是用進廢退式說法，與天擇觀念衝突 |
-| 水資源題 1 | 解析「海水約占 97%」 | 「海水約占 98%」 | 與頁面數據一致 |
-| 水資源題 2 | 「人類最容易取得與利用的淡水是？」答案：河川與湖泊 | 「人類可利用的淡水中，數量最多的是？」答案：地下水 | 依老師指示，可利用淡水主要是地下水 |
-
-## 4. 待老師確認
-
-| 頁面 | 內容 | 為什麼不確定 | 建議 |
-| --- | --- | --- | --- |
-| cell-lab.html | 物質進出說明提到「主動運輸：細胞膜上的蛋白質利用能量，把物質從低濃度運向高濃度」 | 國中 108 課綱多半不教主動運輸，可能超綱 | 建議刪除這一句，或改成「延伸補充」小字 |
-| nutrition-lab.html | 「腸液分解醣類、蛋白質」（沒有脂質） | 各版本課本寫法不同，有的寫腸液可分解醣類、蛋白質、脂質 | 請老師依所用版本確認 |
-| env-lab.html | 首頁寫「溫室效應、全球暖化與節能減碳」，但頁面內容是聖嬰現象、土石流、空氣品質，沒有溫室效應 | 新增溫室效應分頁屬於新模組，這次不做 | 已先把首頁說明改成和內容一致；是否補做溫室效應分頁請老師決定 |
-| cell-division.html、quiz.js、keypoints.js、goals.js | 使用「有絲分裂」「G1／S／G2 期」「四分體」「二分體」「初級／次級精母細胞」「姊妹染色分體」 | 國中課本多用「細胞分裂」；細胞週期分期、四分體、初級／次級母細胞屬高中內容 | 建議：畫面改用「細胞分裂」，細胞週期滑桿改成「分裂前／複製／準備分裂」，四分體、初級／次級等名稱拿掉或改成小字延伸；需老師確認所用版本 |
-| keypoints.js 生殖重點卡 | 「被子植物有雙重受精，會形成胚乳」「卵胎生」 | 雙重受精、胚乳屬高中生物；卵胎生在部分新版課本已不強調 | 建議刪除雙重受精那一條，或請老師依版本確認 |
-| refraction-lab.html | 標籤「水（n ＝ 1.33）」「空氣（n ＝ 1.00）」、視深「約為 1 ÷ 1.33 倍」、半圓玻璃磚的「全反射」「臨界角 41.8°」 | 折射率 n 與全反射、臨界角屬高中物理；部分版本國中課本當補充（光纖） | 建議：標籤改成「水（光速較慢）」，視深只說「看起來變淺」；全反射保留但標「延伸」 |
-| equilibrium-lab.html 勒沙特列分頁 | 「壓力測試：推動活塞」→ 平衡向氣體分子數較少的一方移動 | 國中課本的平衡移動多只談濃度、溫度；壓力（氣體分子數）屬高中 | 建議保留溫度部分，壓力測試標「延伸」或移除 |
-| chem-lab.html | 強電解質／弱電解質（完全解離、部分解離） | 國中課本多只分電解質與非電解質；強弱電解質可能屬延伸 | 請老師依版本確認 |
-| quiz.js 平衡題（NO₂ 加壓） | 「活塞迅速向內推，顏色最後如何」 | 與頁面壓力測試同屬高中範圍 | 隨頁面決定一併保留或刪除 |
-| atmo-lab.html | 3D 探測船只能升到 50 km，看不到中氣層、增溫層 | 已用文字補上四層；若要在 3D 中呈現，需重做場景與滑桿（屬於較大改版） | 請老師決定是否要延伸 3D 模型到 100 km |
-| newton-park.html 萬有引力分頁 | 「距離平方反比」「引力 ∝ m ÷ r²」「距離變一半 → 引力變 4 倍」 | 國中課本多只要求定性：質量越大、距離越近，引力越大；平方反比的計算可能屬高中 | 請老師依版本確認是否保留倍數計算 |
-| kinematics-lab.html | 顯示「位置 x = v₀t + ½at²」 | 部分版本國中課本只用 v-t 圖面積求位移，不寫這個公式 | 請老師確認；可改成「位移 ＝ v-t 圖下的面積」 |
-| power-lab.html | 「串聯：P ＝ I²R → R 大較亮；並聯：P ＝ V²／R → R 小較亮」 | 部分國中版本只教 P ＝ I × V（電功率＝電流×電壓），I²R、V²/R 為延伸 | 請老師確認；可改成文字「串聯時電阻大的較亮、並聯時電阻小的較亮」 |
-| moon-phases.html、daily-motion.html | 背景是深色夜空（#04060d、#060a18），不是規定的 #F5F1E7 | 天文頁刻意用夜空才看得到星星與月相，改成米色會影響教學 | 建議維持夜空；若要統一，可只把面板改成米色毛玻璃 |
-| cell-division.html | 3D 背景是漸層「明亮醫學實驗室」風格，面板白底 | 與全站原木風不同，但改動牽涉整頁配色 | 請老師決定是否要統一 |
-| evolution-lab、force-lab、pressure-lab、geology-fault、sky-lab、transverse-wave、waves-3d、weather-fronts、weather-pressure（9 頁） | 檔案還在，但首頁沒有連結，學生找不到；其中 force-lab、pressure-lab 與 force-pressure-lab 內容重複，且仍用 N/cm² | 多半是舊版或被新頁取代；evolution-lab（樺尺蛾、鯨魚演化）內容正確，演化學說頁也提到它 | 建議：evolution-lab 加回首頁「演化」單元；其餘 8 頁確認不用後刪除或移到 old 資料夾 |
-| static-circuit.html | 首頁連結用 #trio、#ohm、#series，頁面內用另一套代號（ut、u2、u4）對照 | 實測可正常跳到對應單元 | 不用改，僅記錄 |
-
-## 5. 沒做完的項目與原因
-
-- **向量配色全站逐一比對**：只修了力與壓力頁的拉力箭頭。其他頁的箭頭顏色需要逐頁進 3D 畫面確認，量很大，留待下一輪。
-- **每一頁每一個分頁的逐格截圖**：這次以「實際打開＋切換分頁＋記錄錯誤」做全站技術檢查，並抽查手機、平板版面，沒有對 77 頁×每個分頁逐張截圖比對。
-- **切換分頁的記憶體釋放（geometry、material、texture）**：沒有長時間反覆切換做壓力測試；目前切換分頁沒有錯誤，也沒有明顯變慢。
-- **quality.js 低畫質模式與背景暫停**：所有首頁列出的頁面都有載入 quality.js；沒有逐頁手動切換低畫質驗證。
-- **會考重點卡**：新上線的 10 頁已補上；另有約 35 頁（多為國二、國三理化與地科）原本就沒有重點卡，這次沒有新增，以免變成新內容。
-- **草稿 PR**：已由老師開啟，見第 6 節。
-
-## 6. 草稿 PR 與預覽連結
-
-- 草稿 PR：https://github.com/a1011755-lucky/science-lab/pull/8 （草稿狀態，尚未合併）
-
-以下預覽連結固定在這次校正的版本，可以直接打開驗收：
-
-- 酸鹼中和與 pH：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/acid-base-lab.html
-- 大氣層與天氣系統實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/atmo-lab.html
-- 血液成分、淋巴循環與人體防禦：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/blood-defense-lab.html
-- ABO 血型與性聯遺傳：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/blood-type-lab.html
-- 天球與太陽視運動實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/celestial-lab.html
-- 細胞分裂與配子形成模擬器：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/cell-division.html
-- 3D 自然科直觀模擬器：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/clay-sim.html
-- 協調作用實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/coordination-lab.html
-- 周日運動 3D：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/daily-motion.html
-- 日食、月食與潮汐：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/eclipse-tide-lab.html
-- 電化學實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/electrochem.html
-- 內分泌與血糖恆定實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/endocrine-lab.html
-- 全球環境變遷實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/env-lab.html
-- 酵素鎖鑰假說：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/enzyme-lock-key.html
-- 反應速率與動態平衡實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/equilibrium-lab.html
-- 古生物演化特徵考證室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/evo-proof-lab.html
-- 演化實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/evolution-lab.html
-- 演化學說：天擇與用進廢退：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/evolve-theory-lab.html
-- 力與壓力終極實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/force-pressure-lab.html
-- 古生物化石與演化實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/fossil-lab.html
-- 發電機、交流電與變壓器：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/generator-lab.html
-- 遺傳學與基因密碼實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/genetics-lab.html
-- 地質剖面與斷層模擬器：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/geology-fault.html
-- 心臟與雙循環模擬器：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/heart.html
-- 人類與環境實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/human-env-lab.html
-- 會考 3D 自然實驗室｜國中自然科互動 3D 動畫：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/index.html
-- 運動學綜合實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/kinematics-lab.html
-- 簡單機械：滑輪、斜面與輪軸：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/machine-lab.html
-- 質量守恆定律實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/mass-lab.html
-- 莫耳、分子量與化學計量：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/mole-lab.html
-- 牛頓力學遊樂園：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/newton-park.html
-- 3D 光學綜合實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/optics-lab.html
-- 植物的運輸：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/plant-transport-lab.html
-- 地球內部與板塊運動實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/plates-lab.html
-- 反應速率與化學平衡實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/rate-lab.html
-- 月亮與天空 3D 教室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/sky-lab.html
-- 物質與水溶液實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/solution-lab.html
-- 波與聲音互動實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/sound-lab.html
-- 臺灣逆斷層與地震模擬器：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/taiwan-earthquake.html
-- 連續橫波與質點運動：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/transverse-wave.html
-- 颱風過境風向模擬器：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/typhoon-wind.html
-- 地球上的水與地貌實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/water-lab.html
-- 3D 橫波與縱波對照：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/waves-3d.html
-- 天氣圖判讀與臺灣的天氣：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/weather-map-lab.html
-- 功與能綜合實驗室：https://raw.githack.com/a1011755-lucky/science-lab/f7698729d0dc5939e9ad98c0a860fe4cbb4d1227/work-energy.html
-
-> quiz.js、keypoints.js、goals.js 的修改會出現在每一頁的「會考自我檢測」「會考出題重點」「學習目標」中。
+</details>

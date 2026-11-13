@@ -154,7 +154,7 @@
     <!-- Tab 1 -->
     <section class="section" data-tab="heart">
       <p class="desc">半透明心臟上接<b>肺臟</b>、下接<b>全身器官</b>。<b>點一下心臟的腔室</b>（或肺、全身器官）看說明。<br>※ 面對面看：畫面<b>左側是心臟的右邊</b>。</p>
-      <div class="ios" style="--c:#e9796c"><div class="top"><span>心跳速率</span><b id="bpmVal">72 下/分</b></div><input type="range" id="hBpm" min="72" max="130" step="1" value="72" aria-label="心跳速率"></div>
+      <div class="ios" style="--c:#e9796c"><div class="top"><span>心跳速率</span><b id="bpmVal">72 次/分</b></div><input type="range" id="hBpm" min="72" max="130" step="1" value="72" aria-label="心跳速率"></div>
       <div class="row2">
         <button class="btn" data-act="rest">🧘 平靜 72</button>
         <button class="btn redb" data-act="run">🏃 運動 130</button>
@@ -511,7 +511,7 @@ BUILD.heart = (g) => {
   }
 
   let bpm = 72, phase = 0, gasAcc = 0;
-  const setBpm = v => { bpm = v; const el = $('hBpm'); el.value = v; paint(el); $('bpmVal').textContent = `${Math.round(v)} 下/分`; };
+  const setBpm = v => { bpm = v; const el = $('hBpm'); el.value = v; paint(el); $('bpmVal').textContent = `${Math.round(v)} 次/分`; };
   setBpm(Number($('hBpm').value));
   return {
     camera: { pos: [0.6, 4.6, 15.5], target: [0, 4.3, 0], mk: 0.55 }, table: false,
@@ -558,7 +558,7 @@ BUILD.heart = (g) => {
       if (lPick.visible && !highlight && Math.random() < dt * 0.25) lPick.visible = false;
     },
     hud() {
-      return `<div class="big">❤️ ${Math.round(bpm)} 下/分　${bpm > 100 ? '🏃 運動中：血流加快！' : '🧘 平靜'}</div><div class="sm">藍 → 肺 → 紅（肺循環）　紅 → 全身 → 藍（體循環）</div>`;
+      return `<div class="big">❤️ ${Math.round(bpm)} 次/分　${bpm > 100 ? '🏃 運動中：血流加快！' : '🧘 平靜'}</div><div class="sm">藍 → 肺 → 紅（肺循環）　紅 → 全身 → 藍（體循環）</div>`;
     },
     pick: name => { const o = pickables.find(o => o.userData.name === name); if (o) pick(o); },
     state: () => ({ bpm, phase, oxy: parts.slice(0, 20).map(p => +oxyAt(loops[p.loop], p.u).toFixed(2)), loops: loops.map(l => ({ lung: l.lung, body: l.body, len: l.len })) })
@@ -841,7 +841,7 @@ BUILD.valve = (g) => {
     },
     hud() {
       const l = which === 'lub' && flashT > 0, d = which === 'dub' && flashT > 0;
-      return `<div class="big"><span class="snd ${l ? 'flash' : ''}">噗（房室瓣關閉）</span> → <span class="snd ${d ? 'flash2' : ''}">通（半月瓣關閉）</span>！</div><div class="sm">${playing ? (slow > 1 ? '🐢 慢動作 ×¼ 播放中' : '⏱ 正常速度 72 下/分') : '按「播放心音與慢動作解析」開始'}</div>`;
+      return `<div class="big"><span class="snd ${l ? 'flash' : ''}">噗（房室瓣關閉）</span> → <span class="snd ${d ? 'flash2' : ''}">通（半月瓣關閉）</span>！</div><div class="sm">${playing ? (slow > 1 ? '🐢 慢動作 ×¼ 播放中' : '⏱ 正常速度 72 次/分') : '按「播放心音與慢動作解析」開始'}</div>`;
     },
     state: () => ({ phase, avOpen, slOpen, beats, playing }),
     debugPlay: () => { playing = true; }

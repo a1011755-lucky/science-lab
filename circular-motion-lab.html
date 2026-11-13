@@ -647,8 +647,8 @@ const pathRing = new THREE.Mesh(
 pathRing.rotation.x = -Math.PI / 2;
 pathRing.position.y = 0.235;
 swingRoot.add(pathRing);
-const swFc = makeArrow(0xff2a2a);
-const swV = makeArrow(0x1aa4e0);
+const swFc = makeArrow(0xff3b30);
+const swV = makeArrow(0x2ec5e6);
 const swCorner = makeCorner();
 swingRoot.add(swFc, swV, swCorner);
 const swTrail = createTrail(swingRoot, { color: 0xe07a32, max: 32, radius: 0.055, hold: 1.35, peak: 0.82 });
@@ -706,8 +706,8 @@ const dropGlowMat = new THREE.SpriteMaterial({
   blending: THREE.NormalBlending, toneMapped: false
 });
 const umDashes = makeDashes(umbrellaRoot, 140);
-const umFc = makeArrow(0xff2a2a);
-const umV = makeArrow(0x1aa4e0);
+const umFc = makeArrow(0xff3b30);
+const umV = makeArrow(0x2ec5e6);
 const umCorner = makeCorner();
 umbrellaRoot.add(umFc, umV, umCorner);
 const drops = [];
@@ -783,11 +783,11 @@ const circle = new THREE.Line(circleGeo, new THREE.LineDashedMaterial({
 circle.computeLineDistances();
 cutRoot.add(circle);
 const ctDashes = makeDashes(cutRoot, 48);
-const ctFc = makeArrow(0xff2a2a);
-const ctV = makeArrow(0x1aa4e0);
+const ctFc = makeArrow(0xff3b30);
+const ctV = makeArrow(0x2ec5e6);
 const ctCorner = makeCorner();
 cutRoot.add(ctFc, ctV, ctCorner);
-const ctTrail = createTrail(cutRoot, { color: 0x1aa4e0, max: 64, radius: 0.055, hold: 2.4, peak: 0.62 });
+const ctTrail = createTrail(cutRoot, { color: 0x2ec5e6, max: 64, radius: 0.055, hold: 2.4, peak: 0.62 });
 const tagCtFc = addTag('cut', 'fc');
 const tagCtV = addTag('cut', 'vv');
 const tagCtAng = addTag('cut', 'ang');

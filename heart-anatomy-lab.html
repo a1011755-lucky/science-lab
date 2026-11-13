@@ -153,7 +153,7 @@
     <!-- Tab 1 -->
     <section class="section" data-tab="anatomy">
       <p class="desc">心臟<b>正面剖開</b>的模型（面對面看：<b>畫面左側是心臟的右邊</b>）。拖動滑桿讓心臟跳動，觀察瓣膜怎麼開關。點一下腔室或血管看說明。</p>
-      <div class="ios" style="--c:#d98a86"><div class="top"><span>心跳搏動</span><b id="bpmVal">72 下/分</b></div><input type="range" id="aBpm" min="60" max="120" step="1" value="72" aria-label="心跳速率"></div>
+      <div class="ios" style="--c:#d98a86"><div class="top"><span>心跳搏動</span><b id="bpmVal">72 次/分</b></div><input type="range" id="aBpm" min="60" max="120" step="1" value="72" aria-label="心跳速率"></div>
       <div class="row2">
         <button class="btn primary" data-act="beat">⏸ 暫停心跳</button>
         <button class="btn" data-act="slowmo">🐢 慢動作</button>
@@ -538,7 +538,7 @@ BUILD.anatomy = (g) => {
   renderer.domElement.addEventListener('pointerup', onUp);
 
   let bpm = 72, phase = 0.5, beating = true, slow = 1;
-  const setBpm = v => { bpm = v; const el = $('aBpm'); el.value = v; paint(el); $('bpmVal').textContent = `${Math.round(v)} 下/分`; };
+  const setBpm = v => { bpm = v; const el = $('aBpm'); el.value = v; paint(el); $('bpmVal').textContent = `${Math.round(v)} 次/分`; };
   setBpm(Number($('aBpm').value));
   return {
     camera: { pos: [1.0, 4.4, 14.8], target: [0.25, 4.0, 0], mk: 0.55 },
@@ -577,7 +577,7 @@ BUILD.anatomy = (g) => {
     },
     hud() {
       const v = H.valves;
-      return `<div class="big">❤️ ${Math.round(bpm)} 下/分　${v.avOpen < 0.5 ? '<span class="hl">心室收縮：房室瓣關、半月瓣開</span>' : '<span class="bl">心室舒張：房室瓣開、半月瓣關</span>'}</div><div class="tipc">左心室壁最厚，才能將血液打向全身！瓣膜單向開啟防止逆流！</div>`;
+      return `<div class="big">❤️ ${Math.round(bpm)} 次/分　${v.avOpen < 0.5 ? '<span class="hl">心室收縮：房室瓣關、半月瓣開</span>' : '<span class="bl">心室舒張：房室瓣開、半月瓣關</span>'}</div><div class="tipc">左心室壁最厚，才能將血液打向全身！瓣膜單向開啟防止逆流！</div>`;
     },
     state: () => ({ phase, ...H.valves, inRV: parts.filter(p => !p.path.oxy && p.u > p.path.gates[0] && p.u < p.path.gates[1]).length })
   };

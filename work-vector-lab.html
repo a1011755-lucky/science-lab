@@ -62,7 +62,7 @@
   .legend { display: flex; gap: 6px; margin: 2px 0 8px; font-size: .72rem; font-weight: 800; }
   .legend .lg { flex: 1; text-align: center; border-radius: 999px; padding: 3px 0; color: #fff; }
   .legend .lg[hidden] { display: none; }
-  .legend .f { background: #ff2d2d; } .legend .p { background: #ff8a14; } .legend .s { background: #1aa3d4; }
+  .legend .f { background: #ff3b30; } .legend .p { background: #ff9500; } .legend .s { background: #2ec5e6; }
   .eqbox { background: #fff; border-radius: 14px; padding: 10px 12px; margin-top: 8px; text-align: center; line-height: 1.55; box-shadow: 0 4px 14px rgba(93,64,55,.07); }
   .eqbox .name { font-size: .92rem; font-weight: 900; }
   .eqbox .nums { font-size: 1.02rem; font-weight: 900; font-variant-numeric: tabular-nums; margin-top: 4px; }
@@ -84,7 +84,7 @@
     font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.4;
     background: rgba(255,255,255,.9); color: var(--ink); box-shadow: 0 4px 12px rgba(93,64,55,.12); font-variant-numeric: tabular-nums;
   }
-  .tag.vF { background: #ff2d2d; color: #fff; } .tag.vP { background: #ff8a14; color: #fff; } .tag.vS { background: #1499cc; color: #fff; }
+  .tag.vF { background: #ff3b30; color: #fff; } .tag.vP { background: #ff9500; color: #fff; } .tag.vS { background: #1499cc; color: #fff; }
   .tag.pos { background: #2f9e62; color: #fff; } .tag.neg { background: #e24b3b; color: #fff; }
   .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--ink-soft); line-height: 1.8; }
   @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
@@ -499,7 +499,7 @@ const SB = (() => {
   handle.rotation.x = Math.PI / 2;
   handle.castShadow = true;
   group.add(rope, handle);
-  const RED = 0xff2a2a, ORANGE = 0xff8a14, BLUE = 0x2eb6e6;
+  const RED = 0xff3b30, ORANGE = 0xff9500, BLUE = 0x2ec5e6;
   const red = Arrow(RED), orange = Arrow(ORANGE), blue = Arrow(BLUE);
   const dash = Dashed(0x7ec8f2);
   group.add(red, orange, blue, dash);
@@ -645,7 +645,7 @@ const SG = (() => {
   group.add(barrow);
   const into = bits(barrow, 0x5dff9a, 32, 'in');
   const heat = bits(barrow, 0xff5a3c, 32, 'out');
-  const pushA = Arrow(0xff2a2a), fricA = Arrow(0xff2a2a), sA = Arrow(0x2eb6e6);
+  const pushA = Arrow(0xff3b30), fricA = Arrow(0xff3b30), sA = Arrow(0x2ec5e6);
   group.add(pushA, fricA, sA);
   const lSign = addLabel('sign', 'pos'), lForce = addLabel('sign', 'vF'), lS = addLabel('sign', 'vS');
   const trail = createTrail(group, { color: 0x7dcea0, radius: 0.06 });
@@ -747,7 +747,7 @@ const ZE = (() => {
   brief.add(grip);
   shade(brief);
   const trail = createTrail(group, { color: 0x8ec8f0, radius: 0.05 });
-  const lift = Arrow(0xff2a2a);
+  const lift = Arrow(0xff3b30);
   lift.set(V3(0, 0.56, 0), V3(0, 1.35, 0));
   brief.add(lift);
   group.add(brief);
@@ -755,7 +755,7 @@ const ZE = (() => {
   blob.rotation.x = -Math.PI / 2;
   blob.position.y = 0.02;
   group.add(blob);
-  const sA = Arrow(0x2eb6e6);
+  const sA = Arrow(0x2ec5e6);
   const mark = new THREE.Group();
   const mk = new THREE.MeshBasicMaterial({ color: 0x3e2c25, toneMapped: false, depthTest: false });
   const box = new THREE.BoxGeometry(1, 1, 1);
