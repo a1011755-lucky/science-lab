@@ -151,6 +151,9 @@
         <button class="btn ebtn on" data-e="0">🔵 正常年份</button>
         <button class="btn ebtn" data-e="1">🔴 聖嬰現象</button>
       </div>
+      <label class="lab" for="trade">💨 信風（東風）強度<b id="tradeV">100%</b></label>
+      <input class="big" type="range" id="trade" min="0" max="100" step="1" value="100">
+      <div class="ticks"><span>很弱（聖嬰）</span><span>很強（正常）</span></div>
       <div class="sst">
         <div><small>西太平洋海溫</small><b id="sstW">29.0℃</b></div>
         <div><small>東太平洋海溫</small><b id="sstE">20.0℃</b></div>
@@ -186,9 +189,9 @@
         <option value="so2">SO₂（二氧化硫）</option>
       </select>
       <label class="lab" for="lvl">濃度等級<b id="lvlV">20</b></label>
-      <input class="big" type="range" id="lvl" min="0" max="200" step="1" value="20">
-      <div class="aqibar"><i style="background:#3fb950"></i><i style="background:#f2cc3d"></i><i style="background:#f08a24"></i><i style="background:#e5484d"></i></div>
-      <div class="ticks"><span>0</span><span>50</span><span>100</span><span>150</span><span>200</span></div>
+      <input class="big" type="range" id="lvl" min="0" max="300" step="1" value="20">
+      <div class="aqibar" style="grid-template-columns:1fr 1fr 1fr 1fr 2fr"><i style="background:#3fb950"></i><i style="background:#f2cc3d"></i><i style="background:#f08a24"></i><i style="background:#e5484d"></i><i style="background:#8e44ad"></i></div>
+      <div class="ticks" style="position:relative;display:block;height:16px;margin-top:2px"><span style="position:absolute;left:0">0</span><span style="position:absolute;left:16.67%;transform:translateX(-50%)">50</span><span style="position:absolute;left:33.33%;transform:translateX(-50%)">100</span><span style="position:absolute;left:50%;transform:translateX(-50%)">150</span><span style="position:absolute;left:66.67%;transform:translateX(-50%)">200</span><span style="position:absolute;right:0">300</span></div>
       <div class="aqi" id="aqiBadge"><b id="aqiV">20</b><span id="aqiTxt">良好</span></div>
       <div class="stat" id="aqiStat"></div>
     </section>
@@ -209,7 +212,7 @@
       </div>
       <div class="stat" id="ghStat"></div>
       <p class="desc">常見的溫室氣體：<b>二氧化碳、甲烷、水氣</b>等。減緩全球暖化要<b>節能減碳</b>：少用化石燃料、多搭大眾運輸、發展再生能源、植樹造林。</p>
-      <p class="desc">溫度與比例是依二氧化碳濃度算出的教學模擬值，不是精確預測。</p>
+      <p class="desc">溫度與比例是依二氧化碳濃度算出的教學模擬值，不是精確預測。畫面把太陽光畫成全部穿過大氣，是簡化示意：實際上約有三成會被雲和地表反射回太空。</p>
     </section>
     <button class="btn" id="viewBtn">🎥 重設視角</button>
   </div>
@@ -466,7 +469,7 @@ const winds = [0, 1, 2, 3, 4].map(i => {
 const cloudWest = new THREE.Group(); EN.group.add(cloudWest);
 for (let i = 0; i < 3; i++) { const c = makeCloud(2.6, 1.2, 2.2, i ? cloudW : cloudG); c.position.set(i * 1.6 - 1.6, (i % 2) * 0.4, 0); cloudWest.add(c); }
 cloudWest.position.set(-8.5, 9.6, 0);
-const cloudEast = cloudWest.clone(); cloudEast.position.set(8.5, 9.6, 0); EN.group.add(cloudEast);
+const cloudEast = cloudWest.clone(); cloudEast.position.set(8.5, 9.6, 0); cloudEast.visible = false; EN.group.add(cloudEast);   // 改成單一雲雨帶跟著暖水移動，這團不再使用
 const rainW = makePts(EN.group, 220, dotTexture('#6fb6ee', 'rgba(30,90,160,.8)'), 0.13), rainE = makePts(EN.group, 220, dotTexture('#6fb6ee', 'rgba(30,90,160,.8)'), 0.13);
 function rainStep(R, x0, x1, top, k, dt) {
   const n = Math.floor(R.N * k);
@@ -487,10 +490,15 @@ const lbWind = addLabel('enso', '', 'small', V3(0, 9.0, 0));
 const lbThermo = addLabel('enso', '溫躍層（暖水與冷水的分界）', 'small', V3(-3, 2.5, OZ + 0.2));
 const lbRainW = addLabel('enso', '', 'small', V3(-8.5, 11, 0));
 const lbRainE = addLabel('enso', '', 'small', V3(8.5, 11, 0));
-document.querySelectorAll('.ebtn').forEach(b => b.addEventListener('click', () => {
-  EN.target = Number(b.dataset.e);
-  document.querySelectorAll('.ebtn').forEach(x => x.classList.toggle('on', x === b));
-}));
+// 信風滑桿與兩顆快速按鈕互相同步：EN.target ＝ 0（信風強、正常）～ 1（信風弱、聖嬰）
+function setTrade(v, fromSlider) {
+  EN.target = 1 - v / 100;
+  if (!fromSlider) $('trade').value = v;
+  $('tradeV').textContent = Math.round(v) + '%';
+  document.querySelectorAll('.ebtn').forEach(x => x.classList.toggle('on', Number(x.dataset.e) === (EN.target >= 0.6 ? 1 : 0)));
+}
+document.querySelectorAll('.ebtn').forEach(b => b.addEventListener('click', () => setTrade(b.dataset.e === '1' ? 0 : 100)));
+$('trade').addEventListener('input', e => setTrade(Number(e.target.value), true));
 function updateEnso(dt) {
   EN.t += dt;
   EN.k += (EN.target - EN.k) * (1 - Math.exp(-dt * 1.2));
@@ -525,19 +533,23 @@ function updateEnso(dt) {
   lbUp.show = up > 0.4;
   // 信風
   winds.forEach((w, i) => { const s = 1 - 0.75 * k; w.scale.set(s, Math.max(0.3, s), Math.max(0.3, s)); w.position.x = 8 - i * 4 - ((EN.t * 2 * s) % 1.5); w.userData.m.color.setHex(k > 0.5 ? 0xa9bccd : 0x5d8fc0); });
-  setLabel(lbWind, k < 0.5 ? '⬅ 信風強（東 → 西），把暖水吹到西邊' : '⬅ 信風減弱，暖水回流到東邊');
-  // 雲雨：正常年份在西邊，聖嬰時移到東邊
-  cloudWest.scale.setScalar(Math.max(0.01, 1 - 0.8 * k)); cloudEast.scale.setScalar(Math.max(0.01, k));
-  rainStep(rainW, -11, -6, 9.2, 1 - k, dt); rainStep(rainE, 6, 11, 9.2, k, dt);
-  lbRainW.show = k < 0.5; lbRainE.show = k > 0.5;
-  setLabel(lbRainW, '🌧️ 多雨'); setLabel(lbRainE, '🌧️ 異常豪雨');
+  setLabel(lbWind, k < 0.3 ? '⬅ 信風強（東 → 西），把暖水吹到西邊' : k < 0.6 ? '⬅ 信風變弱，暖水開始往東擴散' : '⬅ 信風減弱，暖水回流到東邊');
+  // 雲雨帶綁在暖水上：正常年份在西太平洋，信風越弱越往中、東太平洋移動
+  const rainX = lerp(-8.5, 4.5, k), rainHalf = lerp(2.6, 4.4, k);
+  cloudWest.position.x = rainX; cloudWest.scale.set(1 + 0.45 * k, 1, 1);
+  rainStep(rainW, rainX - rainHalf, rainX + rainHalf, 9.2, 1, dt); rainStep(rainE, 6, 11, 9.2, 0, dt);
+  lbRainW.pos.x = rainX; lbRainW.show = true;
+  setLabel(lbRainW, k < 0.3 ? '🌧️ 多雨（暖水上方對流旺盛）' : k < 0.6 ? '🌧️ 雨帶跟著暖水往東移…' : '🌧️ 雨帶移到中、東太平洋');
+  lbRainE.pos.x = -8.5; lbRainE.show = k > 0.6;
+  setLabel(lbRainE, '☀️ 少雨、乾旱');
   const tw = surfT(-9, k), te = surfT(9, k);
   setLabel(lbTW, `🌡️ ${tw.toFixed(1)}℃`); setLabel(lbTE, `🌡️ ${te.toFixed(1)}℃`, te > 24 ? 'red' : 'lam');
   $('sstW').textContent = tw.toFixed(1) + '℃'; $('sstE').textContent = te.toFixed(1) + '℃';
   $('sstE').style.color = te > 24 ? '#c62828' : '#1e6aa8';
-  if (EN.target === 1) setCap(`<small>🔴 聖嬰現象（常在冬季最明顯）</small><span class="huge red">聖嬰現象特徵：赤道東太平洋海溫異常升高，造成全球氣候異常！</span>信風減弱 → 湧升流變弱 → 暖水往東擴散`);
+  if (EN.target >= 0.6) setCap(`<small>🔴 聖嬰現象（常在冬季最明顯）</small><span class="huge red">聖嬰現象特徵：赤道東太平洋海溫異常升高，造成全球氣候異常！</span>信風減弱 → 湧升流變弱 → 暖水往東擴散`);
+  else if (EN.target > 0.25) setCap(`<small>🟠 信風正在減弱</small><span class="huge org">暖水往東擴散，雲雨帶也跟著往東移</span>東太平洋的湧升流變弱、海溫慢慢升高`);
   else setCap(`<small>🔵 正常年份</small><span class="huge blu">信風把暖水吹向西太平洋，東太平洋有冷水湧升</span>所以東太平洋海溫較低，西太平洋較暖、多雨`);
-  setHTML('ensoStat', EN.target === 1
+  setHTML('ensoStat', EN.target >= 0.6
     ? `<b class="r">聖嬰年的影響</b><br>・南美西岸：異常<b>豪雨</b>、漁獲<b>減少</b>（湧升流帶來的養分變少）<br>・印尼、澳洲：降雨減少、<b>乾旱</b>、森林火災<br>・全球許多地區氣候異常`
     : `<b class="b">正常年份</b><br>・東太平洋：冷水湧升，帶來豐富養分 → 秘魯漁場<br>・西太平洋：海水溫暖，空氣上升、多雨<br>・信風由東向西吹`);
 }
@@ -590,13 +602,17 @@ const drRain = makePts(DB.group, 420, dotTexture('#6fb6ee', 'rgba(30,90,160,.8)'
 const runoff = makePts(DB.group, 260, dotTexture('#4fa3e8', 'rgba(20,80,160,.85)'), 0.2);
 const roS = new Float32Array(runoff.N), roZ = new Float32Array(runoff.N);
 for (let i = 0; i < runoff.N; i++) { roS[i] = Math.random() * S_MAX; roZ[i] = (Math.random() - 0.5) * 5; }
+// 泥水（跟著滾動的土石）與揚塵
+const mud = makePts(DB.group, 260, dotTexture('#7a5a3c', 'rgba(60,40,24,.9)'), 0.26);
+const dust = makePts(DB.group, 90, glowTexture('170,140,105'), 2.2);
+dust.p.material.opacity = 0.42;
 const lbHouse = addLabel('debris', '🏠', '', V3(0, 1.9, 0), house);
 const lbState = addLabel('debris', '', 'small', V3(-2, 10.6, 0));
 const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpS = V3(1, 1, 1), tmpP = V3(0, 0, 0), tmpE = new THREE.Euler();
 $('quakeBtn').addEventListener('click', () => { if (!DB.flow) DB.quakeT = 0; });
 $('rainBtn').addEventListener('click', () => { DB.rainT = 0; });
 $('resetDebris').addEventListener('click', () => {
-  Object.assign(DB, { loose: 0, quakeT: -1, rainT: -1, water: 0, flow: false, flowT: 0, runoff: 0 });
+  Object.assign(DB, { loose: 0, quakeT: -1, rainT: -1, water: 0, flow: false, flowT: 0, runoff: 0, camShake: 0 });
   BALLS.forEach(b => { b.v = 0; b.done = false; b.s0 = undefined; });
   Object.assign(HOUSE, { s: HS, v: 0, rot: 0 });
   cracks.forEach(c => { c.visible = false; });
@@ -652,8 +668,24 @@ function updateDebris(dt) {
     tmpP.add(mtn.position);
     tmpQ.setFromEuler(tmpE.set(b.rot, b.rot * 0.7, 0)); tmpS.setScalar(1);
     ballIM.setMatrixAt(i, tmpM.compose(tmpP, tmpQ, tmpS));
+    b.px = tmpP.x; b.py = tmpP.y; b.pz = tmpP.z;
   });
   ballIM.instanceMatrix.needsUpdate = true;
+  // 泥水：黏在正在滾動的土石周圍；揚塵：從滾動的土石上方往上飄散
+  for (let i = 0; i < mud.N; i++) {
+    const b = BALLS[(i * 37) % BALLS.length], j = i * 3;
+    if (!DB.flow || b.v < 0.6) { mud.pos[j + 1] = -50; continue; }
+    mud.pos.set([b.px + Math.sin(i * 12.9 + DB.t * 9) * 0.35, b.py + 0.05 + Math.abs(Math.sin(i * 7.7 + DB.t * 11)) * 0.3, b.pz + Math.cos(i * 5.3 + DB.t * 7) * 0.35], j);
+  }
+  mud.geo.attributes.position.needsUpdate = true;
+  for (let i = 0; i < dust.N; i++) {
+    const b = BALLS[(i * 53 + 11) % BALLS.length], j = i * 3, u = (DB.t * 0.7 + i * 0.137) % 1;
+    if (!DB.flow || DB.flowT > 7 || b.v < 0.6) { dust.pos[j + 1] = -50; continue; }
+    dust.pos.set([b.px - u * 0.8, b.py + 0.4 + u * 2.2, b.pz + Math.sin(i) * 0.6], j);
+  }
+  dust.geo.attributes.position.needsUpdate = true;
+  // 相機震動：地震時輕微，土石流爆發後的前 3 秒最強，之後漸漸停止
+  DB.camShake = Math.max(DB.flow && DB.flowT < 3 ? 0.2 * (1 - DB.flowT / 3) : 0, DB.quakeT >= 0 && DB.quakeT < 2.2 ? 0.09 * (1 - DB.quakeT / 2.2) : 0);
   // 房子
   if (DB.flow && DB.flowT > 0.9) { HOUSE.v = Math.min(9, HOUSE.v + dt * 7); if (HOUSE.s < sAtX(8.5)) { HOUSE.s += HOUSE.v * dt; HOUSE.rot += HOUSE.v * dt * 0.5; } }
   surfPoint(HOUSE.s, HOUSE.z, 0.9, tmpP); house.position.copy(tmpP).add(mtn.position);
@@ -676,7 +708,8 @@ function updateDebris(dt) {
 /* =========================================================
    Tab 3：空氣品質 AQI 觀測箱
    ---------------------------------------------------------
-   AQI 分級（臺灣環境部）：0–50 良好、51–100 普通、101–150 對敏感族群不健康、151–200 對所有族群不健康。
+   AQI 分級（臺灣環境部）：0–50 良好、51–100 普通、101–150 對敏感族群不健康、151–200 對所有族群不健康、201–300 非常不健康（俗稱紫爆）。
+   視覺：scene.fog（FogExp2）濃度綁定 AQI，超過 150 後霧變成灰褐色、陽光變暗；離開本分頁時由 setSmog(0) 關掉霧。
    濃度換算採各汙染物的 AQI 分段濃度（線性內插）。
    ========================================================= */
 const AQ = { group: new THREE.Group(), pol: 'pm25', lvl: 20, show: 20, t: 0 };
@@ -698,16 +731,16 @@ const BOX = { w: 9, h: 5.6, d: 5.4 };
   shadowed(kid);
 }
 const POL = {
-  pm25: { name: 'PM2.5', full: '細懸浮微粒', unit: 'μg/m³', bp: [[0, 15.4], [15.5, 35.4], [35.5, 54.4], [54.5, 150.4]], N: 1800, size: 0.06, tex: dotTexture('#4b4b4b', 'rgba(30,30,30,.9)'), src: '燃燒、汽機車排放、工廠、境外移入', note: '粒徑 ≤ 2.5 微米，能深入肺泡、進入血液' },
-  pm10: { name: 'PM10', full: '懸浮微粒', unit: 'μg/m³', bp: [[0, 54], [55, 125], [126, 254], [255, 354]], N: 650, size: 0.15, tex: dotTexture('#a07a52', 'rgba(90,60,30,.9)'), src: '道路揚塵、營建工地、沙塵暴', note: '顆粒較大，會慢慢沉降' },
-  o3: { name: 'O₃', full: '臭氧', unit: 'ppb', bp: [[0, 54], [55, 70], [71, 85], [86, 105]], N: 220, size: 0.9, tex: glowTexture('140,150,230'), src: '汽機車、工廠排放的氮氧化物在陽光下反應產生', note: '高空臭氧保護我們，但地面臭氧對呼吸道有害' },
-  co: { name: 'CO', full: '一氧化碳', unit: 'ppm', bp: [[0, 4.4], [4.5, 9.4], [9.5, 12.4], [12.5, 15.4]], N: 500, size: 0.14, tex: dotTexture('#9aa0a6', 'rgba(70,80,90,.8)'), src: '燃燒不完全（汽機車、熱水器）', note: '無色無味，會和血紅素結合，造成缺氧' },
-  so2: { name: 'SO₂', full: '二氧化硫', unit: 'ppb', bp: [[0, 20], [21, 75], [76, 185], [186, 304]], N: 500, size: 0.16, tex: dotTexture('#e6c229', 'rgba(150,110,0,.9)'), src: '燃燒含硫的煤、石油（發電廠、工廠）', note: '有刺激性臭味，也是形成酸雨的原因之一' }
+  pm25: { name: 'PM2.5', full: '細懸浮微粒', unit: 'μg/m³', bp: [[0, 15.4], [15.5, 35.4], [35.5, 54.4], [54.5, 150.4], [150.5, 250.4]], N: 1800, size: 0.06, tex: dotTexture('#4b4b4b', 'rgba(30,30,30,.9)'), src: '燃燒、汽機車排放、工廠、境外移入', note: '粒徑 ≤ 2.5 微米，能深入肺泡、進入血液' },
+  pm10: { name: 'PM10', full: '懸浮微粒', unit: 'μg/m³', bp: [[0, 54], [55, 125], [126, 254], [255, 354], [355, 424]], N: 650, size: 0.15, tex: dotTexture('#a07a52', 'rgba(90,60,30,.9)'), src: '道路揚塵、營建工地、沙塵暴', note: '顆粒較大，會慢慢沉降' },
+  o3: { name: 'O₃', full: '臭氧', unit: 'ppb', bp: [[0, 54], [55, 70], [71, 85], [86, 105], [106, 200]], N: 220, size: 0.9, tex: glowTexture('140,150,230'), src: '汽機車、工廠排放的氮氧化物在陽光下反應產生', note: '高空臭氧保護我們，但地面臭氧對呼吸道有害' },
+  co: { name: 'CO', full: '一氧化碳', unit: 'ppm', bp: [[0, 4.4], [4.5, 9.4], [9.5, 12.4], [12.5, 15.4], [15.5, 30.4]], N: 500, size: 0.14, tex: dotTexture('#9aa0a6', 'rgba(70,80,90,.8)'), src: '燃燒不完全（汽機車、熱水器）', note: '無色無味，會和血紅素結合，造成缺氧' },
+  so2: { name: 'SO₂', full: '二氧化硫', unit: 'ppb', bp: [[0, 20], [21, 75], [76, 185], [186, 304], [305, 604]], N: 500, size: 0.16, tex: dotTexture('#e6c229', 'rgba(150,110,0,.9)'), src: '燃燒含硫的煤、石油（發電廠、工廠）', note: '有刺激性臭味，也是形成酸雨的原因之一' }
 };
-const AQI_LV = [[50, '良好', '#3fb950', '可以正常戶外活動'], [100, '普通', '#f2cc3d', '極特殊敏感族群建議減少戶外活動'], [150, '對敏感族群不健康', '#f08a24', '老人、小孩、心肺疾病者應減少戶外活動'], [200, '對所有族群不健康', '#e5484d', '所有人都應減少戶外活動，外出戴口罩']];
-const aqiLevel = v => AQI_LV.find(l => v <= l[0]) || AQI_LV[3];
+const AQI_LV = [[50, '良好', '#3fb950', '可以正常戶外活動'], [100, '普通', '#f2cc3d', '極特殊敏感族群建議減少戶外活動'], [150, '對敏感族群不健康', '#f08a24', '老人、小孩、心肺疾病者應減少戶外活動'], [200, '對所有族群不健康', '#e5484d', '所有人都應減少戶外活動，外出戴口罩'], [300, '非常不健康（紫爆）', '#8e44ad', '所有人都應避免戶外活動，關閉門窗，外出一定要戴口罩']];
+const aqiLevel = v => AQI_LV.find(l => v <= l[0]) || AQI_LV[AQI_LV.length - 1];
 function concFromAqi(p, v) {
-  const seg = Math.min(3, Math.max(0, Math.ceil(v / 50) - 1)), lo = seg * 50 + (seg ? 1 : 0), hi = (seg + 1) * 50;
+  const seg = v > 200 ? 4 : Math.min(3, Math.max(0, Math.ceil(v / 50) - 1)), lo = seg === 4 ? 201 : seg * 50 + (seg ? 1 : 0), hi = seg === 4 ? 300 : (seg + 1) * 50;
   const [c0, c1] = POL[p].bp[seg];
   return c0 + (c1 - c0) * clamp((v - lo) / (hi - lo), 0, 1);
 }
@@ -721,14 +754,19 @@ for (const [k, P] of Object.entries(POL)) {
 }
 const haze = new THREE.Mesh(new THREE.BoxGeometry(BOX.w - 0.05, BOX.h - 0.05, BOX.d - 0.05), new THREE.MeshBasicMaterial({ color: 0x8a8070, transparent: true, opacity: 0, depthWrite: false }));
 haze.position.y = GY + BOX.h / 2; haze.renderOrder = 8; AQ.group.add(haze);
-const BG_CLEAN = new THREE.Color(0xf5f1e7), BG_DIRTY = new THREE.Color(0x8f8a82);
+const BG_CLEAN = new THREE.Color(0xf5f1e7), BG_DIRTY = new THREE.Color(0x8f8a82), BG_BROWN = new THREE.Color(0x6b5a48);
+const smogFog = new THREE.FogExp2(0x8f8a82, 0);
 const lbBox = addLabel('aqi', '', '', V3(0, GY + BOX.h + 0.7, 0));
 $('pol').addEventListener('change', e => { AQ.pol = e.target.value; });
 $('lvl').addEventListener('input', e => { AQ.lvl = Number(e.target.value); });
-function setSmog(dirt) {
-  scene.background.copy(BG_CLEAN).lerp(BG_DIRTY, dirt);
-  ambient.intensity = 1.1 * (1 - 0.45 * dirt); sun.intensity = 1.7 * (1 - 0.6 * dirt);
+function setSmog(dirt, v = 0) {
+  const heavy = sm(150, 300, v);                       // AQI 超過 150 之後：霧轉成灰褐色、變濃，陽光更暗
+  scene.background.copy(BG_CLEAN).lerp(BG_DIRTY, dirt).lerp(BG_BROWN, heavy * 0.85);
+  ambient.intensity = 1.1 * (1 - 0.45 * dirt) * (1 - 0.3 * heavy); sun.intensity = 1.7 * (1 - 0.6 * dirt) * (1 - 0.55 * heavy);
   sun.color.setHex(0xfff1dc).lerp(cA.setHex(0xb8a98c), dirt);
+  const density = 0.03 * sm(60, 150, v) + 0.045 * heavy;   // 最濃時城市只剩輪廓，但還看得出形狀
+  if (density > 0.0005) { smogFog.color.copy(scene.background); smogFog.density = density; scene.fog = smogFog; }
+  else scene.fog = null;
 }
 function updateAqi(dt) {
   AQ.t += dt;
@@ -737,7 +775,7 @@ function updateAqi(dt) {
   for (const [k, s] of Object.entries(pSys)) {
     s.p.visible = k === AQ.pol;
     if (k !== AQ.pol) continue;
-    const n = Math.round(s.N * v / 200);
+    const n = Math.round(s.N * Math.min(1, v / 240));
     s.geo.setDrawRange(0, n);
     for (let i = 0; i < n; i++) {
       const j = i * 3, w = s.v[i];
@@ -753,12 +791,13 @@ function updateAqi(dt) {
   const dirt = sm(20, 200, v);
   haze.material.opacity = 0.32 * dirt;
   haze.material.color.setHex(AQ.pol === 'o3' ? 0x8a8fb8 : AQ.pol === 'so2' ? 0xb0a060 : AQ.pol === 'pm10' ? 0xa08a6a : 0x7c776e);
-  setSmog(dirt * 0.85);
+  setSmog(dirt * 0.85, v);
   const V = Math.round(v), conc = concFromAqi(AQ.pol, V);
   $('lvlV').textContent = AQ.lvl; $('aqiV').textContent = V; $('aqiTxt').textContent = lv[1];
   $('aqiBadge').style.background = lv[2]; $('aqiBadge').style.color = V > 50 && V <= 100 ? '#5d4037' : '#fff';
+  $('aqiTxt').style.fontSize = V > 100 ? '.82rem' : '';
   setLabel(lbBox, `<b style="color:${lv[2]}">AQI ${V}</b>　${lv[1]}`);
-  setCap(`<small>${P.name}（${P.full}）・濃度約 ${conc < 10 ? conc.toFixed(1) : Math.round(conc)} ${P.unit}</small><span class="huge" style="color:${lv[2] === '#f2cc3d' ? '#b7860b' : lv[2]}">AQI ${V}：${lv[1]}</span>AQI 數值越大，代表空氣品質越差，不適合戶外活動！`);
+  setCap(`<small>${P.name}（${P.full}）・濃度約 ${conc < 10 ? conc.toFixed(1) : Math.round(conc)} ${P.unit}</small><span class="huge" style="color:${lv[2] === '#f2cc3d' ? '#b7860b' : lv[2]}">AQI ${V}：${lv[1]}</span>${V > 200 ? '<b>紫爆！</b>霧霾幾乎遮住整座城市，所有人都應避免外出' : V > 150 ? '灰褐色的霧霾籠罩城市，陽光也變暗了' : 'AQI 數值越大，代表空氣品質越差，不適合戶外活動！'}`);
   setHTML('aqiStat', `<b>${P.name} ${P.full}</b><br>來源：${P.src}<br>${P.note}<br><hr>建議：<b>${lv[3]}</b>`);
 }
 const ambient = scene.children.find(o => o.isAmbientLight);
@@ -776,10 +815,13 @@ const ambient = scene.children.find(o => o.isAmbientLight);
 const GH = { group: new THREE.Group(), on: true, co2: 420, T: 15.7, Ts: 15.7, acc: 0 };
 scene.add(GH.group);
 const GH_A0 = GY + 4.2, GH_A1 = GY + 5.6, GH_TOP = GY + 10.5, GH_SPD = 4.2;
+let ghGrass = null;
+// 地表顏色：宜人（綠、藍）→ 發燒（暗紅）；沒有溫室氣體時則是冰冷的灰白
+const GH_COL = { grass: new THREE.Color(0x8fb36b), sea: new THREE.Color(0x4f9fd1), hotG: new THREE.Color(0x8e2b22), hotS: new THREE.Color(0x7a3138), ice: new THREE.Color(0xdfeaf2), airCool: new THREE.Color(0xbfe3f2), airHot: new THREE.Color(0xe6b7a0) };
 {
   // 地面：左邊陸地與山（有冰川），右邊海洋
   add(GH.group, shadowed(new THREE.Mesh(new RoundedBoxGeometry(13, 0.5, 6, 3, 0.15), clay(0xc49a6c))), 0, GY - 0.05, 0);
-  add(GH.group, shadowed(new THREE.Mesh(new RoundedBoxGeometry(7.4, 0.12, 5.6, 2, 0.04), clay(0x8fb36b))), -2.6, GY + 0.26, 0);
+  ghGrass = add(GH.group, shadowed(new THREE.Mesh(new RoundedBoxGeometry(7.4, 0.12, 5.6, 2, 0.04), clay(0x8fb36b))), -2.6, GY + 0.26, 0);
   const mtn = shadowed(new THREE.Mesh(new THREE.ConeGeometry(1.7, 2.6, 7), clay(0x9c8a72)));
   mtn.position.set(-4.6, GY + 1.6, -0.9); GH.group.add(mtn);
   for (const [x, z] of [[-1.4, 1.6], [0.2, 1.2], [-2.4, 1.9]]) {
@@ -793,8 +835,9 @@ ghIce.position.set(-4.6, GY + 2.36, -0.9); GH.group.add(ghIce);
 const ghSea = new THREE.Mesh(new RoundedBoxGeometry(5.2, 0.5, 5.6, 2, 0.06), clay(0x4f9fd1, { roughness: 0.15, clearcoat: 1, transparent: true, opacity: 0.9 }));
 ghSea.position.set(3.75, GY + 0.1, 0); GH.group.add(ghSea);
 // 大氣層（溫室氣體所在的位置）
-const ghAir = new THREE.Mesh(new RoundedBoxGeometry(13, GH_A1 - GH_A0, 5.6, 3, 0.4), new THREE.MeshPhysicalMaterial({ color: 0xbfe3f2, roughness: 0.2, transparent: true, opacity: 0.18, depthWrite: false }));
+const ghAir = new THREE.Mesh(new RoundedBoxGeometry(13, GH_A1 - GH_A0, 5.6, 3, 0.4), new THREE.MeshPhysicalMaterial({ color: 0xbfe3f2, roughness: 0.85, clearcoat: 1, clearcoatRoughness: 0.35, sheen: 1, sheenColor: 0xffffff, sheenRoughness: 0.6, transparent: true, opacity: 0.18, depthWrite: false }));   // 毛玻璃質感的大氣層
 ghAir.position.set(0, (GH_A0 + GH_A1) / 2, 0); ghAir.renderOrder = 7; GH.group.add(ghAir);
+{ const e = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(13, GH_A1 - GH_A0, 5.6)), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 })); ghAir.add(e); }
 // 太陽
 const ghSun = new THREE.Mesh(new THREE.SphereGeometry(0.9, 28, 20), new THREE.MeshBasicMaterial({ color: 0xffc93c, toneMapped: false }));
 ghSun.position.set(-6.2, GY + 9.6, -1.2); GH.group.add(ghSun);
@@ -866,7 +909,12 @@ function updateGreen(dt) {
   ghGas.geo.setDrawRange(0, ng);
   for (let i = 0; i < ng; i++) { ghGas.pos[i * 3] += Math.sin(wall * 0.9 + i) * dt * 0.12; ghGas.pos[i * 3 + 1] += Math.cos(wall * 1.1 + i * 1.7) * dt * 0.08; }
   ghGas.geo.attributes.position.needsUpdate = true;
-  ghAir.material.opacity = GH.on ? 0.12 + 0.18 * clamp(GH.co2 / 1120, 0, 1) : 0.05;
+  ghAir.material.opacity = GH.on ? 0.14 + 0.3 * clamp(GH.co2 / 1120, 0, 1) : 0.05;
+  // 地球發燒：溫度越高，草地與海面越偏暗紅；沒有溫室氣體時結冰變灰白
+  const fever = clamp((T - 15.8) / 4.5, 0, 1), frozen = clamp(-T / 15, 0, 1);
+  if (ghGrass) ghGrass.material.color.copy(GH_COL.grass).lerp(GH_COL.hotG, fever * 0.85).lerp(GH_COL.ice, frozen * 0.8);
+  ghSea.material.color.copy(GH_COL.sea).lerp(GH_COL.hotS, fever * 0.8).lerp(GH_COL.ice, frozen * 0.85);
+  ghAir.material.color.copy(GH_COL.airCool).lerp(GH_COL.airHot, fever);
   // 溫度計、冰川、海平面
   const h = clamp((T + 25) / 50, 0.04, 1) * 2.9;
   ghMerc.scale.y = h; ghMerc.position.set(6.9, GY + 0.45 + h / 2, 1.6);
@@ -947,7 +995,11 @@ function goView(c, instant = false) {
   if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
   camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
 }
-controls.addEventListener('start', () => { camTw = null; });
+let userOrbit = false;
+controls.addEventListener('start', () => { camTw = null; userOrbit = true; });
+controls.addEventListener('end', () => { userOrbit = false; });
+const reduceMotion = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : { matches: false };
+const shakeV = V3(0, 0, 0);
 $('viewBtn').addEventListener('click', () => goView(TABS[tab].cam()));
 $('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
 function resize() {
@@ -972,9 +1024,13 @@ function frame(dt) {
   }
   controls.update();
   if (!window.innerWidth || !window.innerHeight) return;
+  // 相機震動（只在土石流分頁；使用者正在轉視角或系統設定「減少動態效果」時不震）
+  const amp = tab === 'debris' && !userOrbit && !reduceMotion.matches ? (DB.camShake || 0) : 0;
+  if (amp > 0) { shakeV.set((Math.random() - 0.5) * 2 * amp, (Math.random() - 0.5) * 2 * amp, (Math.random() - 0.5) * amp); camera.position.add(shakeV); }
   placeLabels();
   window.MobileView?.offset(camera);
   renderer.render(scene, camera);
+  if (amp > 0) camera.position.sub(shakeV);      // 還原，下一幀的視角控制不受影響
 }
 function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
 
