@@ -287,7 +287,7 @@
 
 ## 6. 草稿 PR 與預覽連結
 
-- 草稿 PR：這台電腦沒有 GitHub 命令列工具，請老師用這個連結開啟（按綠色按鈕旁的小箭頭，選「Create draft pull request」）：https://github.com/a1011755-lucky/science-lab/compare/main...full-audit?expand=1
+- 草稿 PR：https://github.com/a1011755-lucky/science-lab/pull/9
 
 以下連結固定在這次校正的版本，可以直接打開驗收（只列這一輪有改到的頁面）：
 
