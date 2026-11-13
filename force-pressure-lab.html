@@ -500,7 +500,7 @@ function updateFric(dt) {
   setLabel(lPull, `拉力 F ＝ ${F.toFixed(1)} N`); lPull.off.set(scaleBody.position.x, 0.95, 0);
   setLabel(lFr, `摩擦力 ＝ ${f.toFixed(1)} N`); lFr.show = f > 0.05;
   chartT -= dt; if (chartT <= 0) { chartT = 0.05; drawFricChart(); }
-  setHTML('fricStat', `木塊 ${BLOCK_M} kg ＋ 砝碼 ${FRIC.nW} 個（各 1 kg）＝ <b>${m} kg</b><br>正向力（重量）：<b>${fN().toFixed(1)} N</b><br>最大靜摩擦力：<b class="r">${fsMax.toFixed(1)} N</b>｜動摩擦力：<b class="o">${fk.toFixed(1)} N</b><br>${FRIC.end ? '<span class="o">到達終點</span>' : FRIC.moving ? `<span class="g">滑動中</span>：a ＝ ${a.toFixed(2)} m/s²` : F > 0 ? '<span class="r">拉不動</span>：靜摩擦力 ＝ 拉力' : '靜止'}`);
+  setHTML('fricStat', `木塊 ${BLOCK_M} kg ＋ 砝碼 ${FRIC.nW} 個（各 1 kg）＝ <b>${m} kg</b><br>正向力（重量）：<b>${fN().toFixed(1)} N</b><br>最大靜摩擦力：<b class="r">${fsMax.toFixed(1)} N</b>｜動摩擦力：<b class="o">${fk.toFixed(1)} N</b><br>${FRIC.end ? '<span class="o">到達終點</span>' : FRIC.moving ? `<span class="g">滑動中</span>：${a > 0.005 ? '拉力大於動摩擦力，越滑越快' : a < -0.005 ? '拉力小於動摩擦力，越滑越慢' : '拉力等於動摩擦力，等速滑動'}` : F > 0 ? '<span class="r">拉不動</span>：靜摩擦力 ＝ 拉力' : '靜止'}`);
   setCap(FRIC.moving
     ? `<small>動摩擦力</small><span class="mid">拉力 ${F.toFixed(1)} N ＞ 動摩擦力 ${fk.toFixed(1)} N</span>突破臨界點後，摩擦力<b>掉到動摩擦力</b>，木塊<b>加速滑動</b>`
     : F > 0 && !FRIC.end ? `<small>靜摩擦力 ＝ 拉力</small><span class="mid">${F.toFixed(1)} N ＜ 最大靜摩擦力 ${fsMax.toFixed(1)} N</span>${FRIC.nW ? `加了 ${FRIC.nW} 個砝碼，正向力變大 → <b>最大靜摩擦力也變大</b>` : '還拉不動，再拉大一點'}`

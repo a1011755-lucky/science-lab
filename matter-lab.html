@@ -531,7 +531,7 @@ const FAMILY = {
   17: { name: '7A 鹵素', cc: '#1f8a5b', filter: t => t.col === 17 && t.row <= 7,
        text: '容易得到 1 個電子（−1 價），是活性大的非金屬；常以雙原子分子存在，例如 F₂、Cl₂。' },
   18: { name: '8A 惰性氣體', cc: '#3d6fd8', filter: t => t.col === 18 && t.row <= 7,
-       text: '最外層電子已經穩定，幾乎不起化學反應；以單原子分子存在，例如 He、Ne、Ar。' }
+       text: '化學性質很穩定，幾乎不起化學反應；以單原子分子存在，例如 He、Ne、Ar。' }
 };
 const famCard = addLabel('table', '', 'card', V3(0, 0, 0)); famCard.show = false;
 const PT_CAM = { pos: [0, 6.6, 21], target: [0, 5.9, WALL_Z], fitW: 21 };
@@ -565,7 +565,7 @@ function updateTable(dt) {
     t.mat.emissiveIntensity = t.glow;
     t.mat.opacity = F && !inFam ? 0.45 : 0.86;
   }
-  setCap(F ? `<small>${F.name}</small>同一直行（同族）的元素，最外層電子數相同 → <b>化學性質相似</b>`
+  setCap(F ? `<small>${F.name}</small>同一直行（同族）的元素 → <b>化學性質相似</b>`
     : PT.hover ? `<small>第 ${PT.hover.col} 族・第 ${PT.hover.row >= 9 ? (PT.hover.row === 9 ? 6 : 7) : PT.hover.row} 週期</small><b>${PT.hover.Z} ${PT.hover.sym}</b> ${ZH[PT.hover.sym] || ''}（${PT.hover.cat === 'metal' ? '金屬' : PT.hover.cat === 'nonmetal' ? '非金屬' : '類金屬'}）`
     : '<small>3D 週期表探索牆</small>滑鼠移到磚塊上看看；點左邊的<b>族群按鈕</b>，整個直行會向前突出');
 }

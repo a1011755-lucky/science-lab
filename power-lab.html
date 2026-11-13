@@ -145,7 +145,7 @@
 
     <!-- Tab 1 -->
     <section class="sec" data-tab="arena">
-      <div class="concept" style="--cc:#c0703f"><div class="ct">電功率 P 決定亮度</div><div class="cd">串聯（I 相同）：P ＝ I²R → <span style="color:#d0453a">R 大較亮</span><br>並聯（V 相同）：P ＝ V²／R → <span style="color:#1d6fd8">R 小較亮</span></div></div>
+      <div class="concept" style="--cc:#c0703f"><div class="ct">電功率 P 決定亮度</div><div class="cd">串聯（I 相同）：電阻大的分到的電壓大，P ＝ I × V → <span style="color:#d0453a">R 大較亮</span><br>並聯（V 相同）：電阻小的電流大，P ＝ I × V → <span style="color:#1d6fd8">R 小較亮</span></div></div>
       <p class="desc">用滑鼠把桌子前方的燈泡<b>拖進底座的插座</b>：<br>🔴 高電阻燈泡 R ＝ 10 Ω（紅色燈絲）<br>🔵 低電阻燈泡 R ＝ 2 Ω（藍色燈絲）<br>兩個底座都接 <b>12 V</b> 電池。</p>
       <button class="btn primary" id="powerBtn">⚡ 通電</button>
       <div class="row2">
@@ -158,7 +158,7 @@
 
     <!-- Tab 2 -->
     <section class="sec" data-tab="dryer" hidden>
-      <div class="concept" style="--cc:#d0453a"><div class="ct">電能 → 熱能</div><div class="cd">P ＝ V²／R　　E ＝ P × t<br>功率越大，同樣時間放出的熱越多</div></div>
+      <div class="concept" style="--cc:#d0453a"><div class="ct">電能 → 熱能</div><div class="cd">P ＝ I × V　　E ＝ P × t<br>電壓相同時，電阻越小、電流越大，功率越大；功率越大，同樣時間放出的熱越多</div></div>
       <label class="lab" for="dV">🔌 電壓 V<b><span id="dVV">220</span> V</b></label>
       <input type="range" id="dV" min="110" max="220" step="110" value="220">
       <div class="ticks"><span>110 V</span><span>220 V</span></div>
@@ -627,10 +627,10 @@ function updateArena(dt) {
   let serTxt, parTxt;
   if (!SER.ok) serTxt = n ? '⛓️ 串聯：只有一顆燈泡，電路沒接通 → <b>斷路</b>' : '⛓️ 串聯：插座是空的';
   else if (!ARENA.on) serTxt = '⛓️ 串聯：燈泡已就位，等待通電';
-  else serTxt = `⛓️ 串聯：I 都 ＝ ${fmt(SER.I, 2)} A，P ＝ I²R → ${sb.map(nm).join('　')}`;
+  else serTxt = `⛓️ 串聯：I 都 ＝ ${fmt(SER.I, 2)} A，電阻大的分到電壓大 → ${sb.map(nm).join('　')}`;
   if (!pb.length) parTxt = '🔀 並聯：插座是空的';
   else if (!ARENA.on) parTxt = '🔀 並聯：燈泡已就位，等待通電';
-  else parTxt = `🔀 並聯：V 都 ＝ ${VB} V，P ＝ V²／R → ${pb.map(nm).join('　')}`;
+  else parTxt = `🔀 並聯：V 都 ＝ ${VB} V，電阻小的電流大 → ${pb.map(nm).join('　')}`;
   let head = '<small>電功率亮度競技場</small>';
   if (!ARENA.on) head += '<span class="mid">把燈泡拖進兩個底座，再按【⚡ 通電】</span>';
   else {
@@ -868,7 +868,7 @@ function updateDryer(dt) {
   // 公式列
   const Etxt = DRY.t > 0 ? fmt(Math.round(DRY.E), 0) : '<span class="blank">　</span>';
   setCap(`<small>吹風機熱能轉換廠</small>` +
-    `<span class="mid">P ＝ V² ÷ R ＝ ${DRY.V}² ÷ ${R} ＝ <b>${fmt(P, 0)} W</b></span>` +
+    `<span class="mid">I ＝ ${DRY.V} ÷ ${R} ＝ ${fmt(DRY.V / R, 1)} A，P ＝ I × V ＝ <b>${fmt(P, 0)} W</b></span>` +
     `<span class="huge">總消耗電能 E ＝ P × t ＝ ${fmt(P, 0)} W × ${fmt(DRY.t, 1)} s ＝ ${Etxt} 焦耳</span>` +
     (DRY.msg || (DRY.on ? '電能不斷轉換成熱能，溫度計液柱持續上升…' : '按【⏻ 開機】開始計時'))
   );

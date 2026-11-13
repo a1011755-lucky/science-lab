@@ -166,7 +166,7 @@
   <div class="body">
     <div class="tabs three">
       <button class="tab on" data-tab="push">🦾 機械推臂<small>a ＝ F ÷ m</small></button>
-      <button class="tab" data-tab="rest">🍺 靜止的杯子<small>W ＝ mg</small></button>
+      <button class="tab" data-tab="rest">🥤 靜止的杯子<small>W ＝ mg</small></button>
       <button class="tab" data-tab="bag">🚗 安全氣囊<small>延長緩衝時間</small></button>
     </div>
     <div class="legend"><span class="lg f">力 F</span><span class="lg a">加速度 a</span><span class="lg w">重力 W</span><span class="lg n">正向力 N</span></div>
@@ -188,7 +188,7 @@
     <!-- Tab 2 -->
     <section class="sec" data-tab="rest" hidden>
       <div class="concept" style="--cc:#455a64"><div class="ct">W ＝ m × g</div><div class="cd">重力 W 與桌面的<b>正向力 N</b> 大小相等、方向相反，<br>合力為 0，杯子保持靜止</div></div>
-      <div class="desc">👆 把滑鼠移到啤酒杯上（或點一下杯子），看看它受到哪些力。</div>
+      <div class="desc">👆 把滑鼠移到果汁杯上（或點一下杯子），看看它受到哪些力。</div>
       <button class="btn" id="reShow">👁 顯示／隱藏受力</button>
       <div class="stat" id="reStat"></div>
       <div class="tip" id="reTip" hidden>💡 垂直方向合力為 0，物體維持靜止不動！（注意：在地球表面 1 kgw 約等於 9.8 N）</div>
@@ -497,22 +497,22 @@ function VecL(tabKey, color, cls, glow = true, r = 0.07) {
   return v;
 }
 const woodM = (c = 0xd9b98e) => clay(c, { roughness: 0.75 });
-/** 啤酒杯：上寬下窄的玻璃杯＋啤酒＋泡沫 */
+/** 果汁杯：上寬下窄的玻璃杯＋柳橙汁 */
 function beerGlass() {
   const g = new THREE.Group();
   const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.26, 0.78, 40, 1, true), new THREE.MeshPhysicalMaterial({ color: 0xf2f8fb, transmission: 0.85, roughness: 0.05, thickness: 0.08, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false }));
   glass.position.y = 0.39; glass.renderOrder = 6; g.add(glass);
   const base = shadowed(cyl(0.27, 0.27, 0.06, new THREE.MeshPhysicalMaterial({ color: 0xeaf4f8, transmission: 0.6, roughness: 0.1, transparent: true, opacity: 0.8 }), 40)); base.position.y = 0.03; g.add(base);
-  const beer = new THREE.Mesh(new THREE.CylinderGeometry(0.305, 0.25, 0.55, 40), new THREE.MeshPhysicalMaterial({ color: 0xe8a33a, roughness: 0.25, transmission: 0.3, transparent: true, opacity: 0.88 })); beer.position.y = 0.335; beer.renderOrder = 5; g.add(beer);
-  const foam = new THREE.Mesh(new THREE.CylinderGeometry(0.325, 0.31, 0.14, 40), clay(0xfffaf0, { roughness: 0.95 })); foam.position.y = 0.68; g.add(foam);
-  [-0.12, 0.08, 0.2].forEach((x, i) => { const b = sphere(0.07 + i * 0.01, clay(0xfffaf0, { roughness: 0.95 }), 12); b.position.set(x, 0.77, (i - 1) * 0.08); g.add(b); });
+  const beer = new THREE.Mesh(new THREE.CylinderGeometry(0.305, 0.25, 0.55, 40), new THREE.MeshPhysicalMaterial({ color: 0xffa726, roughness: 0.25, transmission: 0.3, transparent: true, opacity: 0.88 })); beer.position.y = 0.335; beer.renderOrder = 5; g.add(beer);
+  const foam = new THREE.Mesh(new THREE.CylinderGeometry(0.325, 0.31, 0.14, 40), clay(0xfffaf0, { roughness: 0.95 })); foam.position.y = 0.68; foam.visible = false; g.add(foam);
+  [].forEach((x, i) => { const b = sphere(0.07 + i * 0.01, clay(0xfffaf0, { roughness: 0.95 }), 12); b.position.set(x, 0.77, (i - 1) * 0.08); g.add(b); });
   const handle = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.035, 10, 24, Math.PI), glass.material); handle.rotation.z = -Math.PI / 2; handle.position.set(-0.32, 0.42, 0); g.add(handle);
   g.pick = [glass, beer, foam, base];
   return g;
 }
 
 /* =========================================================
-   Tab 1：機械推臂與啤酒杯（a ＝ F ÷ m）
+   Tab 1：機械推臂與果汁杯（a ＝ F ÷ m）
    ========================================================= */
 const PU = (() => {
   const group = new THREE.Group(); scene.add(group);
@@ -574,7 +574,7 @@ const PU = (() => {
 })();
 
 /* =========================================================
-   Tab 2：靜止的啤酒杯（W ＝ mg、正向力 N）
+   Tab 2：靜止的果汁杯（W ＝ mg、正向力 N）
    ========================================================= */
 const RE = (() => {
   const group = new THREE.Group(); scene.add(group);
@@ -583,7 +583,7 @@ const RE = (() => {
   [[-1.15, -0.65], [1.15, -0.65], [-1.15, 0.65], [1.15, 0.65]].forEach(([x, z]) => { const l = shadowed(rbox(0.12, TY - 0.12, 0.12, woodM(0xb88a5a), 0.03)); l.position.set(x, (TY - 0.12) / 2, z); group.add(l); });
   const glass = beerGlass(); glass.position.set(0, TY, 0.45); group.add(glass);
   const ring = new THREE.Mesh(new THREE.RingGeometry(0.38, 0.44, 40), new THREE.MeshBasicMaterial({ color: 0xffc400, transparent: true, opacity: 0, depthWrite: false })); ring.rotation.x = -Math.PI / 2; ring.position.set(0, TY + 0.005, 0.45); group.add(ring);
-  addLabel('rest', '啤酒杯 1 kg', 'small', V3(-0.75, TY + 0.95, 0.45));
+  addLabel('rest', '果汁杯 1 kg', 'small', V3(-0.75, TY + 0.95, 0.45));
   const VW = VecL('rest', C_W, 'vW', false, 0.075), VN = VecL('rest', C_N, 'vN', true, 0.075);
   group.add(VW, VN);
   const st = { hover: false, pinned: false };
@@ -602,7 +602,7 @@ const RE = (() => {
     ring.material.opacity = show ? 0.6 + 0.3 * Math.sin(wall * 4) : (st.hover ? 0.4 : 0.25 + 0.15 * Math.sin(wall * 3));
     $('reTip').hidden = !show;
     setHTML('reStat', show ? `重力 W ＝ m × g ＝ 1 × 9.8 ＝ <b>9.8 N</b>（向下）<br>正向力 N ＝ <b class="b">9.8 N</b>（向上）<br>合力 ＝ 9.8 − 9.8 ＝ <b class="g">0 N</b> → a ＝ 0，保持靜止<br><small>1 kgw（公斤重）≈ 9.8 N</small>` : '杯子靜止不動，是因為沒有受力嗎？把滑鼠移到杯子上看看。');
-    setCap(show ? `<small>靜力平衡</small><b>重力 W ↓</b> 與 <b class="blu">正向力 N ↑</b> 大小相等、方向相反<span class="huge grn">合力 ＝ 0 → 維持靜止</span>` : `<small>靜止的啤酒杯</small>把滑鼠移到杯子上（或點一下）<span class="huge org">靜止的杯子有受力嗎？</span>`);
+    setCap(show ? `<small>靜力平衡</small><b>重力 W ↓</b> 與 <b class="blu">正向力 N ↑</b> 大小相等、方向相反<span class="huge grn">合力 ＝ 0 → 維持靜止</span>` : `<small>靜止的果汁杯</small>把滑鼠移到杯子上（或點一下）<span class="huge org">靜止的杯子有受力嗎？</span>`);
   }
   return { group, update, st };
 })();
