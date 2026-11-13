@@ -223,6 +223,7 @@
 import * as THREE from 'three';
 import { enhanceLiquid } from './liquid.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { figSkin, figTorso, figLimb, figHand, figFoot } from './figure.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 window.__labReady = true;
@@ -816,8 +817,8 @@ const DG = (() => {
   const BX = 0, BY = 0.2;
   const body = new THREE.Group(); body.position.set(BX, BY, 0); group.add(body);
   // 全息毛玻璃人體輪廓（美學規範 B）
-  const skin = holoMat(0.22, 0xf3c9a6);
-  { const bs = holoBodyShape({ hipY: -0.35, hipW: 1.45, waistY: 1.5, waistW: 1.35, chestY: 3.2, chestW: 1.55, shY: 4.35, shW: 1.62, neckY: 5.05, neckW: 0.36, headY: 5.8, headR: 0.8 }); const core = holoPiece(bs, 0.9, 0.36, skin, null); core.add(holoOutline(bs, 0xffa477, 0.016, 0.8, 0.8)); body.add(core); }
+  const skin = figSkin(0.22, 0xf3c9a6);                         // 立體霧面玻璃人體（figure.js）
+  body.add(figTorso({ hipY: -0.35, hipW: 1.45, waistY: 1.5, waistW: 1.35, chestY: 3.2, chestW: 1.55, shY: 4.35, shW: 1.62, neckY: 5.05, neckW: 0.36, headY: 5.8, headR: 0.8 }, skin));
   const orgMat = (c, o = {}) => clay(c, { clearcoat: 0.6, roughness: 0.4, ...o });
   const ORG = {};
   const reg = (k, m) => { (ORG[k] = ORG[k] || []).push(m); body.add(m); m.userData.base = m.material.color.clone(); return m; };

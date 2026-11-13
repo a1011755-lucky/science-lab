@@ -268,6 +268,7 @@ import * as THREE from 'three';
 import { enhanceLiquid } from './liquid.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { figSkin, figTorso, figLimb, figHand, figFoot } from './figure.js';
 
 window.__labReady = true;
 const $ = id => document.getElementById(id);
@@ -528,19 +529,19 @@ function holoOval(rx, ry) { const s = new THREE.Shape(); s.absellipse(0, 0, rx, 
 /** 全息毛玻璃人體：頭頸軀幹一體成形，手臂、大腿、小腿各自以關節為支點 */
 function makeBody(parent, x = 0) {
   const root = new THREE.Group(); root.position.x = x; parent.add(root);
-  const skin = holoMat(0.4), edge = holoEdgeMat();
-  { const bs = holoBodyShape({ hipY: 2.05, hipW: 0.62, waistY: 2.8, waistW: 0.58, chestY: 3.75, chestW: 0.72, shY: 4.5, shW: 0.82, neckY: 4.93, neckW: 0.17, headY: 5.42, headR: 0.48 }); const core = holoPiece(bs, 0.45, 0.2, skin, null); core.add(holoOutline(bs, 0xffa477, 0.016, 0.42, 0.8)); root.add(core); }
+  const skin = figSkin(0.4);                                   // 立體霧面玻璃人體（figure.js）
+  root.add(figTorso({ hipY: 2.05, hipW: 0.62, waistY: 2.8, waistW: 0.58, chestY: 3.75, chestW: 0.72, shY: 4.5, shW: 0.82, neckY: 4.93, neckW: 0.17, headY: 5.42, headR: 0.48 }, skin));
   const head = new THREE.Group(); head.position.y = 5.4; root.add(head);
   const limbs = {};
   [-1, 1].forEach(s => {
     const arm = new THREE.Group(); arm.position.set(s * 0.95, 4.25, 0); root.add(arm);
-    arm.add(holoPiece(holoLimbShape(1.62, 0.32, 0.24), 0.16, 0.07, skin, edge));
-    const hand = holoPiece(holoOval(0.15, 0.2), 0.1, 0.06, skin, edge); hand.position.y = -1.85; arm.add(hand);
+    arm.add(figLimb(1.62, 0.32, 0.22, skin));
+    const hand = figHand(0.13, 0.19, skin); hand.position.y = -1.85; arm.add(hand);
     const leg = new THREE.Group(); leg.position.set(s * 0.38, 2.45, 0); root.add(leg);
-    leg.add(holoPiece(holoLimbShape(1.05, 0.44, 0.34), 0.24, 0.09, skin, edge));
+    leg.add(figLimb(1.05, 0.46, 0.34, skin));
     const knee = new THREE.Group(); knee.position.y = -1.1; leg.add(knee);
-    knee.add(holoPiece(holoLimbShape(1.05, 0.34, 0.26), 0.2, 0.08, skin, edge));
-    const foot = holoPiece(holoOval(0.13, 0.07), 0.38, 0.05, skin, edge); foot.position.set(0, -1.15, 0.14); knee.add(foot);
+    knee.add(figLimb(1.05, 0.34, 0.24, skin));
+    const foot = figFoot(0.13, 0.075, 0.24, skin); foot.position.set(0, -1.15, 0.14); knee.add(foot);
     limbs[s > 0 ? 'R' : 'L'] = { arm, leg, knee };
   });
   return { root, head, limbs, skin };

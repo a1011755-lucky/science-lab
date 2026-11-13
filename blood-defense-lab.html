@@ -255,6 +255,7 @@
 import * as THREE from 'three';
 import { enhanceLiquid } from './liquid.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { figSkin, figTorso, figLimb, figHand, figFoot } from './figure.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 window.__labReady = true;
@@ -625,8 +626,7 @@ const OC = (() => {
   addLabel('oc', '開放式（昆蟲）', 'big tit', V3(-2.9, 3.5, 0)); addLabel('oc', '背血管', 'small', V3(-2.9, 2.85, 0.4)); addLabel('oc', '體腔', 'small', V3(-2.9, 1.55, 0.4));
   /* --- 右：閉鎖式（人的示意：全息人形輪廓＋一圈血管） --- */
   const human = new THREE.Group(); human.position.set(3.0, 0.3, 0); human.scale.setScalar(0.62); group.add(human);
-  const bs = holoBodyShape({ hipY: -0.35, hipW: 1.45, waistY: 1.5, waistW: 1.35, chestY: 3.2, chestW: 1.55, shY: 4.35, shW: 1.62, neckY: 5.05, neckW: 0.36, headR: 0.8, headY: 5.8 });
-  const core = holoPiece(bs, 0.9, 0.36, holoMat(0.2, 0xf3c9a6), null); core.add(holoOutline(bs, 0xffa477, 0.02, 0.8, 0.85)); core.position.y = 0.6; human.add(core);
+  const core = figTorso({ hipY: -0.35, hipW: 1.45, waistY: 1.5, waistW: 1.35, chestY: 3.2, chestW: 1.55, shY: 4.35, shW: 1.62, neckY: 5.05, neckW: 0.36, headR: 0.8, headY: 5.8 }, figSkin(0.22, 0xf3c9a6)); core.position.y = 0.6; human.add(core);   // 立體霧面玻璃人體（figure.js）
   const heartBox = new THREE.Mesh(blobGeo(0.32, { amp: 0.08, seed: 4, detail: 3 }), soft(0xe57373)); heartBox.position.set(0.15, 3.8, 0.6); human.add(heartBox);
   const loopPts = [V3(0.15, 3.8, 0.6), V3(1.0, 3.3, 0.6), V3(1.05, 1.2, 0.6), V3(0.4, 0.5, 0.6), V3(-0.4, 0.5, 0.6), V3(-1.05, 1.2, 0.6), V3(-1.0, 3.3, 0.6), V3(-0.4, 4.3, 0.6), V3(0.4, 4.3, 0.6)];
   const loopCurve = new THREE.CatmullRomCurve3(loopPts, true);

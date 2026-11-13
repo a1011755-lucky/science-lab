@@ -208,6 +208,7 @@
 import * as THREE from 'three';
 import { enhanceLiquid } from './liquid.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { figSkin, figTorso, figLimb, figHand, figFoot } from './figure.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 window.__labReady = true;
@@ -437,13 +438,13 @@ function holoOval(rx, ry) { const s = new THREE.Shape(); s.absellipse(0, 0, rx, 
 /** 全息毛玻璃人體（站姿） */
 function makeBody(parent, x = 0, op = 0.25) {
   const root = new THREE.Group(); root.position.x = x; parent.add(root);
-  const skin = holoMat(op, 0xf3c9a6), edge = holoEdgeMat(0xffa477, 0.5);
-  { const bs = holoBodyShape({ hipY: 2.05, hipW: 0.62, waistY: 2.8, waistW: 0.58, chestY: 3.75, chestW: 0.72, shY: 4.5, shW: 0.82, neckY: 4.93, neckW: 0.17, headY: 5.42, headR: 0.48 }); const core = holoPiece(bs, 0.45, 0.2, skin, null); core.add(holoOutline(bs, 0xffa477, 0.016, 0.42, 0.8)); root.add(core); }
+  const skin = figSkin(op, 0xf3c9a6);                           // 立體霧面玻璃人體（figure.js）
+  root.add(figTorso({ hipY: 2.05, hipW: 0.62, waistY: 2.8, waistW: 0.58, chestY: 3.75, chestW: 0.72, shY: 4.5, shW: 0.82, neckY: 4.93, neckW: 0.17, headY: 5.42, headR: 0.48 }, skin));
   [-1, 1].forEach(s => {
-    const a = holoPiece(holoLimbShape(1.62, 0.32, 0.24), 0.16, 0.07, skin, edge); a.position.set(s * 0.95, 4.2, 0); root.add(a);
-    const h = holoPiece(holoOval(0.15, 0.2), 0.1, 0.06, skin, edge); h.position.set(s * 0.95, 2.4, 0); root.add(h);
-    const l = holoPiece(holoLimbShape(2.25, 0.44, 0.27), 0.22, 0.09, skin, edge); l.position.set(s * 0.38, 2.4, 0); root.add(l);
-    const f = holoPiece(holoOval(0.13, 0.07), 0.38, 0.05, skin, edge); f.position.set(s * 0.38, 0.12, 0.14); root.add(f);
+    const a = figLimb(1.62, 0.32, 0.22, skin); a.position.set(s * 0.95, 4.2, 0); root.add(a);
+    const h = figHand(0.13, 0.19, skin); h.position.set(s * 0.95, 2.4, 0); root.add(h);
+    const l = figLimb(2.25, 0.46, 0.25, skin); l.position.set(s * 0.38, 2.4, 0); root.add(l);
+    const f = figFoot(0.13, 0.075, 0.24, skin); f.position.set(s * 0.38, 0.1, 0.14); root.add(f);
   });
   return { root, skin };
 }

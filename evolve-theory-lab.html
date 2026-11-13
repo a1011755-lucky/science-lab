@@ -256,6 +256,7 @@
 import * as THREE from 'three';
 import { enhanceLiquid } from './liquid.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { figSkin, figTorso, figLimb, figHand, figFoot } from './figure.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 window.__labReady = true;
@@ -669,8 +670,7 @@ const OR = (() => {
   for (const [key, list] of Object.entries(sets)) { holders[key] = new THREE.Group(); group.add(holders[key]); labs[key] = []; list.forEach(([k, name, x]) => { const l = limb(k); l.position.set(x, 0.25, 0); holders[key].add(l); labs[key].push(addLabel('org', name, 'small orgL', V3(x + (k === 'bat' || k === 'insect' ? 0.9 : 0), 3.05, 0))); }); }
   // 痕跡器官：全息人形，標出盲腸
   const ves = new THREE.Group(); group.add(ves);
-  const bs = holoBodyShape({ hipY: -0.35, hipW: 1.45, waistY: 1.5, waistW: 1.35, chestY: 3.2, chestW: 1.55, shY: 4.35, shW: 1.62, neckY: 5.05, neckW: 0.36, headR: 0.8, headY: 5.8 });
-  const body = holoPiece(bs, 0.8, 0.3, holoMat(0.2, 0xf3c9a6), null); body.add(holoOutline(bs, 0xffa477, 0.02, 0.7, 0.85)); body.scale.setScalar(0.5); body.position.set(0, 0.6, 0); ves.add(body);
+  const body = figTorso({ hipY: -0.35, hipW: 1.45, waistY: 1.5, waistW: 1.35, chestY: 3.2, chestW: 1.55, shY: 4.35, shW: 1.62, neckY: 5.05, neckW: 0.36, headR: 0.8, headY: 5.8 }, figSkin(0.22, 0xf3c9a6)); body.scale.setScalar(0.5); body.position.set(0, 0.6, 0); ves.add(body);   // 立體霧面玻璃人體（figure.js）
   const gut = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(-0.35, 1.25, 0.35), V3(-0.35, 1.55, 0.35), V3(0.3, 1.6, 0.35), V3(0.35, 1.25, 0.35)]), 30, 0.07, 10), new THREE.MeshPhysicalMaterial({ color: 0xf2b8a0, transparent: true, opacity: 0.6, roughness: 0.4 })); ves.add(gut);
   const cecum = new THREE.Mesh(blobGeo(0.1, { amp: 0.1, seed: 3, detail: 3 }), new THREE.MeshPhysicalMaterial({ color: 0xff7043, roughness: 0.4, emissive: 0xff7043, emissiveIntensity: 0.3 })); cecum.position.set(-0.4, 1.12, 0.38); ves.add(cecum);
   const appendix = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(-0.42, 1.05, 0.38), V3(-0.5, 0.92, 0.38), V3(-0.44, 0.84, 0.38)]), 10, 0.025, 6), cecum.material); ves.add(appendix);

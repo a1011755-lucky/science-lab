@@ -207,6 +207,7 @@
 import * as THREE from 'three';
 import { enhanceLiquid } from './liquid.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { figSkin, figTorso, figLimb, figHand, figFoot } from './figure.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 window.__labReady = true;
@@ -869,10 +870,10 @@ const LV = (() => {
   function system() { const g = new THREE.Group(); const h = heart(0.35); h.position.set(0.05, 1.15, 0.15); g.add(h); vessels(g); g.scale.setScalar(0.62); return g; }
   function human() {
     const g = new THREE.Group();
-    const skin = holoMat(0.4, 0xf0b98f);
-    { const bs = holoBodyShape({ hipY: 0.45, hipW: 0.55, waistY: 1.3, waistW: 0.52, chestY: 2.15, chestW: 0.62, shY: 2.78, shW: 0.7, neckY: 3.0, neckW: 0.15, headY: 3.38, headR: 0.4 }); const core = holoPiece(bs, 0.4, 0.18, skin, null); core.add(holoOutline(bs, 0xf0a070, 0.02, 0.38, 0.9)); g.add(core); }
-    [[-0.88, 2.8, 0.18], [0.88, 2.8, -0.18]].forEach(([x, y, r]) => { const a = holoPiece(holoLimbShape(1.75, 0.32, 0.26), 0.16, 0.07, skin, null); a.position.set(x, y, 0); a.rotation.z = r; g.add(a); });
-    [-0.3, 0.3].forEach(x => { const l = holoPiece(holoLimbShape(2.1, 0.42, 0.3), 0.2, 0.08, skin, null); l.position.set(x, 0.75, 0); g.add(l); });
+    const skin = figSkin(0.4, 0xf0c3a2);                        // 立體霧面玻璃人體（figure.js）
+    g.add(figTorso({ hipY: 0.45, hipW: 0.55, waistY: 1.3, waistW: 0.52, chestY: 2.15, chestW: 0.62, shY: 2.78, shW: 0.7, neckY: 3.0, neckW: 0.15, headY: 3.38, headR: 0.4 }, skin));
+    [[-0.88, 2.8, 0.18], [0.88, 2.8, -0.18]].forEach(([x, y, r]) => { const a = figLimb(1.75, 0.32, 0.22, skin); a.position.set(x, y, 0); a.rotation.z = r; g.add(a); });
+    [-0.3, 0.3].forEach(x => { const l = figLimb(2.1, 0.44, 0.26, skin); l.position.set(x, 0.75, 0); g.add(l); });
     const sys = system(); sys.scale.setScalar(0.7); sys.position.y = 0.9; g.add(sys);
     g.scale.setScalar(0.62); g.position.y = -0.4;
     return g;
