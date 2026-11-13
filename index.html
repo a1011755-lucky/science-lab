@@ -292,6 +292,18 @@
   #panel-g7 .chap-card::before { background: linear-gradient(90deg, var(--mint), var(--mint-deep)); opacity: 1; }
   #panel-g7 .lab-btn.sub:hover { border-color: var(--mint-deep); }
 
+  /* 國二理化專屬：粉彩琉璃藍 */
+  :root { --glass-blue: #a9cdee; --glass-blue-deep: #6f9fca; }
+  #tab-g8[aria-selected="true"] { background: linear-gradient(135deg, #6b97c4, #4a76a6); color: var(--cream); box-shadow: 0 6px 16px rgba(74,118,166,.35); }
+  #tab-g8:not([aria-selected="true"]):hover { border-color: var(--glass-blue); }
+  #panel-g8 .chap-card:hover, #panel-g8 a.unit-card:hover {
+    border-color: var(--glass-blue);
+    box-shadow: 0 0 0 3px rgba(169,205,238,.5), 0 16px 36px rgba(111,159,202,.26), 0 28px 56px rgba(93,64,55,.08);
+  }
+  #panel-g8 .chap-card::before { background: linear-gradient(90deg, var(--glass-blue), var(--glass-blue-deep)); opacity: 1; }
+  #panel-g8 .vchip { background: rgba(169,205,238,.28); border-color: rgba(111,159,202,.4); color: #5d4037; }
+  #panel-g8 .lab-btn.sub:hover { border-color: var(--glass-blue-deep); }
+
   /* 頁籤切換：面板與卡片依序淡入上滑 */
   @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
   .grade-panel { animation: none; }
