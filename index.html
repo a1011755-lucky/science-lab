@@ -304,6 +304,23 @@
   #panel-g8 .vchip { background: rgba(169,205,238,.28); border-color: rgba(111,159,202,.4); color: #5d4037; }
   #panel-g8 .lab-btn.sub:hover { border-color: var(--glass-blue-deep); }
 
+  /* 國一：頁籤與重點標籤也用薄荷綠，和國二的做法一致 */
+  #tab-g7[aria-selected="true"] { background: linear-gradient(135deg, #5f9c7f, #3f7d62); color: var(--cream); box-shadow: 0 6px 16px rgba(63,125,98,.35); }
+  #tab-g7:not([aria-selected="true"]):hover { border-color: var(--mint); }
+  #panel-g7 .vchip { background: rgba(168,223,196,.3); border-color: rgba(111,174,143,.4); color: #5d4037; }
+
+  /* 國三地科／理化專屬：粉彩暖杏 */
+  :root { --apricot: #f2c9a5; --apricot-deep: #c98b62; }
+  #tab-g9[aria-selected="true"] { background: linear-gradient(135deg, #c08a63, #9a6644); color: var(--cream); box-shadow: 0 6px 16px rgba(154,102,68,.35); }
+  #tab-g9:not([aria-selected="true"]):hover { border-color: var(--apricot); }
+  #panel-g9 .chap-card:hover, #panel-g9 a.unit-card:hover {
+    border-color: var(--apricot);
+    box-shadow: 0 0 0 3px rgba(242,201,165,.55), 0 16px 36px rgba(201,139,98,.26), 0 28px 56px rgba(93,64,55,.08);
+  }
+  #panel-g9 .chap-card::before, #panel-g9 .unit-card::before { background: linear-gradient(90deg, var(--apricot), var(--apricot-deep)); opacity: 1; }
+  #panel-g9 .vchip { background: rgba(242,201,165,.32); border-color: rgba(201,139,98,.4); color: #5d4037; }
+  #panel-g9 .lab-btn.sub:hover { border-color: var(--apricot-deep); }
+
   /* 頁籤切換：面板與卡片依序淡入上滑 */
   @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
   .grade-panel { animation: none; }
