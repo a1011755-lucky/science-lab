@@ -137,10 +137,11 @@
   <a class="back" href="index.html#g9">‹ 課程總覽</a>
   <div class="title">全球環境變遷實驗室</div>
   <div class="body">
-    <div class="tabs three">
+    <div class="tabs">
       <button class="tab on" data-tab="enso">🌊 聖嬰現象<small>海溫監測站</small></button>
       <button class="tab" data-tab="debris">⛰️ 土石流<small>連鎖反應</small></button>
       <button class="tab" data-tab="aqi">😷 空氣品質<small>AQI 觀測箱</small></button>
+      <button class="tab" data-tab="green">🌡️ 溫室效應<small>全球暖化</small></button>
     </div>
 
     <!-- Tab 1 -->
@@ -192,6 +193,24 @@
       <div class="stat" id="aqiStat"></div>
     </section>
 
+    <!-- Tab 4 -->
+    <section class="sec" data-tab="green" hidden>
+      <div class="concept" style="--cc:#c0583a"><div class="ct">溫室效應</div><div class="cd">太陽光穿過大氣使地表變暖；地表放出的熱（紅外線）有一部分被<b>溫室氣體</b>吸收，再放回地面 → 地球保溫</div></div>
+      <div class="row2">
+        <button class="btn ghbtn on" data-g="1" type="button">🌍 有溫室氣體</button>
+        <button class="btn ghbtn" data-g="0" type="button">🚫 沒有溫室氣體</button>
+      </div>
+      <label class="lab" for="co2">🏭 大氣中的二氧化碳<b id="co2V">420 ppm</b></label>
+      <input class="big" type="range" id="co2" min="180" max="1120" step="10" value="420">
+      <div class="ticks"><span>180</span><span>280 工業革命前</span><span>420 現在</span><span>1120</span></div>
+      <div class="sst">
+        <div><small>地表平均溫度</small><b id="ghT">15.7℃</b></div>
+        <div><small>熱被送回地面</small><b id="ghKeep">41%</b></div>
+      </div>
+      <div class="stat" id="ghStat"></div>
+      <p class="desc">常見的溫室氣體：<b>二氧化碳、甲烷、水氣</b>等。減緩全球暖化要<b>節能減碳</b>：少用化石燃料、多搭大眾運輸、發展再生能源、植樹造林。</p>
+      <p class="desc">溫度與比例是依二氧化碳濃度算出的教學模擬值，不是精確預測。</p>
+    </section>
     <button class="btn" id="viewBtn">🎥 重設視角</button>
   </div>
 </aside>
@@ -745,12 +764,140 @@ function updateAqi(dt) {
 const ambient = scene.children.find(o => o.isAmbientLight);
 
 /* =========================================================
+   Tab 4：溫室效應與全球暖化
+   ---------------------------------------------------------
+   黃色光點＝太陽光（大部分直接穿過大氣到達地表）。
+   紅色光點＝地表放出的熱（紅外線），往上經過大氣時，
+   有一部分被溫室氣體吸收、再往下放回地面 → 地表保溫。
+   吸收比例（教學示意）：p ＝ 1 − 1 ÷ (1 ＋ CO₂ ÷ 600)；沒有溫室氣體時 p ＝ 0。
+   地表平均溫度（模擬值）：沒有溫室氣體約 −18℃；
+   有溫室氣體時 T ＝ 14 ＋ 3 × log₂(CO₂ ÷ 280)（CO₂ 加倍約升 3℃）。
+   ========================================================= */
+const GH = { group: new THREE.Group(), on: true, co2: 420, T: 15.7, Ts: 15.7, acc: 0 };
+scene.add(GH.group);
+const GH_A0 = GY + 4.2, GH_A1 = GY + 5.6, GH_TOP = GY + 10.5, GH_SPD = 4.2;
+{
+  // 地面：左邊陸地與山（有冰川），右邊海洋
+  add(GH.group, shadowed(new THREE.Mesh(new RoundedBoxGeometry(13, 0.5, 6, 3, 0.15), clay(0xc49a6c))), 0, GY - 0.05, 0);
+  add(GH.group, shadowed(new THREE.Mesh(new RoundedBoxGeometry(7.4, 0.12, 5.6, 2, 0.04), clay(0x8fb36b))), -2.6, GY + 0.26, 0);
+  const mtn = shadowed(new THREE.Mesh(new THREE.ConeGeometry(1.7, 2.6, 7), clay(0x9c8a72)));
+  mtn.position.set(-4.6, GY + 1.6, -0.9); GH.group.add(mtn);
+  for (const [x, z] of [[-1.4, 1.6], [0.2, 1.2], [-2.4, 1.9]]) {
+    const t = new THREE.Group(); t.position.set(x, GY + 0.3, z); GH.group.add(t);
+    add(t, new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 8), clay(0x8d6e63)), 0, 0.25, 0);
+    add(t, new THREE.Mesh(new THREE.SphereGeometry(0.35, 14, 10), clay(0x6f9f6a)), 0, 0.7, 0); shadowed(t);
+  }
+}
+const ghIce = shadowed(new THREE.Mesh(new THREE.ConeGeometry(0.95, 1.1, 7), clay(0xffffff, { roughness: 0.35, clearcoat: 0.8, emissive: 0xd8ecff, emissiveIntensity: 0.35 })));
+ghIce.position.set(-4.6, GY + 2.36, -0.9); GH.group.add(ghIce);
+const ghSea = new THREE.Mesh(new RoundedBoxGeometry(5.2, 0.5, 5.6, 2, 0.06), clay(0x4f9fd1, { roughness: 0.15, clearcoat: 1, transparent: true, opacity: 0.9 }));
+ghSea.position.set(3.75, GY + 0.1, 0); GH.group.add(ghSea);
+// 大氣層（溫室氣體所在的位置）
+const ghAir = new THREE.Mesh(new RoundedBoxGeometry(13, GH_A1 - GH_A0, 5.6, 3, 0.4), new THREE.MeshPhysicalMaterial({ color: 0xbfe3f2, roughness: 0.2, transparent: true, opacity: 0.18, depthWrite: false }));
+ghAir.position.set(0, (GH_A0 + GH_A1) / 2, 0); ghAir.renderOrder = 7; GH.group.add(ghAir);
+// 太陽
+const ghSun = new THREE.Mesh(new THREE.SphereGeometry(0.9, 28, 20), new THREE.MeshBasicMaterial({ color: 0xffc93c, toneMapped: false }));
+ghSun.position.set(-6.2, GY + 9.6, -1.2); GH.group.add(ghSun);
+const ghGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('255,190,60'), transparent: true, depthWrite: false }));
+ghGlow.scale.setScalar(4.2); ghGlow.position.copy(ghSun.position); GH.group.add(ghGlow);
+// 溫度計
+const ghTube = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 3.2, 16), new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.05, transparent: true, opacity: 0.35, depthWrite: false }));
+ghTube.position.set(6.9, GY + 1.9, 1.6); GH.group.add(ghTube);
+add(GH.group, new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 12), clay(0xe53935)), 6.9, GY + 0.32, 1.6);
+const ghMerc = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 1, 12), clay(0xe53935));
+GH.group.add(ghMerc);
+// 溫室氣體分子與光點
+const ghGas = makePts(GH.group, 170, dotTexture('#8d8f94', 'rgba(70,72,78,.85)'), 0.26);
+for (let i = 0; i < ghGas.N; i++) ghGas.pos.set([(Math.random() - 0.5) * 12.2, GH_A0 + 0.15 + Math.random() * (GH_A1 - GH_A0 - 0.3), (Math.random() - 0.5) * 4.8], i * 3);
+ghGas.geo.attributes.position.needsUpdate = true;
+const ghSunP = makePts(GH.group, 70, dotTexture('#ffd54f', 'rgba(220,150,0,.95)'), 0.6);
+const ghIrP = makePts(GH.group, 110, dotTexture('#ff7043', 'rgba(190,50,20,.95)'), 0.6);
+const ghPh = [];   // { x, y, z, vx, vy, vz, k: 0 太陽光／1 紅外線, chk: 這一趟是否已經判斷過吸收 }
+const lbGhSun = addLabel('green', '☀️ 太陽光', 'yel', V3(-6.2, GY + 11, -1.2));
+const lbGhAir = addLabel('green', '', '', V3(4.3, GH_A1 + 0.45, 0));
+const lbGhIr = addLabel('green', '地表放出的熱（紅外線）', 'small', V3(1.6, GY + 1.5, 2.4));
+const lbGhT = addLabel('green', '', 'red', V3(6.9, GY + 3.95, 1.6));
+const lbGhSpace = addLabel('green', '🌌 逃到太空', 'small', V3(0, GH_TOP - 0.4, 0));
+const ghAbs = () => GH.on ? 1 - 1 / (1 + GH.co2 / 600) : 0;
+const ghTemp = () => GH.on ? 14 + 3 * Math.log2(GH.co2 / 280) : -18;
+document.querySelectorAll('.ghbtn').forEach(b => b.addEventListener('click', () => {
+  GH.on = b.dataset.g === '1';
+  document.querySelectorAll('.ghbtn').forEach(x => x.classList.toggle('on', x === b));
+  $('co2').disabled = !GH.on;
+}));
+$('co2').addEventListener('input', e => { GH.co2 = Number(e.target.value); });
+function ghSpawnSun() {
+  if (ghPh.filter(p => p.k === 0).length >= ghSunP.N) return;
+  const tx = (Math.random() - 0.5) * 11, tz = (Math.random() - 0.5) * 4.4;
+  const s = ghSun.position, d = V3(tx - s.x, GY + 0.35 - s.y, tz - s.z).normalize().multiplyScalar(GH_SPD);
+  ghPh.push({ x: s.x, y: s.y, z: s.z, vx: d.x, vy: d.y, vz: d.z, k: 0, chk: false });
+}
+function updateGreen(dt) {
+  GH.T = ghTemp();
+  GH.Ts += (GH.T - GH.Ts) * (1 - Math.exp(-dt * 1.6));
+  const p = ghAbs(), T = GH.Ts, warm = clamp((T - 14) / 6, 0, 1);
+  // 產生太陽光點
+  GH.acc += dt * 12;
+  while (GH.acc > 1) { GH.acc -= 1; ghSpawnSun(); }
+  for (let i = ghPh.length - 1; i >= 0; i--) {
+    const q = ghPh[i];
+    q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt;
+    if (q.k === 0 && q.y <= GY + 0.35) {           // 太陽光被地表吸收 → 地表放出紅外線
+      if (ghPh.filter(o => o.k === 1).length >= ghIrP.N) { ghPh.splice(i, 1); continue; }
+      q.k = 1; q.y = GY + 0.4; q.vx = (Math.random() - 0.5) * 0.9; q.vz = (Math.random() - 0.5) * 0.5; q.vy = GH_SPD * 0.8; q.chk = false;
+    } else if (q.k === 1) {
+      if (q.vy > 0 && !q.chk && q.y >= (GH_A0 + GH_A1) / 2) {   // 經過大氣層：一部分被溫室氣體吸收後往下放回
+        q.chk = true;
+        if (Math.random() < p) { q.vy = -GH_SPD * 0.8; q.vx = (Math.random() - 0.5) * 0.9; }
+      }
+      if (q.vy < 0 && q.y <= GY + 0.4) { q.vy = GH_SPD * 0.8; q.chk = false; q.vx = (Math.random() - 0.5) * 0.9; }
+      if (q.y > GH_TOP || Math.abs(q.x) > 7.2) { ghPh.splice(i, 1); continue; }
+    }
+  }
+  let ns = 0, ni = 0;
+  for (const q of ghPh) {
+    if (q.k === 0) { ghSunP.pos.set([q.x, q.y, q.z], ns * 3); ns++; }
+    else { ghIrP.pos.set([q.x, q.y, q.z], ni * 3); ni++; }
+  }
+  ghSunP.geo.setDrawRange(0, ns); ghIrP.geo.setDrawRange(0, ni);
+  ghSunP.geo.attributes.position.needsUpdate = true; ghIrP.geo.attributes.position.needsUpdate = true;
+  // 溫室氣體分子數量、輕輕飄動
+  const ng = GH.on ? Math.round(clamp(GH.co2 / 1120, 0, 1) * ghGas.N) : 0;
+  ghGas.geo.setDrawRange(0, ng);
+  for (let i = 0; i < ng; i++) { ghGas.pos[i * 3] += Math.sin(wall * 0.9 + i) * dt * 0.12; ghGas.pos[i * 3 + 1] += Math.cos(wall * 1.1 + i * 1.7) * dt * 0.08; }
+  ghGas.geo.attributes.position.needsUpdate = true;
+  ghAir.material.opacity = GH.on ? 0.12 + 0.18 * clamp(GH.co2 / 1120, 0, 1) : 0.05;
+  // 溫度計、冰川、海平面
+  const h = clamp((T + 25) / 50, 0.04, 1) * 2.9;
+  ghMerc.scale.y = h; ghMerc.position.set(6.9, GY + 0.45 + h / 2, 1.6);
+  const ice = T < 0 ? 1.25 : clamp(1.05 - (T - 14) / 8, 0.3, 1.05);
+  ghIce.scale.set(ice, ice, ice); ghIce.position.y = GY + 2.92 - 0.55 * ice;
+  ghSea.position.y = GY + 0.1 + warm * 0.32;
+  setLabel(lbGhT, `${T.toFixed(1)}℃`);
+  setLabel(lbGhAir, GH.on ? `溫室氣體（CO₂ ${GH.co2} ppm）` : '沒有溫室氣體');
+  const keep = Math.round(p * 100);
+  $('ghT').textContent = `${T.toFixed(1)}℃`;
+  $('ghKeep').textContent = `${keep}%`;
+  $('co2V').textContent = `${GH.co2} ppm`;
+  let tip;
+  if (!GH.on) tip = '<b class="b">沒有溫室氣體</b>：地表放出的熱全部逃到太空，地球平均溫度約 <b>−18℃</b>，大部分的水會結冰。';
+  else if (GH.co2 < 300) tip = '接近<b>工業革命以前</b>的二氧化碳濃度：溫室效應讓地球保持溫暖，適合生物生存。';
+  else if (GH.co2 <= 450) tip = '接近<b>現在</b>的二氧化碳濃度：人類大量燃燒化石燃料，溫室效應<b class="o">增強</b>，全球平均氣溫已經上升。';
+  else tip = '二氧化碳濃度<b class="r">持續增加</b>：被送回地面的熱更多 → <b class="r">全球暖化</b>加劇，冰川融化、海平面上升，極端天氣更常發生。';
+  setHTML('ghStat', tip);
+  setCap(GH.on
+    ? `<small>溫室效應・CO₂ ${GH.co2} ppm（模擬值）</small><span class="huge"><span class="org">黃色</span>太陽光穿過大氣 → 地表放出<span class="red">紅色</span>的熱</span>其中約 <b>${keep}%</b> 被溫室氣體吸收、送回地面，地表平均約 <b>${T.toFixed(1)}℃</b>`
+    : `<small>沒有溫室氣體（模擬）</small><span class="huge blu">熱全部逃到太空 → 約 −18℃</span>溫室效應本身是自然現象，讓地球適合生物生存`);
+}
+
+/* =========================================================
    Tab 切換、鏡頭
    ========================================================= */
 const TABS = {
   enso: { group: EN.group, cam: () => ({ pos: [0, 11, 24], target: [0, 4.6, 0], fitW: 29 }), update: updateEnso },
   debris: { group: DB.group, cam: () => ({ pos: [4, 9, 22], target: [0, 4.4, 0], fitW: 26 }), update: updateDebris },
-  aqi: { group: AQ.group, cam: () => ({ pos: [3, 7.5, 15], target: [0, 3.0, 0], fitW: 13 }), update: updateAqi }
+  aqi: { group: AQ.group, cam: () => ({ pos: [3, 7.5, 15], target: [0, 3.0, 0], fitW: 13 }), update: updateAqi },
+  green: { group: GH.group, cam: () => ({ pos: [1, 7.5, 21], target: [0, 5.0, 0], fitW: 16 }), update: updateGreen }
 };
 function setTab(t) {
   tab = t;
@@ -761,6 +908,7 @@ function setTab(t) {
   renderer.domElement.style.cursor = '';
   goView(TABS[t].cam());
   try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+  window.dispatchEvent(new Event('hashchange'));          // 讓「會考出題重點」卡跟著分頁更新（replaceState 不會自己觸發）
 }
 document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
 function layoutDock() {
@@ -830,7 +978,7 @@ function frame(dt) {
 }
 function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
 
-window.lab = { frame, setTab, EN, DB, AQ, camera, controls };
+window.lab = { frame, setTab, EN, DB, AQ, GH, camera, controls };
 
 resize();
 const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'enso';

@@ -198,10 +198,11 @@
   <a class="back" href="index.html#g7">‹ 課程總覽</a>
   <div class="title">血液成分、淋巴循環與人體防禦</div>
   <div class="body">
-    <div class="tabs three">
+    <div class="tabs">
       <button class="tab on" data-tab="blood">🩸 血液成分<small>血漿・血球</small></button>
       <button class="tab" data-tab="oc">🔁 開放／閉鎖<small>循環方式</small></button>
       <button class="tab" data-tab="lymph">🛡️ 淋巴與防禦<small>淋巴結過濾</small></button>
+      <button class="tab" data-tab="defense">🧱 三道防線<small>抗體與疫苗</small></button>
     </div>
 
     <!-- Tab 1 -->
@@ -247,6 +248,21 @@
       </div>
     </section>
 
+    <!-- Tab 4 -->
+    <section class="sec" data-tab="defense" hidden>
+      <button class="btn primary" id="dfWave" type="button">🦠 病原體入侵</button>
+      <label class="chk"><input type="checkbox" id="dfWound"> 🩹 皮膚有傷口</label>
+      <label class="chk"><input type="checkbox" id="dfMem"> 💉 打過疫苗（或曾經感染過同一種病原體）</label>
+      <div class="stat" id="dfStat"></div>
+      <div class="stat"><canvas id="dfChart" width="300" height="130" style="width:100%;height:auto;display:block"></canvas></div>
+      <div class="cards">
+        <div class="card">🧱 <b>第一道</b>：皮膚、黏膜（鼻毛、纖毛、黏液）、胃酸等，阻擋病原體進入</div>
+        <div class="card">⚪ <b>第二道</b>：白血球吞噬病原體，受傷處常出現發炎（紅、腫、熱、痛）</div>
+        <div class="card">🎯 <b>第三道</b>：淋巴球產生<b>抗體</b>，一種抗體只對付一種病原體（專一性）</div>
+        <div class="card">💉 <b>疫苗</b>是減毒或死的病原體（或其一部分），讓身體先產生抗體與記憶；再遇到時抗體又快又多</div>
+        <div class="card">📌 第一、二道防線對所有病原體都有作用，屬於<b>非專一性</b>防禦</div>
+      </div>
+    </section>
     <button class="btn" id="viewBtn">🎥 重設視角</button>
   </div>
 </aside>
@@ -731,6 +747,174 @@ const LY = (() => {
   return { group, update, st };
 })();
 
+/* =========================================================
+   Tab 4：人體的三道防線
+   ---------------------------------------------------------
+   由左到右三個區域（都是物品，不畫人形）：
+   第一道：皮膚、黏膜擋住大部分病原體（有傷口時病原體容易進入）。
+   第二道：白血球（吞噬細胞）追上病原體並吞噬，屬於非專一性防禦。
+   第三道：淋巴球產生抗體，抗體專一地和病原體結合，使其被清除。
+   打過疫苗（或曾經感染同一種病原體）時，抗體產生得更快、更多。
+   ========================================================= */
+const DF = (() => {
+  const group = new THREE.Group(); scene.add(group);
+  const base = shadowed(new THREE.Mesh(new RoundedBoxGeometry(11.6, 0.16, 4.2, 3, 0.05), BWD())); base.position.y = 0.08; group.add(base);
+  const Y = 0.62, X1 = -3.0, X2 = 1.0, XEND = 4.6;
+  // 三個區域的底色
+  [[-4.35, 2.5, 0xf6e3d3], [-1.0, 3.9, 0xf8ece4], [2.8, 3.6, 0xece6f6]].forEach(([x, w, c]) => { const m = rbox(w, 0.04, 3.8, soft(c, { roughness: 0.8 }), 0.02); m.position.set(x, 0.18, 0); m.receiveShadow = true; group.add(m); });
+  // 第一道防線：皮膚（上皮層＋真皮層），中間可以裂開成傷口
+  const skin = [];
+  for (const sgn of [-1, 1]) {
+    const g = new THREE.Group();
+    const epi = rbox(0.22, 1.3, 1.75, soft(0xe9b896), 0.06); epi.position.set(-0.14, 0.65, 0); g.add(epi);
+    const der = rbox(0.34, 1.3, 1.75, soft(0xf3cdb8), 0.06); der.position.set(0.14, 0.65, 0); g.add(der);
+    // 黏膜上的纖毛（細毛）
+    for (let i = 0; i < 9; i++) { const h = cyl(0.012, 0.012, 0.22, soft(0xc98d70), 6); h.rotation.z = Math.PI / 2 + Math.sin(i) * 0.3; h.position.set(-0.36, 0.25 + (i % 3) * 0.4, -0.65 + Math.floor(i / 3) * 0.6); g.add(h); }
+    shadowed(g); g.position.set(X1, 0.2, sgn * 0.9); group.add(g); skin.push({ g, sgn });
+  }
+  const woundGlow = glowSprite('230,80,60', 1.6); woundGlow.position.set(X1, Y + 0.3, 0); woundGlow.visible = false; group.add(woundGlow);
+  // 第二道防線：白血球（吞噬細胞）
+  const wbcs = [[-2.1, -0.9], [-0.9, 0.8], [0.2, -0.4]].map(([x, z], i) => {
+    const m = new THREE.Mesh(blobGeo(0.27, { amp: 0.14, seed: i + 90, detail: 3 }), soft(0xf4f0fa)); m.position.set(x, Y, z); m.castShadow = true; group.add(m);
+    const nuc = new THREE.Mesh(blobGeo(0.11, { amp: 0.2, seed: i + 95, detail: 2 }), soft(0x9575cd)); nuc.position.set(0.05, 0.06, 0.08); m.add(nuc);
+    return { m, home: V3(x, Y, z), tgt: null, cool: 0 };
+  });
+  // 第三道防線：淋巴球與抗體
+  const LYC = V3(3.0, Y + 0.1, -1.1);
+  const lymphoC = new THREE.Mesh(blobGeo(0.34, { amp: 0.06, seed: 120, detail: 4 }), soft(0xe3d9f7)); lymphoC.position.copy(LYC); lymphoC.castShadow = true; group.add(lymphoC);
+  const lyNuc = new THREE.Mesh(blobGeo(0.24, { amp: 0.05, seed: 121, detail: 3 }), soft(0x7e57c2)); lyNuc.position.set(0.04, 0.05, 0.12); lymphoC.add(lyNuc);
+  const lyGlow = glowSprite('150,110,230', 1.4); lyGlow.position.copy(LYC); group.add(lyGlow);
+  const abMat = soft(0x3f51b5, { emissive: 0x3f51b5, emissiveIntensity: 0.2 });
+  function makeAb() {
+    const g = new THREE.Group();
+    const stem = cyl(0.022, 0.022, 0.14, abMat, 8); stem.position.y = -0.07; g.add(stem);
+    for (const s of [-1, 1]) { const arm = cyl(0.02, 0.02, 0.13, abMat, 8); arm.rotation.z = s * 0.6; arm.position.set(s * 0.04, 0.05, 0); g.add(arm); }
+    g.visible = false; group.add(g); return { g, s: 'off', germ: null, off: V3(0, 0, 0), p: V3(0, 0, 0) };
+  }
+  const abs = Array.from({ length: 48 }, makeAb);
+  // 病原體
+  const germs = Array.from({ length: 14 }, () => { const m = new THREE.Mesh(bugGeo, bugMat); m.scale.setScalar(1.5); m.visible = false; m.castShadow = true; group.add(m); return { m, s: 'off', x: 0, z: 0, vx: 0, t: 0, ab: 0, host: null, zt: 0 }; });
+  // 標籤
+  addLabel('defense', '第一道防線<br>皮膚、黏膜', 'small redT', V3(X1, 2.05, 0));
+  addLabel('defense', '第二道防線<br>白血球吞噬', 'small', V3(-1.0, 1.55, 0));
+  addLabel('defense', '第三道防線<br>淋巴球產生抗體', 'small bluT', V3(2.8, 1.75, -1.1));
+  const lbWound = addLabel('defense', '🩹 傷口', 'small redT', V3(X1, 1.45, 0)); lbWound.show = false;
+  const st = { t: 0, wound: false, mem: false, det: null, b1: 0, b2: 0, b3: 0, wave: false, abAcc: 0 };
+  const tmp = V3(0, 0, 0);
+  function wave() {
+    st.det = null; st.wave = true; st.abAcc = 0;
+    germs.forEach((g, i) => { Object.assign(g, { s: 'go', x: -5.6 - (i % 7) * 0.45 - Math.floor(i / 7) * 0.25, z: (Math.random() - 0.5) * 2.8, vx: 0.72 + Math.random() * 0.2, t: 0, ab: 0, host: null, passed: false }); g.zt = g.z; g.m.visible = true; g.m.scale.setScalar(1.5); });
+    abs.forEach(a => { a.s = 'off'; a.g.visible = false; });
+    wbcs.forEach(w => { w.tgt = null; w.cool = 0; w.n = 0; });
+  }
+  $('dfWave').addEventListener('click', () => { st.b1 = st.b2 = st.b3 = 0; wave(); });
+  $('dfWound').addEventListener('change', e => { st.wound = e.target.checked; });
+  $('dfMem').addEventListener('change', e => { st.mem = e.target.checked; drawChart(); });
+  // 抗體量比較圖（第一次感染 vs 第二次感染／打過疫苗）
+  function drawChart() {
+    const c = $('dfChart'); if (!c) return; const g = c.getContext('2d'), W = c.width, H = c.height;
+    g.clearRect(0, 0, W, H);
+    const x0 = 34, y0 = H - 22, xw = W - x0 - 10, yh = y0 - 12;
+    g.strokeStyle = '#8d7366'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x0, 8); g.lineTo(x0, y0); g.lineTo(W - 6, y0); g.stroke();
+    g.fillStyle = '#8d7366'; g.font = '700 11px "Noto Sans TC","Microsoft JhengHei",sans-serif';
+    g.fillText('時間', W - 34, H - 6); g.save(); g.translate(12, y0 - 8); g.rotate(-Math.PI / 2); g.fillText('抗體量', 0, 0); g.restore();
+    const curve = (delay, peak, color, on) => {
+      g.strokeStyle = color; g.lineWidth = on ? 3.2 : 1.6; g.globalAlpha = on ? 1 : 0.45; g.setLineDash(on ? [] : [5, 4]); g.beginPath();
+      for (let i = 0; i <= 100; i++) { const tt = i / 100 * 30, k = tt < delay ? 0 : (1 - Math.exp(-(tt - delay) / 2.2)) * Math.exp(-Math.max(0, tt - delay - 9) / 12); const x = x0 + i / 100 * xw, y = y0 - k * peak * yh; i ? g.lineTo(x, y) : g.moveTo(x, y); }
+      g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
+    };
+    curve(7, 0.38, '#c0583a', !st.mem); curve(2, 0.95, '#3f51b5', st.mem);
+    g.fillStyle = '#c0583a'; g.fillText('第一次感染：慢、少', W - 128, y0 - 0.38 * yh - 10);
+    g.fillStyle = '#3f51b5'; g.fillText('第二次（或打過疫苗）：快、多', x0 + 30, 12);
+  }
+  drawChart();
+  function update(dt) {
+    st.t += dt;
+    // 傷口：皮膚裂開
+    for (const s of skin) { const zt = s.sgn * (st.wound ? 1.28 : 0.9); s.g.position.z += (zt - s.g.position.z) * (1 - Math.exp(-dt * 6)); }
+    woundGlow.visible = st.wound; woundGlow.material.opacity = 0.6 + 0.3 * Math.sin(st.t * 4); lbWound.show = st.wound;
+    const delay = st.mem ? 1.2 : 5.5, rate = st.mem ? 6 : 2.2;
+    let alive = 0, inZ3 = 0;
+    for (const g of germs) {
+      if (g.s === 'off') continue;
+      g.t += dt; alive++;
+      if (g.s === 'go') {
+        if (!g.passed && g.x < X1 - 0.6 && st.wound) g.z += (g.zt * 0.6 - g.z) * (1 - Math.exp(-dt * 3));
+        g.x += g.vx * dt * (g.x > X1 ? 0.75 : 1);
+        if (!g.passed && g.x >= X1 - 0.45) {
+          g.passed = true;
+          const throughWound = st.wound && Math.abs(g.z) < 0.75;
+          if (!throughWound && Math.random() < 0.5) { g.s = 'bounce'; g.vx = -1.3; g.t = 0; st.b1++; }
+          else g.x = X1 + 0.45;
+        }
+        if (g.s === 'go' && g.x >= X2) { g.s = 'z3'; g.t = 0; if (st.det === null) st.det = st.t; }
+        g.m.position.set(g.x, Y + Math.sin(g.t * 5 + g.zt) * 0.05, g.z);
+      } else if (g.s === 'bounce') {
+        g.x += g.vx * dt; g.m.scale.setScalar(Math.max(0.01, 1.5 * (1 - g.t / 1.1)));
+        g.m.position.set(g.x, Y, g.z); if (g.t > 1.1) { g.s = 'off'; g.m.visible = false; }
+      } else if (g.s === 'eaten') {
+        g.m.position.copy(g.host.m.position).add(V3(0, 0.05, 0)); g.m.scale.setScalar(Math.max(0.01, 1.2 * (1 - g.t / 1.2)));
+        if (g.t > 1.2) { g.s = 'off'; g.m.visible = false; }
+      } else if (g.s === 'z3') {
+        inZ3++;
+        g.x = clamp(g.x + Math.sin(g.t * 0.8 + g.zt * 3) * dt * 0.35 + dt * 0.12, X2 + 0.2, XEND); g.z = clamp(g.z + Math.cos(g.t * 0.9 + g.zt) * dt * 0.3, -1.6, 1.6);
+        g.m.position.set(g.x, Y + Math.sin(g.t * 3) * 0.05, g.z);
+        if (g.ab >= 3) { g.s = 'clump'; g.t = 0; }
+      } else if (g.s === 'clump') {
+        g.m.scale.setScalar(Math.max(0.01, 1.5 * (1 - g.t / 1.3)));
+        if (g.t > 1.3) { g.s = 'off'; g.m.visible = false; st.b3++; abs.forEach(a => { if (a.germ === g) { a.s = 'off'; a.g.visible = false; a.germ = null; } }); }
+      }
+      g.m.rotation.y += dt * 1.5;
+    }
+    // 白血球追捕第二區的病原體
+    for (const w of wbcs) {
+      w.cool = Math.max(0, w.cool - dt);
+      if (w.tgt && w.tgt.s !== 'go') w.tgt = null;
+      if (!w.tgt && w.cool === 0 && (w.n || 0) < 2) {
+        let best = null, bd = 9;
+        for (const g of germs) if (g.s === 'go' && g.x > X1 + 0.3 && g.x < X2 && !wbcs.some(o => o !== w && o.tgt === g)) { const d = w.m.position.distanceTo(g.m.position); if (d < bd) { bd = d; best = g; } }
+        w.tgt = best;
+      }
+      const goal = w.tgt ? w.tgt.m.position : w.home;
+      tmp.copy(goal).sub(w.m.position); tmp.y = 0; const d = tmp.length();
+      if (d > 0.02) w.m.position.addScaledVector(tmp.normalize(), Math.min(d, dt * (w.tgt ? 1.0 : 0.5)));
+      w.m.position.x = clamp(w.m.position.x, X1 + 0.45, X2 - 0.1);
+      if (w.tgt && d < 0.32) { w.tgt.s = 'eaten'; w.tgt.host = w; w.tgt.t = 0; st.b2++; w.tgt = null; w.cool = 1.6; w.n = (w.n || 0) + 1; }
+      w.m.scale.setScalar(1 + 0.06 * Math.sin(st.t * 3 + w.home.x));
+    }
+    // 第三道：偵測到病原體一段時間後，淋巴球開始放出抗體
+    const on3 = st.det !== null && st.t - st.det > delay;
+    lyGlow.material.opacity = on3 ? 0.6 + 0.3 * Math.sin(st.t * 5) : 0.2;
+    if (on3 && inZ3) {
+      st.abAcc += dt * rate;
+      while (st.abAcc > 1) {
+        st.abAcc -= 1;
+        const need = germs.filter(g => g.s === 'z3' && g.ab + abs.filter(a => a.germ === g && a.s === 'fly').length < 3);
+        const a = abs.find(x => x.s === 'off'); if (!need.length || !a) break;
+        const g = need[Math.floor(Math.random() * need.length)];
+        a.s = 'fly'; a.germ = g; a.p.copy(LYC); a.g.visible = true; a.off.set((Math.random() - 0.5) * 0.3, 0.12 + Math.random() * 0.1, (Math.random() - 0.5) * 0.3);
+      }
+    }
+    for (const a of abs) {
+      if (a.s === 'off') continue;
+      if (!a.germ || a.germ.s === 'off') { a.s = 'off'; a.g.visible = false; continue; }
+      tmp.copy(a.germ.m.position).add(a.off);
+      if (a.s === 'fly') { const d = tmp.clone().sub(a.p); const L = d.length(); if (L < 0.08) { a.s = 'stuck'; a.germ.ab++; } else a.p.addScaledVector(d.divideScalar(L), Math.min(L, dt * 2.6)); a.g.position.copy(a.p); }
+      else a.g.position.copy(tmp);
+      a.g.lookAt(a.germ.m.position); a.g.rotateX(Math.PI / 2);
+    }
+    if (st.wave && alive === 0) st.wave = false;
+    const total = st.b1 + st.b2 + st.b3;
+    setHTML('dfStat', `第一道（皮膚、黏膜）擋下：<b class="r">${st.b1}</b> 隻<br>第二道（白血球吞噬）消滅：<b>${st.b2}</b> 隻<br>第三道（抗體）清除：<b class="b">${st.b3}</b> 隻${st.wave ? '' : total ? '<br><span class="g">✔ 這一波病原體已經清除</span>' : '<br>按「病原體入侵」開始'}`);
+    setCap(!st.wave && !total ? `<small>人體的三道防線</small>按下「🦠 病原體入侵」<span class="huge">皮膚黏膜 → 白血球 → 抗體</span>`
+      : st.wave && inZ3 && !on3 ? `<small>第三道防線・準備中</small>淋巴球認出病原體需要時間<span class="huge blu">${st.mem ? '打過疫苗：很快就產生抗體' : '第一次遇到：抗體產生得比較慢'}</span>`
+      : st.wave && inZ3 ? `<small>第三道防線</small>抗體<b>專一</b>地和這種病原體結合<span class="huge blu">結合抗體的病原體被清除</span>`
+      : st.wave ? `<small>${st.wound ? '皮膚有傷口：病原體容易進入' : '第一、二道防線'}</small>皮膚、黏膜擋住大部分病原體<span class="huge">穿過的被白血球吞噬</span>`
+      : `<small>防禦完成</small>三道防線共清除 <b>${total}</b> 隻病原體<span class="huge grn">第一、二道不分對象；第三道有專一性</span>`);
+  }
+  return { group, update, st, wave };
+})();
+
 /* ----- 共用：面板、按鈕、滑桿不讓事件傳到 3D 畫面；拖曳滑桿時鎖住視角 ----- */
 ['panel', 'dock', 'scaleNote'].forEach(id => { const el = $(id); if (!el) return; ['pointerdown', 'touchstart'].forEach(ev => el.addEventListener(ev, e => e.stopPropagation(), { passive: true })); });
 document.querySelectorAll('input[type=range]').forEach(r => {
@@ -745,7 +929,8 @@ document.querySelectorAll('button, input[type=checkbox]').forEach(b => ['pointer
 const TABS = {
   blood: { group: BL.group, cam: () => ({ pos: [0.3, 4.2, 9.4], target: [0.3, 1.3, 0], fitW: window.innerWidth < window.innerHeight ? 10 : 11.5 }), update: BL.update },
   oc: { group: OC.group, cam: () => ({ pos: [0, 3.4, 10.5], target: [0, 2.0, 0], fitW: window.innerWidth < window.innerHeight ? 10.5 : 12 }), update: OC.update },
-  lymph: { group: LY.group, cam: () => ({ pos: [0.2, 5.2, 8.2], target: [0.2, 0.8, 0], fitW: window.innerWidth < window.innerHeight ? 10 : 11.5 }), update: LY.update }
+  lymph: { group: LY.group, cam: () => ({ pos: [0.2, 5.2, 8.2], target: [0.2, 0.8, 0], fitW: window.innerWidth < window.innerHeight ? 10 : 11.5 }), update: LY.update },
+  defense: { group: DF.group, cam: () => ({ pos: [0, 5.6, 8.6], target: [0, 0.8, 0], fitW: window.innerWidth < window.innerHeight ? 10.5 : 12 }), update: DF.update }
 };
 function setTab(t) {
   tab = t;
@@ -756,6 +941,7 @@ function setTab(t) {
   renderer.domElement.style.cursor = '';
   goView(TABS[t].cam());
   try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+  window.dispatchEvent(new Event('hashchange'));          // 讓「會考出題重點」卡跟著分頁更新（replaceState 不會自己觸發）
 }
 document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
 function layoutDock() {
@@ -825,7 +1011,7 @@ function frame(dt) {
 }
 function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
 
-window.lab = { frame, setTab, BL, OC, LY, camera, controls, renderer, scene, placeLabels };
+window.lab = { frame, setTab, BL, OC, LY, DF, camera, controls, renderer, scene, placeLabels };
 
 resize();
 const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'blood';
