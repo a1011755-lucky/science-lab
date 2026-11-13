@@ -9,6 +9,8 @@
    3. 直式螢幕自動把鏡頭拉遠，左右不會被切掉
    4. 次要面板（狀態監測儀、觀念提示）在手機上預設收合
    5. 按鈕加大到好點的尺寸
+   6. 電腦／電子白板：控制面板是「側邊抽屜」，面板邊緣有 ◀／▶ 按鈕，
+      收起後整個面板滑出畫面，只留按鈕；狀態在同一次上課中會記住
    使用方式：
      resetView() 最後呼叫  window.MobileView?.frame(camera, controls)
      每一幀 render 前呼叫   window.MobileView?.offset(camera)
@@ -91,6 +93,32 @@
   body.mv-closed .mv-toggle { bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
   body.mv-closed .mv-toggle .ic { transform: rotate(180deg); }
   @media (prefers-reduced-motion: reduce) { .panel, .mv-toggle, .mv-toggle .ic { transition: none !important; } }`;
+  // 電腦／電子白板：側邊抽屜（行動版面以外才生效）
+  const DESK = '(min-width: 1101px), (min-width: 769px) and (orientation: landscape)';
+  css += `
+  .pd-toggle { display: none; }
+  @media ${DESK} {
+    .panel.glass { background: rgba(255,255,255,0.4); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+    .panel { transition: transform .3s ease-in-out; }
+    body.pd-closed .panel { transform: translateX(calc(-100% - 60px)); pointer-events: none; }
+    body.pd-closed.pd-right .panel { transform: translateX(calc(100% + 60px)); }
+    .pd-toggle {
+      display: grid; place-items: center; position: fixed; z-index: 41;
+      min-width: 48px; min-height: 56px; padding: 0 6px; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+      border: 1px solid rgba(255,255,255,.95); border-radius: 0 14px 14px 0;
+      font: 900 1.15rem/1 "Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif; color: #5d4037;
+      background: rgba(255,255,255,.72); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 8px 20px rgba(93,64,55,.18), 0 2px 5px rgba(93,64,55,.1);
+      transition: left .3s ease-in-out, right .3s ease-in-out, background .2s ease, transform .12s ease;
+    }
+    body.pd-right .pd-toggle { border-radius: 14px 0 0 14px; }
+    body.pd-off .pd-toggle { display: none; }
+    body.pd-off.pd-closed .panel { transform: none; pointer-events: auto; }
+    .pd-toggle:hover { background: rgba(255,255,255,.95); }
+    .pd-toggle:active { transform: scale(.94); }
+    .pd-toggle:focus-visible { outline: 2px solid #5d4037; outline-offset: 2px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .pd-toggle { transition: none !important; } }`;
   const style = document.createElement('style');
   style.textContent = css;
   document.head.appendChild(style);
@@ -151,6 +179,50 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupSheet);
   else setupSheet();
+
+  // 電腦／電子白板：側邊抽屜的收合按鈕
+  function setupDrawer() {
+    const panel = document.querySelector('.panel');
+    if (!panel || document.querySelector('.pd-toggle')) return;
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'pd-toggle';
+    btn.setAttribute('aria-controls', panel.id || '');
+    blockCamera(btn);
+    document.body.appendChild(btn);
+    const KEY = 'pd-closed';
+    const isClosed = () => document.body.classList.contains('pd-closed');
+    // 面板原本的位置（offset 不受滑出動畫影響），按鈕貼在面板外緣；收起時貼在螢幕邊
+    function place() {
+      const w = document.documentElement.clientWidth || window.innerWidth;
+      const pl = panel.offsetLeft, pw = panel.offsetWidth, pt = panel.offsetTop;
+      // 只有「浮在畫面側邊」的面板才做成抽屜；橫在頁面中的控制區（平面頁）不處理
+      const pos = getComputedStyle(panel).position;
+      document.body.classList.toggle('pd-off', !((pos === 'absolute' || pos === 'fixed') && pw < w * 0.6));
+      const right = pl + pw / 2 > w / 2;
+      document.body.classList.toggle('pd-right', right);
+      btn.style.top = Math.max(8, pt + 10) + 'px';
+      if (right) { btn.style.left = 'auto'; btn.style.right = (isClosed() ? 0 : Math.max(0, w - pl + 4)) + 'px'; }
+      else { btn.style.right = 'auto'; btn.style.left = (isClosed() ? 0 : pl + pw + 4) + 'px'; }
+      const openIcon = right ? '▶' : '◀', closedIcon = right ? '◀' : '▶';
+      btn.textContent = isClosed() ? closedIcon : openIcon;
+      btn.setAttribute('aria-expanded', String(!isClosed()));
+      btn.setAttribute('aria-label', isClosed() ? '展開控制面板' : '收合控制面板');
+      btn.title = isClosed() ? '展開控制面板' : '收合控制面板';
+    }
+    function setDrawer(closed) {
+      document.body.classList.toggle('pd-closed', !!closed);
+      try { sessionStorage.setItem(KEY, closed ? '1' : '0'); } catch (e) { /* 無痕模式 */ }
+      place();
+    }
+    btn.addEventListener('click', () => setDrawer(!isClosed()));
+    try { if (sessionStorage.getItem(KEY) === '1') document.body.classList.add('pd-closed'); } catch (e) { /* 無痕模式 */ }
+    place();
+    if (window.ResizeObserver) new ResizeObserver(place).observe(panel);
+    window.addEventListener('resize', place);
+    window.PanelDrawer = { toggle: () => setDrawer(!isClosed()), set: setDrawer, isClosed };
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setupDrawer);
+  else setupDrawer();
 
   window.MobileView = {
     isMobile,
