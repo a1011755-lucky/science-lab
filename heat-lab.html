@@ -1223,7 +1223,7 @@ function setMode(m) {
   MODES[m].enter();
   resetView();
 }
-document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { setMode(b.dataset.mode); try { history.replaceState(null, '', '#' + b.dataset.mode); } catch (e) { /* file:// */ } }));
 $('viewBtn').addEventListener('click', resetView);
 $('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; });
 
@@ -1254,7 +1254,7 @@ function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFr
 window.heat = { M1, M2, M3, M4, setMode, frame, camera, controls };   // 除錯 / 驗證用
 
 resize();
-setMode('m1');
+setMode(MODES[location.hash.slice(1)] ? location.hash.slice(1) : 'm1');      // 網址帶 #m2 等代號時直接開到那個分頁
 animate();
 </script>
 

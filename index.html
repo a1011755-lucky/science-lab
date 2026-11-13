@@ -496,11 +496,25 @@ const COURSES = [
       {
         name: '八上', sub: '測量、物質、波動、光與熱',
         chapters: [
-          { title: '基本測量與科學概念', sum: '實驗室安全、控制變因，長度、體積、質量與密度的測量。', labs: [{ t: '科學方法與基本測量', u: 'measure-lab.html' }, { t: '密度與材質鑑定', u: 'lab8a-classics.html#dens' }],
+          { title: '基本測量與科學概念', sum: '實驗室安全、控制變因，長度、體積、質量與密度的測量。', labs: [
+            { g: '1. 長度的測量', t: '長度與估計值', u: 'measure-lab.html' },
+            { g: '2. 質量的測量', t: '天平：左物右碼', u: 'measure-lab.html#mass' },
+            { g: '3. 體積的測量', t: '量筒與排水法', u: 'measure-lab.html#vol' },
+            { g: '4. 密度', t: '密度與材質鑑定', u: 'lab8a-classics.html#dens' }
+          ],
             k: ['實驗室安全', '變因的控制', '長度的測量', '體積的測量', '質量的測量（天平）', '密度'] },
-          { title: '物質的世界', sum: '純物質與混合物、水溶液的濃度與溶解度、空氣的組成與氧氣。', labs: [{ t: '物質的世界：水溶液', u: 'solution-lab.html' }, { t: '過濾與蒸發結晶', u: 'lab8a-classics.html#sep' }],
+          { title: '物質的世界', sum: '純物質與混合物、水溶液的濃度與溶解度、空氣的組成與氧氣。', labs: [
+            { g: '1. 純物質與混合物', t: '純物質與混合物', u: 'solution-lab.html#mix' }, { g: '1. 純物質與混合物', t: '過濾與蒸發結晶', u: 'lab8a-classics.html#sep' },
+            { g: '2. 水溶液的濃度', t: '重量百分濃度', u: 'solution-lab.html#pct' }, { g: '2. 水溶液的濃度', t: '百萬分點 ppm', u: 'solution-lab.html#ppm' },
+            { g: '3. 溶解度', t: '飽和溶液與溫度', u: 'solution-lab.html#sat' }
+          ],
             k: ['純物質與混合物', '混合物的分離', '水溶液的組成', '濃度', '溶解度', '空氣的組成', '氧氣的製備'] },
-          { title: '波動與聲音', sum: '波的種類與性質，聲音的產生、傳播與三要素。', labs: [{ t: '波動與聲音', u: 'sound-lab.html' }, { t: '波動與聲音特效實驗室', u: 'sound-fx-lab.html' }, { t: '樂音三要素與共鳴', u: 'sound-fx-lab.html#music' }],
+          { title: '波動與聲音', sum: '波的種類與性質，聲音的產生、傳播與三要素。', labs: [
+            { g: '1. 波的傳播', t: '橫波與縱波', u: 'sound-lab.html#wave' }, { g: '1. 波的傳播', t: '週期波：波長・頻率・波速', u: 'sound-lab.html#period' }, { g: '1. 波的傳播', t: '橫波與縱波（特效版）', u: 'sound-fx-lab.html#wave' },
+            { g: '2. 聲音的產生與傳播', t: '真空鐘罩', u: 'sound-lab.html#bell' }, { g: '2. 聲音的產生與傳播', t: '真空鐘罩（特效版）', u: 'sound-fx-lab.html#bell' },
+            { g: '3. 樂音三要素與共鳴', t: '樂音與共鳴', u: 'sound-fx-lab.html#music' },
+            { g: '4. 回聲', t: '聲納探測船', u: 'sound-lab.html#sonar' }, { g: '4. 回聲', t: '聲納測距', u: 'sound-fx-lab.html#sonar' }
+          ],
             k: ['橫波與縱波', '波長、頻率、波速', '聲音的產生與傳播', '頻率與音調', '振幅與響度', '聲速與回聲', '共振'] },
           { title: '光', sum: '光的直進、反射與折射，面鏡、透鏡成像與顏色。', labs: [
             { g: '1. 光的直線性', t: '本影與半影', u: 'shadow-lab.html#umbra' }, { g: '1. 光的直線性', t: '影子比例', u: 'shadow-lab.html#ratio' }, { g: '1. 光的直線性', t: '針孔成像（暗箱）', u: 'shadow-lab.html#pin' }, { g: '1. 光的直線性', t: '針孔成像（物距與像距）', u: 'optics-lab.html#pinhole' },
@@ -509,26 +523,52 @@ const COURSES = [
             { g: '4. 三原色', t: '色光混合', u: 'optics-lab.html#color' }, { g: '4. 三原色', t: '三原色與物體顯色', u: 'mirror-lens-lab.html#color' }
           ],
             k: ['光的直進與光速', '光的反射', '平面鏡與曲面鏡', '光的折射', '凸透鏡與凹透鏡', '透鏡的應用', '色光與顏色'] },
-          { title: '溫度與熱', sum: '溫度與溫標，熱量、比熱與熱平衡，熱的傳播與對物質的影響。', labs: [{ t: '溫度與熱', u: 'heat-lab.html' }, { t: '比熱雙爐對決', u: 'lab8a-classics.html#heat' }, { t: '雙金屬片警報器', u: 'expansion-lab.html#bimetal' }, { t: '水的 4℃ 反常膨脹', u: 'expansion-lab.html#water4' }, { t: '三態變化與昇華', u: 'expansion-lab.html#sublime' }],
+          { title: '溫度與熱', sum: '溫度與溫標，熱量、比熱與熱平衡，熱的傳播與對物質的影響。', labs: [
+            { g: '1. 溫度與溫度計', t: '自製溫度計', u: 'heat-lab.html#m1' },
+            { g: '2. 熱量與比熱', t: '比熱賽跑', u: 'heat-lab.html#m2' }, { g: '2. 熱量與比熱', t: '比熱雙爐對決', u: 'lab8a-classics.html#heat' },
+            { g: '3. 熱的傳播', t: '海風與陸風（對流）', u: 'heat-lab.html#m3' },
+            { g: '4. 熱對物質的影響', t: '雙金屬片警報器', u: 'expansion-lab.html#bimetal' }, { g: '4. 熱對物質的影響', t: '水的 4℃ 反常膨脹', u: 'expansion-lab.html#water4' }, { g: '4. 熱對物質的影響', t: '三態變化', u: 'heat-lab.html#m4' }, { g: '4. 熱對物質的影響', t: '三態變化與昇華', u: 'expansion-lab.html#sublime' }
+          ],
             k: ['溫度計與溫標', '熱量', '比熱', '熱平衡', '傳導、對流、輻射', '熱脹冷縮', '雙金屬片', '水的反常膨脹', '三態變化', '昇華'] },
-          { title: '探索物質組成', sum: '元素與化合物、原子的結構、週期表、分子與化學式。', labs: [{ t: '探索物質組成', u: 'matter-lab.html' }],
+          { title: '探索物質組成', sum: '元素與化合物、原子的結構、週期表、分子與化學式。', labs: [
+            { g: '1. 元素與化合物', t: '粒子分類機', u: 'matter-lab.html#sort' },
+            { g: '2. 元素週期表', t: '週期表探索牆', u: 'matter-lab.html#table' },
+            { g: '3. 化學式', t: '離子樂高', u: 'matter-lab.html#ion' }
+          ],
             k: ['元素與化合物', '金屬與非金屬', '元素符號', '原子說', '原子的結構', '元素週期表', '分子與化學式'] }
         ]
       },
       {
         name: '八下', sub: '化學反應、氧化還原、酸鹼、反應速率、有機物與力',
         chapters: [
-          { title: '化學反應', sum: '從生活中的化學變化出發，理解質量守恆，學會用原子量、化學式與莫耳計算反應中的質量關係。', labs: [{ t: '原子不滅', u: 'mass-lab.html#atom' }, { t: '氣體逸散', u: 'mass-lab.html#gas' }, { t: '沉澱反應', u: 'mass-lab.html#ppt' }, { t: '莫耳、分子量與化學計量', u: 'mole-lab.html' }],
+          { title: '化學反應', sum: '從生活中的化學變化出發，理解質量守恆，學會用原子量、化學式與莫耳計算反應中的質量關係。', labs: [
+            { g: '1. 質量守恆定律', t: '原子不滅', u: 'mass-lab.html#atom' }, { g: '1. 質量守恆定律', t: '氣體逸散', u: 'mass-lab.html#gas' }, { g: '1. 質量守恆定律', t: '沉澱反應', u: 'mass-lab.html#ppt' },
+            { g: '2. 原子量、分子量與莫耳', t: '莫耳', u: 'mole-lab.html#mole' },
+            { g: '3. 化學反應式與化學計量', t: '反應式配平', u: 'mole-lab.html#balance' }, { g: '3. 化學反應式與化學計量', t: '化學計量', u: 'mole-lab.html#stoich' }
+          ],
             k: ['常見的化學反應現象（產生氣體、沉澱、變色、溫度變化）', '質量守恆定律', '開放系統與密閉系統', '原子量與分子量', '化學反應式的寫法與平衡', '莫耳與亞佛加厥數', '化學計量：係數比＝莫耳數比'] },
           { title: '氧化與還原', sum: '比較金屬與非金屬的燃燒，從元素活性判斷氧化還原反應，認識煉鐵與生活中的氧化還原。', labs: [{ t: '氧化與還原：高爐煉鐵', u: 'chem-lab.html#furnace' }],
             k: ['金屬元素的燃燒（鎂、鐵、銅）', '非金屬元素的燃燒（碳、硫）', '金屬氧化物呈鹼性、非金屬氧化物呈酸性', '元素對氧的活性大小', '氧化：得到氧；還原：失去氧', '活性大的元素能奪取活性小元素的氧', '金屬的冶煉（高爐煉鐵）', '生活中的氧化還原（生鏽、漂白、暖暖包）', '氧化劑與還原劑'] },
-          { title: '電解質與酸鹼鹽', sum: '用電離說解釋電解質導電，認識常見酸鹼的性質與強弱，學會 pH 值、酸鹼中和與常見鹽類。', labs: [{ t: '電解質與酸鹼反應', u: 'chem-lab.html#elec' }, { t: '酸鹼中和與 pH', u: 'acid-base-lab.html' }],
+          { title: '電解質與酸鹼鹽', sum: '用電離說解釋電解質導電，認識常見酸鹼的性質與強弱，學會 pH 值、酸鹼中和與常見鹽類。', labs: [
+            { g: '1. 電解質', t: '電解質與導電', u: 'chem-lab.html#elec' },
+            { g: '2. 酸與鹼', t: '酸鹼指示劑', u: 'acid-base-lab.html#ind' },
+            { g: '3. 濃度與 pH', t: '濃度與稀釋', u: 'acid-base-lab.html#dil' },
+            { g: '4. 酸鹼中和', t: '中和與 pH', u: 'acid-base-lab.html#neut' }
+          ],
             k: ['電解質與非電解質', '電離說（正、負離子帶電量相等）', '酸的性質：產生 H⁺', '鹼的性質：產生 OH⁻', '常見的酸（鹽酸、硫酸、硝酸、醋酸）', '常見的鹼（氫氧化鈉、氨水、氫氧化鈣）', '酸鹼的強弱與解離程度', 'pH 值與指示劑', '酸鹼中和：H⁺ ＋ OH⁻ → H₂O', '常見的鹽類（食鹽、碳酸鈣、小蘇打）'] },
-          { title: '反應速率與平衡', sum: '用碰撞學說理解影響反應速率的四大因素，再認識可逆反應與濃度、溫度對化學平衡的影響。', labs: [{ t: '碰撞學說', u: 'rate-lab.html#coll' }, { t: '反應速率', u: 'rate-lab.html#rate' }, { t: '化學平衡', u: 'rate-lab.html#eq' }, { t: '十字實驗', u: 'equilibrium-lab.html#cross' }, { t: '開放 vs 密閉', u: 'equilibrium-lab.html#evap' }, { t: 'NO₂ 變色', u: 'equilibrium-lab.html#no2' }],
+          { title: '反應速率與平衡', sum: '用碰撞學說理解影響反應速率的四大因素，再認識可逆反應與濃度、溫度對化學平衡的影響。', labs: [
+            { g: '1. 反應速率', t: '碰撞學說', u: 'rate-lab.html#coll' }, { g: '1. 反應速率', t: '影響反應速率的因素', u: 'rate-lab.html#rate' }, { g: '1. 反應速率', t: '十字實驗（客觀測量）', u: 'equilibrium-lab.html#cross' },
+            { g: '2. 可逆反應與平衡', t: '化學平衡', u: 'rate-lab.html#eq' }, { g: '2. 可逆反應與平衡', t: '開放與密閉（動態平衡）', u: 'equilibrium-lab.html#evap' }, { g: '2. 可逆反應與平衡', t: 'NO₂ 變色（平衡的移動）', u: 'equilibrium-lab.html#no2' }
+          ],
             k: ['反應速率的意義與測量', '客觀測量：反應速率 ∝ 1/t', '碰撞學說：有效碰撞', '接觸面積越大反應越快', '濃度越大反應越快', '溫度越高反應越快', '催化劑：改變速率、本身不被消耗', '可逆反應與化學平衡（動態平衡）', '開放系統無法達成平衡', '勒沙特列原理', '濃度對化學平衡的影響', '溫度對化學平衡的影響', '可逆反應的應用實例'] },
           { title: '有機化合物', sum: '認識含碳的有機化合物，從烷類、醇類、有機酸到酯化反應，再延伸到聚合物、肥皂與衣料纖維。', labs: [{ t: '有機化合物：皂化反應', u: 'chem-lab.html#soap' }],
             k: ['有機化合物與無機化合物', '有機物的檢驗（燃燒產生 CO₂ 與 H₂O）', '烷類（甲烷、丙烷）', '醇類（甲醇、乙醇）', '有機酸（乙酸）', '酯化反應：酸 ＋ 醇 → 酯 ＋ 水', '聚合物（天然與合成、鏈狀與網狀）', '肥皂的製造與去汙原理（親水端、親油端）', '合成清潔劑', '衣料纖維（天然、人造、合成）'] },
-          { title: '力與壓力', sum: '學會力的表示與力平衡、摩擦力，再理解壓力、液體壓力、大氣壓力與浮力（阿基米德原理）。', labs: [{ t: '力的測量', u: 'force-pressure-lab.html#hook' }, { t: '摩擦力', u: 'force-pressure-lab.html#fric' }, { t: '壓力', u: 'force-pressure-lab.html#brick' }, { t: '液體壓力', u: 'force-pressure-lab.html#jet' }, { t: '大氣壓力', u: 'force-pressure-lab.html#atm' }, { t: '浮力', u: 'force-pressure-lab.html#buoy' }],
+          { title: '力與壓力', sum: '學會力的表示與力平衡、摩擦力，再理解壓力、液體壓力、大氣壓力與浮力（阿基米德原理）。', labs: [
+            { g: '1. 力與力的平衡', t: '力的測量與平衡', u: 'force-pressure-lab.html#hook' },
+            { g: '2. 摩擦力', t: '摩擦力', u: 'force-pressure-lab.html#fric' },
+            { g: '3. 壓力', t: '固體壓力', u: 'force-pressure-lab.html#brick' }, { g: '3. 壓力', t: '液體壓力', u: 'force-pressure-lab.html#jet' }, { g: '3. 壓力', t: '大氣壓力', u: 'force-pressure-lab.html#atm' },
+            { g: '4. 浮力', t: '浮力', u: 'force-pressure-lab.html#buoy' }
+          ],
             k: ['力的效應（形變、運動狀態改變）', '力的三要素與表示法', '彈簧秤與虎克定律', '力平衡（大小相等、方向相反、同一直線）', '靜摩擦力與動摩擦力', '影響摩擦力的因素', '壓力 ＝ 力 ÷ 受力面積', '靜止液體的壓力（只與深度、密度有關）', '連通管原理', '大氣壓力的成因（1 atm ＝ 76 cmHg）', '浮力與阿基米德原理', '沉浮條件與冰山一角'] }
         ]
       }
@@ -545,37 +585,86 @@ const COURSES = [
       {
         name: '九上理化', sub: '時間與運動、牛頓定律、功與能、靜電與電路',
         chapters: [
-          { title: '直線運動', sum: '從測量時間與單擺出發，分辨路徑長與位移、速率與速度，學會等速度、等加速度運動與自由落體，並能解讀運動圖表。', labs: [{ t: '直線運動', u: 'kinematics-lab.html' }, { t: 'x-t 圖・v-t 圖', u: 'kinematics-lab.html#m2' }, { t: '自由落體・上拋', u: 'kinematics-lab.html#m3' }, { t: '打點計時器', u: 'kinematics-lab.html#m4' }],
+          { title: '直線運動', sum: '從測量時間與單擺出發，分辨路徑長與位移、速率與速度，學會等速度、等加速度運動與自由落體，並能解讀運動圖表。', labs: [
+            { g: '1. 位置、路徑長與位移', t: '位移與路徑長', u: 'kinematics-lab.html#m1' },
+            { g: '2. 速率與速度', t: 'x-t 圖・v-t 圖', u: 'kinematics-lab.html#m2' },
+            { g: '3. 加速度運動', t: '打點計時器', u: 'kinematics-lab.html#m4' },
+            { g: '4. 自由落體', t: '自由落體・上拋', u: 'kinematics-lab.html#m3' }
+          ],
             k: ['測量時間的工具', '單擺的等時性（週期只與擺長有關）', '路徑長與位移', '速率與速度', '等速度運動', '加速度 ＝ 速度變化 ÷ 時間', '等加速度運動', '自由落體（g ≈ 9.8 m/s²）', 'x-t 圖、v-t 圖、a-t 圖的解讀', 'v-t 圖面積＝位移、斜率＝加速度'] },
-          { title: '力與運動', sum: '理解牛頓三大運動定律，用 F＝ma 解題，再認識圓周運動、向心力與萬有引力。', labs: [{ t: '牛頓力學遊樂園', u: 'newton-park.html' }, { t: '慣性與運動狀態', u: 'inertia-lab.html' }, { t: 'F＝ma 動力實驗室', u: 'fma-lab.html' }, { t: '牛二：F ＝ ma', u: 'newton-park.html#m2' }, { t: '牛三：作用與反作用', u: 'newton-park.html#m3' }, { t: '萬有引力', u: 'newton-park.html#m4' }, { t: '圓周運動', u: 'newton-park.html#m5' }, { t: '圓周運動：向心力與切線軌跡', u: 'circular-motion-lab.html' }, { t: '飛天鞦韆', u: 'circular-motion-lab.html#swing' }, { t: '雨傘甩水', u: 'circular-motion-lab.html#umbrella' }, { t: '斷繩危機', u: 'circular-motion-lab.html#cut' }],
+          { title: '力與運動', sum: '理解牛頓三大運動定律，用 F＝ma 解題，再認識圓周運動、向心力與萬有引力。', labs: [
+            { g: '1. 牛頓第一運動定律', t: '慣性（滑板車）', u: 'newton-park.html#m1' }, { g: '1. 牛頓第一運動定律', t: '理想斜面', u: 'inertia-lab.html#slope' }, { g: '1. 牛頓第一運動定律', t: '公車吊環', u: 'inertia-lab.html#bus' }, { g: '1. 牛頓第一運動定律', t: '抽桌布', u: 'inertia-lab.html#cloth' },
+            { g: '2. 牛頓第二運動定律', t: 'F ＝ ma（冰面推力）', u: 'newton-park.html#m2' }, { g: '2. 牛頓第二運動定律', t: '機械推臂', u: 'fma-lab.html#push' }, { g: '2. 牛頓第二運動定律', t: '靜止的杯子', u: 'fma-lab.html#rest' }, { g: '2. 牛頓第二運動定律', t: '安全氣囊', u: 'fma-lab.html#bag' },
+            { g: '3. 牛頓第三運動定律', t: '作用力與反作用力', u: 'newton-park.html#m3' },
+            { g: '4. 圓周運動與萬有引力', t: '圓周運動', u: 'newton-park.html#m5' }, { g: '4. 圓周運動與萬有引力', t: '飛天鞦韆', u: 'circular-motion-lab.html#swing' }, { g: '4. 圓周運動與萬有引力', t: '雨傘甩水', u: 'circular-motion-lab.html#umbrella' }, { g: '4. 圓周運動與萬有引力', t: '斷繩危機', u: 'circular-motion-lab.html#cut' }, { g: '4. 圓周運動與萬有引力', t: '萬有引力', u: 'newton-park.html#m4' }
+          ],
             k: ['牛頓第一運動定律（慣性定律）', '牛頓第二運動定律：F ＝ m × a', '1 牛頓 ＝ 1 kg × 1 m/s²', '牛頓第三運動定律（作用力與反作用力）', '作用力與反作用力 vs. 力平衡', '滑車實驗：力、質量與加速度', '等速圓周運動與向心力', '切線速度與向心力垂直', '水滴沿切線飛出（不是沿半徑向外）', '繩斷後沿切線做等速度直線運動', '萬有引力', '萬有引力提供天體圓周運動的向心力'] },
-          { title: '功與能', sum: '學會功、功率與能量的關係，動能與位能的轉換及力學能守恆，再用力矩理解槓桿與簡單機械。', labs: [{ t: '功與能', u: 'work-energy.html' }, { t: '作功的物理含意', u: 'work-vector-lab.html' }, { t: '正功與負功', u: 'work-vector-lab.html#sign' }, { t: '零功陷阱', u: 'work-vector-lab.html#zero' }, { t: '力矩與槓桿（原木機械沙盒）', u: 'lever-lab.html' }, { t: '簡單機械：滑輪、斜面與輪軸', u: 'machine-lab.html' }, { t: '力學能守恆', u: 'work-energy.html#m2' }, { t: '彈力位能', u: 'work-energy.html#m3' }],
+          { title: '功與能', sum: '學會功、功率與能量的關係，動能與位能的轉換及力學能守恆，再用力矩理解槓桿與簡單機械。', labs: [
+            { g: '1. 功與功率', t: '作功', u: 'work-energy.html#m1' }, { g: '1. 功與功率', t: '作功沙盒', u: 'work-vector-lab.html#sandbox' }, { g: '1. 功與功率', t: '正功與負功', u: 'work-vector-lab.html#sign' }, { g: '1. 功與功率', t: '零功陷阱', u: 'work-vector-lab.html#zero' },
+            { g: '2. 動能、位能與能量守恆', t: '力學能守恆', u: 'work-energy.html#m2' }, { g: '2. 動能、位能與能量守恆', t: '彈力位能', u: 'work-energy.html#m3' },
+            { g: '3. 槓桿原理與靜力平衡', t: '旋轉門（力矩）', u: 'lever-lab.html#door' }, { g: '3. 槓桿原理與靜力平衡', t: '蹺蹺板', u: 'lever-lab.html#seesaw' }, { g: '3. 槓桿原理與靜力平衡', t: '槓桿三兄弟', u: 'lever-lab.html#lever' },
+            { g: '4. 簡單機械', t: '滑輪', u: 'machine-lab.html#pulley' }, { g: '4. 簡單機械', t: '斜面', u: 'machine-lab.html#ramp' }, { g: '4. 簡單機械', t: '輪軸', u: 'machine-lab.html#axle' }
+          ],
             k: ['功 ＝ 力 × 沿力方向的位移', '正功與負功', '作功為零的情況', '功率 ＝ 功 ÷ 時間', '動能（與質量、速度平方成正比）', '重力位能 ＝ mgh', '彈力位能', '力學能守恆', '力矩 ＝ 力 × 力臂', '槓桿原理：順時針力矩＝逆時針力矩', '簡單機械（槓桿、滑輪、輪軸、斜面）：省力不省功', '生活中的能源與能量轉換'] },
-          { title: '基本的靜電現象與電路', sum: '從摩擦起電、靜電感應到感應起電，再學會電流、電壓、電阻、歐姆定律與串並聯電路。', labs: [{ t: '靜電三部曲', u: 'static-circuit.html' }, { t: '電路三劍客', u: 'static-circuit.html#trio' }, { t: '歐姆定律', u: 'static-circuit.html#ohm' }, { t: '串聯與並聯', u: 'static-circuit.html#series' }],
+          { title: '基本的靜電現象與電路', sum: '從摩擦起電、靜電感應到感應起電，再學會電流、電壓、電阻、歐姆定律與串並聯電路。', labs: [
+            { g: '1. 靜電現象', t: '靜電三部曲', u: 'static-circuit.html' },
+            { g: '2. 電流、電壓與電阻', t: '電路三劍客', u: 'static-circuit.html#trio' }, { g: '2. 電流、電壓與電阻', t: '歐姆定律', u: 'static-circuit.html#ohm' },
+            { g: '3. 串聯與並聯', t: '串聯與並聯', u: 'static-circuit.html#series' }
+          ],
             k: ['摩擦起電（電子轉移）', '同性相斥、異性相吸', '靜電感應與感應起電', '驗電器', '直流電路的組成', '電流（安培計串聯）', '電壓（伏特計並聯）', '電阻與歐姆定律：V ＝ I × R', '串聯：電流處處相等、電壓分配', '並聯：電壓相等、電流分配'] }
         ]
       },
       {
         name: '九下理化', sub: '電流的熱、化學、磁效應與電磁感應',
         chapters: [
-          { title: '電的應用', sum: '認識電流的熱效應、電能與電功率、直流電與交流電、節能與安全用電，再學會電池、電解與電鍍等電流的化學效應。', labs: [{ t: '亮度競技場', u: 'power-lab.html#arena' }, { t: '吹風機熱能廠', u: 'power-lab.html#dryer' }, { t: '電池、電解與電鍍', u: 'electrochem.html' }, { t: '電解硫酸銅', u: 'electrochem.html#s2' }, { t: '電鍍', u: 'electrochem.html#s3' }, { t: '電解水', u: 'electrochem.html#s4' }],
+          { title: '電的應用', sum: '認識電流的熱效應、電能與電功率、直流電與交流電、節能與安全用電，再學會電池、電解與電鍍等電流的化學效應。', labs: [
+            { g: '1. 電流的熱效應與電功率', t: '亮度競技場', u: 'power-lab.html#arena' }, { g: '1. 電流的熱效應與電功率', t: '吹風機熱能廠', u: 'power-lab.html#dryer' },
+            { g: '2. 電池', t: '化學電池', u: 'electrochem.html#s1' },
+            { g: '3. 電解與電鍍', t: '電解硫酸銅', u: 'electrochem.html#s2' }, { g: '3. 電解與電鍍', t: '電鍍', u: 'electrochem.html#s3' }, { g: '3. 電解與電鍍', t: '電解水', u: 'electrochem.html#s4' }
+          ],
             k: ['電流的熱效應', '電能 ＝ 電功率 × 時間', '電功率 P ＝ I × V', '1 度電 ＝ 1 千瓦小時', '直流電與交流電', '節能用電', '安全用電與電器規格（短路、超載、保險絲）', '伏打電池與鋅銅電池', '常見的電池（乾電池、鉛蓄電池、鋰電池）', '電解與電鍍', '電鍍的應用'] },
-          { title: '電與磁', sum: '從磁鐵、磁力線與地磁出發，理解電流磁效應與電磁鐵，再用右手開掌定則說明電動機，最後認識電磁感應與發電機。', labs: [{ t: '安培右手', u: 'em-lab.html#wire' }, { t: '電動機', u: 'em-lab.html#motor' }, { t: '電磁感應', u: 'em-lab.html#lenz' }, { t: '發電機、交流電與變壓器', u: 'generator-lab.html' }, { t: '立體磁力線與地磁', u: 'magnet-lab.html' }, { t: '磁域與退磁', u: 'magnet-lab.html#domain' }, { t: '螺線管電磁鐵', u: 'magnet-lab.html#coil' }],
+          { title: '電與磁', sum: '從磁鐵、磁力線與地磁出發，理解電流磁效應與電磁鐵，再用右手開掌定則說明電動機，最後認識電磁感應與發電機。', labs: [
+            { g: '1. 磁鐵與磁場', t: '立體磁力線與地磁', u: 'magnet-lab.html#field' }, { g: '1. 磁鐵與磁場', t: '磁域與退磁', u: 'magnet-lab.html#domain' },
+            { g: '2. 電流的磁效應', t: '安培右手定則', u: 'em-lab.html#wire' }, { g: '2. 電流的磁效應', t: '螺線管電磁鐵', u: 'magnet-lab.html#coil' },
+            { g: '3. 電流與磁場的交互作用', t: '電動機', u: 'em-lab.html#motor' },
+            { g: '4. 電磁感應', t: '電磁感應', u: 'em-lab.html#lenz' }, { g: '4. 電磁感應', t: '手搖發電機', u: 'generator-lab.html#gen' }, { g: '4. 電磁感應', t: '直流與交流', u: 'generator-lab.html#acdc' }, { g: '4. 電磁感應', t: '變壓器', u: 'generator-lab.html#tf' }
+          ],
             k: ['磁鐵與磁性', '磁力線（N 出 S 入、越密越強）', '地球磁場', '電流磁效應（厄斯特實驗）', '安培右手定則', '電磁鐵與其應用', '磁域與退磁', '電流與磁場的交互作用', '右手開掌定則', '電動機原理（電能 → 力學能）', '電磁感應與感應電流（冷次定律）', '發電機原理（力學能 → 電能）'] }
         ]
       },
       {
         name: '地球科學', sub: '地球、天氣與宇宙',
         chapters: [
-          { title: '水與陸地', sum: '地球上的水、水循環與地表的變化。', labs: [{ t: '水與陸地', u: 'water-lab.html' }, { t: '自流井', u: 'water-lab.html#well' }, { t: '地層下陷', u: 'water-lab.html#sink' }], tag: '地科',
+          { title: '水與陸地', sum: '地球上的水、水循環與地表的變化。', labs: [
+            { g: '1. 地球上的水', t: '水資源分布', u: 'water-lab.html#dist' },
+            { g: '2. 地下水', t: '自流井', u: 'water-lab.html#well' }, { g: '2. 地下水', t: '地層下陷', u: 'water-lab.html#sink' }
+          ], tag: '地科',
             k: ['水循環', '地表水與地下水', '海水的運動', '風化、侵蝕、搬運、沉積', '岩石與礦物'] },
-          { title: '板塊運動與地球歷史', sum: '地球內部構造、板塊運動、地震與臺灣的地質。', labs: [{ t: '地球內部與板塊運動', u: 'plates-lab.html' }, { t: '中洋脊', u: 'plates-lab.html#ridge' }, { t: '造山運動', u: 'plates-lab.html#conv' }, { t: '斷層', u: 'plates-lab.html#fault' }, { t: '臺灣地震', u: 'taiwan-earthquake.html' }], tag: '地科',
+          { title: '板塊運動與地球歷史', sum: '地球內部構造、板塊運動、地震與臺灣的地質。', labs: [
+            { g: '1. 地球內部構造', t: '地球分層', u: 'plates-lab.html#earth' },
+            { g: '2. 板塊運動', t: '中洋脊（海底擴張）', u: 'plates-lab.html#ridge' }, { g: '2. 板塊運動', t: '造山運動', u: 'plates-lab.html#conv' },
+            { g: '3. 地殼變動', t: '斷層', u: 'plates-lab.html#fault' }, { g: '3. 地殼變動', t: '臺灣地震', u: 'taiwan-earthquake.html' }
+          ], tag: '地科',
             k: ['地球內部構造', '板塊運動', '地震與火山', '褶皺與斷層', '地層與化石'] },
-          { title: '宇宙中的天體', sum: '四季與晝夜、月相、周日運動、天球與太陽的視運動。', labs: [{ t: '天文實驗室：月相', u: 'astronomy-lab.html#moon' }, { t: '周日運動', u: 'astronomy-lab.html#daily' }, { t: '四季與晝夜', u: 'astronomy-lab.html#season' }, { t: '日食、月食與潮汐', u: 'eclipse-tide-lab.html' }, { t: '天球與太陽視運動', u: 'celestial-lab.html' }, { t: '太陽軌跡', u: 'celestial-lab.html#sun' }, { t: '緯度時光機', u: 'celestial-lab.html#lat' }], tag: '地科',
+          { title: '宇宙中的天體', sum: '四季與晝夜、月相、周日運動、天球與太陽的視運動。', labs: [
+            { g: '1. 晝夜與四季', t: '周日運動', u: 'astronomy-lab.html#daily' }, { g: '1. 晝夜與四季', t: '四季與晝夜', u: 'astronomy-lab.html#season' }, { g: '1. 晝夜與四季', t: '天球', u: 'celestial-lab.html#sphere' }, { g: '1. 晝夜與四季', t: '太陽軌跡', u: 'celestial-lab.html#sun' }, { g: '1. 晝夜與四季', t: '緯度時光機', u: 'celestial-lab.html#lat' },
+            { g: '2. 月相', t: '月相變化', u: 'astronomy-lab.html#moon' },
+            { g: '3. 日食、月食與潮汐', t: '日食', u: 'eclipse-tide-lab.html#solar' }, { g: '3. 日食、月食與潮汐', t: '月食', u: 'eclipse-tide-lab.html#lunar' }, { g: '3. 日食、月食與潮汐', t: '潮汐', u: 'eclipse-tide-lab.html#tide' }
+          ], tag: '地科',
             k: ['月相變化', '周日運動', '天球', '太陽視運動', '晝夜與四季', '日食與月食'] },
-          { title: '千變萬化的天氣', sum: '大氣分層、氣壓與風、鋒面與颱風。', labs: [{ t: '大氣分層', u: 'atmo-lab.html#layers' }, { t: '高低氣壓', u: 'atmo-lab.html#pressure' }, { t: '鋒面', u: 'atmo-lab.html#front' }, { t: '天氣圖判讀與臺灣的天氣', u: 'weather-map-lab.html' }, { t: '颱風風向', u: 'typhoon-wind.html' }, { t: '颱風風量', u: 'clay-sim.html#typhoon' }], tag: '地科',
+          { title: '千變萬化的天氣', sum: '大氣分層、氣壓與風、鋒面與颱風。', labs: [
+            { g: '1. 大氣的結構', t: '大氣分層', u: 'atmo-lab.html#layers' },
+            { g: '2. 氣壓與風', t: '高低氣壓', u: 'atmo-lab.html#pressure' }, { g: '2. 氣壓與風', t: '等壓線與風', u: 'weather-map-lab.html#isobar' },
+            { g: '3. 氣團與鋒面', t: '鋒面', u: 'atmo-lab.html#front' },
+            { g: '4. 臺灣的天氣', t: '臺灣四季', u: 'weather-map-lab.html#season' }, { g: '4. 臺灣的天氣', t: '天氣圖偵探', u: 'weather-map-lab.html#detect' }, { g: '4. 臺灣的天氣', t: '颱風風向', u: 'typhoon-wind.html' }, { g: '4. 臺灣的天氣', t: '颱風風量', u: 'clay-sim.html#typhoon' }
+          ], tag: '地科',
             k: ['大氣分層', '氣壓與風', '高氣壓與低氣壓', '冷鋒與暖鋒', '颱風', '天氣圖'] },
-          { title: '全球氣候變遷與因應', sum: '聖嬰現象、土石流、空氣品質，以及溫室效應、全球暖化與節能減碳。', labs: [{ t: '聖嬰現象', u: 'env-lab.html' }, { t: '土石流', u: 'env-lab.html#debris' }, { t: '空氣品質', u: 'env-lab.html#aqi' }, { t: '溫室效應', u: 'env-lab.html#green' }], tag: '地科',
+          { title: '全球氣候變遷與因應', sum: '聖嬰現象、土石流、空氣品質，以及溫室效應、全球暖化與節能減碳。', labs: [
+            { g: '1. 海洋與大氣的互動', t: '聖嬰現象', u: 'env-lab.html#enso' },
+            { g: '2. 天然災害', t: '土石流', u: 'env-lab.html#debris' },
+            { g: '3. 空氣汙染', t: '空氣品質', u: 'env-lab.html#aqi' },
+            { g: '4. 溫室效應與全球暖化', t: '溫室效應', u: 'env-lab.html#green' }
+          ], tag: '地科',
             k: ['溫室效應', '全球暖化', '極端氣候', '節能減碳'] }
         ]
       }
