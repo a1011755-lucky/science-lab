@@ -329,7 +329,7 @@
     ],
     'kinematics-lab.html': [
       '位移是起點到終點的直線距離（有方向）；路徑長是實際走過的長度。',
-      '平均速度＝位移 ÷ 時間；平均速率＝路徑長 ÷ 時間。同時從 A 出發、同時到 B 的兩台車，平均速度相同。',
+      '平均速度＝位移 ÷ 時間；平均速率＝路徑長 ÷ 時間。同時從 A 出發、同時到 B 的兩輛車，平均速度相同。',
       'x-t 圖的斜率代表速度；v-t 圖的斜率代表加速度，v-t 圖線下的面積代表位移。',
       '自由落體和上拋運動的加速度都是重力加速度（約 9.8 m/s²，方向向下）；上拋到最高點時速度為 0，但加速度仍不為 0。',
       '打點計時器每隔固定時間打一點：點的間距相等是等速運動，間距越來越大是加速運動。'
@@ -475,8 +475,9 @@
   .kp-card summary::-webkit-details-marker { display: none; }
   .kp-card summary::before { content: "▸"; }
   .kp-card[open] summary::before { content: "▾"; }
-  .kp-card ul { margin: 0; padding: 0 12px 10px 1.4em; }
-  .kp-card li { margin: 4px 0; font-weight: 700; }
+  .kp-card ul { margin: 0 !important; padding: 0 12px 10px 1.6em !important; list-style: disc outside !important; }
+  .kp-card li { margin: 4px 0; font-weight: 700; color: #5d4037; }
+  .kp-card.kp-dark { background: rgba(255,250,240,0.92); }
   .kp-card.kp-float {
     position: fixed; z-index: 28; top: 56px; left: 16px;
     width: min(300px, calc(100vw - 32px)); margin-top: 0;
@@ -503,6 +504,11 @@
       if (panel) {
         const body = panel.querySelector('.body') || panel;
         body.insertBefore(card, body.firstChild);
+        // 深色面板上改用較不透明的米白底，維持字的對比
+        try {
+          const m = getComputedStyle(panel).backgroundColor.match(/[\d.]+/g);
+          if (m && (+m[0] * 0.299 + +m[1] * 0.587 + +m[2] * 0.114) < 110 && (m[3] === undefined || +m[3] > 0.3)) card.classList.add('kp-dark');
+        } catch (e) { /* 取不到顏色就維持原樣 */ }
       } else {
         card.classList.add('kp-float');
         document.body.appendChild(card);
