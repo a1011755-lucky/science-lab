@@ -101,6 +101,19 @@
   }
   .tabs.three { grid-template-columns: 1fr 1fr 1fr; }
   .tabs.three .tab { font-size: .74rem; padding: 9px 2px; }
+  .tabs.four { grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .tabs.four .tab { font-size: .68rem; padding: 8px 1px; }
+  .tabs.four .tab small { font-size: .58rem; }
+  /* 動物行為分頁的字卡：毛玻璃 */
+  .bhcard { background: rgba(255,255,255,0.5); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.85); border-radius: 12px; color: #5d4037; padding: 10px 12px; margin-top: 8px; font-size: .8rem; line-height: 1.65; }
+  .bhcard h4 { font-size: .96rem; font-weight: 900; margin-bottom: 2px; }
+  .bhcard .pill { display: inline-block; font-size: .72rem; font-weight: 800; color: #fff; border-radius: 999px; padding: 1px 9px; margin: 0 4px 3px 0; }
+  .bhcard .pill.in { background: #4f7d5c; } .bhcard .pill.le { background: #d08a2e; }
+  .bhctl[hidden] { display: none; }
+  .bhctl { margin-top: 6px; }
+  .bhbar { display: grid; grid-template-columns: 3.6em 1fr 4.2em; gap: 6px; align-items: center; font-size: .76rem; font-weight: 800; }
+  .bhbar i { display: block; height: 10px; border-radius: 5px; background: #d08a2e; }
+  .tag.inn { background: #4f7d5c; color: #fff; font-size: .82rem; } .tag.lrn { background: #d08a2e; color: #fff; font-size: .82rem; }
   .three-btn { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
   .three-btn .btn { padding: 9px 2px; font-size: .78rem; }
   .objs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; }
@@ -150,10 +163,11 @@
   <a class="back" href="index.html#g7">‹ 課程總覽</a>
   <div class="title">協調作用實驗室</div>
   <div class="body">
-    <div class="tabs three">
+    <div class="tabs four">
       <button class="tab on" data-tab="nerve">🧠 神經傳導<small>意識與反射</small></button>
       <button class="tab" data-tab="ruler">📏 反應時間<small>接尺實驗</small></button>
       <button class="tab" data-tab="horm">🌱 激素與植物<small>內分泌・感應</small></button>
+      <button class="tab" data-tab="behavior">🐾 動物行為<small>先天・學習</small></button>
     </div>
 
     <!-- Tab 1 -->
@@ -205,6 +219,44 @@
         <div class="row2"><button class="btn" id="touch">👆 碰一下葉子</button><button class="btn" id="night">🌙 變成晚上</button></div>
         <div class="orgcard" id="plCard"></div>
       </div>
+    </section>
+
+    <!-- Tab 4：動物的行為（先天行為 vs 學習行為） -->
+    <section class="sec" data-tab="behavior" id="bhSec" hidden>
+      <div class="concept" style="--cc:#4f7d5c"><div class="ct">動物的行為</div><div class="cd"><b>先天行為</b>：天生就會，由遺傳決定<br><b>學習行為</b>：後天從經驗學來，會改變</div></div>
+      <label class="lab">🧬 先天行為（不必學）</label>
+      <div class="row2">
+        <button class="btn bhsc on" data-s="moth" type="button">🦋 趨光性<small>飛蛾飛向燈光</small></button>
+        <button class="btn bhsc" data-s="web" type="button">🕸️ 本能<small>蜘蛛結網</small></button>
+      </div>
+      <label class="lab">📚 學習行為（靠經驗）</label>
+      <div class="row2">
+        <button class="btn bhsc" data-s="dog" type="button">🔔 古典制約<small>鈴聲與口水</small></button>
+        <button class="btn bhsc" data-s="maze" type="button">🧀 嘗試錯誤<small>老鼠走迷宮</small></button>
+      </div>
+      <div class="bhctl" data-s="moth">
+        <div class="row2"><button class="btn" id="bhLampMove" type="button">💡 把燈移到另一邊</button><button class="btn" id="bhLampOff" type="button">🌙 關燈</button></div>
+      </div>
+      <div class="bhctl" data-s="web" hidden>
+        <button class="btn primary" id="bhWebGo" type="button">▶ 開始結網</button>
+        <button class="btn" id="bhWebNew" type="button">🕷️ 換一隻從沒看過結網的小蜘蛛</button>
+      </div>
+      <div class="bhctl" data-s="dog" hidden>
+        <div class="three-btn"><button class="btn" id="bhRing" type="button">🔔 只搖鈴</button><button class="btn" id="bhFood" type="button">🍖 只給食物</button><button class="btn" id="bhBoth" type="button">🔔＋🍖<br>一起</button></div>
+        <button class="btn" id="bhDogReset" type="button">↺ 換一隻沒訓練過的狗</button>
+      </div>
+      <div class="bhctl" data-s="maze" hidden>
+        <button class="btn primary" id="bhMazeGo" type="button">🐭 放老鼠進迷宮</button>
+        <button class="btn" id="bhMazeReset" type="button">↺ 換一隻沒走過的老鼠</button>
+      </div>
+      <div class="stat" id="bhStat"></div>
+      <div class="bhcard" id="bhCard"></div>
+      <table class="cmp"><thead><tr><th></th><th>先天行為</th><th>學習行為</th></tr></thead><tbody>
+        <tr><th>怎麼來的</th><td>與生俱來<br>由<b>遺傳</b>決定</td><td>後天的<b>經驗</b><br>或練習</td></tr>
+        <tr><th>同種個體</th><td>表現大致相同</td><td>因經驗而不同</td></tr>
+        <tr><th>會不會變</th><td>固定，不易改變</td><td>可以修正、改變</td></tr>
+        <tr><th>例子</th><td>反射、趨性<br>結網、洄游、遷徙</td><td>古典制約<br>嘗試錯誤、模仿</td></tr>
+      </tbody></table>
     </section>
 
     <button class="btn" id="viewBtn">🎥 重設視角</button>
@@ -810,9 +862,275 @@ const HM = (() => {
 function updateHorm(dt) { HM.update(dt); if (tab !== 'horm' || HM.st.mode !== 'plant') scene.background.setHex(0xf5f1e7); }
 
 /* =========================================================
+   Tab 4：動物的行為（先天行為 vs 學習行為）
+   ---------------------------------------------------------
+   先天：趨光性（飛蛾）、本能（蜘蛛結網）
+   學習：古典制約（鈴聲與口水）、嘗試錯誤（老鼠走迷宮）
+   只用物體與木製玩具造型的動物，不出現人形。
+   ========================================================= */
+const BH = (() => {
+  const group = new THREE.Group(); scene.add(group); group.visible = false;
+  const WOOD = 0xdeb887, WOOD_D = 0xb98d5f, Y0 = 0.22;
+  const woodM = (c = WOOD) => clay(c, { roughness: 0.75, clearcoat: 0.1 });
+  shadowed(add(group, cyl(3.6, 3.7, Y0, woodM(0xe6cfae), 64), 0, Y0 / 2, 0));     // 原木圓台
+  const S = {};
+  const mk = k => { const g = new THREE.Group(); g.position.y = Y0; group.add(g); S[k] = g; return g; };
+  const st = { scene: 'moth', lampSide: 1, lampOn: true, webP: 0, webRun: false, webN: 1,
+    assoc: 0, ringT: 0, foodT: 0, foodDelay: -1, drool: 0, dogMsg: '', trials: [], run: null, mazeMsg: '' };
+  const lbCat = addLabel('behavior', '', 'inn', V3(0, 4.1, 0));
+
+  /* ---------- 先天①：趨光性（飛蛾飛向燈光） ---------- */
+  const gm = mk('moth');
+  const lamp = new THREE.Group(); gm.add(lamp);
+  shadowed(add(lamp, cyl(0.42, 0.5, 0.12, woodM(WOOD_D), 32), 0, 0.06, 0));
+  shadowed(add(lamp, cyl(0.05, 0.05, 2.0, woodM(), 16), 0, 1.1, 0));
+  const shade = shadowed(new THREE.Mesh(new THREE.ConeGeometry(0.6, 0.5, 40, 1, true), clay(0xf3e3c3, { side: THREE.DoubleSide, roughness: 0.8 })));
+  shade.position.y = 2.38; lamp.add(shade);
+  const bulbMat = new THREE.MeshStandardMaterial({ color: 0xfff3c4, emissive: 0xffd35a, emissiveIntensity: 1.6, roughness: 0.3 });
+  add(lamp, ball3(0.2, bulbMat, 24), 0, 2.08, 0);
+  const halo = glowSprite('255,214,110', 2.6); halo.position.y = 2.08; lamp.add(halo);
+  const lampLight = new THREE.PointLight(0xffd98a, 6, 7, 1.6); lampLight.position.y = 2.0; lamp.add(lampLight);
+  const LAMP_X = 1.9, BULB_Y = 2.08;
+  lamp.position.x = LAMP_X;
+  const wingGeo = petalGeo(0.3, 0.17).rotateX(Math.PI / 2);                        // 平躺、往 +z 伸出的翅膀
+  const moths = [0, 1, 2].map(i => {
+    const g = new THREE.Group();
+    g.add(new THREE.Mesh(spindleGeo(0.36, 0.055, { blunt: 0.6, seed: i + 2 }), clay(0x8a7460)));
+    const wings = [1, -1].map(s => { const pv = new THREE.Group(); pv.scale.z = s; pv.add(new THREE.Mesh(wingGeo, clay(i ? 0xd9c7a8 : 0xe6d3b3, { side: THREE.DoubleSide, roughness: 0.8 }))); g.add(pv); return pv; });
+    g.scale.setScalar(1.45); shadowed(g); gm.add(g);
+    return { g, wings, p: V3(-2.2 + i * 0.6, 1.2 + i * 0.5, (i - 1) * 0.9), v: V3(0.4, 0, 0.3 * (i - 1)), ph: i * 2.1, sw: 1.4 + 0.3 * i, vmax: 1.7 + 0.3 * i, oy: (i - 1) * 0.32 };
+  });
+  $('bhLampMove').addEventListener('click', () => { st.lampSide *= -1; });
+  $('bhLampOff').addEventListener('click', () => { st.lampOn = !st.lampOn; $('bhLampOff').textContent = st.lampOn ? '🌙 關燈' : '💡 開燈'; });
+  const tA = V3(), tB = V3(), UPV = V3(0, 1, 0);
+  function upMoth(dt) {
+    lamp.position.x += (st.lampSide * LAMP_X - lamp.position.x) * (1 - Math.exp(-dt * 3));
+    const on = st.lampOn ? 1 : 0;
+    bulbMat.emissiveIntensity += (on * 1.6 - bulbMat.emissiveIntensity) * (1 - Math.exp(-dt * 8));
+    halo.material.opacity = bulbMat.emissiveIntensity / 1.6; lampLight.intensity = 6 * bulbMat.emissiveIntensity / 1.6;
+    const L = tB.set(lamp.position.x, BULB_Y, 0);
+    let near = 0;
+    for (const m of moths) {
+      const to = tA.copy(L).sub(m.p); to.y += m.oy;                                 // 每隻繞的高度略有不同
+      const d = to.length(); to.divideScalar(d || 1);
+      if (st.lampOn) {
+        m.v.addScaledVector(to, 7 * dt);                                             // 朝光源飛
+        m.v.addScaledVector(tA.crossVectors(UPV, to), m.sw * dt);                    // 邊飛邊繞圈（每隻繞的大小不同）
+        m.v.y += Math.sin(wall * 2.3 + m.ph) * 0.9 * dt;
+        if (d < 0.55) m.v.addScaledVector(to.copy(L).sub(m.p).normalize(), -9 * dt); // 不撞進燈泡
+        if (d < 1.5) near++;
+      } else {                                                                       // 沒有光：隨意亂飛
+        m.v.x += Math.sin(wall * 1.3 + m.ph) * 1.6 * dt; m.v.z += Math.cos(wall * 1.1 + m.ph * 2) * 1.6 * dt; m.v.y += Math.sin(wall * 1.7 + m.ph * 3) * 1.2 * dt;
+        m.v.x -= m.p.x * 0.35 * dt; m.v.z -= m.p.z * 0.35 * dt; m.v.y += (1.7 - m.p.y) * 0.6 * dt;
+      }
+      m.v.multiplyScalar(1 - 0.8 * dt);
+      const sp = m.v.length(); if (sp > m.vmax) m.v.multiplyScalar(m.vmax / sp);   // 每隻的速度上限不同 → 繞圈半徑不同，不會擠成一團
+      m.p.addScaledVector(m.v, dt);
+      m.p.y = clamp(m.p.y, 0.45, 3.4);
+      m.g.position.copy(m.p); m.g.rotation.y = Math.atan2(-m.v.z, m.v.x);
+      const flap = Math.sin(wall * 22 + m.ph) * 0.75;
+      m.wings[0].rotation.x = -flap; m.wings[1].rotation.x = flap;                  // 兩片翅膀對稱拍動
+    }
+    setHTML('bhStat', `燈：<b class="${st.lampOn ? 'o' : ''}">${st.lampOn ? '亮著' : '關掉了'}</b>　圍在燈旁的飛蛾：<b>${near}</b> / 3 隻<br>${st.lampOn ? '燈移到哪裡，<b>每一隻</b>飛蛾都會跟過去。' : '沒有光的刺激，飛蛾四處亂飛。'}`);
+    setHTML('bhCard', `<span class="pill in">先天行為</span><h4>🦋 趨性（趨光性）</h4>動物受到光、溫度、化學物質等刺激時，<b>朝向或遠離</b>刺激移動，叫做<b>趨性</b>。飛蛾朝光源飛是<b>正趨光性</b>；蟑螂、蚯蚓躲開光是負趨光性。<br>沒有任何一隻飛蛾「學過」要飛向燈光：這是與生俱來、由<b>遺傳</b>決定的行為，所以同種的每一隻表現都一樣。`);
+    setCap(st.lampOn ? '<small>先天行為・趨光性</small><span class="huge">不用學，天生就會飛向光</span>把燈移到另一邊，看每一隻飛蛾是不是都跟過去' : '<small>先天行為・趨光性</small>關燈後沒有光的刺激，飛蛾就不再聚集');
+  }
+
+  /* ---------- 先天②：本能（蜘蛛結網） ---------- */
+  const gw = mk('web');
+  [-1, 1].forEach(s => shadowed(add(gw, cyl(0.09, 0.12, 3.5, woodM(WOOD_D), 14), s * 1.75, 1.75, 0)));
+  const topBar = shadowed(cyl(0.08, 0.08, 3.9, woodM(WOOD_D), 14)); topBar.rotation.z = Math.PI / 2; topBar.position.y = 3.4; gw.add(topBar);
+  const lowBar = shadowed(cyl(0.07, 0.07, 3.6, woodM(WOOD_D), 14)); lowBar.rotation.z = Math.PI / 2; lowBar.position.y = 0.35; gw.add(lowBar);
+  const WC = V3(0, 1.9, 0), SPOKES = 10, TURNS = 7, R_OUT = 1.42;
+  const webSeg = [];                                                                 // 結網順序：先拉放射狀的絲，再由內往外繞螺旋
+  for (let i = 0; i < SPOKES; i++) { const a = i / SPOKES * TAU + 0.16; webSeg.push([WC.clone(), V3(WC.x + Math.cos(a) * R_OUT, WC.y + Math.sin(a) * R_OUT, 0)]); }
+  { let prev = null;
+    for (let k = 0; k <= TURNS * SPOKES; k++) { const a = k / SPOKES * TAU + 0.16, r = 0.16 + (1.2 - 0.16) * k / (TURNS * SPOKES), p = V3(WC.x + Math.cos(a) * r, WC.y + Math.sin(a) * r, 0); if (prev) webSeg.push([prev, p]); prev = p; } }
+  const webDraw = Drawer(gw);
+  const spider = new THREE.Group(); gw.add(spider);
+  const spBody = clay(0x4a3a30, { roughness: 0.5 });
+  { const ab = sphere(0.13, spBody, 20); ab.scale.set(1, 1.25, 0.8); ab.position.y = -0.1; spider.add(ab);
+    add(spider, ball3(0.075, spBody, 14), 0, 0.08, 0);
+    for (let i = 0; i < 8; i++) { const s = i < 4 ? 1 : -1, k = (i % 4) - 1.5; spider.add(tubeM([[0, 0.04, 0], [s * 0.16, 0.12 + k * 0.07, 0.07], [s * 0.3, 0.02 + k * 0.13, 0]], 0.012, spBody, 10)); }
+    shadowed(spider); }
+  $('bhWebGo').addEventListener('click', () => { if (st.webP >= webSeg.length) st.webP = 0; st.webRun = true; });
+  $('bhWebNew').addEventListener('click', () => { st.webN++; st.webP = 0; st.webRun = true; });
+  function upWeb(dt) {
+    if (st.webRun) { st.webP = Math.min(webSeg.length, st.webP + dt * (st.webP < SPOKES ? 3.2 : 11)); if (st.webP >= webSeg.length) st.webRun = false; }
+    const n = Math.floor(st.webP), f = st.webP - n;
+    webDraw.begin();
+    for (let i = 0; i < n; i++) webDraw.line(webSeg[i][0], webSeg[i][1], 0xffffff, i < SPOKES ? 0.012 : 0.009, 0.95);
+    let tip = n ? webSeg[n - 1][1] : WC;
+    if (n < webSeg.length && f > 0) { tip = tA.copy(webSeg[n][0]).lerp(webSeg[n][1], f).clone(); webDraw.line(webSeg[n][0], tip, 0xffffff, 0.012, 0.95); }
+    webDraw.end();
+    spider.position.copy(tip).add(tB.set(0, 0, 0.1));
+    spider.scale.setScalar(st.webN % 2 ? 1 : 0.72);
+    spider.rotation.z = st.webRun ? Math.sin(wall * 14) * 0.12 : 0;
+    const done = st.webP >= webSeg.length, pct = Math.round(st.webP / webSeg.length * 100);
+    $('bhWebGo').textContent = st.webRun ? '🕸️ 結網中…' : done ? '↺ 再結一次' : '▶ 開始結網';
+    setHTML('bhStat', `第 <b>${st.webN}</b> 隻蜘蛛　結網進度 <b>${pct}%</b><br>${done ? (st.webN > 1 ? '沒有看過別的蜘蛛示範，結出來的網<b class="g">還是同一種形狀</b>。' : '網結好了。換一隻<b>從沒看過結網</b>的小蜘蛛試試看。') : st.webP < SPOKES ? '先拉<b>放射狀</b>的絲……' : '再由內往外繞<b>螺旋</b>的絲……'}`);
+    setHTML('bhCard', `<span class="pill in">先天行為</span><h4>🕸️ 本能</h4>比較<b>複雜</b>的先天行為叫做本能，例如蜘蛛結網、鳥類築巢與孵蛋、<b>鮭魚洄游</b>回出生的河流產卵、候鳥遷徙。<br>剛孵化、從來沒看過結網的小蜘蛛，也能結出同一種形狀的網：步驟是<b>遺傳</b>決定的，不需要學習。<br>另外，手碰到燙的東西立刻縮回的<b>反射</b>，也是先天行為。`);
+    setCap(done ? `<small>先天行為・本能</small><span class="huge">${st.webN > 1 ? '沒人教，網的形狀還是一樣' : '天生就會結網'}</span>本能由遺傳決定，同種的每一隻都會` : '<small>先天行為・本能</small>蜘蛛結網的步驟是固定的：先拉放射狀的絲，再繞螺旋');
+  }
+
+  /* ---------- 學習①：古典制約（鈴聲與口水） ---------- */
+  const gd = mk('dog');
+  const dog = new THREE.Group(); dog.position.set(-0.9, 0, 0); gd.add(dog);
+  const dWood = woodM(), dDark = woodM(WOOD_D), dInk = clay(0x3e2c25, { roughness: 0.4 });
+  [[0.42, 0.17], [0.42, -0.17], [-0.42, 0.17], [-0.42, -0.17]].forEach(([x, z]) => add(dog, rbox(0.17, 0.55, 0.17, dDark, 0.06), x, 0.275, z));
+  add(dog, rbox(1.25, 0.55, 0.56, dWood, 0.2), 0, 0.78, 0);
+  const dHead = new THREE.Group(); dHead.position.set(0.62, 1.15, 0); dog.add(dHead);
+  add(dHead, rbox(0.56, 0.5, 0.52, dWood, 0.16), 0, 0, 0);
+  add(dHead, rbox(0.34, 0.24, 0.32, dWood, 0.09), 0.38, -0.08, 0);
+  add(dHead, ball3(0.06, dInk, 14), 0.56, -0.02, 0);
+  [0.17, -0.17].forEach(z => add(dHead, ball3(0.045, dInk, 12), 0.27, 0.1, z));
+  const dEars = [0.3, -0.3].map(z => { const pv = new THREE.Group(); pv.position.set(-0.08, 0.2, z); add(pv, rbox(0.1, 0.34, 0.22, dDark, 0.04), 0, -0.15, 0); dHead.add(pv); return pv; });
+  const dTail = new THREE.Group(); dTail.position.set(-0.62, 0.98, 0); add(dTail, rbox(0.36, 0.1, 0.1, dDark, 0.04), -0.16, 0.08, 0).rotation.z = -0.6; dog.add(dTail);
+  shadowed(dog);
+  // 食盆與食物
+  const bowl = shadowed(new THREE.Mesh(new THREE.LatheGeometry([V2(0, 0), V2(0.3, 0), V2(0.42, 0.2), V2(0.36, 0.2), V2(0.26, 0.06), V2(0, 0.06)], 36), clay(0xc8d8de, { roughness: 0.5 })));
+  bowl.position.set(0.72, 0, 0); gd.add(bowl);
+  const food = shadowed(sphere(0.2, clay(0x9a5b3a, { roughness: 0.8 }), 20)); food.scale.y = 0.55; food.position.set(0.72, 0.14, 0); gd.add(food);
+  // 鈴鐺（掛在小木架上）
+  const bellStand = new THREE.Group(); bellStand.position.set(2.0, 0, -0.5); gd.add(bellStand);
+  shadowed(add(bellStand, cyl(0.3, 0.36, 0.1, woodM(WOOD_D), 28), 0, 0.05, 0));
+  shadowed(add(bellStand, cyl(0.05, 0.05, 2.3, woodM(), 14), 0, 1.2, 0));
+  { const arm = shadowed(cyl(0.04, 0.04, 0.8, woodM(), 12)); arm.rotation.z = Math.PI / 2; arm.position.set(-0.38, 2.3, 0); bellStand.add(arm); }
+  const bellPv = new THREE.Group(); bellPv.position.set(-0.72, 2.28, 0); bellStand.add(bellPv);
+  const brass = metal(0xd9a93a, { roughness: 0.3 });
+  bellPv.add(shadowed(new THREE.Mesh(new THREE.LatheGeometry([V2(0.02, -0.04), V2(0.1, -0.06), V2(0.17, -0.16), V2(0.2, -0.32), V2(0.3, -0.44), V2(0.34, -0.5)], 36), brass)));
+  add(bellPv, ball3(0.06, brass, 12), 0, -0.5, 0);
+  const rings = [0, 1].map(() => { const r = new THREE.Mesh(new THREE.TorusGeometry(1, 0.02, 8, 48), new THREE.MeshBasicMaterial({ color: 0xe0a800, transparent: true, opacity: 0, depthWrite: false, toneMapped: false })); r.position.set(-0.72, 1.9, 0); bellStand.add(r); return r; });
+  const drops = Array.from({ length: 16 }, () => { const d = ball3(0.04, clay(0x9fd3ee, { transparent: true, opacity: 0.9, roughness: 0.15 }), 10); d.visible = false; d.userData.t = 9; gd.add(d); return d; });
+  let dropAcc = 0;
+  const droolFor = a => clamp((a - 1) / 3, 0, 1);                                    // 配對次數 → 只聽鈴聲時的口水量
+  const droolWord = a => { const k = droolFor(a); return k <= 0 ? '沒有流口水' : k < 0.5 ? '流一點點口水' : k < 1 ? '流不少口水' : '流很多口水'; };
+  $('bhRing').addEventListener('click', () => { st.ringT = 1.6; st.dogMsg = st.assoc ? `只搖鈴 → 狗<b>${droolWord(st.assoc)}</b>${droolFor(st.assoc) > 0 ? '（學會了鈴聲代表食物）' : '（配對次數還不夠）'}` : '只搖鈴 → 狗<b>沒有流口水</b>：鈴聲本來和食物無關'; });
+  $('bhFood').addEventListener('click', () => { st.foodT = 3; st.dogMsg = '只給食物 → 狗<b>流口水</b>：這是天生的<b>反射</b>，不用學'; });
+  $('bhBoth').addEventListener('click', () => { st.ringT = 1.6; st.foodDelay = 0.6; st.assoc = Math.min(8, st.assoc + 1); st.dogMsg = `鈴聲響完馬上給食物：第 <b>${st.assoc}</b> 次配對`; });
+  $('bhDogReset').addEventListener('click', () => { st.assoc = 0; st.ringT = st.foodT = 0; st.foodDelay = -1; st.dogMsg = ''; });
+  function upDog(dt) {
+    if (st.foodDelay >= 0) { st.foodDelay -= dt; if (st.foodDelay < 0) st.foodT = 3; }
+    st.ringT = Math.max(0, st.ringT - dt); st.foodT = Math.max(0, st.foodT - dt);
+    const ringK = st.ringT > 0 ? 1 : 0, foodK = smooth(0, 0.3, st.foodT);
+    const target = st.foodT > 0 ? 1 : ringK * droolFor(st.assoc);
+    st.drool += (target - st.drool) * (1 - Math.exp(-dt * 5));
+    bellPv.rotation.z = ringK * Math.sin(wall * 30) * 0.45 * Math.min(1, st.ringT / 0.5);
+    rings.forEach((r, i) => { const k = ringK ? ((wall * 1.4 + i * 0.5) % 1) : 1; r.scale.setScalar(0.3 + k * 1.2); r.material.opacity = ringK ? 0.75 * (1 - k) : 0; r.lookAt(camera.position); });
+    food.visible = st.foodT > 0; food.scale.set(1, 0.55, 1).multiplyScalar(0.4 + 0.6 * clamp(st.foodT / 3, 0, 1));
+    dHead.rotation.z += ((-0.32 * foodK + 0.12 * ringK * (1 - foodK)) - dHead.rotation.z) * (1 - Math.exp(-dt * 6));
+    dEars.forEach((e, i) => { e.rotation.x += (((i ? -1 : 1) * (0.25 + 0.9 * ringK)) - e.rotation.x) * (1 - Math.exp(-dt * 8)); });
+    dTail.rotation.y = Math.sin(wall * (6 + 16 * st.drool)) * (0.15 + 0.6 * st.drool);
+    // 口水滴
+    dropAcc += dt * st.drool * 9;
+    const mouth = dHead.localToWorld(tA.set(0.5, -0.22, 0)); gd.worldToLocal(mouth);
+    while (dropAcc > 1) { dropAcc--; const d = drops.find(x => x.userData.t > 1); if (!d) break; d.userData.t = 0; d.position.copy(mouth); d.position.z += (rnd() - 0.5) * 0.16; d.userData.vy = 0; }
+    drops.forEach(d => { if (d.userData.t > 1) { d.visible = false; return; } d.userData.t += dt; d.userData.vy -= 6 * dt; d.position.y += d.userData.vy * dt; d.visible = d.position.y > 0.03; if (!d.visible) d.userData.t = 9; });
+    const learned = droolFor(st.assoc);
+    setHTML('bhStat', `鈴聲＋食物的配對次數：<b>${st.assoc}</b> 次<br>現在「只搖鈴」，狗會：<b class="${learned > 0 ? 'o' : ''}">${droolWord(st.assoc)}</b><br>${st.dogMsg || '試試看：① 先只搖鈴　② 再只給食物　③ 鈴聲＋食物一起，重複 4 次　④ 最後再只搖鈴'}`);
+    setHTML('bhCard', `<span class="pill le">學習行為</span><h4>🔔 古典制約</h4>狗吃到食物流口水，是天生的<b>反射</b>（先天行為）。鈴聲本來和流口水沒有關係。<br>每次搖鈴後都給食物，重複很多次，狗就把<b>鈴聲和食物連結</b>在一起；之後只聽到鈴聲也會流口水。這個新的反應是<b>後天經驗</b>造成的，屬於學習行為。<br>生活中的例子：魚缸旁有人走近，魚就游過來等飼料。`);
+    setCap(st.foodT > 0 && st.ringT <= 0 && st.foodDelay < 0 && !st.dogMsg.includes('配對') ? '<small>先天的反射</small>吃到食物就流口水，不用學' : st.ringT > 0 && st.foodT <= 0 && st.foodDelay < 0 ? (learned > 0 ? '<small>學習行為・古典制約</small><span class="huge">只聽到鈴聲，也流口水了！</span>鈴聲和食物多次一起出現後，狗學會了兩者的關聯' : '<small>還沒學會</small>只有鈴聲、沒有食物：狗豎起耳朵，但<b>不會流口水</b>') : `<small>學習行為・古典制約</small>鈴聲＋食物已配對 <b>${st.assoc}</b> 次${learned >= 1 ? '：現在只搖鈴，狗也會流很多口水' : learned > 0 ? '：再多配對幾次，反應會更明顯' : ''}`);
+  }
+
+  /* ---------- 學習②：嘗試錯誤（老鼠走迷宮） ---------- */
+  const gz = mk('maze');
+  const CELL = 0.8, N = 5, cx = i => (i - 2) * CELL, key = (i, j) => i + ',' + j;
+  const MAIN = [[0, 0], [1, 0], [1, 1], [2, 1], [2, 2], [3, 2], [3, 3], [4, 3], [4, 4]];
+  const WRONG = { '1,0': [[2, 0], [3, 0]], '1,1': [[0, 1], [0, 2]], '2,2': [[2, 3], [1, 3]], '3,2': [[4, 2], [4, 1]] };   // 四個岔路各有一條死路
+  const EDGE = new Set();
+  const link = (a, b) => { EDGE.add(key(...a) + '|' + key(...b)); EDGE.add(key(...b) + '|' + key(...a)); };
+  MAIN.forEach((c, i) => { if (i) link(MAIN[i - 1], c); });
+  Object.entries(WRONG).forEach(([k, br]) => { link(k.split(',').map(Number), br[0]); link(br[0], br[1]); });
+  const OPEN = new Set([...MAIN, ...Object.values(WRONG).flat()].map(c => key(...c)));
+  shadowed(add(gz, rbox(N * CELL + 0.5, 0.16, N * CELL + 0.5, woodM(WOOD_D), 0.06), 0, 0.08, 0));
+  const wallM = woodM(0xc9a377), tileM = clay(0xf5ead6, { roughness: 0.85 });
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+    if (OPEN.has(key(i, j))) add(gz, rbox(CELL - 0.06, 0.04, CELL - 0.06, tileM, 0.015), cx(i), 0.18, cx(j)).receiveShadow = true;
+    else shadowed(add(gz, rbox(CELL - 0.02, 0.5, CELL - 0.02, wallM, 0.08), cx(i), 0.41, cx(j)));
+    // 相鄰但不相通的兩格之間加一片薄牆
+    [[1, 0], [0, 1]].forEach(([di, dj]) => { const a = key(i, j), b = key(i + di, j + dj); if (OPEN.has(a) && OPEN.has(b) && !EDGE.has(a + '|' + b)) shadowed(add(gz, rbox(di ? 0.08 : CELL, 0.5, di ? CELL : 0.08, wallM, 0.03), cx(i) + di * CELL / 2, 0.41, cx(j) + dj * CELL / 2)); });
+  }
+  [[0, -1], [0, 1], [-1, 0], [1, 0]].forEach(([dx, dz]) => shadowed(add(gz, rbox(dx ? 0.1 : N * CELL + 0.2, 0.5, dx ? N * CELL + 0.2 : 0.1, wallM, 0.04), dx * (N * CELL / 2 + 0.05), 0.41, dz * (N * CELL / 2 + 0.05))));
+  add(gz, rbox(CELL - 0.1, 0.045, CELL - 0.1, clay(0xb9d8b4, { roughness: 0.8 }), 0.015), cx(0), 0.185, cx(0));                 // 起點
+  const cheese = shadowed(new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.2, 20, 1, false, 0, Math.PI * 0.45), clay(0xf2c84b, { roughness: 0.55 })));
+  cheese.position.set(cx(4) - 0.08, 0.3, cx(4) - 0.08); gz.add(cheese);
+  const mouse = new THREE.Group(); gz.add(mouse);
+  { const mm = clay(0xb7a48f, { roughness: 0.7 });
+    mouse.add(new THREE.Mesh(spindleGeo(0.46, 0.13, { blunt: 0.55, seed: 3 }), mm));
+    [0.1, -0.1].forEach(z => { const e = ball3(0.07, clay(0xe8b8b0), 12); e.scale.set(0.35, 1, 1); e.position.set(0.1, 0.11, z); mouse.add(e); });
+    add(mouse, ball3(0.03, clay(0xe58a8a), 8), 0.23, 0, 0);
+    mouse.add(tubeM([[-0.2, 0, 0], [-0.34, 0.03, 0.05], [-0.48, 0.0, -0.04]], 0.014, clay(0xd9a9a0), 10));
+    shadowed(mouse); }
+  const lbStart = addLabel('behavior', '起點', 'small', V3(cx(0), Y0 + 0.75, cx(0)));
+  const lbGoal = addLabel('behavior', '🧀 食物', 'small', V3(cx(4), Y0 + 0.8, cx(4)));
+  const SPEED = 2.4;                                                                 // 每秒走幾格
+  function makeTrial(k) {
+    const nWrong = Math.max(0, 4 - k), keys = Object.keys(WRONG);                    // 第 k 次：走錯的岔路數越來越少
+    for (let i = keys.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [keys[i], keys[j]] = [keys[j], keys[i]]; }
+    const bad = new Set(keys.slice(0, nWrong)), path = [];
+    MAIN.forEach(c => { path.push(c); const br = WRONG[key(...c)]; if (br && bad.has(key(...c))) path.push(br[0], br[1], br[0], c); });
+    return { path, wrong: nWrong, t: 0, dur: (path.length - 1) / SPEED };
+  }
+  $('bhMazeGo').addEventListener('click', () => { if (!st.run) st.run = makeTrial(st.trials.length); });
+  $('bhMazeReset').addEventListener('click', () => { st.trials = []; st.run = null; });
+  function upMaze(dt) {
+    let cell = MAIN[0], next = MAIN[1];
+    if (st.run) {
+      const R = st.run; R.t += dt;
+      const s = Math.min(R.path.length - 1, R.t * SPEED), i = Math.min(R.path.length - 2, Math.floor(s)), f = s - i;
+      cell = R.path[i]; next = R.path[i + 1];
+      mouse.position.set(lerp(cx(cell[0]), cx(next[0]), f), 0.32, lerp(cx(cell[1]), cx(next[1]), f));
+      if (R.t >= R.dur) { st.trials.push({ wrong: R.wrong, time: R.dur }); st.run = null; }
+    } else if (st.trials.length) { mouse.position.set(cx(4) - 0.28, 0.32, cx(4) + 0.05); cell = [3, 4]; next = [4, 4]; }
+    else mouse.position.set(cx(0), 0.32, cx(0));
+    const ang = Math.atan2(-(next[1] - cell[1]), next[0] - cell[0]);
+    let da = ang - mouse.rotation.y; da = Math.atan2(Math.sin(da), Math.cos(da));
+    mouse.rotation.y += da * (1 - Math.exp(-dt * 14));
+    mouse.position.y += st.run ? Math.abs(Math.sin(wall * 18)) * 0.02 : 0;
+    const n = st.trials.length, tMax = Math.max(1, ...st.trials.map(t => t.time));
+    $('bhMazeGo').disabled = !!st.run;
+    $('bhMazeGo').textContent = st.run ? `🐭 第 ${n + 1} 次，尋找中…` : `🐭 放老鼠進迷宮（第 ${n + 1} 次）`;
+    setHTML('bhStat', n ? st.trials.slice(-6).map((t, k) => `<div class="bhbar"><span>第 ${n - Math.min(n, 6) + k + 1} 次</span><i style="width:${Math.round(t.time / tMax * 100)}%"></i><span>${t.time.toFixed(1)} 秒</span></div>`).join('') + `走錯岔路：${st.trials.map(t => t.wrong).join(' → ')} 次` : '還沒有紀錄。按「放老鼠進迷宮」，同一隻老鼠多放幾次，比較每次花的時間。');
+    setHTML('bhCard', `<span class="pill le">學習行為</span><h4>🧀 嘗試錯誤</h4>老鼠第一次走迷宮，會闖進很多條死路；重複幾次後，牠<b>記住哪些路走不通</b>，走錯的次數越來越少，找到食物的時間越來越短。<br>這種從錯誤中累積<b>經驗</b>、修正做法的行為是學習行為。換一隻沒走過的老鼠，就要重新學。<br>其他學習行為：<b>模仿</b>（幼鳥學成鳥鳴唱、鸚鵡學說話）、狗聽口令握手、黑猩猩用樹枝釣白蟻。<br><b>神經系統越發達</b>的動物，學習能力通常越好。`);
+    const last = st.trials[n - 1];
+    setCap(st.run ? `<small>學習行為・嘗試錯誤</small>第 ${n + 1} 次：${st.run.wrong ? '還會走進死路…' : '一條死路都沒走進去！'}` : n >= 2 ? `<small>學習行為・嘗試錯誤</small><span class="huge">${st.trials[0].time.toFixed(1)} 秒 → ${last.time.toFixed(1)} 秒</span>${last.wrong ? '走錯的次數變少了，再多放幾次' : '老鼠已經記住正確的路：行為因為經驗而改變'}` : n ? `<small>學習行為・嘗試錯誤</small>第 1 次花了 <b>${last.time.toFixed(1)} 秒</b>，走錯 ${last.wrong} 次。再放一次看看` : '<small>學習行為・嘗試錯誤</small>老鼠要自己找到角落的食物。同一隻多放幾次，時間會怎麼變？');
+  }
+
+  /* ---------- 情境切換 ---------- */
+  const NAMES = { moth: ['先天行為：趨光性', 'inn'], web: ['先天行為：本能（結網）', 'inn'], dog: ['學習行為：古典制約', 'lrn'], maze: ['學習行為：嘗試錯誤', 'lrn'] };
+  function setScene(s) {
+    st.scene = s;
+    document.querySelectorAll('.bhsc').forEach(b => b.classList.toggle('on', b.dataset.s === s));
+    document.querySelectorAll('.bhctl').forEach(d => { d.hidden = d.dataset.s !== s; });
+    if (tab === 'behavior') goView(TABS.behavior.cam());
+  }
+  document.querySelectorAll('.bhsc').forEach(b => b.addEventListener('click', () => setScene(b.dataset.s)));
+  // 面板上的滑桿與按鈕：擋住事件冒泡，不會轉到 3D 視角
+  ['pointerdown', 'pointermove', 'touchstart', 'touchmove', 'wheel'].forEach(ev => $('bhSec').addEventListener(ev, e => e.stopPropagation(), { passive: true }));
+  const UP = { moth: upMoth, web: upWeb, dog: upDog, maze: upMaze };
+  function update(dt) {
+    for (const k in S) S[k].visible = k === st.scene;
+    setLabel(lbCat, (NAMES[st.scene][1] === 'inn' ? '🧬 ' : '📚 ') + NAMES[st.scene][0], NAMES[st.scene][1]);
+    lbCat.pos.set(0, st.scene === 'maze' ? 1.9 : st.scene === 'dog' ? 3.5 : 4.2, st.scene === 'maze' ? -2.6 : 0);
+    lbStart.show = lbGoal.show = st.scene === 'maze';
+    UP[st.scene](dt);
+  }
+  const P = () => window.innerWidth < window.innerHeight;
+  const cam = () => ({
+    moth: { pos: [0.4, 3.2, 10], target: [0, 1.9, 0], fitW: P() ? 6.4 : 8.6 },
+    web: { pos: [0.7, 2.6, 8.4], target: [0, 2.0, 0], fitW: P() ? 4.6 : 6 },
+    dog: { pos: [1.4, 3.0, 9], target: [0.4, 1.3, 0], fitW: P() ? 5.6 : 7.4 },
+    maze: { pos: [0, 8.6, 5.4], target: [0, 0.3, 0.25], fitW: P() ? 5.6 : 7 }
+  })[st.scene];
+  return { group, update, st, cam, setScene };
+})();
+function updateBehavior(dt) { BH.update(dt); }
+
+/* =========================================================
    Tab 切換、鏡頭
    ========================================================= */
 const TABS = {
+  behavior: { group: BH.group, cam: () => BH.cam(), update: updateBehavior },
   nerve: { group: NV.group, cam: () => ({ pos: [2.6, 4.2, 10], target: [0.6, 3.0, 0], fitW: window.innerWidth < window.innerHeight ? 5.5 : 9 }), update: updateNerve },
   ruler: { group: RL.group, cam: () => ({ pos: [1.6, 2.9, 7.2], target: [0.2, 2.4, 0], fitW: window.innerWidth < window.innerHeight ? 3.6 : 5 }), update: updateRuler },
   horm: { group: HM.group, cam: () => HM.st.mode === 'endo' ? { pos: [1.6, 3.8, 9], target: [0, 3.2, 0], fitW: window.innerWidth < window.innerHeight ? 3.6 : 6 } : { pos: [0, 2.8, 9.5], target: [0.2, 1.7, 0], fitW: window.innerWidth < window.innerHeight ? 6.5 : 8.5 }, update: updateHorm }
@@ -826,6 +1144,7 @@ function setTab(t) {
   renderer.domElement.style.cursor = '';
   goView(TABS[t].cam());
   try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
+  window.dispatchEvent(new Event('hashchange'));          // 讓「會考出題重點」卡跟著分頁更新（replaceState 不會自己觸發）
 }
 document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
 function layoutDock() {
@@ -895,7 +1214,7 @@ function frame(dt) {
 }
 function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
 
-window.lab = { frame, setTab, NV, RL, HM, camera, controls, renderer, scene, placeLabels };
+window.lab = { frame, setTab, NV, RL, HM, BH, camera, controls, renderer, scene, placeLabels };
 
 resize();
 const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'nerve';
