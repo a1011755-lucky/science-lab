@@ -193,6 +193,9 @@
   .lab-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(93,64,55,.22); }
   .lab-btn:active { transform: translateY(0) scale(.98); box-shadow: var(--shadow-press); }
   .lab-subs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  /* 依講義小節分組的入口 */
+  .lab-group + .lab-group { padding-top: 12px; border-top: 1px dashed var(--line); }
+  .lab-group-title { display: inline-flex; align-items: center; font-size: .92rem; font-weight: 900; color: var(--cream); background: var(--accent-g); padding: 4px 14px; border-radius: 999px; margin-bottom: 10px; letter-spacing: .04em; }
   .lab-subs-label { flex: 1 0 100%; font-size: .72rem; font-weight: 700; color: var(--ink-soft); letter-spacing: .08em; }
   .lab-btn.sub { background: var(--surface-strong); color: var(--ink); border: 1px solid var(--line); box-shadow: none; font-weight: 500; padding: 5px 14px 5px 5px; }
   .lab-btn.sub:hover { background: var(--cream); border-color: var(--accent-g); box-shadow: var(--shadow); }
@@ -499,7 +502,12 @@ const COURSES = [
             k: ['純物質與混合物', '混合物的分離', '水溶液的組成', '濃度', '溶解度', '空氣的組成', '氧氣的製備'] },
           { title: '波動與聲音', sum: '波的種類與性質，聲音的產生、傳播與三要素。', labs: [{ t: '波動與聲音', u: 'sound-lab.html' }, { t: '波動與聲音特效實驗室', u: 'sound-fx-lab.html' }, { t: '樂音三要素與共鳴', u: 'sound-fx-lab.html#music' }],
             k: ['橫波與縱波', '波長、頻率、波速', '聲音的產生與傳播', '頻率與音調', '振幅與響度', '聲速與回聲', '共振'] },
-          { title: '光', sum: '光的直進、反射與折射，面鏡、透鏡成像與顏色。', labs: [{ t: '光的反射、折射與色光', u: 'optics-lab.html' }, { t: '光的直進與影子', u: 'shadow-lab.html' }, { t: '光的折射與視深', u: 'refraction-lab.html' }, { t: '面鏡與透鏡綜合實驗室', u: 'mirror-lens-lab.html' }, { t: '透鏡成像滑軌', u: 'mirror-lens-lab.html#lens' }, { t: '三原色與物體顯色', u: 'mirror-lens-lab.html#color' }],
+          { title: '光', sum: '光的直進、反射與折射，面鏡、透鏡成像與顏色。', labs: [
+            { g: '1. 光的直線性', t: '本影與半影', u: 'shadow-lab.html#umbra' }, { g: '1. 光的直線性', t: '影子比例', u: 'shadow-lab.html#ratio' }, { g: '1. 光的直線性', t: '針孔成像（暗箱）', u: 'shadow-lab.html#pin' }, { g: '1. 光的直線性', t: '針孔成像（物距與像距）', u: 'optics-lab.html#pinhole' },
+            { g: '2. 反射（面鏡）', t: '反射定律', u: 'optics-lab.html#refract' }, { g: '2. 反射（面鏡）', t: '平面鏡・凸面鏡・凹面鏡', u: 'mirror-lens-lab.html#mirror' }, { g: '2. 反射（面鏡）', t: '面鏡成像作圖', u: 'optics-lab.html#lens' },
+            { g: '3. 折射（透鏡）', t: '折射與視深', u: 'refraction-lab.html#vis' }, { g: '3. 折射（透鏡）', t: '玻璃折射盤', u: 'refraction-lab.html#opt' }, { g: '3. 折射（透鏡）', t: '透鏡成像滑軌', u: 'mirror-lens-lab.html#lens' }, { g: '3. 折射（透鏡）', t: '透鏡成像作圖', u: 'optics-lab.html#lens' },
+            { g: '4. 三原色', t: '色光混合', u: 'optics-lab.html#color' }, { g: '4. 三原色', t: '三原色與物體顯色', u: 'mirror-lens-lab.html#color' }
+          ],
             k: ['光的直進與光速', '光的反射', '平面鏡與曲面鏡', '光的折射', '凸透鏡與凹透鏡', '透鏡的應用', '色光與顏色'] },
           { title: '溫度與熱', sum: '溫度與溫標，熱量、比熱與熱平衡，熱的傳播與對物質的影響。', labs: [{ t: '溫度與熱', u: 'heat-lab.html' }, { t: '比熱雙爐對決', u: 'lab8a-classics.html#heat' }, { t: '雙金屬片警報器', u: 'expansion-lab.html#bimetal' }, { t: '水的 4℃ 反常膨脹', u: 'expansion-lab.html#water4' }, { t: '三態變化與昇華', u: 'expansion-lab.html#sublime' }],
             k: ['溫度計與溫標', '熱量', '比熱', '熱平衡', '傳導、對流、輻射', '熱脹冷縮', '雙金屬片', '水的反常膨脹', '三態變化', '昇華'] },
@@ -633,7 +641,10 @@ function renderChapters(c) {
         no++;
         // 主入口一顆大按鈕；其餘入口（同一實驗室的分頁或相關實驗室）是下方的小膠囊
         const [main, ...subs] = ch.labs;
-        const labs = main
+        const grouped = ch.labs.some(l => l.g);
+        const groupHTML = () => { const gs = []; ch.labs.forEach(l => { let g = gs.find(x => x.n === l.g); if (!g) gs.push(g = { n: l.g, items: [] }); g.items.push(l); });
+          return gs.map(g => `<div class="lab-group"><div class="lab-group-title">${escapeHTML(g.n)}</div><div class="lab-subs">${g.items.map(l => `<a class="lab-btn sub" href="${escapeHTML(l.u)}"><span class="play-icon">${PLAY_SVG}</span>${escapeHTML(l.t)}</a>`).join('')}</div></div>`).join(''); };
+        const labs = grouped ? groupHTML() : main
           ? `<a class="lab-btn main" href="${escapeHTML(main.u)}"><span class="play-icon">${PLAY_SVG}</span>3D 實驗室：${escapeHTML(main.t)}<span class="lab-go" aria-hidden="true">→</span></a>`
             + (subs.length ? `<div class="lab-subs"><span class="lab-subs-label">其他入口（直接開啟分頁）</span>${subs.map(l => `<a class="lab-btn sub" href="${escapeHTML(l.u)}"><span class="play-icon">${PLAY_SVG}</span>${escapeHTML(l.t)}</a>`).join('')}</div>` : '')
           : '<span class="soon-badge">🛠️ 3D 實驗室製作中</span>';
