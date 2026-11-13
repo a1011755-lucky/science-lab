@@ -2,652 +2,114 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>天文與月相實驗室</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>天文實驗室：月相・周日運動・四季</title>
 <style>
+  /* 外殼頁：上方一排分頁，下方把原本的月相、周日運動、四季三頁原封不動放進來（配色沿用原版的深色面板） */
   :root {
-    --bg: #1a237e;
-    --ink: #5d4037;
-    --ink-soft: #8d7366;
-    --card: rgba(255,255,255,.5);
-    --accent: #a1674a;
-    --ok: #4f7d5c;
+    --bg: #060a18; --panel: rgba(11,18,33,.96); --line: rgba(130,170,230,.26);
+    --ink: #e6edf8; --muted: #93a7c4; --accent: #6fb6ff; --bar-h: 52px;
+    color-scheme: dark;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; }
-  body {
-    background: linear-gradient(#0f1650, #1a237e); color: var(--ink);
-    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-    -webkit-font-smoothing: antialiased;
+  body { background: var(--bg); color: var(--ink); font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif; -webkit-tap-highlight-color: transparent; }
+  #bar {
+    position: fixed; top: 0; left: 0; right: 0; height: calc(var(--bar-h) + env(safe-area-inset-top, 0px)); z-index: 10;
+    padding: env(safe-area-inset-top, 0px) calc(10px + env(safe-area-inset-right, 0px)) 0 calc(10px + env(safe-area-inset-left, 0px));
+    display: flex; align-items: center; gap: 10px;
+    background: var(--panel); border-bottom: 1px solid var(--line); box-shadow: 0 6px 20px rgba(0,0,0,.35);
   }
-  #scene { position: absolute; inset: 0; }
-  #scene canvas { display: block; touch-action: none; }
-  .glass {
-    background: var(--card); backdrop-filter: blur(10px) saturate(140%); -webkit-backdrop-filter: blur(10px) saturate(140%);
-    border: 1px solid rgba(255,255,255,.9); box-shadow: 0 18px 44px rgba(8,12,50,.3), 0 2px 6px rgba(8,12,50,.2);
+  #home { flex: none; color: var(--muted); text-decoration: none; font-size: .86rem; font-weight: 700; padding: 10px 8px; border-radius: 10px; white-space: nowrap; }
+  #home:hover { color: var(--ink); background: rgba(120,170,240,.14); }
+  #tabs { flex: 1; display: flex; justify-content: center; gap: 8px; min-width: 0; }
+  #tabs button {
+    flex: 0 1 auto; min-height: 40px; min-width: 44px; padding: 6px 18px; cursor: pointer; white-space: nowrap;
+    font: inherit; font-size: .95rem; font-weight: 800; color: var(--muted);
+    background: rgba(120,170,240,.1); border: 1px solid var(--line); border-radius: 999px;
+    transition: background .2s ease, color .2s ease, border-color .2s ease, transform .12s ease;
   }
-  /* 深色星空背景上，面板底色要夠實，字才清楚 */
-  .panel.glass { background: rgba(255,250,242,.86) !important; }
-  .panel { position: absolute; top: 18px; left: 18px; width: 318px; max-height: calc(100vh - 36px); overflow-y: auto; z-index: 10; border-radius: 12px; padding: 18px; }
-  .panel.collapsed { width: auto; min-width: 240px; }
-  .panel.collapsed .body { display: none; }
-  .collapse { position: absolute; top: 18px; right: 16px; z-index: 2; cursor: pointer; border: none; font: inherit; font-size: .76rem; font-weight: 600; color: var(--accent); background: rgba(161,103,74,.12); border-radius: 999px; padding: 4px 12px; }
-  .back { font-size: .78rem; color: var(--accent); text-decoration: none; }
-  .title { font-size: 1.12rem; font-weight: 800; margin-top: 6px; padding-right: 62px; line-height: 1.4; }
-  .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 12px 0 10px; }
-  .tab { border: none; cursor: pointer; font: inherit; font-size: .8rem; font-weight: 800; padding: 9px 4px; border-radius: 14px; color: var(--ink); background: rgba(255,255,255,.7); line-height: 1.4; }
-  .tab small { display: block; font-weight: 600; opacity: .8; font-size: .68rem; }
-  .tab:hover { background: #fff; }
-  .tab.on { color: #fff; background: #8d6e63; box-shadow: 0 6px 16px rgba(93,64,55,.25); }
-  .sec[hidden] { display: none; }
-  .concept { background: rgba(255,255,255,.9); border-radius: 16px; padding: 10px 12px; margin: 2px 0 8px; box-shadow: 0 4px 14px rgba(93,64,55,.07); border-left: 5px solid var(--cc, #8d6e63); }
-  .concept .ct { font-size: 1rem; font-weight: 900; color: var(--cc, #8d6e63); }
-  .concept .cd { font-size: .82rem; font-weight: 700; margin-top: 2px; line-height: 1.6; }
-  .desc { font-size: .78rem; color: var(--ink-soft); line-height: 1.65; margin: 6px 0; }
-  .desc b { color: var(--ink); }
-  .desc a { color: var(--accent); font-weight: 800; }
-  .lab { display: flex; justify-content: space-between; align-items: baseline; font-size: .8rem; font-weight: 800; color: var(--ink-soft); margin-top: 10px; }
-  .lab b { font-size: 1.1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
-  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; }
-  input.big[type=range] { height: 44px; }
-  .ticks { display: flex; justify-content: space-between; font-size: .68rem; font-weight: 800; color: var(--ink-soft); margin-top: -4px; }
-  .btn {
-    width: 100%; border: none; border-radius: 14px; padding: 10px 6px; cursor: pointer; margin-top: 6px; min-height: 44px;
-    font: inherit; font-size: .82rem; font-weight: 700; color: var(--ink); background: rgba(255,255,255,.75);
-    transition: background .2s, transform .1s, box-shadow .2s;
+  #tabs button:hover { color: var(--ink); background: rgba(120,170,240,.2); }
+  #tabs button:active { transform: scale(.96); }
+  #tabs button[aria-selected="true"] { color: #fff; background: #2f6fb8; border-color: #6fb6ff; box-shadow: 0 4px 14px rgba(47,111,184,.45); }
+  #tabs button:focus-visible, #home:focus-visible { outline: 2px solid #6fb6ff; outline-offset: 2px; }
+  #spacer { flex: none; width: 84px; }                 /* 讓分頁在畫面正中間（和左邊的連結等寬） */
+  #stage { position: fixed; left: 0; right: 0; bottom: 0; top: calc(var(--bar-h) + env(safe-area-inset-top, 0px)); }
+  #stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: var(--bg); }
+  #stage iframe[hidden] { display: none; }
+  @media (max-width: 640px) {
+    :root { --bar-h: 48px; }
+    #home { font-size: .78rem; padding: 8px 4px; }
+    #tabs { gap: 5px; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; }
+    #tabs::-webkit-scrollbar { display: none; }
+    #tabs button { padding: 6px 11px; font-size: .82rem; }
+    #spacer { display: none; }
   }
-  .btn small { display: block; font-weight: 600; font-size: .68rem; opacity: .8; }
-  .btn:hover { background: #fff; }
-  .btn:active { transform: scale(.98); }
-  .btn.on { color: #fff; background: #a1674a; box-shadow: 0 6px 16px rgba(161,103,74,.28); }
-  .btn.primary { color: #fff; background: #5b8a72; box-shadow: 0 6px 16px rgba(79,125,92,.28); font-size: .9rem; }
-  .btn.primary:hover { background: #4f7d65; }
-  .row4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .chk { display: flex; align-items: center; gap: 8px; font-size: .82rem; font-weight: 700; margin-top: 10px; cursor: pointer; min-height: 32px; }
-  .chk input { width: 20px; height: 20px; accent-color: #8d6e63; }
-  .stat { background: rgba(255,255,255,.85); border-radius: 14px; padding: 9px 11px; margin-top: 8px; font-size: .8rem; line-height: 1.8; font-variant-numeric: tabular-nums; }
-  .stat b { font-size: .92rem; }
-  .stat .r { color: #c62828; } .stat .b { color: #1e6aa8; } .stat .g { color: var(--ok); } .stat .o { color: #d35400; }
-  .cards { display: grid; gap: 6px; margin-top: 8px; }
-  .card { background: rgba(255,255,255,.8); border-radius: 12px; padding: 8px 11px; font-size: .78rem; font-weight: 700; line-height: 1.6; }
-
-  .dock { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); z-index: 9; border-radius: 12px; padding: 12px 22px; text-align: center;
-          width: max-content; max-width: min(900px, calc(100vw - 380px)); min-width: 300px; background: rgba(255,250,242,.86); }
-  .cap { font-size: .9rem; font-weight: 700; line-height: 1.6; }
-  .cap small { display: block; font-size: .72rem; color: var(--ink-soft); font-weight: 700; letter-spacing: .06em; }
-  .cap b { color: #a1674a; }
-  .cap .huge { display: block; font-size: clamp(1.1rem, 2.2vw, 1.8rem); font-weight: 900; line-height: 1.4; margin: 2px 0; font-variant-numeric: tabular-nums; }
-  .cap .red { color: #c62828; } .cap .blu { color: #1e6aa8; } .cap .grn { color: var(--ok); } .cap .org { color: #d35400; }
-
-  .tag {
-    position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, -50%);
-    font-size: .74rem; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; text-align: center; line-height: 1.45;
-    background: rgba(255,250,242,.9); color: var(--ink); box-shadow: 0 4px 12px rgba(8,12,50,.25); font-variant-numeric: tabular-nums;
-  }
-  .tag.small { font-size: .64rem; padding: 2px 7px; }
-  .tag.yel { background: #fff3c4; color: #8a6200; border: 1.5px solid #e0b000; }
-  .tag.red { background: #e53935; color: #fff; }
-  .tag.blu { background: #1e6aa8; color: #fff; }
-  .tag.ghost { background: rgba(255,250,242,.2); color: #fffaf2; box-shadow: none; border: 1px solid rgba(255,250,242,.45); }
-
-  /* 畫中畫：從地球看到的月亮（WebGL 直接畫在這個框的範圍內） */
-  .pip { position: absolute; z-index: 8; right: 18px; top: 128px; width: min(30vw, 300px); aspect-ratio: 1 / 1; border-radius: 16px;
-         border: 2px solid rgba(255,250,242,.9); box-shadow: 0 14px 34px rgba(8,12,50,.45); pointer-events: none; overflow: hidden; }
-  .pip[hidden] { display: none; }
-  .pip .pt, .pip .pb { position: absolute; left: 0; right: 0; text-align: center; font-weight: 900; color: #fffaf2; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
-  .pip .pt { top: 6px; font-size: .78rem; }
-  .pip .pb { bottom: 8px; font-size: 1.05rem; }
-  .scaleNote { position: absolute; right: 12px; bottom: 10px; z-index: 6; font-size: .68rem; font-weight: 700; color: rgba(255,250,242,.75); pointer-events: none; }
-  .fallback { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: #fffaf2; line-height: 1.8; }
-
-  @media (max-width: 768px), (max-width: 1100px) and (orientation: portrait) {
-    .dock { top: 8px; bottom: auto; left: 8px; right: 8px; transform: none; max-width: none; min-width: 0; width: auto; padding: 8px 10px; }
-    .cap { font-size: .74rem; }
-    .cap .huge { font-size: .98rem; }
-    .tag { font-size: .62rem; padding: 2px 7px; }
-    .pip { right: 8px; top: 96px; width: 38vw; }
-    .pip .pt { font-size: .62rem; } .pip .pb { font-size: .8rem; bottom: 5px; }
-    .scaleNote { display: none; }
-  }
+  @media (prefers-reduced-motion: reduce) { #tabs button { transition: none; } }
 </style>
-<script src="quality.js"></script>
-<script src="mobile.js"></script>
-<script src="keypoints.js"></script>
-<script type="importmap">
-{
-  "imports": {
-    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-  }
-}
-</script>
 </head>
-<body data-mv-start="closed">
+<body>
 
-<div id="scene"></div>
-<div class="dock glass" id="dock"><div class="cap" id="cap"></div></div>
-<div class="pip" id="pip" hidden><div class="pt">🌍 從地球看到的月亮</div><div class="pb" id="pipName"></div></div>
-<div class="scaleNote">天體的大小和距離是示意，不是真實比例</div>
+<header id="bar">
+  <a id="home" href="index.html#g9">‹ 課程總覽</a>
+  <nav id="tabs" role="tablist" aria-label="切換單元">
+    <button role="tab" type="button" id="tab-moon" data-tab="moon" aria-controls="frame-moon" aria-selected="true">🌙 月相</button>
+    <button role="tab" type="button" id="tab-daily" data-tab="daily" aria-controls="frame-daily" aria-selected="false">☀️ 周日運動</button>
+    <button role="tab" type="button" id="tab-season" data-tab="season" aria-controls="frame-season" aria-selected="false">🌏 四季與晝夜</button>
+  </nav>
+  <span id="spacer" aria-hidden="true"></span>
+</header>
 
-<aside class="panel glass" id="panel">
-  <button class="collapse" id="collapse">收合</button>
-  <a class="back" href="index.html#g9">‹ 課程總覽</a>
-  <div class="title">天文與月相實驗室</div>
-  <div class="body">
-    <div class="tabs">
-      <button class="tab on" data-tab="season">🌏 四季與晝夜<small>地軸傾斜 23.5°</small></button>
-      <button class="tab" data-tab="moon">🌙 月相盈虧<small>雙鏡頭觀測站</small></button>
-    </div>
-
-    <!-- Tab 1 -->
-    <section class="sec" data-tab="season">
-      <div class="concept" style="--cc:#d35400"><div class="ct">四季的成因</div><div class="cd">地球<b>傾斜 23.5°</b> 繞太陽公轉，自轉軸永遠指向同一個方向 → 太陽直射的緯度在南、北回歸線之間移動</div></div>
-      <label class="lab" for="month">📅 日期<b id="monthV">6 月 21 日</b></label>
-      <input class="big" type="range" id="month" min="1" max="12.99" step="0.01" value="6.67">
-      <div class="ticks"><span>1 月</span><span>4 月</span><span>7 月</span><span>10 月</span><span>12 月</span></div>
-      <div class="row4">
-        <button class="btn sbtn" data-m="3.66" type="button">春分<small>3/21</small></button>
-        <button class="btn sbtn" data-m="6.67" type="button">夏至<small>6/21</small></button>
-        <button class="btn sbtn" data-m="9.74" type="button">秋分<small>9/23</small></button>
-        <button class="btn sbtn" data-m="12.69" type="button">冬至<small>12/22</small></button>
-      </div>
-      <label class="chk"><input type="checkbox" id="spinOn" checked> 🔄 地球自轉（看晝夜交替）</label>
-      <label class="chk"><input type="checkbox" id="followOn"> 🎥 鏡頭跟著地球（近看直射點）</label>
-      <div class="stat" id="seasonStat"></div>
-      <div class="cards">
-        <div class="card">☀️ 四季<b>不是</b>因為地球離太陽遠近，而是因為<b>地軸傾斜</b></div>
-        <div class="card">🌗 地球上永遠有一半是白天、一半是黑夜；自轉造成晝夜交替</div>
-        <div class="card">🇹🇼 北回歸線通過臺灣（嘉義、花蓮），夏至中午太陽幾乎在頭頂正上方</div>
-      </div>
-    </section>
-
-    <!-- Tab 2 -->
-    <section class="sec" data-tab="moon" hidden>
-      <div class="concept" style="--cc:#3f51b5"><div class="ct">月相的成因</div><div class="cd">月球本身不發光，永遠有<b>一半</b>被太陽照亮。月球繞地球公轉，我們從地球看到的<b>亮面多寡</b>就跟著改變</div></div>
-      <label class="lab" for="lunar">🌙 農曆日期<b id="lunarV">初一</b></label>
-      <input class="big" type="range" id="lunar" min="1" max="30" step="0.1" value="1">
-      <div class="ticks"><span>初一</span><span>初八</span><span>十五</span><span>廿三</span><span>三十</span></div>
-      <div class="row4">
-        <button class="btn lbtn" data-d="1" type="button">朔<small>初一</small></button>
-        <button class="btn lbtn" data-d="8.4" type="button">上弦<small>初七、八</small></button>
-        <button class="btn lbtn" data-d="15.75" type="button">望<small>十五、六</small></button>
-        <button class="btn lbtn" data-d="23.1" type="button">下弦<small>廿二、三</small></button>
-      </div>
-      <button class="btn primary" id="lunarPlay" type="button">▶ 自動播放一個月</button>
-      <div class="stat" id="moonStat"></div>
-      <div class="cards">
-        <div class="card">👀 主畫面是從北極上空往下看；右上角小視窗是<b>站在地球（北半球）抬頭看到的月亮</b></div>
-        <div class="card">🌓 上弦月亮<b>右半邊</b>，下弦月亮<b>左半邊</b>（北半球觀察）</div>
-        <div class="card">⏰ 月亮每天大約晚 <b>50 分鐘</b>升起</div>
-      </div>
-      <p class="desc">為什麼不是每個月初一都有日食、十五都有月食？因為月球的軌道面和地球的公轉面有夾角。請看「<a href="eclipse-tide-lab.html">日食、月食與潮汐</a>」。</p>
-    </section>
-
-    <button class="btn" id="viewBtn" type="button">🎥 重設視角</button>
-  </div>
-</aside>
-
-<script type="module">
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-
-window.__labReady = true;
-const $ = id => document.getElementById(id);
-const V3 = (x, y, z = 0) => new THREE.Vector3(x, y, z);
-const clamp = THREE.MathUtils.clamp;
-const lerp = THREE.MathUtils.lerp;
-const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
-const TAU = Math.PI * 2, DEG = Math.PI / 180;
-const YUP = V3(0, 1, 0);
-// 用版面的實際尺寸（縮放顯示時 window.innerWidth／innerHeight 可能和畫布不一致）
-const VW = () => document.documentElement.clientWidth || window.innerWidth || 1, VH = () => document.documentElement.clientHeight || window.innerHeight || 1;
-
-/* =========================================================
-   場景：午夜藍星空（不是死黑）＋極簡白色星點
-   ========================================================= */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
-renderer.setSize(VW() || 1, VH() || 1);
-renderer.shadowMap.enabled = window.Look ? window.Look.shadows : true;
-if (window.Look) window.Look.bindRenderer(renderer);
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
-$('scene').appendChild(renderer.domElement);
-
-const scene = new THREE.Scene();
-scene.background = (() => {
-  const c = document.createElement('canvas'); c.width = 2; c.height = 256;
-  const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 256);
-  gr.addColorStop(0, '#0f1650'); gr.addColorStop(1, '#1a237e');
-  g.fillStyle = gr; g.fillRect(0, 0, 2, 256);
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
-})();
-scene.add(new THREE.AmbientLight(0xb8c4ff, 0.2));
-
-const camera = new THREE.PerspectiveCamera(40, VW() / VH(), 0.05, 400);
-camera.layers.enable(1);                       // 主相機看得到「只給上帝視角看」的物件（圖層 1）
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.minDistance = 3; controls.maxDistance = 70;
-
-function dotTexture() {
-  const c = document.createElement('canvas'); c.width = c.height = 64;
-  const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.4, 'rgba(255,255,255,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
-}
-function glowTexture(rgb) {
-  const c = document.createElement('canvas'); c.width = c.height = 128;
-  const g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-  gr.addColorStop(0, `rgba(${rgb},.85)`); gr.addColorStop(0.35, `rgba(${rgb},.3)`); gr.addColorStop(1, `rgba(${rgb},0)`);
-  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
-}
-// 星點：固定的假亂數，每次開啟位置都一樣
-{
-  let seed = 20261113; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  const N = 520, pos = new Float32Array(N * 3);
-  for (let i = 0; i < N; i++) { const u = rnd() * 2 - 1, a = rnd() * TAU, r = Math.sqrt(1 - u * u); pos.set([r * Math.cos(a) * 150, u * 150, r * Math.sin(a) * 150], i * 3); }
-  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const stars = new THREE.Points(geo, new THREE.PointsMaterial({ size: 3.2, sizeAttenuation: false, map: dotTexture(), transparent: true, opacity: 0.7, depthWrite: false }));
-  stars.frustumCulled = false; scene.add(stars);
-}
-
-/* ----- 共用材質與天體 ----- */
-const matte = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.92, metalness: 0, ...o });
-function makeSun(r) {
-  const g = new THREE.Group();
-  const m = new THREE.Mesh(new THREE.SphereGeometry(r, 48, 32), new THREE.MeshPhysicalMaterial({ color: 0xfff1c9, emissive: 0xffd27a, emissiveIntensity: 1.7, roughness: 0.6, toneMapped: false }));
-  g.add(m);
-  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('255,205,110'), transparent: true, depthWrite: false }));
-  glow.scale.setScalar(r * 5.5); g.add(glow);
-  return g;
-}
-// 地球貼圖：低飽和霧面海洋＋簡化的陸塊（經緯度座標的多邊形）
-const LAND = [
-  [[-165, 65], [-125, 72], [-80, 72], [-60, 50], [-80, 27], [-97, 18], [-105, 22], [-122, 35], [-125, 48], [-160, 58]],
-  [[-50, 82], [-22, 72], [-42, 60], [-55, 68]],
-  [[-80, 10], [-60, 10], [-35, -7], [-40, -22], [-58, -38], [-70, -54], [-75, -45], [-70, -18], [-81, -5]],
-  [[-17, 15], [-5, 35], [10, 37], [32, 31], [43, 11], [51, 11], [40, -15], [32, -28], [19, -35], [12, -17], [9, 4], [-8, 5]],
-  [[-10, 37], [-9, 43], [0, 49], [8, 55], [5, 60], [25, 71], [60, 70], [100, 77], [140, 73], [180, 68], [162, 58], [140, 50], [128, 38], [121, 30], [110, 20], [105, 10], [98, 8], [92, 22], [80, 8], [72, 20], [60, 25], [50, 28], [42, 15], [35, 30], [27, 37], [15, 40], [5, 43]],
-  [[114, -22], [130, -12], [142, -11], [153, -25], [147, -38], [131, -32], [115, -34]]
-];
-const earthTex = (() => {
-  const W = 1024, H = 512, c = document.createElement('canvas'); c.width = W; c.height = H;
-  const g = c.getContext('2d');
-  g.fillStyle = '#7c9db3'; g.fillRect(0, 0, W, H);
-  const X = lon => (lon + 180) / 360 * W, Y = lat => (90 - lat) / 180 * H;
-  g.fillStyle = '#a9b58c'; g.strokeStyle = '#8f9c74'; g.lineWidth = 2; g.lineJoin = 'round';
-  for (const poly of LAND) { g.beginPath(); poly.forEach(([lo, la], i) => i ? g.lineTo(X(lo), Y(la)) : g.moveTo(X(lo), Y(la))); g.closePath(); g.fill(); g.stroke(); }
-  g.fillStyle = '#e9eef0'; g.fillRect(0, Y(-70), W, H - Y(-70)); g.fillRect(0, 0, W, Y(80));      // 南極洲、北極冰
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
-})();
-/** 經緯度 → 球面上的位置（和 SphereGeometry 的貼圖對齊） */
-function onGlobe(lon, lat, r, out = V3(0, 0, 0)) {
-  const ph = (lon + 180) * DEG, c = Math.cos(lat * DEG);
-  return out.set(-Math.cos(ph) * c * r, Math.sin(lat * DEG) * r, Math.sin(ph) * c * r);
-}
-function latRing(lat, r, color) {
-  const m = new THREE.Mesh(new THREE.TorusGeometry(Math.cos(lat * DEG) * r * 1.003, r * 0.012, 8, 96), new THREE.MeshBasicMaterial({ color, toneMapped: false }));
-  m.rotation.x = Math.PI / 2; m.position.y = Math.sin(lat * DEG) * r * 1.003; return m;
-}
-/** 地球：tilt（傾斜，不轉）→ spin（自轉）→ 球體；layer 指定給哪台相機看 */
-function makeEarth(r, { tilt = 23.5, rings = true, axis = true, layer = 0 } = {}) {
-  const root = new THREE.Group(), tiltG = new THREE.Group(), spinG = new THREE.Group();
-  tiltG.rotation.z = -tilt * DEG;                         // 北極往 +X 方向倒 23.5°
-  root.add(tiltG); tiltG.add(spinG);
-  const ball = new THREE.Mesh(new THREE.SphereGeometry(r, 64, 48), matte(0xffffff, { map: earthTex }));
-  ball.castShadow = ball.receiveShadow = true; spinG.add(ball);
-  const tw = new THREE.Mesh(new THREE.SphereGeometry(r * 0.035, 12, 10), new THREE.MeshBasicMaterial({ color: 0xe53935, toneMapped: false }));
-  onGlobe(121, 23.5, r * 1.01, tw.position); spinG.add(tw);
-  if (rings) { tiltG.add(latRing(0, r, 0xffffff), latRing(23.5, r, 0xffb74d), latRing(-23.5, r, 0xffb74d)); }
-  let arrow = null;
-  if (axis) {
-    arrow = new THREE.Group();
-    const m = new THREE.MeshBasicMaterial({ color: 0xfff3b0, toneMapped: false });
-    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.028, r * 0.028, r * 3.1, 12), m); arrow.add(shaft);
-    const head = new THREE.Mesh(new THREE.ConeGeometry(r * 0.09, r * 0.26, 16), m); head.position.y = r * 1.68; arrow.add(head);
-    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTexture('255,240,170'), transparent: true, depthWrite: false })); glow.scale.setScalar(r * 0.7); glow.position.y = r * 1.68; arrow.add(glow);
-    tiltG.add(arrow);
-  }
-  root.traverse(o => o.layers.set(layer));
-  return { root, tiltG, spinG, ball, tw, arrow, r };
-}
-function moonTex() {
-  const c = document.createElement('canvas'); c.width = 512; c.height = 256;
-  const g = c.getContext('2d'); g.fillStyle = '#d9d2c4'; g.fillRect(0, 0, 512, 256);
-  let seed = 77; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-  for (let i = 0; i < 46; i++) { const x = rnd() * 512, y = 30 + rnd() * 196, r = 5 + rnd() * 20; g.fillStyle = `rgba(150,140,125,${0.18 + rnd() * 0.22})`; g.beginPath(); g.ellipse(x, y, r, r * 0.9, 0, 0, TAU); g.fill(); }
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
-}
-/** 圓形軌道線 */
-function orbitRing(r, color = 0xfffaf2, opacity = 0.35) {
-  const pts = []; for (let i = 0; i <= 128; i++) { const a = i / 128 * TAU; pts.push(V3(Math.cos(a) * r, 0, -Math.sin(a) * r)); }
-  return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color, transparent: true, opacity }));
-}
-/** 兩點之間的細圓管 */
-const UNIT_CYL = new THREE.CylinderGeometry(1, 1, 1, 8, 1);
-function makeSeg(color, opacity = 1) { const m = new THREE.Mesh(UNIT_CYL, new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, toneMapped: false, depthWrite: opacity >= 1 })); return m; }
-const tmpD = V3(0, 0, 0);
-function placeSeg(m, a, b, r) { tmpD.copy(b).sub(a); const len = tmpD.length(); m.position.copy(a).add(b).multiplyScalar(0.5); if (len > 1e-6) m.quaternion.setFromUnitVectors(YUP, tmpD.divideScalar(len)); m.scale.set(r, Math.max(len, 1e-4), r); }
-
-/* ----- 浮動標籤（只用主相機投影） ----- */
-const labels = [];
-const tmpV = V3(0, 0, 0), tmpW = V3(0, 0, 0);
-function addLabel(tabKey, html, cls, off, follow = null) {
-  const el = document.createElement('div'); el.className = 'tag ' + (cls || ''); el.innerHTML = html; document.body.appendChild(el);
-  const L = { tab: tabKey, el, html, cls: cls || '', off: off.clone(), pos: off.clone(), follow, show: true }; labels.push(L); return L;
-}
-function setLabel(L, html) { if (L.html !== html) { L.html = html; L.el.innerHTML = html; } }
-function placeLabels() {
-  const w = VW(), h = VH();
-  for (const L of labels) {
-    if (L.tab !== tab || !L.show) { L.el.style.display = 'none'; continue; }
-    if (L.follow) L.pos.copy(L.follow.getWorldPosition(tmpW)).add(L.off);
-    tmpV.copy(L.pos).project(camera);
-    if (tmpV.z > 1) { L.el.style.display = 'none'; continue; }
-    L.el.style.display = '';
-    L.el.style.left = ((tmpV.x + 1) / 2 * w) + 'px';
-    L.el.style.top = ((1 - tmpV.y) / 2 * h) + 'px';
-  }
-}
-let tab = 'season';
-const setCap = html => { if ($('cap').innerHTML !== html) $('cap').innerHTML = html; };
-const setHTML = (id, html) => { if ($(id).innerHTML !== html) $(id).innerHTML = html; };
-
-/* =========================================================
-   Tab 1：四季與晝夜（地軸傾角沙盒）
-   ---------------------------------------------------------
-   公轉面是 XZ 平面，從北方（+Y）往下看是逆時針。
-   地軸永遠往 +X 方向傾斜 23.5°，所以地球在 −X 側時北半球朝向太陽（夏至）。
-   公轉角 A：夏至 0° → 秋分 90° → 冬至 180° → 春分 270°。
-   直射緯度由「地軸方向」和「太陽方向」的夾角算出（只在程式裡計算，畫面只顯示結果）。
-   ========================================================= */
-const TILT = 23.5, R_ORB = 8.5;
-const SE = { group: new THREE.Group(), m: 6.67, A: 0, Ashow: 0, spin: 0, lat: 23.5, follow: false, t: 0 };
-scene.add(SE.group);
-const seSun = makeSun(1.25); SE.group.add(seSun);
-// 太陽是場景的主要光源（PointLight，不隨距離變暗）
-const seLight = new THREE.PointLight(0xfff2d8, 3.2, 0, 0);
-seLight.castShadow = true; seLight.shadow.mapSize.set(1024, 1024); seLight.shadow.bias = -0.002;
-if (window.Look) window.Look.bindLight(seLight);
-SE.group.add(seLight);
-SE.group.add(orbitRing(R_ORB));
-const seEarth = makeEarth(1.15); SE.group.add(seEarth.root);
-seEarth.ball.receiveShadow = false;      // 地球不接收陰影：點光源的陰影會讓地球被自己遮住，向陽面反而變暗；晝夜交界由光照方向產生
-// 公轉面的垂直線（虛線感的半透明細線），用來對照地軸傾斜了多少
-const seNormal = makeSeg(0xfffaf2, 0.35); seEarth.root.add(seNormal); placeSeg(seNormal, V3(0, -1.9, 0), V3(0, 1.9, 0), 0.012);
-// 太陽光線與直射點
-const seRay = makeSeg(0xffd54f, 0.75); SE.group.add(seRay);
-const seSpot = new THREE.Mesh(new THREE.SphereGeometry(0.07, 14, 10), new THREE.MeshBasicMaterial({ color: 0xffeb3b, toneMapped: false })); SE.group.add(seSpot);
-const AXIS = V3(Math.sin(TILT * DEG), Math.cos(TILT * DEG), 0);       // 地軸方向（固定不變）
-const earthPosAt = (A, out = V3(0, 0, 0)) => { const th = Math.PI + A * DEG; return out.set(Math.cos(th) * R_ORB, 0, -Math.sin(th) * R_ORB); };
-for (const [A, name] of [[0, '夏至 6/21'], [90, '秋分 9/23'], [180, '冬至 12/22'], [270, '春分 3/21']]) {
-  const p = earthPosAt(A).multiplyScalar(1.24); addLabel('season', name, 'small ghost', V3(p.x, -0.2, p.z));
-}
-addLabel('season', '☀️ 太陽', 'yel', V3(0, 2.1, 0));
-const lbAxis = addLabel('season', '自轉軸（傾斜 23.5°）', 'small yel', V3(0, 0, 0));
-const lbSpot = addLabel('season', '', 'small red', V3(0, 0, 0));
-const lbEq = addLabel('season', '赤道', 'small', V3(0, 0, 0));
-const lbN = addLabel('season', '北回歸線', 'small', V3(0, 0, 0));
-const lbS = addLabel('season', '南回歸線', 'small', V3(0, 0, 0));
-const lbTw = addLabel('season', '臺灣', 'small red', V3(0, 0.22, 0), seEarth.tw);
-
-const CUM = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334], DIM = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-// 節氣對應的日序：夏至 172、秋分 266、冬至 356、春分 80（＋365）
-const ANCH = [[172, 0], [266, 90], [356, 180], [445, 270], [537, 360]];
-function dateOf(m) { const mi = clamp(Math.floor(m), 1, 12), day = clamp(Math.floor((m - mi) * DIM[mi - 1]) + 1, 1, DIM[mi - 1]); return { mi, day, doy: CUM[mi - 1] + day }; }
-function angleOf(doy) { let d = doy < 172 ? doy + 365 : doy; for (let i = 0; i < 4; i++) if (d <= ANCH[i + 1][0]) return lerp(ANCH[i][1], ANCH[i + 1][1], (d - ANCH[i][0]) / (ANCH[i + 1][0] - ANCH[i][0])); return 0; }
-const latText = v => Math.abs(v) < 0.25 ? '赤道（0°）' : `${v > 0 ? '北緯' : '南緯'} ${Math.abs(v).toFixed(1)}°`;
-function setMonth(m, fromSlider) { SE.m = m; if (!fromSlider) $('month').value = m; }
-$('month').addEventListener('input', e => setMonth(Number(e.target.value), true));
-document.querySelectorAll('.sbtn').forEach(b => b.addEventListener('click', () => setMonth(Number(b.dataset.m))));
-$('followOn').addEventListener('change', e => { SE.follow = e.target.checked; if (!SE.follow) goView(TABS.season.cam()); });
-const sunDir = V3(0, 0, 0), ePos = V3(0, 0, 0), tA = V3(0, 0, 0), tB = V3(0, 0, 0);
-function updateSeason(dt) {
-  SE.t += dt;
-  const d = dateOf(SE.m);
-  SE.A = angleOf(d.doy);
-  // 走最短的方向追上目標角度（12 月跨到 1 月不會倒轉一整圈）
-  let diff = ((SE.A - SE.Ashow + 540) % 360) - 180;
-  SE.Ashow = (SE.Ashow + diff * (1 - Math.exp(-dt * 6)) + 360) % 360;
-  earthPosAt(SE.Ashow, ePos);
-  seEarth.root.position.copy(ePos);
-  if ($('spinOn').checked) SE.spin += dt * 0.7;
-  seEarth.spinG.rotation.y = SE.spin;
-  sunDir.copy(ePos).multiplyScalar(-1).normalize();                    // 從地球指向太陽
-  SE.lat = Math.asin(clamp(AXIS.dot(sunDir), -1, 1)) / DEG;
-  // 光線：從太陽表面到地球上的直射點
-  tA.copy(sunDir).multiplyScalar(-1.3); tB.copy(ePos).addScaledVector(sunDir, seEarth.r * 1.01);
-  placeSeg(seRay, tA, tB, 0.03); seSpot.position.copy(tB);
-  // 標籤位置
-  lbAxis.pos.copy(ePos).addScaledVector(AXIS, seEarth.r * 2.25);
-  lbSpot.pos.copy(tB).addScaledVector(sunDir, 0.9).add(tA.set(0, 0.55, 0));
-  setLabel(lbSpot, `直射 ${latText(SE.lat)}`);
-  const side = tA.setFromMatrixColumn(camera.matrixWorld, 0);            // 鏡頭的右方：標籤排在地球右側邊緣外
-  const edge = (lat, L) => { L.pos.copy(ePos).addScaledVector(AXIS, Math.sin(lat * DEG) * seEarth.r).addScaledVector(side, Math.cos(lat * DEG) * seEarth.r + 1.05); };
-  edge(0, lbEq); edge(23.5, lbN); edge(-23.5, lbS);
-  const close = SE.follow || camera.position.distanceTo(ePos) < 12;
-  lbEq.show = lbN.show = lbS.show = lbTw.show = close;
-  // 鏡頭跟著地球
-  if (SE.follow && !camTw) { const v = viewFor({ pos: [ePos.x, ePos.y + 1.5, ePos.z + 8.6], target: [ePos.x, ePos.y, ePos.z] }); controls.target.lerp(v.tgt, 1 - Math.exp(-dt * 5)); camera.position.lerp(v.pos, 1 - Math.exp(-dt * 3)); }
-  // 文字
-  const near = (a) => Math.abs(((SE.A - a + 540) % 360) - 180);
-  const key = near(0) < 4 ? '夏至' : near(90) < 4 ? '秋分' : near(180) < 4 ? '冬至' : near(270) < 4 ? '春分' : '';
-  const seasonN = SE.A < 90 ? '夏季' : SE.A < 180 ? '秋季' : SE.A < 270 ? '冬季' : '春季';
-  const seasonS = { 夏季: '冬季', 秋季: '春季', 冬季: '夏季', 春季: '秋季' }[seasonN];
-  // 臺灣（北緯 23.5°）的白天長度
-  const x = clamp(-Math.tan(23.5 * DEG) * Math.tan(SE.lat * DEG), -1, 1), dayH = 24 * Math.acos(x) / Math.PI;
-  $('monthV').textContent = `${d.mi} 月 ${d.day} 日`;
-  document.querySelectorAll('.sbtn').forEach(b => b.classList.toggle('on', b.textContent.startsWith(key) && !!key));
-  setHTML('seasonStat', `太陽直射：<b class="r">${latText(SE.lat)}</b>${key ? `　<b class="o">${key}</b>` : ''}<br>北半球：<b class="${seasonN === '夏季' ? 'r' : seasonN === '冬季' ? 'b' : 'g'}">${seasonN}</b>　南半球：<b>${seasonS}</b><br>臺灣的白天：約 <b>${dayH.toFixed(1)}</b> 小時（${dayH > 12.05 ? '晝長夜短' : dayH < 11.95 ? '晝短夜長' : '晝夜等長'}）<br><small>${SE.lat > 0.25 ? '北極圈內出現永晝，南極圈內永夜' : SE.lat < -0.25 ? '南極圈內出現永晝，北極圈內永夜' : '全球各地晝夜幾乎等長'}</small>`);
-  const head = { 夏至: '夏至：太陽直射北回歸線，北半球白天最長', 冬至: '冬至：太陽直射南回歸線，北半球白天最短', 春分: '春分：太陽直射赤道，全球晝夜等長', 秋分: '秋分：太陽直射赤道，全球晝夜等長' }[key]
-    || `太陽直射${latText(SE.lat)}，北半球是${seasonN}`;
-  setCap(`<small>四季與晝夜・${d.mi} 月 ${d.day} 日</small><span class="huge ${SE.lat > 8 ? 'red' : SE.lat < -8 ? 'blu' : 'grn'}">${head}</span>地軸傾斜的方向不變，直射點才會在南、北回歸線之間來回移動`);
-}
-
-/* =========================================================
-   Tab 2：月相盈虧雙鏡頭觀測站
-   ---------------------------------------------------------
-   太陽在 −X 方向（很遠），陽光視為平行光往 +X 照。
-   月球從北方往下看是逆時針繞地球：初一在地球和太陽之間（−X），上弦在 +Z，十五在 +X，下弦在 −Z。
-   主相機（上帝視角）從北極上空往下看；第二台相機放在地球中心、永遠對準月球、頭頂朝北，
-   所以北半球看到的上弦月是右半邊亮。第二台相機只看圖層 0，看不到地球本身和說明用的線條（圖層 1）。
-   地球和月球之間不投影：否則每個月都會出現日食、月食。
-   ========================================================= */
-const R_MOON = 4.4, SUN_X = -15;
-const MO = { group: new THREE.Group(), day: 1, show: 1, phi: 0, play: false, spin: 0 };
-scene.add(MO.group);
-const moSun = makeSun(1.5); moSun.position.set(SUN_X, 0, 0); moSun.traverse(o => o.layers.set(1)); MO.group.add(moSun);
-const moLight = new THREE.DirectionalLight(0xfff2d8, 3.0); moLight.position.set(SUN_X, 0, 0); MO.group.add(moLight); MO.group.add(moLight.target);
-const moEarth = makeEarth(1.05, { tilt: 0, rings: false, axis: false, layer: 1 }); MO.group.add(moEarth.root);
-moEarth.ball.castShadow = moEarth.ball.receiveShadow = false;
-const moon = new THREE.Mesh(new THREE.SphereGeometry(0.52, 48, 32), matte(0xffffff, { map: moonTex() })); MO.group.add(moon);
-const moRing = orbitRing(R_MOON); moRing.layers.set(1); MO.group.add(moRing);
-const moSight = makeSeg(0x2ec5e6, 0.8); moSight.layers.set(1); MO.group.add(moSight);
-// 平行的太陽光箭頭（只給上帝視角看）
-for (let i = 0; i < 5; i++) {
-  const z = (i - 2) * 2.3, shaft = makeSeg(0xffd54f, 0.55); shaft.layers.set(1); MO.group.add(shaft); placeSeg(shaft, V3(-11.5, 0, z), V3(-8.3, 0, z), 0.035);
-  const head = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.36, 12), new THREE.MeshBasicMaterial({ color: 0xffd54f, transparent: true, opacity: 0.7, toneMapped: false }));
-  head.rotation.z = -Math.PI / 2; head.position.set(-8.15, 0, z); head.layers.set(1); MO.group.add(head);
-}
-const moonPosAt = (phi, out = V3(0, 0, 0)) => { const a = Math.PI + phi * DEG; return out.set(Math.cos(a) * R_MOON, 0, -Math.sin(a) * R_MOON); };
-for (const [phi, name] of [[0, '朔（初一）'], [90, '上弦（初七、八）'], [180, '望（十五、十六）'], [270, '下弦（廿二、廿三）']]) {
-  const p = moonPosAt(phi).multiplyScalar(1.32); addLabel('moon', name, 'small ghost', V3(p.x, 0, p.z));
-}
-addLabel('moon', '☀️ 太陽光', 'yel', V3(-11, 0, -6.6));
-addLabel('moon', '🌍 地球', 'small', V3(0, 0, -1.7));
-const lbMoon = addLabel('moon', '', 'small blu', V3(0, 0, 0));
-// 第二台相機：地球人視角
-const camEarth = new THREE.PerspectiveCamera(17, 1, 0.05, 400);
-const LUNAR_NAME = ['初一', '初二', '初三', '初四', '初五', '初六', '初七', '初八', '初九', '初十', '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十', '廿一', '廿二', '廿三', '廿四', '廿五', '廿六', '廿七', '廿八', '廿九', '三十'];
-function phaseOf(phi) {
-  const p = (phi % 360 + 360) % 360;
-  if (p < 8 || p > 352) return ['朔（新月）', '月球在地球和太陽之間，亮面背對地球，幾乎看不到'];
-  if (p < 82) return ['眉月', '亮面在右邊，像細細的眉毛，逐漸變大'];
-  if (p <= 98) return ['上弦月', '右半邊亮；中午升起、半夜落下'];
-  if (p < 172) return ['盈凸月', '亮面超過一半，繼續變圓'];
-  if (p <= 188) return ['望（滿月）', '地球在月球和太陽之間，整個亮面朝向地球；日落時升起'];
-  if (p < 262) return ['虧凸月', '亮面開始從右邊缺角'];
-  if (p <= 278) return ['下弦月', '左半邊亮；半夜升起、中午落下'];
-  return ['殘月', '亮面在左邊，越來越細'];
-}
-function setLunar(v, fromSlider) { MO.day = v; if (!fromSlider) $('lunar').value = v; }
-$('lunar').addEventListener('input', e => { MO.play = false; $('lunarPlay').textContent = '▶ 自動播放一個月'; setLunar(Number(e.target.value), true); });
-document.querySelectorAll('.lbtn').forEach(b => b.addEventListener('click', () => { MO.play = false; $('lunarPlay').textContent = '▶ 自動播放一個月'; setLunar(Number(b.dataset.d)); }));
-$('lunarPlay').addEventListener('click', () => { MO.play = !MO.play; if (MO.play && MO.day >= 29.9) setLunar(1); $('lunarPlay').textContent = MO.play ? '⏸ 暫停' : '▶ 自動播放一個月'; });
-const mPos = V3(0, 0, 0);
-function updateMoon(dt) {
-  if (MO.play) { setLunar(Math.min(30, MO.day + dt * 1.6)); if (MO.day >= 30) { MO.play = false; $('lunarPlay').textContent = '▶ 自動播放一個月'; } }
-  MO.show += (MO.day - MO.show) * (1 - Math.exp(-dt * 7));
-  MO.phi = (MO.show - 1) / 29.5 * 360;
-  moonPosAt(MO.phi, mPos); moon.position.copy(mPos);
-  moon.lookAt(0, 0, 0);                                       // 月球永遠以同一面朝向地球
-  MO.spin += dt * 0.5; moEarth.spinG.rotation.y = MO.spin;
-  placeSeg(moSight, tA.set(0, 0, 0).addScaledVector(mPos, 1.1 / R_MOON), tB.copy(mPos).multiplyScalar(1 - 0.6 / R_MOON), 0.022);
-  lbMoon.pos.copy(mPos).multiplyScalar(1.17); setLabel(lbMoon, '🌙 月球');
-  camEarth.position.set(0, 0, 0); camEarth.up.set(0, 1, 0); camEarth.lookAt(mPos);
-  const [name, tip] = phaseOf(MO.phi), lit = (1 - Math.cos(MO.phi * DEG)) / 2;
-  const dn = LUNAR_NAME[clamp(Math.round(MO.day) - 1, 0, 29)];
-  const rise = ((6 + ((MO.phi % 360 + 360) % 360) / 360 * 24) % 24);
-  const riseTxt = `${rise < 5 ? '半夜' : rise < 11 ? '早上' : rise < 13 ? '中午' : rise < 17 ? '下午' : rise < 19 ? '傍晚' : '晚上'}約 ${Math.floor(rise)} 點`;
-  $('lunarV').textContent = '農曆' + dn; $('pipName').textContent = name;
-  document.querySelectorAll('.lbtn').forEach(b => b.classList.toggle('on', Math.abs(Number(b.dataset.d) - MO.day) < 0.9));
-  setHTML('moonStat', `月相：<b class="b">${name}</b><br>看得到的亮面：約 <b>${Math.round(lit * 100)}%</b><br>月出時間：<b>${riseTxt}</b><br><small>${tip}</small>`);
-  setCap(`<small>月相盈虧・農曆${dn}</small><span class="huge blu">${name}</span>月球永遠有一半被照亮；看主畫面的位置，再對照右上角從地球看到的樣子`);
-}
-
-/* =========================================================
-   Tab 切換、鏡頭
-   ========================================================= */
-const TABS = {
-  season: { group: SE.group, cam: () => ({ pos: [0, 11, 20], target: [0, 0, 0], fitW: 27 }), update: updateSeason },
-  moon: { group: MO.group, cam: () => ({ pos: [-2.6, 21, 5.5], target: [-2.6, 0, 0], fitW: 19.5, rightPad: () => { const r = $('pip').getBoundingClientRect(); return r.width ? VW() - r.left + 12 : 0; } }), update: updateMoon }
-};
-function setTab(t) {
-  tab = t;
-  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
-  document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== t; });
-  for (const [k, v] of Object.entries(TABS)) v.group.visible = k === t;
-  $('pip').hidden = t !== 'moon';
-  goView(TABS[t].cam());
-  try { history.replaceState(null, '', '#' + t); } catch (e) { /* file:// */ }
-  window.dispatchEvent(new Event('hashchange'));          // 讓「會考出題重點」卡跟著分頁更新
-}
-document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
-function layoutDock() {
-  const d = $('dock');
-  if (window.MobileView?.isMobile()) { d.style.left = ''; d.style.maxWidth = ''; return; }
-  const left = Math.max(0, $('panel').getBoundingClientRect().right);
-  d.style.left = ((left + VW()) / 2) + 'px';
-  d.style.maxWidth = Math.max(300, VW() - left - 28) + 'px';
-}
-function viewFor(c) {
-  const pos = V3(...c.pos), tgt = V3(...c.target);
-  if (!VW() || !VH()) return { pos, tgt };
-  const dist = pos.distanceTo(tgt), tanH = Math.tan(Math.min(camera.fov, 50) * Math.PI / 360);
-  if (window.MobileView?.isMobile()) {
-    const need = (c.fitW || 0) * 1.08 / (2 * tanH * camera.aspect);
-    if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
-    return { pos, tgt };
-  }
-  const left = Math.max(0, $('panel').getBoundingClientRect().right);
-  const rightPad = c.rightPad ? c.rightPad() : 0;                      // 右側被畫中畫佔用的寬度
-  const avail = Math.max(0.3, (VW() - left - rightPad) / VW());
-  const need = (c.fitW || 0) / avail / (2 * tanH * camera.aspect);
-  if (need > dist) pos.sub(tgt).multiplyScalar(need / dist).add(tgt);
-  // 把場景中心移到面板右邊的可見區域中央（沿相機的水平方向平移）
-  const d2 = pos.distanceTo(tgt), visW = 2 * d2 * tanH * camera.aspect;
-  const right = V3(0, 0, 0).crossVectors(tgt.clone().sub(pos), V3(0, 1, 0));
-  if (right.lengthSq() < 1e-6) right.set(1, 0, 0); right.normalize();
-  const sx = -((left - rightPad) / 2) / VW() * visW;
-  pos.addScaledVector(right, sx); tgt.addScaledVector(right, sx);
-  return { pos, tgt };
-}
-let camTw = null;
-function goView(c, instant = false) {
-  layoutDock();
-  const { pos, tgt } = viewFor(c);
-  if (instant) { camTw = null; camera.position.copy(pos); controls.target.copy(tgt); controls.update(); return; }
-  camTw = { p0: camera.position.clone(), t0: controls.target.clone(), p1: pos, t1: tgt, k: 0 };
-}
-controls.addEventListener('start', () => { camTw = null; if (SE.follow) { SE.follow = false; $('followOn').checked = false; } });
-$('viewBtn').addEventListener('click', () => { SE.follow = false; $('followOn').checked = false; goView(TABS[tab].cam()); });
-$('collapse').addEventListener('click', () => { const c = $('panel').classList.toggle('collapsed'); $('collapse').textContent = c ? '展開' : '收合'; layoutDock(); });
-['panel', 'dock'].forEach(id => ['pointerdown', 'touchstart', 'wheel'].forEach(ev => $(id).addEventListener(ev, e => e.stopPropagation(), { passive: true })));
-function resize() {
-  const w = VW(), h = VH();
-  if (!w || !h) return;
-  renderer.setPixelRatio((window.Look ? window.Look.pixelRatio() : Math.min(window.devicePixelRatio || 1, 2)));
-  renderer.setSize(w, h);
-  camera.aspect = w / h; camera.fov = 40; camera.updateProjectionMatrix();
-}
-window.addEventListener('resize', () => { resize(); goView(TABS[tab].cam(), true); });
-
-const clock = new THREE.Clock();
-function frame(dt) {
-  TABS[tab].update(dt);
-  if (camTw) {
-    camTw.k = Math.min(1, camTw.k + dt / 1.2);
-    const s = smooth(0, 1, camTw.k);
-    camera.position.lerpVectors(camTw.p0, camTw.p1, s);
-    controls.target.lerpVectors(camTw.t0, camTw.t1, s);
-    if (camTw.k >= 1) camTw = null;
-  }
-  controls.update();
-  const w = VW(), h = VH();
-  if (!w || !h) return;
-  placeLabels();
-  window.MobileView?.offset(camera);
-  // ① 主畫面：上帝視角，畫滿整個畫面
-  renderer.setScissorTest(false);
-  renderer.setViewport(0, 0, w, h);
-  renderer.render(scene, camera);
-  // ② 畫中畫：地球人視角，只畫在 #pip 外框的範圍內（Scissor Test）
-  if (tab === 'moon') {
-    // 手機：小視窗排在上方說明條的正下方，不互相遮住
-    if (window.MobileView?.isMobile()) { const top = Math.round($('dock').getBoundingClientRect().bottom + 8) + 'px'; if ($('pip').style.top !== top) $('pip').style.top = top; }
-    else if ($('pip').style.top) $('pip').style.top = '';
-    const r = $('pip').getBoundingClientRect(), cv = renderer.domElement.getBoundingClientRect();
-    if (r.width > 2 && r.height > 2 && cv.width > 2) {
-      // 以畫布的實際位置換算（不直接用視窗尺寸，縮放顯示時才不會偏掉）；WebGL 的原點在左下角
-      const k = w / cv.width, x = (r.left - cv.left) * k, y = (cv.bottom - r.bottom) * k, pw = r.width * k, ph = r.height * k;
-      renderer.setViewport(x, y, pw, ph);
-      renderer.setScissor(x, y, pw, ph);
-      renderer.setScissorTest(true);
-      camEarth.aspect = r.width / r.height; camEarth.updateProjectionMatrix();
-      renderer.render(scene, camEarth);
-      renderer.setScissorTest(false);
-      renderer.setViewport(0, 0, w, h);
-    }
-  }
-}
-function animate() { frame(Math.min(clock.getDelta(), 0.05)); requestAnimationFrame(animate); }
-
-window.lab = { frame, setTab, SE, MO, camera, camEarth, controls, renderer, scene };
-
-resize();
-const first = TABS[location.hash.slice(1)] ? location.hash.slice(1) : 'season';
-tab = first;
-for (const [k, v] of Object.entries(TABS)) v.group.visible = k === first;
-document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === first));
-document.querySelectorAll('.sec').forEach(s => { s.hidden = s.dataset.tab !== first; });
-$('pip').hidden = first !== 'moon';
-SE.Ashow = angleOf(dateOf(SE.m).doy);
-goView(TABS[first].cam(), true);
-animate();
-</script>
+<main id="stage"></main>
 
 <script>
-setTimeout(() => {
-  if (!window.__labReady) {
-    document.getElementById('scene').innerHTML = '<div class="fallback">無法載入 Three.js。<br>請確認電腦已連上網路後重新整理。</div>';
+(function () {
+  // 每個分頁對應一個原本的頁面；第一次點到才載入，之後切換只是顯示／隱藏，各頁的操作狀態都會留著
+  var PAGES = {
+    moon: { src: 'moon-phases.html', title: '月相變化' },
+    daily: { src: 'daily-motion.html', title: '周日運動' },
+    season: { src: 'season-lab.html', title: '四季與晝夜' }
+  };
+  var stage = document.getElementById('stage'), frames = {}, current = null;
+
+  function makeFrame(key) {
+    var f = document.createElement('iframe');
+    f.id = 'frame-' + key; f.title = PAGES[key].title; f.setAttribute('role', 'tabpanel'); f.setAttribute('aria-labelledby', 'tab-' + key);
+    f.addEventListener('load', function () {
+      try {
+        // 分頁裡的「課程總覽」等連結要換掉整個視窗，而不是只在分頁框裡跳轉
+        f.contentDocument.addEventListener('click', function (e) {
+          var a = e.target.closest && e.target.closest('a[href]');
+          if (!a) return;
+          var href = a.getAttribute('href');
+          if (!href || href.charAt(0) === '#' || a.target === '_blank') return;
+          e.preventDefault(); window.top.location.href = a.href;
+        }, true);
+      } catch (err) { /* 讀不到內容就維持預設行為 */ }
+    });
+    f.src = PAGES[key].src;
+    stage.appendChild(f); frames[key] = f; return f;
   }
-}, 6000);
+
+  function show(key, updateHash) {
+    if (!PAGES[key]) key = 'moon';
+    if (key === current) return;
+    current = key;
+    var f = frames[key] || makeFrame(key);
+    Object.keys(frames).forEach(function (k) { frames[k].hidden = k !== key; });
+    document.querySelectorAll('#tabs button').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.tab === key)); });
+    document.title = PAGES[key].title + '｜天文實驗室';
+    if (updateHash) { try { history.replaceState(null, '', '#' + key); } catch (e) { /* file:// */ } }
+    // 剛顯示出來的分頁：通知它重新計算畫面大小
+    setTimeout(function () { try { f.contentWindow.dispatchEvent(new Event('resize')); } catch (e) { /* 尚未載入 */ } }, 60);
+  }
+
+  document.getElementById('tabs').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-tab]'); if (b) show(b.dataset.tab, true);
+  });
+  window.addEventListener('hashchange', function () { show(location.hash.slice(1), false); });
+  show(location.hash.slice(1) || 'moon', false);
+})();
 </script>
-<script src="goals.js" defer></script>
 </body>
 </html>
